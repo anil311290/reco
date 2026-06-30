@@ -1,0 +1,120 @@
+<?php
+
+namespace App\Http\Controllers\Api;
+
+use App\Http\Controllers\Controller;
+use App\Services\SettingsService;
+use App\Services\FinancialYearService;
+use App\Http\Resources\CompanyResource;
+use App\Helpers\ResponseHelper;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
+
+class SettingsApiController extends Controller
+{
+    protected SettingsService $settingsService;
+
+    public function __construct(SettingsService $settingsService)
+    {
+        $this->settingsService = $settingsService;
+    }
+
+    /**
+     * Get company settings
+     */
+    public function getCompanySettings(Request $request): JsonResponse
+    {
+        $company = $request->user()->company;
+
+        if (!$company) {
+            return ResponseHelper::notFound('Company not found');
+        }
+
+        return ResponseHelper::success(
+            new CompanyResource($company)
+        );
+    }
+
+    /**
+     * Get theme settings
+     */
+    public function getThemeSettings(Request $request): JsonResponse
+    {
+        $companyId = $request->user()->company_id;
+
+        $settings = [
+            'primary_color' => $this->settingsService->get('theme.primary_color', '#4f46e5', $companyId),
+            'secondary_color' => $this->settingsService->get('theme.secondary_color', '#6b7280', $companyId),
+            'sidebar_color' => $this->settingsService->get('theme.sidebar_color', '#1e1b4b', $companyId),
+            'header_color' => $this->settingsService->get('theme.header_color', '#ffffff', $companyId),
+            'dark_mode' => $this->settingsService->get('theme.dark_mode', '0', $companyId) === '1',
+        ];
+
+        return ResponseHelper::success($settings);
+    }
+
+    /**
+     * Get financial years
+     */
+    public function getFinancialYears(Request $request): JsonResponse
+    {
+        $companyId = $request->user()->company_id;
+
+        $financialYears = \App\Models\FinancialYear::where('company_id', $companyId)
+            ->orderBy('start_date', 'desc')
+            ->get();
+
+        return ResponseHelper::success($financialYears);
+    }
+
+    /**
+     * Get current financial year
+     */
+    public function getCurrentFinancialYear(Request $request): JsonResponse
+    {
+        $companyId = $request->user()->company_id;
+
+        $financialYear = \App\Models\FinancialYear::getCurrent($companyId);
+
+        if (!$financialYear) {
+            return ResponseHelper::notFound('No active financial year found');
+        }
+
+        return ResponseHelper::success($financialYear);
+    }
+
+    /**
+     * Get all settings
+     */
+    public function index(Request $request): JsonResponse
+    {
+        $companyId = $request->user()->company_id;
+
+        $company = $request->user()->company;
+        $theme = [
+            'primary_color' => $this->settingsService->get('theme.primary_color', '#4f46e5', $companyId),
+            'secondary_color' => $this->settingsService->get('theme.secondary_color', '#6b7280', $companyId),
+            'sidebar_color' => $this->settingsService->get('theme.sidebar_color', '#1e1b4b', $companyId),
+            'header_color' => $this->settingsService->get('theme.header_color', '#ffffff', $companyId),
+            'dark_mode' => $this->settingsService->get('theme.dark_mode', '0', $companyId) === '1',
+        ];
+
+        $financialYear = \App\Models\FinancialYear::getCurrent($companyId);
+        $accounting = [
+            'sales_tax_ledger_id' => $this->settingsService->get('sales_tax_ledger_id', null, $companyId),
+            'purchase_tax_ledger_id' => $this->settingsService->get('purchase_tax_ledger_id', null, $companyId),
+            'tds_ledger_id' => $this->settingsService->get('tds_ledger_id', null, $companyId),
+            'tcs_ledger_id' => $this->settingsService->get('tcs_ledger_id', null, $companyId),
+            'cess_ledger_id' => $this->settingsService->get('cess_ledger_id', null, $companyId),
+        ];
+
+        return ResponseHelper::success([
+            'company' => new CompanyResource($company),
+            'theme' => $theme,
+            'accounting' => $accounting,
+            'financial_year' => $financialYear,
+            'currency' => $company->currency ?? 'INR',
+            'timezone' => $company->timezone ?? 'Asia/Kolkata',
+        ]);
+    }
+}

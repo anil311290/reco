@@ -1,0 +1,98 @@
+/* === Login Page === */
+body.login-page {
+    font-family: 'Inter', sans-serif;
+    background: #f4f7fc;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    -webkit-font-smoothing: antialiased;
+}
+
+.login-card {
+    max-width: 420px;
+    border: 1px solid #dbe6f3;
+    border-radius: 14px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.06);
+}
+
+.login-card .form-floating .form-control {
+    border-radius: 8px;
+    border: 1.5px solid #dbe6f3;
+    padding: 1rem;
+    height: calc(3.5rem + 4px);
+    font-size: 14px;
+    color: #4b4b4b;
+}
+
+.login-card .form-floating .form-control:focus {
+    border-color: #1f6feb;
+    box-shadow: 0 0 0 3px rgba(31, 111, 235, 0.08);
+}
+
+.login-card .form-floating label {
+    padding: 1rem;
+    color: #a8aaae;
+    font-size: 13px;
+}
+
+/* Override browser autofill blue/yellow background */
+.login-card .form-floating .form-control:-webkit-autofill,
+.login-card .form-floating .form-control:-webkit-autofill:hover,
+.login-card .form-floating .form-control:-webkit-autofill:focus {
+    -webkit-box-shadow: 0 0 0 1000px #fff inset;
+    -webkit-text-fill-color: #4b4b4b;
+    transition: background-color 5000s ease-in-out 0s;
+}
+
+.login-card .form-check-input:checked {
+    background-color: #1f6feb;
+    border-color: #1f6feb;
+}
+
+.btn-login {
+    width: 100%;
+    padding: 12px;
+    font-size: 14px;
+    font-weight: 600;
+    border-radius: 8px;
+    background: #1f6feb;
+    border: none;
+    color: white;
+    box-shadow: 0 4px 12px rgba(31, 111, 235, 0.25);
+    transition: all 0.15s ease;
+}
+
+.btn-login:hover {
+    background: #195ec9;
+    box-shadow: 0 6px 16px rgba(31, 111, 235, 0.25);
+    transform: translateY(-1px);
+    color: white;
+}
+
+.btn-login:active {
+    transform: translateY(0);
+}
+
+.btn-login .spinner-border {
+    width: 1.1rem;
+    height: 1.1rem;
+    border-width: 2px;
+}
+
+.password-toggle {
+    position: absolute;
+    right: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: none;
+    border: none;
+    color: #a8aaae;
+    cursor: pointer;
+    z-index: 5;
+    padding: 4px;
+}
+
+.password-toggle:hover {
+    color: #1f6feb;
+}

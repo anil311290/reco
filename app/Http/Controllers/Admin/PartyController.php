@@ -1,0 +1,163 @@
+<?php
+
+namespace App\Http\Controllers\Admin;
+
+use App\Http\Controllers\Controller;
+use App\Http\Requests\Admin\PartyRequest;
+use App\Services\PartyService;
+use App\Helpers\ResponseHelper;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
+
+class PartyController extends Controller
+{
+    protected PartyService $partyService;
+
+    public function __construct(PartyService $partyService)
+    {
+        $this->partyService = $partyService;
+    }
+
+    /**
+     * Display parties list
+     */
+    public function index(Request $request)
+    {
+        if ($request->ajax()) {
+            $filters = [];
+            $filters['company_id'] = auth()->user()->company_id;
+            if ($request->filled('type')) $filters['type'] = $request->input('type');
+            if ($request->filled('is_active')) $filters['is_active'] = $request->input('is_active');
+            $searchValue = $request->input('search.value', $request->input('search'));
+            if (!empty($searchValue)) $filters['search'] = is_array($searchValue) ? ($searchValue['value'] ?? '') : $searchValue;
+            
+            $parties = $this->partyService->getPaginated($filters);
+
+            return response()->json([
+                'data' => $parties->items(),
+                'recordsTotal' => $parties->total(),
+                'recordsFiltered' => $parties->total(),
+                'draw' => $request->input('draw'),
+            ]);
+        }
+
+        return view('admin.parties.index');
+    }
+
+    /**
+     * Show create form
+     */
+    public function create()
+    {
+        return view('admin.parties.create');
+    }
+
+    /**
+     * Store new party
+     */
+    public function store(PartyRequest $request): JsonResponse
+    {
+        try {
+            $data = $request->validated();
+            $data['company_id'] = auth()->user()->company_id;
+
+            $party = $this->partyService->create($data);
+
+            return ResponseHelper::success($party, 'Party created successfully');
+        } catch (\Exception $e) {
+            return ResponseHelper::error($e->getMessage());
+        }
+    }
+
+    /**
+     * Show edit form
+     */
+    public function edit(int $id)
+    {
+        $party = $this->partyService->getById($id);
+
+        if (!$party) {
+            return ResponseHelper::notFound('Party not found');
+        }
+
+        return view('admin.parties.edit', compact('party'));
+    }
+
+    /**
+     * Update party
+     */
+    public function update(PartyRequest $request, int $id): JsonResponse
+    {
+        try {
+            $data = $request->validated();
+
+            $updated = $this->partyService->update($id, $data);
+
+            if (!$updated) {
+                return ResponseHelper::notFound('Party not found');
+            }
+
+            return ResponseHelper::success(null, 'Party updated successfully');
+        } catch (\Exception $e) {
+            return ResponseHelper::error($e->getMessage());
+        }
+    }
+
+    /**
+     * Delete party
+     */
+    public function destroy(int $id): JsonResponse
+    {
+        try {
+            $deleted = $this->partyService->delete($id);
+
+            if (!$deleted) {
+                return ResponseHelper::notFound('Party not found');
+            }
+
+            return ResponseHelper::success(null, 'Party deleted successfully');
+        } catch (\Exception $e) {
+            return ResponseHelper::error($e->getMessage());
+        }
+    }
+
+    /**
+     * Change party status
+     */
+    public function changeStatus(Request $request, int $id): JsonResponse
+    {
+        $request->validate([
+            'status' => 'required|boolean',
+        ]);
+
+        try {
+            $updated = $this->partyService->update($id, [
+                'is_active' => $request->status,
+            ]);
+
+            if (!$updated) {
+                return ResponseHelper::notFound('Party not found');
+            }
+
+            $statusText = $request->status ? 'activated' : 'deactivated';
+            return ResponseHelper::success(null, "Party {$statusText} successfully");
+        } catch (\Exception $e) {
+            return ResponseHelper::error($e->getMessage());
+        }
+    }
+
+    /**
+     * Get parties by type (for AJAX)
+     */
+    public function getByType(Request $request): JsonResponse
+    {
+        $request->validate([
+            'type' => 'required|string|in:debtor,creditor',
+        ]);
+
+        $companyId = auth()->user()->company_id;
+        $parties = $this->partyService->getForDropdown($companyId, $request->type);
+
+        return response()->json($parties);
+    }
+}

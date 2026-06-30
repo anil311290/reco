@@ -1,0 +1,102 @@
+<?php
+
+namespace Tests\Feature;
+
+use App\Models\Account;
+use App\Models\Company;
+use App\Models\FinancialYear;
+use App\Models\Ledger;
+use App\Models\Party;
+use App\Services\PartyService;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\TestCase;
+
+class LedgerPartyHistoryTest extends TestCase
+{
+    use RefreshDatabase;
+
+    protected Company $company;
+    protected FinancialYear $financialYear;
+    protected PartyService $partyService;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $this->company = Company::factory()->create();
+        $this->financialYear = FinancialYear::factory()->create([
+            'company_id' => $this->company->id,
+            'is_current' => true,
+        ]);
+
+        Account::factory()->create([
+            'company_id' => $this->company->id,
+            'financial_year_id' => $this->financialYear->id,
+            'account_code' => Account::CODE_AR,
+            'account_name' => 'Accounts Receivable',
+            'account_type' => 'asset',
+            'opening_balance' => 0,
+            'is_system' => true,
+        ]);
+
+        Account::factory()->create([
+            'company_id' => $this->company->id,
+            'financial_year_id' => $this->financialYear->id,
+            'account_code' => Account::CODE_AP,
+            'account_name' => 'Accounts Payable',
+            'account_type' => 'liability',
+            'opening_balance' => 0,
+            'is_system' => true,
+        ]);
+
+        Account::factory()->create([
+            'company_id' => $this->company->id,
+            'financial_year_id' => $this->financialYear->id,
+            'account_code' => Account::CODE_SUSPENSE,
+            'account_name' => 'Opening Balance Difference',
+            'account_type' => 'asset',
+            'opening_balance' => 0,
+            'is_system' => true,
+        ]);
+
+        $this->partyService = $this->app->make(PartyService::class);
+    }
+
+    public function test_opening_balance_party_creation_logs_ledger_party_history(): void
+    {
+        $partyData = [
+            'company_id' => $this->company->id,
+            'financial_year_id' => $this->financialYear->id,
+            'name' => 'Test Customer',
+            'type' => 'debtor',
+            'opening_balance' => 1750.00,
+            'opening_balance_type' => 'debit',
+            'opening_date' => now()->toDateString(),
+        ];
+
+        $party = $this->partyService->create($partyData);
+
+        $this->assertDatabaseHas('parties', [
+            'id' => $party->id,
+            'name' => 'Test Customer',
+            'type' => 'debtor',
+            'opening_balance' => 1750.00,
+        ]);
+
+        $ledgerEntries = Ledger::where('reference_type', 'party_opening_balance')
+            ->where('reference_id', $party->id)
+            ->get();
+
+        $this->assertCount(2, $ledgerEntries);
+        $this->assertDatabaseCount('ledger_party_histories', 2);
+
+        foreach ($ledgerEntries as $entry) {
+            $this->assertDatabaseHas('ledger_party_histories', [
+                'ledger_id' => $entry->id,
+                'party_id' => $party->id,
+                'reference_type' => 'party_opening_balance',
+                'reference_id' => $party->id,
+            ]);
+        }
+    }
+}

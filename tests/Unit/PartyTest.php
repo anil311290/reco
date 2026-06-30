@@ -1,0 +1,245 @@
+<?php
+
+namespace Tests\Unit;
+
+use App\Models\Account;
+use App\Models\Company;
+use App\Models\FinancialYear;
+use App\Models\Ledger;
+use App\Models\Party;
+use App\Services\PartyService;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\TestCase;
+
+class PartyTest extends TestCase
+{
+    use RefreshDatabase;
+
+    protected PartyService $partyService;
+    protected Company $company;
+    protected FinancialYear $financialYear;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $this->company = Company::factory()->create();
+        $this->financialYear = FinancialYear::factory()->create([
+            'company_id' => $this->company->id,
+            'is_current' => true,
+        ]);
+
+        Account::factory()->create([
+            'company_id' => $this->company->id,
+            'financial_year_id' => $this->financialYear->id,
+            'account_code' => Account::CODE_AR,
+            'account_name' => 'Accounts Receivable',
+            'account_type' => 'asset',
+            'opening_balance' => 0,
+            'is_system' => true,
+        ]);
+
+        Account::factory()->create([
+            'company_id' => $this->company->id,
+            'financial_year_id' => $this->financialYear->id,
+            'account_code' => Account::CODE_AP,
+            'account_name' => 'Accounts Payable',
+            'account_type' => 'liability',
+            'opening_balance' => 0,
+            'is_system' => true,
+        ]);
+
+        Account::factory()->create([
+            'company_id' => $this->company->id,
+            'financial_year_id' => $this->financialYear->id,
+            'account_code' => Account::CODE_SUSPENSE,
+            'account_name' => 'Opening Balance Difference',
+            'account_type' => 'asset',
+            'opening_balance' => 0,
+            'is_system' => true,
+        ]);
+
+        $this->partyService = $this->app->make(PartyService::class);
+    }
+
+    public function test_can_create_debtor_party(): void
+    {
+        $partyData = [
+            'company_id' => $this->company->id,
+            'name' => 'ABC Customer',
+            'type' => 'debtor',
+            'mobile' => '+91 9876543210',
+        ];
+
+        $party = $this->partyService->create($partyData);
+
+        $this->assertInstanceOf(Party::class, $party);
+        $this->assertEquals('ABC Customer', $party->name);
+        $this->assertEquals('debtor', $party->type);
+        $this->assertStringStartsWith('AR', $party->party_code);
+    }
+
+    public function test_can_create_creditor_party(): void
+    {
+        $partyData = [
+            'company_id' => $this->company->id,
+            'name' => 'XYZ Supplier',
+            'type' => 'creditor',
+        ];
+
+        $party = $this->partyService->create($partyData);
+
+        $this->assertEquals('creditor', $party->type);
+        $this->assertStringStartsWith('AP', $party->party_code);
+    }
+
+    public function test_can_update_party(): void
+    {
+        $party = Party::factory()->create([
+            'company_id' => $this->company->id,
+        ]);
+
+        $updated = $this->partyService->update($party->id, [
+            'name' => 'Updated Party',
+        ]);
+
+        $this->assertTrue($updated);
+        $this->assertEquals('Updated Party', $party->fresh()->name);
+    }
+
+    public function test_can_delete_party(): void
+    {
+        $party = Party::factory()->create([
+            'company_id' => $this->company->id,
+        ]);
+
+        $deleted = $this->partyService->delete($party->id);
+
+        $this->assertTrue($deleted);
+        $this->assertNull(Party::find($party->id));
+    }
+
+    public function test_can_get_parties_by_type(): void
+    {
+        Party::factory()->count(3)->create([
+            'company_id' => $this->company->id,
+            'type' => 'debtor',
+        ]);
+
+        Party::factory()->count(2)->create([
+            'company_id' => $this->company->id,
+            'type' => 'creditor',
+        ]);
+
+        $debtors = $this->partyService->getAll([
+            'company_id' => $this->company->id,
+            'type' => 'debtor',
+        ]);
+
+        $this->assertCount(3, $debtors);
+    }
+
+    public function test_can_get_parties_for_dropdown(): void
+    {
+        Party::factory()->count(3)->create([
+            'company_id' => $this->company->id,
+            'type' => 'debtor',
+            'is_active' => true,
+        ]);
+
+        $dropdown = $this->partyService->getForDropdown($this->company->id, 'debtor');
+
+        $this->assertCount(3, $dropdown);
+        $this->assertArrayHasKey('id', $dropdown[0]);
+        $this->assertArrayHasKey('text', $dropdown[0]);
+    }
+
+    public function test_party_type_label(): void
+    {
+        $debtor = Party::factory()->create([
+            'company_id' => $this->company->id,
+            'type' => 'debtor',
+        ]);
+
+        $creditor = Party::factory()->create([
+            'company_id' => $this->company->id,
+            'type' => 'creditor',
+        ]);
+
+        $this->assertEquals('Debtor', $debtor->type_label);
+        $this->assertEquals('Creditor', $creditor->type_label);
+    }
+
+    public function test_party_belongs_to_company(): void
+    {
+        $party = Party::factory()->create([
+            'company_id' => $this->company->id,
+        ]);
+
+        $this->assertNotNull($party->company);
+        $this->assertEquals($this->company->id, $party->company->id);
+    }
+
+    public function test_can_toggle_party_status(): void
+    {
+        $party = Party::factory()->create([
+            'company_id' => $this->company->id,
+            'is_active' => true,
+        ]);
+
+        $this->partyService->update($party->id, ['is_active' => false]);
+
+        $this->assertFalse($party->fresh()->is_active);
+    }
+
+    public function test_create_party_with_opening_balance_creates_ledger_entries(): void
+    {
+        $arAccount = Account::where('account_code', Account::CODE_AR)->first();
+        $openingBalanceAccount = Account::where('account_code', Account::CODE_SUSPENSE)->first();
+
+        $partyData = [
+            'company_id' => $this->company->id,
+            'financial_year_id' => $this->financialYear->id,
+            'name' => 'Debtor Opening Balance',
+            'type' => 'debtor',
+            'opening_balance' => 1250.00,
+            'opening_balance_type' => 'debit',
+            'opening_date' => now()->toDateString(),
+        ];
+
+        $party = $this->partyService->create($partyData);
+
+        $this->assertDatabaseHas('parties', ['id' => $party->id, 'opening_balance' => 1250.00]);
+
+        $ledgerEntries = Ledger::where('reference_type', 'party_opening_balance')
+            ->where('reference_id', $party->id)
+            ->get();
+
+        $this->assertCount(2, $ledgerEntries);
+
+        $partyEntry = $ledgerEntries->firstWhere('account_id', $arAccount->id);
+        $this->assertNotNull($partyEntry);
+        $this->assertEquals(1250.00, (float) $partyEntry->debit);
+        $this->assertEquals(0.00, (float) $partyEntry->credit);
+
+        $offsetEntry = $ledgerEntries->firstWhere('account_id', $openingBalanceAccount->id);
+        $this->assertNotNull($offsetEntry);
+        $this->assertEquals(0.00, (float) $offsetEntry->debit);
+        $this->assertEquals(1250.00, (float) $offsetEntry->credit);
+    }
+
+    public function test_party_code_is_unique(): void
+    {
+        $party1 = Party::factory()->create([
+            'company_id' => $this->company->id,
+            'party_code' => 'DEB0001',
+        ]);
+
+        $this->expectException(\Exception::class);
+
+        Party::factory()->create([
+            'company_id' => $this->company->id,
+            'party_code' => 'DEB0001',
+        ]);
+    }
+}
