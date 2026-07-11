@@ -64,7 +64,7 @@ class DatabaseSeeder extends Seeder
         ]);
 
         User::firstOrCreate(
-            ['email' => 'manager@gmail.com'],
+            ['email' => 'admin@gmail.com'],
             [
                 'name' => 'Manager User',
                 'password' => Hash::make('12345678'),
@@ -111,8 +111,8 @@ class DatabaseSeeder extends Seeder
 
         $roleAssignments = [
             'superadmin@reco.app' => ['superadmin', 'admin'],
-            'manager@ledgerpro.com' => ['manager'],
-            'accountant@ledgerpro.com' => ['accountant'],
+            'admin@gmail.com' => ['manager'],
+            'accountant@gmail.com' => ['accountant'],
         ];
 
         foreach ($roleAssignments as $email => $roleSlugs) {

@@ -335,14 +335,26 @@ Route::prefix('admin')->name('admin.')->group(function () {
         | Tax Rate Routes
         |--------------------------------------------------------------------------
         */
-        Route::middleware(CheckPermission::class . ':settings.view')->group(function () {
+        Route::middleware(CheckPermission::class . ':tax-rates.view')->group(function () {
             Route::get('tax-rates', [TaxRateController::class, 'index'])->name('tax-rates.index');
-            Route::get('tax-rates/create', [TaxRateController::class, 'create'])->name('tax-rates.create');
-            Route::post('tax-rates', [TaxRateController::class, 'store'])->name('tax-rates.store');
-            Route::get('tax-rates/{id}/edit', [TaxRateController::class, 'edit'])->name('tax-rates.edit');
-            Route::put('tax-rates/{id}', [TaxRateController::class, 'update'])->name('tax-rates.update');
-            Route::delete('tax-rates/{id}', [TaxRateController::class, 'destroy'])->name('tax-rates.destroy');
-            Route::patch('tax-rates/{id}/status', [TaxRateController::class, 'status'])->name('tax-rates.status');
+            Route::get('tax-rates/create', [TaxRateController::class, 'create'])
+                ->name('tax-rates.create')
+                ->middleware(CheckPermission::class . ':tax-rates.create');
+            Route::post('tax-rates', [TaxRateController::class, 'store'])
+                ->name('tax-rates.store')
+                ->middleware(CheckPermission::class . ':tax-rates.create');
+            Route::get('tax-rates/{id}/edit', [TaxRateController::class, 'edit'])
+                ->name('tax-rates.edit')
+                ->middleware(CheckPermission::class . ':tax-rates.edit');
+            Route::put('tax-rates/{id}', [TaxRateController::class, 'update'])
+                ->name('tax-rates.update')
+                ->middleware(CheckPermission::class . ':tax-rates.edit');
+            Route::delete('tax-rates/{id}', [TaxRateController::class, 'destroy'])
+                ->name('tax-rates.destroy')
+                ->middleware(CheckPermission::class . ':tax-rates.delete');
+            Route::patch('tax-rates/{id}/status', [TaxRateController::class, 'status'])
+                ->name('tax-rates.status')
+                ->middleware(CheckPermission::class . ':tax-rates.edit');
             Route::get('tax-rates/dropdown', [TaxRateController::class, 'dropdown'])->name('tax-rates.dropdown');
         });
 

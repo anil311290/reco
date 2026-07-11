@@ -73,7 +73,7 @@ class RoleSeeder extends Seeder
                 'is_active' => true,
             ]
         );
-        $accountantPermissions = $allPermissions->filter(fn($p) => in_array($p->module, ['Dashboard', 'Accounts', 'Parties', 'Vouchers', 'Reports']));
+        $accountantPermissions = $allPermissions->filter(fn($p) => in_array($p->module, ['Dashboard', 'Accounts', 'Parties', 'Vouchers', 'Reports', 'Tax Rates']));
         $accountantRole->syncPermissions($accountantPermissions->pluck('id')->toArray());
 
         // Viewer Role

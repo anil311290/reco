@@ -41,6 +41,12 @@ class PermissionSeeder extends Seeder
             ['name' => 'Edit Parties', 'slug' => 'parties.edit', 'module' => 'Parties'],
             ['name' => 'Delete Parties', 'slug' => 'parties.delete', 'module' => 'Parties'],
 
+            // Tax Rates
+            ['name' => 'View Tax Rates', 'slug' => 'tax-rates.view', 'module' => 'Tax Rates'],
+            ['name' => 'Create Tax Rates', 'slug' => 'tax-rates.create', 'module' => 'Tax Rates'],
+            ['name' => 'Edit Tax Rates', 'slug' => 'tax-rates.edit', 'module' => 'Tax Rates'],
+            ['name' => 'Delete Tax Rates', 'slug' => 'tax-rates.delete', 'module' => 'Tax Rates'],
+
             // Vouchers
             ['name' => 'View Vouchers', 'slug' => 'vouchers.view', 'module' => 'Vouchers'],
             ['name' => 'Create Vouchers', 'slug' => 'vouchers.create', 'module' => 'Vouchers'],

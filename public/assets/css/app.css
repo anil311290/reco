@@ -679,7 +679,75 @@ body.dark-mode .card-body form .invalid-feedback {
 .table tbody tr:last-child td { border-bottom: none; }
 .dataTables_wrapper .dataTables_filter input { border-radius: var(--lp-r-md); border: 1px solid var(--lp-border); padding: 7px 12px; margin-left: 8px; font-size: 12px; }
 .dataTables_wrapper .dataTables_filter input:focus { border-color: var(--lp-primary); box-shadow: 0 0 0 3px var(--lp-primary-50); outline: none; }
-.dataTables_wrapper .dataTables_paginate .paginate_button.current { background: var(--lp-primary) !important; color: #fff !important; border: none; border-radius: var(--lp-r-sm); }
+/* Pagination (Previous / Next / page numbers) — works in light & dark mode */
+.dataTables_wrapper .dataTables_paginate { color: var(--lp-text) !important; }
+.dataTables_wrapper .dataTables_paginate .paginate_button {
+    color: var(--lp-text) !important;
+    background: var(--lp-card) !important;
+    border: 1px solid var(--lp-border) !important;
+    border-radius: var(--lp-r-sm) !important;
+    padding: 5px 11px !important;
+    margin: 0 2px !important;
+    font-size: 12px;
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+.dataTables_wrapper .dataTables_paginate .paginate_button:hover {
+    color: var(--lp-primary) !important;
+    background: var(--lp-primary-50) !important;
+    border-color: var(--lp-primary) !important;
+    box-shadow: none !important;
+}
+.dataTables_wrapper .dataTables_paginate .paginate_button.current,
+.dataTables_wrapper .dataTables_paginate .paginate_button.current:hover {
+    background: var(--lp-primary) !important;
+    color: #fff !important;
+    border-color: var(--lp-primary) !important;
+    border-radius: var(--lp-r-sm) !important;
+}
+.dataTables_wrapper .dataTables_paginate .paginate_button.disabled,
+.dataTables_wrapper .dataTables_paginate .paginate_button.disabled:hover {
+    color: var(--lp-text-muted) !important;
+    background: var(--lp-muted-bg) !important;
+    border-color: var(--lp-border-light) !important;
+    cursor: not-allowed;
+    opacity: 0.65;
+    box-shadow: none !important;
+}
+.dataTables_wrapper .dataTables_paginate .ellipsis { color: var(--lp-text-muted) !important; }
+
+/* Bootstrap / Laravel pagination (page-link) — works in light & dark mode */
+.pagination { --bs-pagination-bg: var(--lp-card); gap: 4px; }
+.pagination .page-link {
+    color: var(--lp-text);
+    background-color: var(--lp-card);
+    border: 1px solid var(--lp-border);
+    border-radius: var(--lp-r-sm);
+    padding: 6px 12px;
+    font-size: 13px;
+    transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+.pagination .page-link:hover {
+    color: var(--lp-primary);
+    background-color: var(--lp-primary-50);
+    border-color: var(--lp-primary);
+    box-shadow: none;
+}
+.pagination .page-link:focus {
+    box-shadow: 0 0 0 3px var(--lp-primary-50);
+    color: var(--lp-primary);
+}
+.pagination .page-item.active .page-link {
+    background-color: var(--lp-primary);
+    border-color: var(--lp-primary);
+    color: #fff;
+}
+.pagination .page-item.disabled .page-link {
+    color: var(--lp-text-muted);
+    background-color: var(--lp-muted-bg);
+    border-color: var(--lp-border-light);
+    opacity: 0.65;
+}
 
 /* Invoice entry table tuning */
 #linesTable th,
