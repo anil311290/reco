@@ -10,6 +10,8 @@ use App\Models\Ledger;
 use App\Models\Voucher;
 use App\Models\VoucherLine;
 use App\Services\LedgerService;
+use App\Services\LedgerPartyHistoryService;
+use App\Services\JournalEntryService;
 use App\Services\VoucherService;
 use App\Services\ReportService;
 use App\Repositories\LedgerRepository;
@@ -87,12 +89,15 @@ class VoucherLedgerIntegrationTest extends TestCase
         $accountRepository = new AccountRepository(new Account());
         $voucherRepository = new VoucherRepository(new Voucher());
         $voucherLineRepository = new VoucherLineRepository(new VoucherLine());
-        $ledgerService = new LedgerService($ledgerRepository, $accountRepository);
+        $historyService = $this->app->make(LedgerPartyHistoryService::class);
+        $ledgerService = new LedgerService($ledgerRepository, $accountRepository, $historyService);
+        $journalEntryService = $this->app->make(JournalEntryService::class);
 
         $voucherService = new VoucherService(
             $voucherRepository,
             $voucherLineRepository,
-            $ledgerService
+            $ledgerService,
+            $journalEntryService
         );
 
         // Post the voucher
@@ -152,12 +157,15 @@ class VoucherLedgerIntegrationTest extends TestCase
         $accountRepository = new AccountRepository(new Account());
         $voucherRepository = new VoucherRepository(new Voucher());
         $voucherLineRepository = new VoucherLineRepository(new VoucherLine());
-        $ledgerService = new LedgerService($ledgerRepository, $accountRepository);
+        $historyService = $this->app->make(LedgerPartyHistoryService::class);
+        $ledgerService = new LedgerService($ledgerRepository, $accountRepository, $historyService);
+        $journalEntryService = $this->app->make(JournalEntryService::class);
 
         $voucherService = new VoucherService(
             $voucherRepository,
             $voucherLineRepository,
-            $ledgerService
+            $ledgerService,
+            $journalEntryService
         );
 
         // Post the voucher
@@ -168,22 +176,23 @@ class VoucherLedgerIntegrationTest extends TestCase
         $voucherRefreshed = Voucher::find($voucher->id);
         $this->assertEquals('posted', $voucherRefreshed->status);
 
-        // Verify ledger entries were created
-        $ledgerCount = Ledger::where('company_id', $this->company->id)
-            ->where('transaction_date', $transactionDate)
-            ->count();
+        // Verify ledger entries were created for this voucher
+        $ledgerCount = Ledger::where('voucher_id', $voucher->id)->count();
         $this->assertGreaterThan(0, $ledgerCount, 'Ledger entries should be created when voucher is posted');
 
-        // Get day book report using ledger entries
+        // Get day book report using ledger / voucher lines
         $reportService = new ReportService($ledgerService, $ledgerRepository);
         $dayBook = $reportService->getDayBook(
             $this->company->id,
             $transactionDate
         );
 
-        // Verify day book contains vouchers generated from ledger entries
+        // Verify day book contains vouchers / rows for the date
         $this->assertIsArray($dayBook);
         $this->assertArrayHasKey('vouchers', $dayBook);
+        $this->assertArrayHasKey('rows', $dayBook);
+        $this->assertGreaterThan(0, $dayBook['vouchers']->count());
+        $this->assertGreaterThan(0, count($dayBook['rows']));
         
         // Verify totals match ledger entries
         $this->assertEquals(5000, $dayBook['total_debit']);

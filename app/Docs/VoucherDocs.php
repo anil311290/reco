@@ -116,6 +116,26 @@ use OpenApi\Annotations as OA;
  *     @OA\Response(response=404, description="Not found", @OA\JsonContent(ref="#/components/schemas/ErrorResponse"))
  * )
  *
+ * @OA\Put(
+ *     path="/vouchers/{id}",
+ *     tags={"Vouchers"},
+ *     summary="Update voucher",
+ *     operationId="updateVoucher",
+ *     security={{"bearerAuth":{}}},
+ *     @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")),
+ *     @OA\Response(response=200, description="Updated", @OA\JsonContent(ref="#/components/schemas/SuccessResponse"))
+ * )
+ *
+ * @OA\Delete(
+ *     path="/vouchers/{id}",
+ *     tags={"Vouchers"},
+ *     summary="Delete voucher",
+ *     operationId="deleteVoucher",
+ *     security={{"bearerAuth":{}}},
+ *     @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")),
+ *     @OA\Response(response=200, description="Deleted", @OA\JsonContent(ref="#/components/schemas/SuccessResponse"))
+ * )
+ *
  * @OA\Patch(
  *     path="/vouchers/{id}/cancel",
  *     tags={"Vouchers"},
@@ -134,32 +154,6 @@ use OpenApi\Annotations as OA;
  *     ),
  *     @OA\Response(response=401, description="Unauthorized", @OA\JsonContent(ref="#/components/schemas/ErrorResponse")),
  *     @OA\Response(response=404, description="Not found", @OA\JsonContent(ref="#/components/schemas/ErrorResponse"))
- * )
- *
- * @OA\Get(
- *     path="/vouchers/statistics",
- *     tags={"Vouchers"},
- *     summary="Get voucher statistics",
- *     description="Get voucher statistics for dashboard",
- *     operationId="getVoucherStatistics",
- *     security={{"bearerAuth":{}}},
- *     @OA\Parameter(name="financial_year_id", in="query", description="Financial year ID", @OA\Schema(type="integer")),
- *     @OA\Response(
- *         response=200,
- *         description="Success",
- *         @OA\JsonContent(
- *             @OA\Property(property="success", type="boolean", example=true),
- *             @OA\Property(property="data", type="object",
- *                 @OA\Property(property="income", type="number", example=150000.00),
- *                 @OA\Property(property="expense", type="number", example=80000.00),
- *                 @OA\Property(property="receipt", type="number", example=120000.00),
- *                 @OA\Property(property="payment", type="number", example=95000.00),
- *                 @OA\Property(property="profit", type="number", example=70000.00),
- *                 @OA\Property(property="cash_balance", type="number", example=25000.00)
- *             )
- *         )
- *     ),
- *     @OA\Response(response=401, description="Unauthorized", @OA\JsonContent(ref="#/components/schemas/ErrorResponse"))
  * )
  */
 class VoucherDocs

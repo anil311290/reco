@@ -20,21 +20,43 @@
     </div>
     <div class="col-md-6 text-md-end">
         @permission('vouchers.create')
-        @if($type)
-            <a href="{{ route('admin.vouchers.create', $type) }}" class="btn btn-primary">
-                <i class="bi bi-plus-circle me-2"></i>Add {{ rtrim($voucherLabel, 's') }} Voucher
+        @if($type === 'payment')
+            <a href="{{ route('admin.vouchers.create', 'payment') }}" class="btn btn-primary">
+                <i class="bi bi-plus-circle me-2"></i>Add Payment Voucher
+            </a>
+        @elseif($type === 'receipt')
+            <a href="{{ route('admin.vouchers.create', 'receipt') }}" class="btn btn-primary">
+                <i class="bi bi-plus-circle me-2"></i>Add Receipt Voucher
+            </a>
+        @elseif(in_array($type, ['journal', 'adjustment'], true))
+            <a href="{{ route('admin.vouchers.create', 'journal') }}" class="btn btn-primary">
+                <i class="bi bi-plus-circle me-2"></i>Add Adjustment Voucher
+            </a>
+        @elseif($type === 'income')
+            <a href="{{ route('admin.sales-invoices.create') }}" class="btn btn-primary">
+                <i class="bi bi-plus-circle me-2"></i>Add Sales Invoice
+            </a>
+        @elseif($type === 'expense')
+            <a href="{{ route('admin.purchase-invoices.create') }}" class="btn btn-primary">
+                <i class="bi bi-plus-circle me-2"></i>Add Purchase Invoice
             </a>
         @else
             <div class="dropdown d-inline-block">
-                <button class="btn btn-primary dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                <button class="btn btn-primary dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
                     <i class="bi bi-plus-circle me-2"></i>Create Voucher
                 </button>
-                <ul class="dropdown-menu">
-                    <li><a class="dropdown-item" href="{{ route('admin.vouchers.create', 'income') }}">Sales Voucher</a></li>
-                    <li><a class="dropdown-item" href="{{ route('admin.vouchers.create', 'expense') }}">Purchase Voucher</a></li>
-                    <li><a class="dropdown-item" href="{{ route('admin.vouchers.create', 'receipt') }}">Receipt Voucher</a></li>
-                    <li><a class="dropdown-item" href="{{ route('admin.vouchers.create', 'payment') }}">Payment Voucher</a></li>
-                    <li><a class="dropdown-item" href="{{ route('admin.vouchers.create', 'journal') }}">Adjustment Voucher</a></li>
+                <ul class="dropdown-menu dropdown-menu-end">
+                    <li><h6 class="dropdown-header">Cash / Bank</h6></li>
+                    <li><a class="dropdown-item" href="{{ route('admin.vouchers.create', 'payment') }}"><i class="bi bi-wallet2 me-2"></i>Payment</a></li>
+                    <li><a class="dropdown-item" href="{{ route('admin.vouchers.create', 'receipt') }}"><i class="bi bi-cash-stack me-2"></i>Receipt</a></li>
+                    <li><hr class="dropdown-divider"></li>
+                    <li><h6 class="dropdown-header">Journal</h6></li>
+                    <li><a class="dropdown-item" href="{{ route('admin.vouchers.create', 'journal') }}"><i class="bi bi-journal-bookmark me-2"></i>Adjustment</a></li>
+                    <li><hr class="dropdown-divider"></li>
+                    <li><h6 class="dropdown-header">Invoices</h6></li>
+                    <li><a class="dropdown-item" href="{{ route('admin.sales-invoices.create') }}"><i class="bi bi-file-earmark-text me-2"></i>Item Sale Invoice</a></li>
+                    <li><a class="dropdown-item" href="{{ route('admin.service-sales-invoices.create') }}"><i class="bi bi-file-earmark-text me-2"></i>Service Sale Invoice</a></li>
+                    <li><a class="dropdown-item" href="{{ route('admin.purchase-invoices.create') }}"><i class="bi bi-file-earmark-text me-2"></i>Purchase Invoice</a></li>
                 </ul>
             </div>
         @endif
@@ -54,11 +76,11 @@
                 <label for="voucher_type" class="form-label">Type</label>
                 <select class="form-select" id="voucher_type" name="voucher_type" {{ $type ? 'disabled' : '' }}>
                     <option value="">All Types</option>
-                    <option value="income" {{ $type === 'income' ? 'selected' : '' }}>Sales</option>
-                    <option value="expense" {{ $type === 'expense' ? 'selected' : '' }}>Purchase</option>
-                    <option value="receipt" {{ $type === 'receipt' ? 'selected' : '' }}>Receipt</option>
                     <option value="payment" {{ $type === 'payment' ? 'selected' : '' }}>Payment</option>
+                    <option value="receipt" {{ $type === 'receipt' ? 'selected' : '' }}>Receipt</option>
                     <option value="journal" {{ $type === 'journal' ? 'selected' : '' }}>Adjustment</option>
+                    <option value="income" {{ $type === 'income' ? 'selected' : '' }}>Sales (Invoice posting)</option>
+                    <option value="expense" {{ $type === 'expense' ? 'selected' : '' }}>Purchase (Invoice posting)</option>
                 </select>
             </div>
             <div class="col-md-2">
@@ -121,7 +143,7 @@ $(document).ready(function() {
             data: 'voucher_date',
             name: 'voucher_date',
             render: function(data) {
-                return moment(data).format('DD/MM/YYYY');
+                return formatDateIst(data);
             }
         },
         { 

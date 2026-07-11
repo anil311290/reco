@@ -25,7 +25,7 @@ class PartyController extends Controller
     {
         if ($request->ajax()) {
             $filters = [];
-            $filters['company_id'] = auth()->user()->company_id;
+            $filters['company_id'] = $request->user()->company_id;
             if ($request->filled('type')) $filters['type'] = $request->input('type');
             if ($request->filled('is_active')) $filters['is_active'] = $request->input('is_active');
             $searchValue = $request->input('search.value', $request->input('search'));
@@ -59,7 +59,11 @@ class PartyController extends Controller
     {
         try {
             $data = $request->validated();
-            $data['company_id'] = auth()->user()->company_id;
+            $data['company_id'] = $request->user()->company_id;
+            $data['created_by'] = $request->user()->id;
+            $data['updated_by'] = $request->user()->id;
+            $data['created_by_ip'] = request()->ip();
+            $data['updated_by_ip'] = request()->ip();
 
             $party = $this->partyService->create($data);
 
@@ -90,6 +94,8 @@ class PartyController extends Controller
     {
         try {
             $data = $request->validated();
+            $data['updated_by'] = $request->user()->id;
+            $data['updated_by_ip'] = request()->ip();
 
             $updated = $this->partyService->update($id, $data);
 
@@ -155,7 +161,7 @@ class PartyController extends Controller
             'type' => 'required|string|in:debtor,creditor',
         ]);
 
-        $companyId = auth()->user()->company_id;
+        $companyId = $request->user()->company_id;
         $parties = $this->partyService->getForDropdown($companyId, $request->type);
 
         return response()->json($parties);

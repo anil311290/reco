@@ -8,6 +8,7 @@ use App\Models\LoginHistory;
 use App\Models\SubscriptionPayment;
 use App\Models\UserDevice;
 use App\Models\Voucher;
+use App\Helpers\DateHelper;
 use App\Helpers\ResponseHelper;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Schema;
@@ -31,7 +32,7 @@ class CompanyController extends Controller
                     return '<span class="badge rounded-pill ' . $class . '">' . $label . '</span>';
                 })
                 ->editColumn('created_at', function (Company $company) {
-                    return optional($company->created_at)?->format('d/m/Y h:i A') ?? '-';
+                    return DateHelper::formatDateTime($company->created_at);
                 })
                 ->addColumn('actions', function (Company $company) {
                     $showUrl = route('admin.companies.show', $company->id);

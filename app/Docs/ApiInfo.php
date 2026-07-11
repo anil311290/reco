@@ -26,7 +26,7 @@ use OpenApi\Annotations as OA;
  * )
  *
  * @OA\Server(
- *     url="https://reco.aaochaletaxi.app/v1",
+ *     url="https://reco.aaochaletaxi.app/api/v1",
  *     description="Production Server"
  * )
  *

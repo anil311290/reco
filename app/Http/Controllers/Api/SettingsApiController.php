@@ -117,4 +117,78 @@ class SettingsApiController extends Controller
             'timezone' => $company->timezone ?? 'Asia/Kolkata',
         ]);
     }
+
+    /**
+     * Update company settings
+     */
+    public function updateCompany(Request $request): JsonResponse
+    {
+        $request->validate([
+            'company_name' => 'required|string|max:255',
+            'company_email' => 'nullable|email|max:255',
+            'company_phone' => 'nullable|string|max:20',
+            'company_address' => 'required|string|max:500',
+            'company_city' => 'required|string|max:100',
+            'company_state' => 'required|string|max:100',
+            'company_country' => 'required|string|max:100',
+            'company_postal_code' => 'nullable|string|max:20',
+            'company_gst_number' => 'nullable|string|max:20',
+            'company_pan_number' => 'nullable|string|max:20',
+            'company_currency' => 'required|string|max:3',
+            'company_timezone' => 'required|string|max:50',
+            'financial_year_start' => 'required|string|max:5',
+            'financial_year_end' => 'required|string|max:5',
+        ]);
+
+        try {
+            $companyId = $request->user()->company_id;
+            $this->settingsService->updateCompanySettings($request->all(), $companyId);
+
+            return ResponseHelper::success(
+                new CompanyResource($request->user()->company->fresh()),
+                'Company settings updated successfully'
+            );
+        } catch (\Exception $e) {
+            return ResponseHelper::error($e->getMessage());
+        }
+    }
+
+    /**
+     * Update accounting settings
+     */
+    public function updateAccounting(Request $request): JsonResponse
+    {
+        $companyId = $request->user()->company_id;
+
+        $request->validate([
+            'sales_tax_ledger_id' => [
+                'nullable',
+                \Illuminate\Validation\Rule::exists('accounts', 'id')->where('company_id', $companyId),
+            ],
+            'purchase_tax_ledger_id' => [
+                'nullable',
+                \Illuminate\Validation\Rule::exists('accounts', 'id')->where('company_id', $companyId),
+            ],
+            'tds_ledger_id' => [
+                'nullable',
+                \Illuminate\Validation\Rule::exists('accounts', 'id')->where('company_id', $companyId),
+            ],
+            'tcs_ledger_id' => [
+                'nullable',
+                \Illuminate\Validation\Rule::exists('accounts', 'id')->where('company_id', $companyId),
+            ],
+            'cess_ledger_id' => [
+                'nullable',
+                \Illuminate\Validation\Rule::exists('accounts', 'id')->where('company_id', $companyId),
+            ],
+        ]);
+
+        try {
+            $this->settingsService->updateAccountingSettings($request->all(), $companyId);
+
+            return ResponseHelper::success(null, 'Accounting settings updated successfully');
+        } catch (\Exception $e) {
+            return ResponseHelper::error($e->getMessage());
+        }
+    }
 }

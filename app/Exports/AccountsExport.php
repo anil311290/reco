@@ -24,6 +24,7 @@ class AccountsExport implements FromCollection, WithHeadings, WithColumnFormatti
                 $account->account_code,
                 $account->account_name,
                 ucfirst($account->account_type),
+                $account->transaction_mode_label,
                 $account->opening_balance,
                 ucfirst($account->balance_type ?? 'debit'),
                 $account->opening_date?->format('d-m-Y') ?? '',
@@ -39,6 +40,7 @@ class AccountsExport implements FromCollection, WithHeadings, WithColumnFormatti
             'Account Code',
             'Account Name',
             'Account Type',
+            'Transaction Mode',
             'Opening Balance',
             'Balance Type',
             'Opening Date',
@@ -50,7 +52,7 @@ class AccountsExport implements FromCollection, WithHeadings, WithColumnFormatti
     public function columnFormats(): array
     {
         return [
-            'D' => NumberFormat::FORMAT_CURRENCY_GBP_SIMPLE,
+            'D' => NumberFormat::FORMAT_NUMBER_00,
         ];
     }
 }

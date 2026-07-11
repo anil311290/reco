@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'AP Aging')
+@section('title', 'Payables Outstanding')
 
 @include('admin.reports._theme')
 
@@ -9,9 +9,9 @@
     <div class="report-hero">
         <div class="row g-4 align-items-center">
             <div class="col-lg-8">
-                <span class="report-eyebrow"><i class="bi bi-people-fill"></i> Payables Watch</span>
-                <h1 class="report-title">AP Aging</h1>
-                <p class="report-subtitle">Monitor creditor exposure with a more readable payable summary and a cleaner liability table.</p>
+                <span class="report-eyebrow"><i class="bi bi-people-fill"></i> Party Outstanding</span>
+                <h1 class="report-title">Payables Outstanding</h1>
+                <p class="report-subtitle">Creditors with credit balances on their linked ledgers (Accounts Payable).</p>
             </div>
             <div class="col-lg-4">
                 <div class="report-toolbar">
@@ -29,20 +29,20 @@
 
     <div class="report-stats-grid">
         <div class="report-stat report-stat--warning">
-            <p class="report-stat-label">Total Payable</p>
+            <p class="report-stat-label">Total Outstanding</p>
             <h3 class="report-stat-value">₹{{ number_format($report['total'], 2) }}</h3>
             <p class="report-stat-note">Open payables across all creditors.</p>
         </div>
         <div class="report-stat report-stat--info">
-            <p class="report-stat-label">Total Creditors</p>
+            <p class="report-stat-label">Creditors Count</p>
             <h3 class="report-stat-value">{{ count($report['creditors']) }}</h3>
-            <p class="report-stat-note">Suppliers with payable balances.</p>
+            <p class="report-stat-note">Suppliers with outstanding balances.</p>
         </div>
     </div>
 
     <div class="report-panel">
         <div class="report-panel-header">
-            <h6 class="report-panel-title"><i class="bi bi-person-workspace text-warning"></i>Outstanding Creditors</h6>
+            <h6 class="report-panel-title"><i class="bi bi-person-lines-fill text-warning"></i>Outstanding Creditors</h6>
             <span class="report-pill report-pill--warning">₹{{ number_format($report['total'], 2) }}</span>
         </div>
         <div class="report-panel-body report-panel-body--flush">
@@ -50,12 +50,11 @@
                 <thead>
                     <tr>
                         <th>#</th>
-                        <th>Party Name</th>
+                        <th>Party</th>
                         <th>Mobile</th>
                         <th>Email</th>
-                        <th class="text-end">Debit (₹)</th>
-                        <th class="text-end">Credit (₹)</th>
-                        <th class="text-end">Balance (₹)</th>
+                        <th class="text-end">Balance (₹) Cr</th>
+                        <th class="text-center">Ledger</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -65,19 +64,25 @@
                         <td class="fw-semibold">{{ $item['party']->name }}</td>
                         <td>{{ $item['party']->mobile ?? '-' }}</td>
                         <td>{{ $item['party']->email ?? '-' }}</td>
-                        <td class="text-end fw-semibold">₹{{ number_format($item['debit'], 2) }}</td>
-                        <td class="text-end fw-semibold">₹{{ number_format($item['credit'], 2) }}</td>
                         <td class="text-end fw-bold text-warning">₹{{ number_format($item['balance'], 2) }}</td>
+                        <td class="text-center">
+                            @if(!empty($item['account_id']))
+                                <a href="{{ route('admin.reports.ledger', ['account_id' => $item['account_id']]) }}" class="btn btn-sm btn-outline-primary">View</a>
+                            @else
+                                -
+                            @endif
+                        </td>
                     </tr>
                     @empty
-                    <tr><td colspan="7" class="text-muted text-center py-4">No outstanding creditors found</td></tr>
+                    <tr><td colspan="6" class="text-muted text-center py-4">No outstanding payables</td></tr>
                     @endforelse
                 </tbody>
                 @if(count($report['creditors']) > 0)
                 <tfoot>
                     <tr>
-                        <td colspan="6">Total Payable</td>
+                        <td colspan="4">Total Outstanding</td>
                         <td class="text-end fw-bold">₹{{ number_format($report['total'], 2) }}</td>
+                        <td></td>
                     </tr>
                 </tfoot>
                 @endif

@@ -95,9 +95,10 @@ class RoleTest extends TestCase
 
     public function test_admin_has_all_permissions(): void
     {
+        $this->admin->update(['role' => 'superadmin']);
         $permission = Permission::factory()->create();
 
-        $this->assertTrue($this->admin->hasPermission($permission->slug));
+        $this->assertTrue($this->admin->fresh()->hasPermission($permission->slug));
     }
 
     public function test_role_can_be_set_as_default(): void

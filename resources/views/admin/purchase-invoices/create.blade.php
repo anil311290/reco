@@ -38,8 +38,13 @@
                             <input type="date" class="form-control" name="due_date" value="{{ date('Y-m-d', strtotime('+30 days')) }}" required>
                         </div>
                         <div class="col-md-4">
-                            <label class="form-label">Supplier <span class="text-danger">*</span></label>
-                            <select class="form-select" name="party_id" required>
+                            <div class="d-flex justify-content-between align-items-center mb-1">
+                                <label class="form-label mb-0">Supplier <span class="text-danger">*</span></label>
+                                @permission('parties.create')
+                                <button type="button" class="btn btn-link btn-sm p-0 quick-add-party-btn" data-party-quick-add-target="#party_id" data-party-quick-add-type="creditor">Quick Add</button>
+                                @endpermission
+                            </div>
+                            <select class="form-select" name="party_id" id="party_id" required>
                                 <option value="">Select Supplier</option>
                                 @foreach($parties as $party)
                                 <option value="{{ $party->id }}">{{ $party->name }} ({{ $party->party_code }})</option>
@@ -70,11 +75,11 @@
                         <table class="table table-bordered mb-0" id="linesTable">
                             <thead class="table-light">
                                 <tr>
-                                    <th style="width:25%">Item / Description</th>
-                                    <th style="width:10%; min-width:100px;">Qty</th>
-                                    <th style="width:15%; min-width:140px;">Unit Price</th>
-                                    <th style="width:10%; min-width:100px;">Disc %</th>
-                                    <th style="width:12%; min-width:150px;">Tax</th>
+                                    <th style="width:28%">Item / Description</th>
+                                    <th style="width:10%;">Qty</th>
+                                    <th style="width:15%;">Unit Price</th>
+                                    <th style="width:10%;">Disc %</th>
+                                    <th style="width:12%;">Tax</th>
                                     <th style="width:12%">Total</th>
                                     <th style="width:5%"></th>
                                 </tr>
@@ -82,7 +87,7 @@
                             <tbody id="linesBody">
                                 <tr class="line-row">
                                     <td>
-                                        <select class="form-select form-select-sm item-select" name="lines[0][item_id]">
+                                        <select class="form-select form-select-sm item-select w-100" name="lines[0][item_id]">
                                             <option value="">Select Item</option>
                                             @foreach($items as $item)
                                             <option value="{{ $item->id }}" data-price="{{ $item->purchase_price }}" data-tax="{{ $item->tax_rate_id }}">{{ $item->name }}</option>
@@ -91,10 +96,10 @@
                                         <input type="text" class="form-control form-control-sm mt-1" name="lines[0][description]" placeholder="Description">
                                     </td>
                                     <td><input type="number" class="form-control form-control-sm qty-input" name="lines[0][quantity]" value="1" min="0.001" step="0.001"></td>
-                                    <td style="min-width:140px;"><input type="number" class="form-control form-control-sm price-input" name="lines[0][unit_price]" value="0" min="0" step="0.01"></td>
+                                    <td><input type="number" class="form-control form-control-sm price-input" name="lines[0][unit_price]" value="0" min="0" step="0.01"></td>
                                     <td><input type="number" class="form-control form-control-sm disc-input" name="lines[0][discount_percentage]" value="0" min="0" max="100" step="0.01"></td>
                                     <td>
-                                        <select class="form-select form-select-sm tax-select" name="lines[0][tax_rate_id]">
+                                        <select class="form-select form-select-sm tax-select w-100" name="lines[0][tax_rate_id]">
                                             <option value="">No Tax</option>
                                             @foreach($taxRates as $tax)
                                             <option value="{{ $tax->id }}" data-rate="{{ $tax->rate }}">{{ $tax->name }} ({{ $tax->rate }}%)</option>
@@ -125,7 +130,7 @@
                                 <tr>
                                     <th style="width:40%">Service Account / Description</th>
                                     <th style="width:15%">Amount</th>
-                                    <th style="width:15%; min-width:160px;">Tax</th>
+                                    <th style="width:15%;">Tax</th>
                                     <th style="width:15%">Total</th>
                                     <th style="width:5%"></th>
                                 </tr>
@@ -176,7 +181,7 @@ let lineIndex = 1;
 $('#addLine').on('click', function() {
     let row = `<tr class="line-row">
         <td>
-            <select class="form-select form-select-sm item-select" name="lines[${lineIndex}][item_id]">
+            <select class="form-select form-select-sm item-select w-100" name="lines[${lineIndex}][item_id]">
                 <option value="">Select Item</option>
                 @foreach($items as $item)
                 <option value="{{ $item->id }}" data-price="{{ $item->purchase_price }}" data-tax="{{ $item->tax_rate_id }}">{{ $item->name }}</option>
@@ -188,7 +193,7 @@ $('#addLine').on('click', function() {
         <td><input type="number" class="form-control form-control-sm price-input" name="lines[${lineIndex}][unit_price]" value="0" min="0" step="0.01"></td>
         <td><input type="number" class="form-control form-control-sm disc-input" name="lines[${lineIndex}][discount_percentage]" value="0" min="0" max="100" step="0.01"></td>
         <td>
-            <select class="form-select form-select-sm tax-select" name="lines[${lineIndex}][tax_rate_id]">
+            <select class="form-select form-select-sm tax-select w-100" name="lines[${lineIndex}][tax_rate_id]">
                 <option value="">No Tax</option>
                 @foreach($taxRates as $tax)
                 <option value="{{ $tax->id }}" data-rate="{{ $tax->rate }}">{{ $tax->name }} ({{ $tax->rate }}%)</option>
@@ -212,8 +217,15 @@ $(document).on('click', '.remove-line', function() {
 $(document).on('change', '.item-select', function() {
     let row = $(this).closest('tr');
     let option = $(this).find(':selected');
+    let itemName = option.text().trim();
     let price = option.data('price') || 0;
     let taxId = option.data('tax') || '';
+    let descInput = row.find('input[name*="[description]"]');
+
+    if (itemName && itemName !== 'Select Item' && !descInput.val()) {
+        descInput.val(itemName);
+    }
+
     row.find('.price-input').val(price);
     row.find('.tax-select').val(taxId);
     calculateLineTotal(row);

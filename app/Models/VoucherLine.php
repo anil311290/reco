@@ -2,6 +2,8 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\FormatsHumanReadableDates;
+
 use App\Traits\HasAuditFields;
 use App\Traits\HasUuid;
 use App\Traits\HasVersioning;
@@ -10,7 +12,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class VoucherLine extends Model
 {
-    use HasFactory, HasAuditFields, HasUuid, HasVersioning;
+    use FormatsHumanReadableDates, HasFactory, HasAuditFields, HasUuid, HasVersioning;
 
     protected $fillable = [
         'uuid',

@@ -93,7 +93,7 @@ $(document).ready(function() {
         },
         columns: [
             { data: 'invoice_number' },
-            { data: 'invoice_date' },
+            istDateColumn('invoice_date'),
             { data: 'party', render: function(data) { return data ? data.name : '-'; }},
             { data: 'total', render: function(d) { return '₹' + parseFloat(d||0).toFixed(2); }},
             { data: 'amount_paid', render: function(d) { return '₹' + parseFloat(d||0).toFixed(2); }},
@@ -101,7 +101,7 @@ $(document).ready(function() {
                 let val = parseFloat(d||0);
                 return val > 0 ? `<span class="text-danger">₹${val.toFixed(2)}</span>` : `₹${val.toFixed(2)}`;
             }},
-            { data: 'due_date' },
+            istDateColumn('due_date'),
             { data: 'status', render: function(data) {
                 let colors = {draft:'secondary',sent:'info',partial:'warning',paid:'success',overdue:'danger',cancelled:'dark'};
                 return `<span class="badge bg-${colors[data]||'secondary'}">${data.charAt(0).toUpperCase()+data.slice(1)}</span>`;

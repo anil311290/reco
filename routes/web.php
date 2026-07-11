@@ -29,6 +29,8 @@ use App\Http\Controllers\Admin\CmsPageController;
 use App\Http\Controllers\Admin\FaqController;
 use App\Http\Controllers\Admin\TestimonialController;
 use App\Http\Controllers\Admin\ContactSubmissionController;
+use App\Http\Controllers\Admin\NotificationController;
+use App\Http\Controllers\Admin\SupportTicketController;
 use App\Http\Controllers\Admin\LocationController;
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\Auth\RegisterController;
@@ -56,6 +58,18 @@ Route::get('/contact', [WebsiteController::class, 'contact'])->name('website.con
 Route::post('/contact', [WebsiteController::class, 'submitContact'])->name('website.contact.submit');
 Route::get('/privacy-policy', [WebsiteController::class, 'privacy'])->name('website.privacy');
 Route::get('/terms', [WebsiteController::class, 'terms'])->name('website.terms');
+
+// User guide (HTML file lives in project root, not public/)
+Route::get('/user-guide', function () {
+    $path = base_path('USER_GUIDE.html');
+
+    abort_unless(is_file($path), 404);
+
+    return response()->file($path, ['Content-Type' => 'text/html; charset=UTF-8']);
+})->name('user-guide');
+
+Route::redirect('/user_guide', '/user-guide');
+Route::get('/USER_GUIDE.html', fn () => redirect()->route('user-guide'));
 
 // Public webhook endpoints (Razorpay)
 Route::post('/webhooks/razorpay', [WebhookController::class, 'razorpay'])->name('webhooks.razorpay');
@@ -253,14 +267,17 @@ Route::prefix('admin')->name('admin.')->group(function () {
         */
         Route::middleware(CheckPermission::class . ':reports.view')->group(function () {
             Route::get('reports', [ReportController::class, 'index'])->name('reports.index');
+            Route::get('reports/day-book', [ReportController::class, 'dayBook'])->name('reports.day-book');
+            Route::get('reports/cash-book', [ReportController::class, 'cashBook'])->name('reports.cash-book');
+            Route::get('reports/bank-book', [ReportController::class, 'bankBook'])->name('reports.bank-book');
+            Route::get('reports/ledger', [ReportController::class, 'ledger'])->name('reports.ledger');
+            Route::get('reports/trial-balance', [ReportController::class, 'trialBalance'])->name('reports.trial-balance');
             Route::get('reports/profit-loss', [ReportController::class, 'profitLoss'])->name('reports.profit-loss');
             Route::get('reports/balance-sheet', [ReportController::class, 'balanceSheet'])->name('reports.balance-sheet');
-            Route::get('reports/trial-balance', [ReportController::class, 'trialBalance'])->name('reports.trial-balance');
-            Route::get('reports/day-book', [ReportController::class, 'dayBook'])->name('reports.day-book');
-            Route::get('reports/ledger', [ReportController::class, 'ledger'])->name('reports.ledger');
-            Route::get('reports/cash-flow', [ReportController::class, 'cashFlow'])->name('reports.cash-flow');
             Route::get('reports/debtors-outstanding', [ReportController::class, 'debtorsOutstanding'])->name('reports.debtors-outstanding');
             Route::get('reports/creditors-outstanding', [ReportController::class, 'creditorsOutstanding'])->name('reports.creditors-outstanding');
+            // Legacy: thin Cash Flow removed — redirect to Cash Book
+            Route::redirect('reports/cash-flow', '/admin/reports/cash-book')->name('reports.cash-flow');
             Route::get('ledgers/{ledger}/history', [LedgerHistoryController::class, 'show'])
                 ->name('ledgers.history');
         });
@@ -277,14 +294,33 @@ Route::prefix('admin')->name('admin.')->group(function () {
 
         /*
         |--------------------------------------------------------------------------
+        | Notifications & Support
+        |--------------------------------------------------------------------------
+        */
+        Route::get('notifications', [NotificationController::class, 'index'])->name('notifications.index');
+        Route::get('notifications/feed', [NotificationController::class, 'feed'])->name('notifications.feed');
+        Route::get('notifications/unread-count', [NotificationController::class, 'unreadCount'])->name('notifications.unread-count');
+        Route::patch('notifications/{id}/read', [NotificationController::class, 'markAsRead'])->name('notifications.mark-read');
+        Route::post('notifications/read-all', [NotificationController::class, 'markAllAsRead'])->name('notifications.mark-all-read');
+
+        Route::get('support-tickets', [SupportTicketController::class, 'index'])->name('support-tickets.index');
+        Route::get('support-tickets/create', [SupportTicketController::class, 'create'])->name('support-tickets.create');
+        Route::post('support-tickets', [SupportTicketController::class, 'store'])->name('support-tickets.store');
+        Route::get('support-tickets/{id}', [SupportTicketController::class, 'show'])->name('support-tickets.show');
+        Route::post('support-tickets/{id}/reply', [SupportTicketController::class, 'reply'])->name('support-tickets.reply');
+        Route::patch('support-tickets/{id}/status', [SupportTicketController::class, 'updateStatus'])->name('support-tickets.status');
+
+        /*
+        |--------------------------------------------------------------------------
         | Export Routes
         |--------------------------------------------------------------------------
         */
         Route::middleware(CheckPermission::class . ':reports.export')->group(function () {
             Route::get('export/profit-loss/pdf', [ExportController::class, 'profitLossPdf'])->name('export.profit-loss.pdf');
             Route::get('export/balance-sheet/pdf', [ExportController::class, 'balanceSheetPdf'])->name('export.balance-sheet.pdf');
-            Route::get('export/cash-flow/pdf', [ExportController::class, 'cashFlowPdf'])->name('export.cash-flow.pdf');
             Route::get('export/trial-balance/pdf', [ExportController::class, 'trialBalancePdf'])->name('export.trial-balance.pdf');
+            // Legacy cash-flow PDF → cash book ledger export guidance
+            Route::redirect('export/cash-flow/pdf', '/admin/reports/cash-book')->name('export.cash-flow.pdf');
             Route::get('export/ledger/pdf', [ExportController::class, 'ledgerPdf'])->name('export.ledger.pdf');
             Route::get('export/day-book/pdf', [ExportController::class, 'dayBookPdf'])->name('export.day-book.pdf');
             Route::get('export/debtors-outstanding/pdf', [ExportController::class, 'debtorsOutstandingPdf'])->name('export.debtors-outstanding.pdf');
@@ -377,6 +413,7 @@ Route::prefix('admin')->name('admin.')->group(function () {
             Route::get('sales-invoices/create', [SalesInvoiceController::class, 'create'])->name('sales-invoices.create');
             Route::post('sales-invoices', [SalesInvoiceController::class, 'store'])->name('sales-invoices.store');
             Route::get('sales-invoices/{id}', [SalesInvoiceController::class, 'show'])->name('sales-invoices.show');
+            Route::get('sales-invoices/{id}/pdf', [SalesInvoiceController::class, 'exportPdf'])->name('sales-invoices.pdf');
             Route::get('sales-invoices/{id}/edit', [SalesInvoiceController::class, 'edit'])->name('sales-invoices.edit');
             Route::put('sales-invoices/{id}', [SalesInvoiceController::class, 'update'])->name('sales-invoices.update');
             Route::delete('sales-invoices/{id}', [SalesInvoiceController::class, 'destroy'])->name('sales-invoices.destroy');
@@ -439,6 +476,7 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::get('subscriptions/plans', [SubscriptionController::class, 'plans'])->name('subscriptions.plans');
         Route::get('subscriptions/current', [SubscriptionController::class, 'current'])->name('subscriptions.current');
         Route::post('subscriptions/subscribe', [SubscriptionController::class, 'subscribe'])->name('subscriptions.subscribe');
+        Route::post('subscriptions/verify-payment', [SubscriptionController::class, 'verifyPayment'])->name('subscriptions.verify-payment');
         Route::post('subscriptions/change-plan', [SubscriptionController::class, 'changePlan'])->name('subscriptions.change-plan');
         Route::post('subscriptions/cancel', [SubscriptionController::class, 'cancel'])->name('subscriptions.cancel');
         Route::get('subscriptions/invoices', [SubscriptionController::class, 'invoices'])->name('subscriptions.invoices');

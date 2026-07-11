@@ -2,6 +2,8 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\FormatsHumanReadableDates;
+
 use App\Traits\HasAuditFields;
 use App\Traits\HasUuid;
 use App\Traits\HasVersioning;
@@ -11,7 +13,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 
 class PurchaseInvoice extends Model
 {
-    use HasFactory, HasAuditFields, HasUuid, HasVersioning, SoftDeletes;
+    use FormatsHumanReadableDates, HasFactory, HasAuditFields, HasUuid, HasVersioning, SoftDeletes;
 
     protected $fillable = [
         'uuid',

@@ -154,15 +154,9 @@
             <div class="card-body">
                 <div class="row g-2">
                     <div class="col-4">
-                        <a href="{{ route('admin.vouchers.create', 'income') }}" class="quick-action">
-                            <i class="bi bi-plus-circle" style="color: var(--success);"></i>
-                            <span>Income</span>
-                        </a>
-                    </div>
-                    <div class="col-4">
-                        <a href="{{ route('admin.vouchers.create', 'expense') }}" class="quick-action">
-                            <i class="bi bi-dash-circle" style="color: var(--danger);"></i>
-                            <span>Expense</span>
+                        <a href="{{ route('admin.vouchers.create', 'payment') }}" class="quick-action">
+                            <i class="bi bi-arrow-up-circle" style="color: var(--warning);"></i>
+                            <span>Payment</span>
                         </a>
                     </div>
                     <div class="col-4">
@@ -172,9 +166,15 @@
                         </a>
                     </div>
                     <div class="col-4">
-                        <a href="{{ route('admin.vouchers.create', 'payment') }}" class="quick-action">
-                            <i class="bi bi-arrow-up-circle" style="color: var(--warning);"></i>
-                            <span>Payment</span>
+                        <a href="{{ route('admin.vouchers.create', 'journal') }}" class="quick-action">
+                            <i class="bi bi-journal-bookmark" style="color: var(--primary);"></i>
+                            <span>Adjustment</span>
+                        </a>
+                    </div>
+                    <div class="col-4">
+                        <a href="{{ route('admin.sales-invoices.create') }}" class="quick-action">
+                            <i class="bi bi-file-earmark-plus" style="color: var(--success);"></i>
+                            <span>Sale Invoice</span>
                         </a>
                     </div>
                     <div class="col-4">
@@ -184,7 +184,7 @@
                         </a>
                     </div>
                     <div class="col-4">
-                        <a href="#" class="quick-action">
+                        <a href="{{ route('admin.reports.index') }}" class="quick-action">
                             <i class="bi bi-file-earmark-bar-graph" style="color: var(--secondary);"></i>
                             <span>Reports</span>
                         </a>
@@ -497,7 +497,7 @@ $(document).ready(function() {
         return transactions.map(function(transaction) {
             const partyName = transaction.party?.name || 'No party';
             const voucherType = transaction.voucher_type ? transaction.voucher_type.charAt(0).toUpperCase() + transaction.voucher_type.slice(1) : 'Voucher';
-            const voucherDate = transaction.voucher_date ? new Date(transaction.voucher_date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '';
+            const voucherDate = formatDateIst(transaction.voucher_date);
             const amount = Number(transaction.total_debit || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
             return `<a href="/admin/vouchers/${transaction.id}" class="list-group-item list-group-item-action px-3 py-3">

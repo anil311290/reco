@@ -36,7 +36,12 @@
                             <input type="date" class="form-control" name="due_date" value="{{ date('Y-m-d', strtotime('+30 days')) }}" required>
                         </div>
                         <div class="col-md-6">
-                            <label class="form-label">Customer <span class="text-danger">*</span></label>
+                            <div class="d-flex justify-content-between align-items-center mb-1">
+                                <label class="form-label mb-0">Customer <span class="text-danger">*</span></label>
+                                @permission('parties.create')
+                                <button type="button" class="btn btn-link btn-sm p-0 quick-add-party-btn" data-party-quick-add-target="#party_id" data-party-quick-add-type="debtor">Quick Add</button>
+                                @endpermission
+                            </div>
                             <select class="form-select" name="party_id" id="party_id" required>
                                 <option value="">Select Customer</option>
                                 @foreach($parties as $party)
@@ -75,7 +80,7 @@
                                 <tr>
                                     <th style="width:40%">Service Account / Description</th>
                                     <th style="width:15%">Amount</th>
-                                    <th style="width:20%; min-width:160px;">Tax</th>
+                                    <th style="width:20%;">Tax</th>
                                     <th style="width:15%">Total</th>
                                     <th style="width:5%"></th>
                                 </tr>

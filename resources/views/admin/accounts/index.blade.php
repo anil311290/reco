@@ -72,6 +72,7 @@
                         <th>Code</th>
                         <th>Name</th>
                         <th>Type</th>
+                        <th>Mode</th>
                         <th>Balance</th>
                         <th>Status</th>
                         <th>Actions</th>
@@ -113,6 +114,23 @@ $(document).ready(function() {
                 return `<span class="badge ${badges[data] || 'bg-secondary'}">${labels[data] || data}</span>`;
             }
         },
+        {
+            data: 'transaction_mode',
+            name: 'transaction_mode',
+            render: function(data, type, row) {
+                if (row.account_type !== 'asset' || !data) {
+                    return '<span class="text-muted">-</span>';
+                }
+
+                const labels = {
+                    'cash': 'Cash',
+                    'bank': 'Bank',
+                    'od': 'OD'
+                };
+
+                return `<span class="badge bg-dark">${labels[data] || data}</span>`;
+            }
+        },
         { 
             data: 'opening_balance',
             name: 'opening_balance',
@@ -150,15 +168,16 @@ $(document).ready(function() {
                             <i class="bi bi-pencil"></i>
                         </a>
                 `;
-                
-                if (!data.is_system) {
+
+                const isManual = (data.entry_source || 'manual') === 'manual';
+                if (isManual && !data.is_system) {
                     actions += `
                         <button class="btn btn-outline-danger delete-btn" data-id="${data.id}" title="Delete">
                             <i class="bi bi-trash"></i>
                         </button>
                     `;
                 }
-                
+
                 actions += `</div>`;
                 return actions;
             }
@@ -188,14 +207,15 @@ $(document).ready(function() {
         });
     });
 
-    // Delete button
+    // Delete button (only rendered for manual accounts)
     $('#accountsTable').on('click', '.delete-btn', function() {
         const id = $(this).data('id');
-        
+
         deleteRecord(`/admin/accounts/${id}`, 'account', function() {
             table.ajax.reload();
         });
     });
+
 });
 </script>
 @endpush

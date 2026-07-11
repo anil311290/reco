@@ -101,4 +101,34 @@ class BankAccountApiController extends Controller
 
         return ResponseHelper::success(null, 'Default bank account updated');
     }
+
+    /**
+     * Delete bank account.
+     */
+    public function destroy(int $id): JsonResponse
+    {
+        $bankAccount = $this->bankAccountService->getById($id);
+
+        if (!$bankAccount || $bankAccount->company_id !== request()->user()->company_id) {
+            return ResponseHelper::notFound('Bank account not found');
+        }
+
+        try {
+            $this->bankAccountService->delete($id);
+
+            return ResponseHelper::success(null, 'Bank account deleted successfully');
+        } catch (\Exception $e) {
+            return ResponseHelper::error($e->getMessage());
+        }
+    }
+
+    /**
+     * Get bank accounts for dropdown.
+     */
+    public function dropdown(Request $request): JsonResponse
+    {
+        $companyId = $request->user()->company_id;
+
+        return ResponseHelper::success($this->bankAccountService->getAll($companyId));
+    }
 }

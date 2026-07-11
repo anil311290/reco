@@ -8,9 +8,11 @@ use App\Services\PartyService;
 use App\Services\AccountService;
 use App\Services\ItemService;
 use App\Services\TaxRateService;
+use App\Services\ExportService;
 use App\Helpers\ResponseHelper;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response;
 
 class SalesInvoiceController extends Controller
 {
@@ -19,19 +21,22 @@ class SalesInvoiceController extends Controller
     protected AccountService $accountService;
     protected ItemService $itemService;
     protected TaxRateService $taxRateService;
+    protected ExportService $exportService;
 
     public function __construct(
         SalesInvoiceService $salesInvoiceService,
         PartyService $partyService,
         AccountService $accountService,
         ItemService $itemService,
-        TaxRateService $taxRateService
+        TaxRateService $taxRateService,
+        ExportService $exportService
     ) {
         $this->salesInvoiceService = $salesInvoiceService;
         $this->partyService = $partyService;
         $this->accountService = $accountService;
         $this->itemService = $itemService;
         $this->taxRateService = $taxRateService;
+        $this->exportService = $exportService;
     }
 
     /**
@@ -134,6 +139,12 @@ class SalesInvoiceController extends Controller
             ];
 
             $invoice = $this->salesInvoiceService->create($data, $validated['lines'], $validated['service_lines'] ?? []);
+
+            $voucher = $this->salesInvoiceService->generateVoucher($invoice);
+            if (!$voucher) {
+                throw new \RuntimeException('Sales invoice created but voucher/journal posting failed. Please check account mappings.');
+            }
+
             return ResponseHelper::success($invoice, 'Sales invoice created successfully');
         } catch (\Exception $e) {
             return ResponseHelper::error($e->getMessage());
@@ -147,6 +158,24 @@ class SalesInvoiceController extends Controller
     {
         $invoice = $this->salesInvoiceService->getById($id);
         return view('admin.sales-invoices.show', compact('invoice'));
+    }
+
+    /**
+     * Export sales invoice to PDF.
+     */
+    public function exportPdf(int $id): Response
+    {
+        $invoice = $this->salesInvoiceService->getById($id);
+
+        if (!$invoice) {
+            abort(404);
+        }
+
+        $pdf = $this->exportService->exportSalesInvoicePdf($id);
+
+        return response($pdf)
+            ->header('Content-Type', 'application/pdf')
+            ->header('Content-Disposition', 'inline; filename="invoice-' . $invoice->invoice_number . '.pdf"');
     }
 
     /**

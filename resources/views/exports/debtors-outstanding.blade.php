@@ -2,43 +2,21 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Debtors Outstanding Report</title>
+    <title>Receivables Outstanding</title>
     <style>
-        body {
-            font-family: DejaVu Sans, sans-serif;
-            color: #333;
-            margin: 0;
-            padding: 0;
-            font-size: 12px;
-        }
+        body { font-family: DejaVu Sans, sans-serif; color: #333; font-size: 12px; }
         .container { padding: 20px; }
         .header { text-align: center; margin-bottom: 20px; }
-        .header h1 { margin: 0; font-size: 22px; }
-        .table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-top: 16px;
-        }
-        .table th, .table td {
-            border: 1px solid #ddd;
-            padding: 8px;
-        }
-        .table th {
-            background: #f7f7f7;
-            text-align: left;
-        }
+        .table { width: 100%; border-collapse: collapse; }
+        .table th, .table td { border: 1px solid #ddd; padding: 8px; }
+        .table th { background: #f7f7f7; text-align: left; }
         .text-right { text-align: right; }
         tfoot td { font-weight: bold; background: #f3f3f3; }
     </style>
 </head>
 <body>
 <div class="container">
-    <div class="header">
-        <h1>Debtors Outstanding</h1>
-        <p>Total Outstanding: ₹{{ number_format($report['total'], 2) }}</p>
-    </div>
-
+    <div class="header"><h1>Receivables Outstanding</h1></div>
     <table class="table">
         <thead>
         <tr>
@@ -46,7 +24,7 @@
             <th>Party</th>
             <th>Mobile</th>
             <th>Email</th>
-            <th class="text-right">Balance (₹)</th>
+            <th class="text-right">Balance (₹) Dr</th>
         </tr>
         </thead>
         <tbody>
@@ -59,14 +37,14 @@
                 <td class="text-right">{{ number_format($item['balance'], 2) }}</td>
             </tr>
         @empty
-            <tr><td colspan="5">No outstanding debtors found</td></tr>
+            <tr><td colspan="5">No outstanding receivables</td></tr>
         @endforelse
         </tbody>
         <tfoot>
-        <tr>
-            <td colspan="4">Total Outstanding</td>
-            <td class="text-right">₹{{ number_format($report['total'], 2) }}</td>
-        </tr>
+            <tr>
+                <td colspan="4">Total Outstanding</td>
+                <td class="text-right">₹{{ number_format($report['total'], 2) }}</td>
+            </tr>
         </tfoot>
     </table>
 </div>

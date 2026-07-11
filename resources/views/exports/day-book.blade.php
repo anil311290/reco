@@ -5,29 +5,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Day Book Report</title>
     <style>
-        body {
-            font-family: DejaVu Sans, sans-serif;
-            color: #333;
-            margin: 0;
-            padding: 0;
-            font-size: 12px;
-        }
+        body { font-family: DejaVu Sans, sans-serif; color: #333; margin: 0; padding: 0; font-size: 12px; }
         .container { padding: 20px; }
         .header { text-align: center; margin-bottom: 20px; }
         .header h1 { margin: 0; font-size: 22px; }
-        .table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-top: 16px;
-        }
-        .table th, .table td {
-            border: 1px solid #ddd;
-            padding: 8px;
-        }
-        .table th {
-            background: #f7f7f7;
-            text-align: left;
-        }
+        .table { width: 100%; border-collapse: collapse; margin-top: 16px; }
+        .table th, .table td { border: 1px solid #ddd; padding: 8px; }
+        .table th { background: #f7f7f7; text-align: left; }
         .text-right { text-align: right; }
         tfoot td { font-weight: bold; background: #f3f3f3; }
     </style>
@@ -36,7 +20,7 @@
 <div class="container">
     <div class="header">
         <h1>Day Book</h1>
-        <p>Date: {{ \Carbon\Carbon::parse($date)->format('d-m-Y') }}</p>
+        <p>Date: @istDate($date)</p>
     </div>
 
     <table class="table">
@@ -44,21 +28,21 @@
         <tr>
             <th>Voucher #</th>
             <th>Type</th>
-            <th>Party</th>
+            <th>Particulars</th>
             <th>Narration</th>
             <th class="text-right">Debit (₹)</th>
             <th class="text-right">Credit (₹)</th>
         </tr>
         </thead>
         <tbody>
-        @forelse($report['vouchers'] as $voucher)
+        @forelse($report['rows'] as $row)
             <tr>
-                <td>{{ $voucher->voucher_number }}</td>
-                <td>{{ ucfirst($voucher->voucher_type) }}</td>
-                <td>{{ $voucher->party->name ?? '-' }}</td>
-                <td>{{ $voucher->narration ?? '-' }}</td>
-                <td class="text-right">{{ $voucher->total_debit > 0 ? number_format($voucher->total_debit, 2) : '-' }}</td>
-                <td class="text-right">{{ $voucher->total_credit > 0 ? number_format($voucher->total_credit, 2) : '-' }}</td>
+                <td>{{ $row['voucher_number'] }}</td>
+                <td>{{ ucfirst($row['voucher_type']) }}</td>
+                <td>{{ $row['account_name'] }}</td>
+                <td>{{ $row['narration'] ?? '-' }}</td>
+                <td class="text-right">{{ $row['debit'] > 0 ? number_format($row['debit'], 2) : '-' }}</td>
+                <td class="text-right">{{ $row['credit'] > 0 ? number_format($row['credit'], 2) : '-' }}</td>
             </tr>
         @empty
             <tr><td colspan="6">No entries found for selected date</td></tr>

@@ -3,7 +3,9 @@
 namespace App\Providers;
 
 use Illuminate\Support\Facades\Blade;
+use Illuminate\Support\Facades\View;
 use Illuminate\Support\ServiceProvider;
+use App\Services\NotificationService;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -20,6 +22,14 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        Blade::directive('istDate', function (string $expression) {
+            return "<?php echo \\App\\Helpers\\DateHelper::formatDate($expression); ?>";
+        });
+
+        Blade::directive('istDateTime', function (string $expression) {
+            return "<?php echo \\App\\Helpers\\DateHelper::formatDateTime($expression); ?>";
+        });
+
         // Directive: @permission('slug')
         Blade::if('permission', function (string $permission) {
             return auth()->check() && auth()->user()->hasPermission($permission);
@@ -33,6 +43,25 @@ class AppServiceProvider extends ServiceProvider
         // Directive: @anyrole('admin,manager')
         Blade::if('anyrole', function (string ...$roles) {
             return auth()->check() && auth()->user()->hasAnyRole($roles);
+        });
+
+        View::composer('layouts.app', function ($view) {
+            if (!auth()->check()) {
+                $view->with([
+                    'headerNotifications' => collect(),
+                    'headerUnreadCount' => 0,
+                ]);
+
+                return;
+            }
+
+            $notificationService = app(NotificationService::class);
+            $userId = auth()->id();
+
+            $view->with([
+                'headerNotifications' => $notificationService->getForUser($userId, 8),
+                'headerUnreadCount' => $notificationService->getUnreadCount($userId),
+            ]);
         });
     }
 }

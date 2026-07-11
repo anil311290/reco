@@ -100,16 +100,21 @@ class LedgerService
             $previousBalance = $account->opening_balance ?? 0;
         }
 
-        $isDebitNormal = in_array($account->account_type, ['asset', 'expense']);
+        $isDebitNormal = in_array($account->account_type, ['asset', 'expense'], true);
 
-        // Calculate new balance
+        // Calculate new balance on account-normal scale
         if ($isDebitNormal) {
             $newBalance = $previousBalance + $debit - $credit;
         } else {
             $newBalance = $previousBalance + $credit - $debit;
         }
 
-        $balanceType = $newBalance >= 0 ? 'debit' : 'credit';
+        // Positive normal-side balance keeps the account's normal Dr/Cr type
+        if ($newBalance >= 0) {
+            $balanceType = $isDebitNormal ? 'debit' : 'credit';
+        } else {
+            $balanceType = $isDebitNormal ? 'credit' : 'debit';
+        }
         $runningBalance = abs($newBalance);
 
         $ledger = $this->ledgerRepository->create([
@@ -345,6 +350,48 @@ class LedgerService
     }
 
     /**
+     * Get company-wide ledger entries (all accounts).
+     */
+    public function getCompanyLedger(
+        int $companyId,
+        ?int $financialYearId = null,
+        ?string $dateFrom = null,
+        ?string $dateTo = null
+    ): array {
+        $query = Ledger::where('company_id', $companyId)
+            ->with(['voucher', 'account', 'party']);
+
+        if ($financialYearId) {
+            $query->where('financial_year_id', $financialYearId);
+        }
+
+        if ($dateFrom) {
+            $query->where('transaction_date', '>=', $dateFrom);
+        }
+
+        if ($dateTo) {
+            $query->where('transaction_date', '<=', $dateTo);
+        }
+
+        $entries = $query->orderBy('transaction_date', 'asc')
+            ->orderBy('id', 'asc')
+            ->get();
+
+        return [
+            'account' => null,
+            'opening_balance' => ['balance' => 0, 'type' => 'debit'],
+            'entries' => $entries,
+            'total_debit' => $entries->sum('debit'),
+            'total_credit' => $entries->sum('credit'),
+            'closing_balance' => [
+                'balance' => round($entries->sum('debit') - $entries->sum('credit'), 2),
+                'type' => $entries->sum('debit') >= $entries->sum('credit') ? 'debit' : 'credit',
+            ],
+            'is_all_accounts' => true,
+        ];
+    }
+
+    /**
      * Get opening balance for an account
      */
     public function getOpeningBalance(
@@ -381,9 +428,13 @@ class LedgerService
         }
 
         // Return account opening balance if no entries
+        $isDebitNormal = in_array($account->account_type, ['asset', 'expense'], true);
+        $normalType = $account->balance_type
+            ?: ($isDebitNormal ? 'debit' : 'credit');
+
         return [
-            'balance' => $account->opening_balance,
-            'type' => $account->opening_balance >= 0 ? 'debit' : 'credit',
+            'balance' => abs((float) ($account->opening_balance ?? 0)),
+            'type' => $normalType,
         ];
     }
 
@@ -449,10 +500,39 @@ class LedgerService
             ];
         }
 
+        $isDebitNormal = in_array($account->account_type, ['asset', 'expense'], true);
+        $normalType = $account->balance_type
+            ?: ($isDebitNormal ? 'debit' : 'credit');
+
         return [
-            'balance' => $account->opening_balance,
-            'type' => $account->opening_balance >= 0 ? 'debit' : 'credit',
+            'balance' => abs((float) $account->opening_balance),
+            'type' => $normalType,
         ];
+    }
+
+    /**
+     * Spendable balance for payment vouchers (Cash / Bank).
+     * OD accounts return null (no limit). Credit balance on cash/bank = 0 available.
+     */
+    public function getAvailablePaymentBalance(int $accountId, int $companyId, int $financialYearId): ?float
+    {
+        $account = $this->accountRepository->find($accountId);
+
+        if (!$account) {
+            return 0.0;
+        }
+
+        if ($account->transaction_mode === 'od') {
+            return null;
+        }
+
+        $balance = $this->getAccountBalance($accountId, $companyId, $financialYearId);
+
+        if ($balance['type'] === 'debit') {
+            return max(0.0, (float) $balance['balance']);
+        }
+
+        return 0.0;
     }
 
     /**
@@ -467,9 +547,11 @@ class LedgerService
             ->get();
 
         $account = $this->accountRepository->find($accountId);
-        $isDebitNormal = in_array($account->account_type, ['asset', 'expense']);
-        $runningBalance = $account->opening_balance;
-        $balanceType = $runningBalance >= 0 ? 'debit' : 'credit';
+        $isDebitNormal = in_array($account->account_type, ['asset', 'expense'], true);
+        $runningBalance = (float) ($account->opening_balance ?? 0);
+        $balanceType = $runningBalance >= 0
+            ? ($isDebitNormal ? 'debit' : 'credit')
+            : ($isDebitNormal ? 'credit' : 'debit');
 
         foreach ($entries as $entry) {
             if ($isDebitNormal) {
@@ -478,7 +560,9 @@ class LedgerService
                 $runningBalance = $runningBalance + $entry->credit - $entry->debit;
             }
 
-            $balanceType = $runningBalance >= 0 ? 'debit' : 'credit';
+            $balanceType = $runningBalance >= 0
+                ? ($isDebitNormal ? 'debit' : 'credit')
+                : ($isDebitNormal ? 'credit' : 'debit');
 
             $entry->update([
                 'running_balance' => abs($runningBalance),

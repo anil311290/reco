@@ -125,7 +125,7 @@ $(document).ready(function() {
             data: 'created_at',
             name: 'created_at',
             render: function(data) {
-                return moment(data).format('DD/MM/YYYY HH:mm:ss');
+                return formatDateTimeIst(data);
             }
         },
         { 

@@ -28,9 +28,12 @@ class AccountController extends Controller
      */
     public function index(Request $request)
     {
+        $companyId = request()->user()->company_id;
+        $this->accountService->ensureDefaultLedgersAndCleanupDuplicates($companyId);
+
         if ($request->ajax()) {
             $filters = [];
-            $filters['company_id'] = auth()->user()->company_id;
+            $filters['company_id'] = $companyId;
             
             if ($request->filled('account_type')) {
                 $filters['account_type'] = $request->input('account_type');
@@ -70,7 +73,9 @@ class AccountController extends Controller
      */
     public function create(Request $request)
     {
-        $companyId = auth()->user()->company_id;
+        $companyId = request()->user()->company_id;
+        $this->accountService->ensureDefaultLedgersAndCleanupDuplicates($companyId);
+
         $parentAccounts = $this->accountService->getForDropdown($companyId);
         
         // Read query parameters for pre-selection
@@ -87,7 +92,7 @@ class AccountController extends Controller
     {
         try {
             $data = $request->validated();
-            $data['company_id'] = auth()->user()->company_id;
+            $data['company_id'] = request()->user()->company_id;
 
             $account = $this->accountService->create($data);
 
@@ -102,8 +107,10 @@ class AccountController extends Controller
      */
     public function edit(int $id)
     {
+        $companyId = request()->user()->company_id;
+        $this->accountService->ensureDefaultLedgersAndCleanupDuplicates($companyId);
+
         $account = $this->accountService->getById($id);
-        $companyId = auth()->user()->company_id;
         $parentAccounts = $this->accountService->getForDropdown($companyId);
 
         if (!$account) {
@@ -185,7 +192,7 @@ class AccountController extends Controller
             'type' => 'required|string|in:asset,liability,income,expense,equity',
         ]);
 
-        $companyId = auth()->user()->company_id;
+        $companyId = request()->user()->company_id;
         $accounts = $this->accountService->getForDropdown($companyId, $request->type);
         $nextAccountCode = Account::generateCode($request->type, $companyId);
 
@@ -200,7 +207,7 @@ class AccountController extends Controller
      */
     public function tree(Request $request): JsonResponse
     {
-        $companyId = auth()->user()->company_id;
+        $companyId = request()->user()->company_id;
         $type = $request->input('type');
         
         $tree = $this->accountService->getTree($companyId, $type);
@@ -213,7 +220,7 @@ class AccountController extends Controller
      */
     public function exportExcel(Request $request)
     {
-        $filters = ['company_id' => auth()->user()->company_id];
+        $filters = ['company_id' => request()->user()->company_id];
         
         if ($request->filled('account_type')) {
             $filters['account_type'] = $request->input('account_type');
@@ -235,7 +242,7 @@ class AccountController extends Controller
      */
     public function exportPdf(Request $request)
     {
-        $filters = ['company_id' => auth()->user()->company_id];
+        $filters = ['company_id' => request()->user()->company_id];
         
         if ($request->filled('account_type')) {
             $filters['account_type'] = $request->input('account_type');

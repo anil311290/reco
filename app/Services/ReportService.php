@@ -7,7 +7,6 @@ use App\Models\FinancialYear;
 use App\Models\Party;
 use App\Models\Voucher;
 use App\Interfaces\LedgerRepositoryInterface;
-use Illuminate\Support\Facades\DB;
 
 class ReportService
 {
@@ -25,10 +24,10 @@ class ReportService
      */
     public function getProfitLoss(int $companyId, int $financialYearId): array
     {
-        // Get Income accounts
         $incomeAccounts = Account::where('company_id', $companyId)
             ->where('account_type', 'income')
             ->where('is_active', true)
+            ->orderBy('account_code')
             ->get();
 
         $totalIncome = 0;
@@ -36,19 +35,21 @@ class ReportService
 
         foreach ($incomeAccounts as $account) {
             $balance = $this->ledgerService->getAccountBalance($account->id, $companyId, $financialYearId);
-            if ($balance['balance'] > 0) {
+            $amount = $balance['type'] === 'credit' ? $balance['balance'] : -$balance['balance'];
+
+            if (abs($amount) >= 0.01) {
                 $incomeDetails[] = [
                     'account' => $account,
-                    'amount' => $balance['type'] === 'credit' ? $balance['balance'] : -$balance['balance'],
+                    'amount' => $amount,
                 ];
-                $totalIncome += $balance['type'] === 'credit' ? $balance['balance'] : -$balance['balance'];
+                $totalIncome += $amount;
             }
         }
 
-        // Get Expense accounts
         $expenseAccounts = Account::where('company_id', $companyId)
             ->where('account_type', 'expense')
             ->where('is_active', true)
+            ->orderBy('account_code')
             ->get();
 
         $totalExpense = 0;
@@ -56,12 +57,14 @@ class ReportService
 
         foreach ($expenseAccounts as $account) {
             $balance = $this->ledgerService->getAccountBalance($account->id, $companyId, $financialYearId);
-            if ($balance['balance'] > 0) {
+            $amount = $balance['type'] === 'debit' ? $balance['balance'] : -$balance['balance'];
+
+            if (abs($amount) >= 0.01) {
                 $expenseDetails[] = [
                     'account' => $account,
-                    'amount' => $balance['type'] === 'debit' ? $balance['balance'] : -$balance['balance'],
+                    'amount' => $amount,
                 ];
-                $totalExpense += $balance['type'] === 'debit' ? $balance['balance'] : -$balance['balance'];
+                $totalExpense += $amount;
             }
         }
 
@@ -86,67 +89,39 @@ class ReportService
      */
     public function getBalanceSheet(int $companyId, int $financialYearId): array
     {
-        // Assets
-        $assetAccounts = Account::where('company_id', $companyId)
-            ->where('account_type', 'asset')
-            ->where('is_active', true)
-            ->get();
-
-        $totalAssets = 0;
         $assetDetails = [];
-
-        foreach ($assetAccounts as $account) {
+        $totalAssets = 0;
+        foreach ($this->activeAccountsByType($companyId, 'asset') as $account) {
             $balance = $this->ledgerService->getAccountBalance($account->id, $companyId, $financialYearId);
-            if ($balance['balance'] > 0) {
-                $assetDetails[] = [
-                    'account' => $account,
-                    'amount' => $balance['type'] === 'debit' ? $balance['balance'] : -$balance['balance'],
-                ];
-                $totalAssets += $balance['type'] === 'debit' ? $balance['balance'] : -$balance['balance'];
+            $amount = $balance['type'] === 'debit' ? $balance['balance'] : -$balance['balance'];
+            if (abs($amount) >= 0.01) {
+                $assetDetails[] = ['account' => $account, 'amount' => $amount];
+                $totalAssets += $amount;
             }
         }
 
-        // Liabilities
-        $liabilityAccounts = Account::where('company_id', $companyId)
-            ->where('account_type', 'liability')
-            ->where('is_active', true)
-            ->get();
-
-        $totalLiabilities = 0;
         $liabilityDetails = [];
-
-        foreach ($liabilityAccounts as $account) {
+        $totalLiabilities = 0;
+        foreach ($this->activeAccountsByType($companyId, 'liability') as $account) {
             $balance = $this->ledgerService->getAccountBalance($account->id, $companyId, $financialYearId);
-            if ($balance['balance'] > 0) {
-                $liabilityDetails[] = [
-                    'account' => $account,
-                    'amount' => $balance['type'] === 'credit' ? $balance['balance'] : -$balance['balance'],
-                ];
-                $totalLiabilities += $balance['type'] === 'credit' ? $balance['balance'] : -$balance['balance'];
+            $amount = $balance['type'] === 'credit' ? $balance['balance'] : -$balance['balance'];
+            if (abs($amount) >= 0.01) {
+                $liabilityDetails[] = ['account' => $account, 'amount' => $amount];
+                $totalLiabilities += $amount;
             }
         }
 
-        // Equity
-        $equityAccounts = Account::where('company_id', $companyId)
-            ->where('account_type', 'equity')
-            ->where('is_active', true)
-            ->get();
-
-        $totalEquity = 0;
         $equityDetails = [];
-
-        foreach ($equityAccounts as $account) {
+        $totalEquity = 0;
+        foreach ($this->activeAccountsByType($companyId, 'equity') as $account) {
             $balance = $this->ledgerService->getAccountBalance($account->id, $companyId, $financialYearId);
-            if ($balance['balance'] > 0) {
-                $equityDetails[] = [
-                    'account' => $account,
-                    'amount' => $balance['type'] === 'credit' ? $balance['balance'] : -$balance['balance'],
-                ];
-                $totalEquity += $balance['type'] === 'credit' ? $balance['balance'] : -$balance['balance'];
+            $amount = $balance['type'] === 'credit' ? $balance['balance'] : -$balance['balance'];
+            if (abs($amount) >= 0.01) {
+                $equityDetails[] = ['account' => $account, 'amount' => $amount];
+                $totalEquity += $amount;
             }
         }
 
-        // Add net profit to equity
         $profitLoss = $this->getProfitLoss($companyId, $financialYearId);
         $totalEquity += $profitLoss['net_profit'];
 
@@ -170,66 +145,152 @@ class ReportService
     }
 
     /**
-     * Get Day Book report
+     * Day Book — posted vouchers for a date with line particulars (Tally style).
      */
     public function getDayBook(int $companyId, string $date): array
     {
-        // Use ledger entries as source of truth
-        $entries = $this->ledgerRepository->getEntries([
-            'company_id' => $companyId,
-            'transaction_date' => $date,
-        ], ['voucher', 'account']);
+        $vouchers = Voucher::where('company_id', $companyId)
+            ->whereDate('voucher_date', $date)
+            ->where('status', 'posted')
+            ->with(['party', 'lines.account'])
+            ->orderBy('voucher_number')
+            ->get();
 
-        // Collect voucher ids and build voucher list
-        $voucherIds = $entries->pluck('voucher_id')->unique()->filter()->values()->all();
-        $vouchers = Voucher::whereIn('id', $voucherIds)->with(['party', 'lines.account'])->orderBy('voucher_number')->get();
+        $rows = [];
+        $totalDebit = 0;
+        $totalCredit = 0;
 
-        $totalDebit = $entries->sum('debit');
-        $totalCredit = $entries->sum('credit');
+        foreach ($vouchers as $voucher) {
+            foreach ($voucher->lines as $line) {
+                $debit = (float) $line->debit;
+                $credit = (float) $line->credit;
+                $totalDebit += $debit;
+                $totalCredit += $credit;
+
+                $rows[] = [
+                    'voucher' => $voucher,
+                    'voucher_number' => $voucher->voucher_number,
+                    'voucher_type' => $voucher->voucher_type,
+                    'account_name' => $line->account?->account_name ?? '-',
+                    'party_name' => $voucher->party?->name,
+                    'narration' => $line->description ?: $voucher->narration,
+                    'debit' => $debit,
+                    'credit' => $credit,
+                ];
+            }
+        }
 
         return [
             'date' => $date,
             'vouchers' => $vouchers,
+            'rows' => $rows,
             'total_debit' => $totalDebit,
             'total_credit' => $totalCredit,
         ];
     }
 
     /**
-     * Get Debtors Outstanding report
+     * Cash Book / Bank Book (Tally style) for mode: cash | bank.
+     * Bank book includes OD accounts.
+     */
+    public function getCashBankBook(
+        int $companyId,
+        string $mode,
+        ?int $accountId = null,
+        ?string $dateFrom = null,
+        ?string $dateTo = null,
+        ?int $financialYearId = null
+    ): array {
+        $modes = $mode === 'bank' ? ['bank', 'od'] : ['cash'];
+
+        $accountsQuery = Account::where('company_id', $companyId)
+            ->whereIn('transaction_mode', $modes)
+            ->where('is_active', true)
+            ->orderBy('account_code');
+
+        $accounts = $accountsQuery->get();
+
+        if ($accounts->isEmpty()) {
+            return [
+                'mode' => $mode,
+                'accounts' => collect(),
+                'account' => null,
+                'report' => null,
+                'message' => $mode === 'cash'
+                    ? 'No Cash ledger found. Create an account with Payment Mode = Cash.'
+                    : 'No Bank / OD ledger found. Create an account with Payment Mode = Bank or OD.',
+            ];
+        }
+
+        $selectedAccount = $accountId
+            ? $accounts->firstWhere('id', $accountId)
+            : $accounts->first();
+
+        if (!$selectedAccount) {
+            $selectedAccount = $accounts->first();
+        }
+
+        $fyId = $financialYearId ?? FinancialYear::getCurrent($companyId)?->id;
+        $ledger = $this->ledgerService->getAccountLedger(
+            (int) $selectedAccount->id,
+            $companyId,
+            $fyId,
+            $dateFrom,
+            $dateTo
+        );
+
+        return [
+            'mode' => $mode,
+            'title' => $mode === 'cash' ? 'Cash Book' : 'Bank Book',
+            'accounts' => $accounts,
+            'account' => $selectedAccount,
+            'report' => $ledger,
+            'message' => null,
+        ];
+    }
+
+    /**
+     * Receivables outstanding from party-linked account balances.
      */
     public function getDebtorsOutstanding(int $companyId): array
     {
+        $financialYearId = FinancialYear::getCurrent($companyId)?->id;
+
         $debtors = Party::where('company_id', $companyId)
             ->where('type', 'debtor')
             ->where('is_active', true)
+            ->whereNotNull('account_id')
+            ->orderBy('name')
             ->get();
 
         $outstanding = [];
         $totalOutstanding = 0;
 
         foreach ($debtors as $debtor) {
-            // Sum ledger entries for vouchers linked to this party
-            $entries = $this->ledgerRepository->getEntries(['company_id' => $companyId], ['voucher']);
+            if (!$financialYearId) {
+                continue;
+            }
 
-            $debitTotal = $entries->filter(function ($e) use ($debtor) {
-                return $e->voucher && $e->voucher->party_id === $debtor->id && in_array($e->voucher->voucher_type, ['income', 'receipt']);
-            })->sum('debit');
+            $balance = $this->ledgerService->getAccountBalance(
+                (int) $debtor->account_id,
+                $companyId,
+                $financialYearId
+            );
 
-            $creditTotal = $entries->filter(function ($e) use ($debtor) {
-                return $e->voucher && $e->voucher->party_id === $debtor->id && in_array($e->voucher->voucher_type, ['payment', 'journal']);
-            })->sum('credit');
+            // Receivable = debit balance on party account
+            $amount = $balance['type'] === 'debit'
+                ? (float) $balance['balance']
+                : -1 * (float) $balance['balance'];
 
-            $balance = $debitTotal - $creditTotal;
-
-            if ($balance > 0) {
+            if ($amount > 0.01) {
                 $outstanding[] = [
                     'party' => $debtor,
-                    'debit' => $debitTotal,
-                    'credit' => $creditTotal,
-                    'balance' => $balance,
+                    'account_id' => $debtor->account_id,
+                    'debit' => $amount,
+                    'credit' => 0,
+                    'balance' => $amount,
                 ];
-                $totalOutstanding += $balance;
+                $totalOutstanding += $amount;
             }
         }
 
@@ -240,39 +301,47 @@ class ReportService
     }
 
     /**
-     * Get Creditors Outstanding report
+     * Payables outstanding from party-linked account balances.
      */
     public function getCreditorsOutstanding(int $companyId): array
     {
+        $financialYearId = FinancialYear::getCurrent($companyId)?->id;
+
         $creditors = Party::where('company_id', $companyId)
             ->where('type', 'creditor')
             ->where('is_active', true)
+            ->whereNotNull('account_id')
+            ->orderBy('name')
             ->get();
 
         $outstanding = [];
         $totalOutstanding = 0;
 
         foreach ($creditors as $creditor) {
-            $entries = $this->ledgerRepository->getEntries(['company_id' => $companyId], ['voucher']);
+            if (!$financialYearId) {
+                continue;
+            }
 
-            $creditTotal = $entries->filter(function ($e) use ($creditor) {
-                return $e->voucher && $e->voucher->party_id === $creditor->id && in_array($e->voucher->voucher_type, ['expense', 'payment']);
-            })->sum('credit');
+            $balance = $this->ledgerService->getAccountBalance(
+                (int) $creditor->account_id,
+                $companyId,
+                $financialYearId
+            );
 
-            $debitTotal = $entries->filter(function ($e) use ($creditor) {
-                return $e->voucher && $e->voucher->party_id === $creditor->id && in_array($e->voucher->voucher_type, ['receipt', 'journal']);
-            })->sum('debit');
+            // Payable = credit balance on party account
+            $amount = $balance['type'] === 'credit'
+                ? (float) $balance['balance']
+                : -1 * (float) $balance['balance'];
 
-            $balance = $creditTotal - $debitTotal;
-
-            if ($balance > 0) {
+            if ($amount > 0.01) {
                 $outstanding[] = [
                     'party' => $creditor,
-                    'debit' => $debitTotal,
-                    'credit' => $creditTotal,
-                    'balance' => $balance,
+                    'account_id' => $creditor->account_id,
+                    'debit' => 0,
+                    'credit' => $amount,
+                    'balance' => $amount,
                 ];
-                $totalOutstanding += $balance;
+                $totalOutstanding += $amount;
             }
         }
 
@@ -282,35 +351,12 @@ class ReportService
         ];
     }
 
-    /**
-     * Get Cash Flow report
-     */
-    public function getCashFlow(int $companyId, int $financialYearId): array
+    protected function activeAccountsByType(int $companyId, string $type)
     {
-        // Get cash/bank accounts
-        $cashAccounts = Account::where('company_id', $companyId)
-            ->whereIn('account_name', ['Cash', 'Bank', 'Cash in Hand'])
+        return Account::where('company_id', $companyId)
+            ->where('account_type', $type)
             ->where('is_active', true)
+            ->orderBy('account_code')
             ->get();
-
-        $inflows = 0;
-        $outflows = 0;
-
-        foreach ($cashAccounts as $account) {
-            $entries = $this->ledgerRepository->getEntries([
-                'company_id' => $companyId,
-                'account_id' => $account->id,
-                'financial_year_id' => $financialYearId,
-            ]);
-
-            $inflows += $entries->sum('debit');
-            $outflows += $entries->sum('credit');
-        }
-
-        return [
-            'inflows' => $inflows,
-            'outflows' => $outflows,
-            'net_cash_flow' => $inflows - $outflows,
-        ];
     }
 }

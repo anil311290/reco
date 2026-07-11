@@ -10,8 +10,8 @@
         <div class="row g-4 align-items-center">
             <div class="col-lg-8">
                 <span class="report-eyebrow"><i class="bi bi-book"></i> Transaction Trail</span>
-                <h1 class="report-title">Account Ledger</h1>
-                <p class="report-subtitle">Inspect account movement with opening balance, running balance, and filtered ledger activity in a cleaner tabular layout.</p>
+                <h1 class="report-title">Ledger</h1>
+                <p class="report-subtitle">Select one ledger to view opening balance, voucher-wise movement, and closing balance (Tally ledger style).</p>
             </div>
             <div class="col-lg-4">
                 <div class="report-toolbar">
@@ -26,9 +26,9 @@
             <div class="col-lg-4 col-md-6">
                 <label class="form-label">Account</label>
                 <select name="account_id" class="form-select" required>
-                    <option value="">Select Account</option>
+                    <option value="">Select Ledger</option>
                     @foreach($accounts as $account)
-                        <option value="{{ $account->id }}" {{ $accountId == $account->id ? 'selected' : '' }}>
+                        <option value="{{ $account->id }}" {{ (string) $accountId === (string) $account->id ? 'selected' : '' }}>
                             {{ $account->account_code }} - {{ $account->account_name }}
                         </option>
                     @endforeach
@@ -116,7 +116,7 @@
                     </tr>
                     @forelse($report['entries'] as $entry)
                     <tr>
-                        <td>{{ $entry->transaction_date }}</td>
+                        <td>@istDate($entry->transaction_date)</td>
                         <td class="fw-semibold">{{ $entry->voucher->voucher_number ?? '-' }}</td>
                         <td>{{ $entry->narration ?? $entry->description ?? '-' }}</td>
                         <td class="text-end fw-semibold text-primary">{{ $entry->debit > 0 ? '₹' . number_format($entry->debit, 2) : '-' }}</td>
@@ -141,7 +141,7 @@
                         </td>
                     </tr>
                     @empty
-                    <tr><td colspan="6" class="text-muted text-center py-3">No entries found</td></tr>
+                    <tr><td colspan="7" class="text-muted text-center py-3">No entries found</td></tr>
                     @endforelse
                 </tbody>
                 <tfoot>

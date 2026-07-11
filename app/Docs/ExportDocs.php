@@ -6,21 +6,13 @@ use OpenApi\Annotations as OA;
 
 /**
  * @OA\Get(
- *     path="/export/types",
- *     tags={"Export"},
- *     summary="Get export types",
- *     operationId="getExportTypes",
- *     security={{"bearerAuth":{}}},
- *     @OA\Response(response=200, description="Export types fetched", @OA\JsonContent(ref="#/components/schemas/SuccessResponse"))
- * )
- *
- * @OA\Get(
  *     path="/export/profit-loss/pdf",
  *     tags={"Export"},
  *     summary="Export profit and loss report as PDF",
  *     operationId="exportProfitLossPdf",
  *     security={{"bearerAuth":{}}},
- *     @OA\Response(response=200, description="PDF generated")
+ *     @OA\Parameter(name="financial_year_id", in="query", @OA\Schema(type="integer")),
+ *     @OA\Response(response=200, description="PDF generated", @OA\JsonContent(ref="#/components/schemas/SuccessResponse"))
  * )
  *
  * @OA\Get(
@@ -29,7 +21,28 @@ use OpenApi\Annotations as OA;
  *     summary="Export balance sheet report as PDF",
  *     operationId="exportBalanceSheetPdf",
  *     security={{"bearerAuth":{}}},
- *     @OA\Response(response=200, description="PDF generated")
+ *     @OA\Parameter(name="financial_year_id", in="query", @OA\Schema(type="integer")),
+ *     @OA\Response(response=200, description="PDF generated", @OA\JsonContent(ref="#/components/schemas/SuccessResponse"))
+ * )
+ *
+ * @OA\Get(
+ *     path="/export/trial-balance/pdf",
+ *     tags={"Export"},
+ *     summary="Export trial balance report as PDF",
+ *     operationId="exportTrialBalancePdf",
+ *     security={{"bearerAuth":{}}},
+ *     @OA\Parameter(name="financial_year_id", in="query", @OA\Schema(type="integer")),
+ *     @OA\Response(response=200, description="PDF generated", @OA\JsonContent(ref="#/components/schemas/SuccessResponse"))
+ * )
+ *
+ * @OA\Get(
+ *     path="/export/day-book/pdf",
+ *     tags={"Export"},
+ *     summary="Export day book report as PDF",
+ *     operationId="exportDayBookPdf",
+ *     security={{"bearerAuth":{}}},
+ *     @OA\Parameter(name="date", in="query", required=true, @OA\Schema(type="string", format="date")),
+ *     @OA\Response(response=200, description="PDF generated", @OA\JsonContent(ref="#/components/schemas/SuccessResponse"))
  * )
  *
  * @OA\Get(
@@ -38,8 +51,26 @@ use OpenApi\Annotations as OA;
  *     summary="Export ledger report as PDF",
  *     operationId="exportLedgerPdf",
  *     security={{"bearerAuth":{}}},
- *     @OA\Parameter(name="account_id", in="query", required=false, @OA\Schema(type="integer")),
- *     @OA\Response(response=200, description="PDF generated")
+ *     @OA\Parameter(name="account_id", in="query", required=true, @OA\Schema(type="integer")),
+ *     @OA\Response(response=200, description="PDF generated", @OA\JsonContent(ref="#/components/schemas/SuccessResponse"))
+ * )
+ *
+ * @OA\Get(
+ *     path="/export/debtors-outstanding/pdf",
+ *     tags={"Export"},
+ *     summary="Export debtors outstanding report as PDF",
+ *     operationId="exportDebtorsOutstandingPdf",
+ *     security={{"bearerAuth":{}}},
+ *     @OA\Response(response=200, description="PDF generated", @OA\JsonContent(ref="#/components/schemas/SuccessResponse"))
+ * )
+ *
+ * @OA\Get(
+ *     path="/export/creditors-outstanding/pdf",
+ *     tags={"Export"},
+ *     summary="Export creditors outstanding report as PDF",
+ *     operationId="exportCreditorsOutstandingPdf",
+ *     security={{"bearerAuth":{}}},
+ *     @OA\Response(response=200, description="PDF generated", @OA\JsonContent(ref="#/components/schemas/SuccessResponse"))
  * )
  *
  * @OA\Get(
@@ -49,37 +80,17 @@ use OpenApi\Annotations as OA;
  *     operationId="exportVoucherPdf",
  *     security={{"bearerAuth":{}}},
  *     @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")),
- *     @OA\Response(response=200, description="PDF generated"),
- *     @OA\Response(response=404, description="Not found", @OA\JsonContent(ref="#/components/schemas/ErrorResponse"))
+ *     @OA\Response(response=200, description="PDF generated", @OA\JsonContent(ref="#/components/schemas/SuccessResponse"))
  * )
  *
  * @OA\Get(
- *     path="/export/history",
+ *     path="/export/sales-invoice/{id}/pdf",
  *     tags={"Export"},
- *     summary="Get export history",
- *     operationId="getExportHistory",
+ *     summary="Export sales invoice as PDF",
+ *     operationId="exportSalesInvoicePdfByExportRoute",
  *     security={{"bearerAuth":{}}},
- *     @OA\Parameter(name="per_page", in="query", required=false, @OA\Schema(type="integer", default=15)),
- *     @OA\Response(response=200, description="Export history fetched", @OA\JsonContent(ref="#/components/schemas/SuccessResponse"))
- * )
- *
- * @OA\Post(
- *     path="/export/share",
- *     tags={"Export"},
- *     summary="Share exported statement",
- *     operationId="shareExportStatement",
- *     security={{"bearerAuth":{}}},
- *     @OA\RequestBody(
- *         required=true,
- *         @OA\JsonContent(
- *             required={"type", "recipient"},
- *             @OA\Property(property="type", type="string", example="ledger_pdf"),
- *             @OA\Property(property="recipient", type="string", example="client@example.com"),
- *             @OA\Property(property="message", type="string", example="Please find attached statement")
- *         )
- *     ),
- *     @OA\Response(response=200, description="Statement shared", @OA\JsonContent(ref="#/components/schemas/SuccessResponse")),
- *     @OA\Response(response=422, description="Validation error", @OA\JsonContent(ref="#/components/schemas/ErrorResponse"))
+ *     @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")),
+ *     @OA\Response(response=200, description="PDF generated", @OA\JsonContent(ref="#/components/schemas/SuccessResponse"))
  * )
  */
 class ExportDocs

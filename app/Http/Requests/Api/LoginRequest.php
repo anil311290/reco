@@ -24,7 +24,12 @@ class LoginRequest extends FormRequest
         return [
             'email' => 'required|email',
             'password' => 'required|string|min:6',
+            'device_id' => 'sometimes|string|max:100',
+            'device_type' => 'sometimes|in:web,android,ios',
             'device_name' => 'sometimes|string|max:255',
+            'device_os' => 'sometimes|string|max:100',
+            'fcm_token' => 'sometimes|string|max:500',
+            'push_token' => 'sometimes|string|max:500',
         ];
     }
 

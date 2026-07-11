@@ -69,11 +69,36 @@ class VoucherController extends Controller
      */
     public function create(string $type)
     {
+        // Sales / Purchase are invoice modules — do not open generic voucher forms
+        if ($type === 'income') {
+            return redirect()->route('admin.sales-invoices.create');
+        }
+        if ($type === 'expense') {
+            return redirect()->route('admin.purchase-invoices.create');
+        }
+
+        if (!in_array($type, ['payment', 'receipt', 'journal', 'adjustment'], true)) {
+            abort(404);
+        }
+
         $companyId = Auth::user()->company_id;
+        $financialYearId = Auth::user()->company->currentFinancialYear?->id;
         $accounts = $this->accountService->getForDropdown($companyId);
         $parties = $this->partyService->getForDropdown($companyId);
+        $cashBankAccounts = in_array($type, ['payment', 'receipt'], true)
+            ? $this->accountService->getCashBankAccountsForMode($companyId, null, $financialYearId)
+            : [];
+        $particularsOptions = in_array($type, ['payment', 'receipt'], true)
+            ? $this->accountService->getPaymentParticularsOptions($companyId, $type)
+            : [];
 
-        return view('admin.vouchers.create', compact('type', 'accounts', 'parties'));
+        return view('admin.vouchers.create', compact(
+            'type',
+            'accounts',
+            'parties',
+            'cashBankAccounts',
+            'particularsOptions'
+        ));
     }
 
     /**
@@ -116,15 +141,29 @@ class VoucherController extends Controller
     public function edit(int $id)
     {
         $voucher = $this->voucherService->getById($id);
-        $companyId = Auth::user()->company_id;
-        $accounts = $this->accountService->getForDropdown($companyId);
-        $parties = $this->partyService->getForDropdown($companyId);
 
         if (!$voucher) {
             return ResponseHelper::notFound('Voucher not found');
         }
 
-        return view('admin.vouchers.edit', compact('voucher', 'accounts', 'parties'));
+        $companyId = Auth::user()->company_id;
+        $financialYearId = Auth::user()->company->currentFinancialYear?->id;
+        $accounts = $this->accountService->getForDropdown($companyId);
+        $parties = $this->partyService->getForDropdown($companyId);
+        $cashBankAccounts = in_array($voucher->voucher_type, ['payment', 'receipt'], true)
+            ? $this->accountService->getCashBankAccountsForMode($companyId, null, $financialYearId)
+            : [];
+        $particularsOptions = in_array($voucher->voucher_type, ['payment', 'receipt'], true)
+            ? $this->accountService->getPaymentParticularsOptions($companyId, $voucher->voucher_type)
+            : [];
+
+        return view('admin.vouchers.edit', compact(
+            'voucher',
+            'accounts',
+            'parties',
+            'cashBankAccounts',
+            'particularsOptions'
+        ));
     }
 
     /**

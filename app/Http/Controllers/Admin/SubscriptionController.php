@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Helpers\DateHelper;
 use App\Models\Subscription;
 use App\Models\SubscriptionPayment;
 use App\Services\SubscriptionService;
@@ -29,8 +30,9 @@ class SubscriptionController extends Controller
         $plans = $this->subscriptionService->getPlans();
         $companyId = Auth::user()?->company_id;
         $currentSubscription = $this->subscriptionService->getActiveSubscription($companyId);
+        $razorpayConfigured = app(\App\Services\RazorpayService::class)->isConfigured();
 
-        return view('admin.subscriptions.plans', compact('plans', 'currentSubscription'));
+        return view('admin.subscriptions.plans', compact('plans', 'currentSubscription', 'razorpayConfigured'));
     }
 
     /**
@@ -55,16 +57,50 @@ class SubscriptionController extends Controller
         ]);
 
         try {
-            $companyId = Auth::user()?->company_id;
-            $subscription = $this->subscriptionService->subscribe(
-                $companyId,
+            $user = Auth::user();
+            $result = $this->subscriptionService->subscribeWithPayment(
+                $user->company_id,
                 $validated['plan_id'],
-                $validated['billing_cycle']
+                $validated['billing_cycle'],
+                $request->ip(),
+                ['name' => $user->name, 'email' => $user->email]
             );
 
-            return ResponseHelper::success($subscription, 'Subscription created successfully');
+            if ($result['requires_payment']) {
+                return ResponseHelper::success([
+                    'requires_payment' => true,
+                    'checkout' => $result['checkout'],
+                ], 'Complete payment to activate subscription');
+            }
+
+            return ResponseHelper::success($result['subscription'], 'Subscription created successfully');
         } catch (\Exception $e) {
             return ResponseHelper::error($e->getMessage());
+        }
+    }
+
+    /**
+     * Verify Razorpay payment after checkout.
+     */
+    public function verifyPayment(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'razorpay_order_id' => 'required|string',
+            'razorpay_payment_id' => 'required|string',
+            'razorpay_signature' => 'required|string',
+        ]);
+
+        try {
+            $subscription = $this->subscriptionService->verifyAndActivatePayment(
+                $validated['razorpay_order_id'],
+                $validated['razorpay_payment_id'],
+                $validated['razorpay_signature'],
+                $request->ip()
+            );
+
+            return ResponseHelper::success($subscription, 'Payment verified and subscription activated');
+        } catch (\Exception $e) {
+            return ResponseHelper::error($e->getMessage(), 422);
         }
     }
 
@@ -79,14 +115,23 @@ class SubscriptionController extends Controller
         ]);
 
         try {
-            $companyId = Auth::user()?->company_id;
-            $subscription = $this->subscriptionService->changePlan(
-                $companyId,
+            $user = Auth::user();
+            $result = $this->subscriptionService->subscribeWithPayment(
+                $user->company_id,
                 $validated['plan_id'],
-                $validated['billing_cycle']
+                $validated['billing_cycle'],
+                $request->ip(),
+                ['name' => $user->name, 'email' => $user->email]
             );
 
-            return ResponseHelper::success($subscription, 'Plan changed successfully');
+            if ($result['requires_payment']) {
+                return ResponseHelper::success([
+                    'requires_payment' => true,
+                    'checkout' => $result['checkout'],
+                ], 'Complete payment to change plan');
+            }
+
+            return ResponseHelper::success($result['subscription'], 'Plan changed successfully');
         } catch (\Exception $e) {
             return ResponseHelper::error($e->getMessage());
         }
@@ -162,10 +207,10 @@ class SubscriptionController extends Controller
                     return '₹' . number_format((float) $subscription->amount, 2);
                 })
                 ->addColumn('period_end_formatted', function (Subscription $subscription) {
-                    return optional($subscription->current_period_end)->format('d M Y') ?: '-';
+                    return DateHelper::formatDate($subscription->current_period_end);
                 })
                 ->addColumn('created_at_formatted', function (Subscription $subscription) {
-                    return optional($subscription->created_at)->format('d M Y') ?: '-';
+                    return DateHelper::formatDate($subscription->created_at);
                 })
                 ->addColumn('actions', function (Subscription $subscription) {
                     $companyUrl = route('admin.companies.show', $subscription->company_id);
@@ -224,7 +269,7 @@ class SubscriptionController extends Controller
                     return $payment->razorpay_payment_id ?: '-';
                 })
                 ->addColumn('paid_at_formatted', function (SubscriptionPayment $payment) {
-                    return optional($payment->paid_at ?? $payment->created_at)->format('d M Y h:i A') ?: '-';
+                    return DateHelper::formatDateTime($payment->paid_at ?? $payment->created_at);
                 })
                 ->addColumn('actions', function (SubscriptionPayment $payment) {
                     $companyUrl = route('admin.companies.show', $payment->company_id);

@@ -79,6 +79,61 @@ class VoucherApiController extends Controller
     }
 
     /**
+     * Update voucher
+     */
+    public function update(VoucherApiRequest $request, int $id): JsonResponse
+    {
+        try {
+            $voucher = $this->voucherService->getById($id);
+
+            if (!$voucher || $voucher->company_id !== $request->user()->company_id) {
+                return ResponseHelper::notFound('Voucher not found');
+            }
+
+            $data = $request->validated();
+            $data['updated_by'] = $request->user()->id;
+            $data['updated_by_ip'] = $request->ip();
+
+            $updated = $this->voucherService->update($id, $data);
+
+            if (!$updated) {
+                return ResponseHelper::notFound('Voucher not found');
+            }
+
+            return ResponseHelper::success(
+                new VoucherResource($this->voucherService->getById($id)),
+                'Voucher updated successfully'
+            );
+        } catch (\Exception $e) {
+            return ResponseHelper::error($e->getMessage());
+        }
+    }
+
+    /**
+     * Delete voucher
+     */
+    public function destroy(int $id): JsonResponse
+    {
+        try {
+            $voucher = $this->voucherService->getById($id);
+
+            if (!$voucher || $voucher->company_id !== request()->user()->company_id) {
+                return ResponseHelper::notFound('Voucher not found');
+            }
+
+            $deleted = $this->voucherService->delete($id);
+
+            if (!$deleted) {
+                return ResponseHelper::notFound('Voucher not found');
+            }
+
+            return ResponseHelper::success(null, 'Voucher deleted successfully');
+        } catch (\Exception $e) {
+            return ResponseHelper::error($e->getMessage());
+        }
+    }
+
+    /**
      * Post voucher
      */
     public function post(int $id): JsonResponse
@@ -116,18 +171,5 @@ class VoucherApiController extends Controller
         } catch (\Exception $e) {
             return ResponseHelper::error($e->getMessage());
         }
-    }
-
-    /**
-     * Get voucher statistics
-     */
-    public function statistics(Request $request): JsonResponse
-    {
-        $companyId = $request->user()->company_id;
-        $financialYearId = $request->input('financial_year_id');
-
-        $stats = $this->voucherService->getStatistics($companyId, $financialYearId);
-
-        return ResponseHelper::success($stats);
     }
 }

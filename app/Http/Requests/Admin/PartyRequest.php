@@ -22,7 +22,7 @@ class PartyRequest extends BaseFormRequest
      */
     public function rules(): array
     {
-        $partyId = $this->route('party');
+        $partyId = $this->route('party') ?? $this->route('id');
 
         return [
             'party_code' => [

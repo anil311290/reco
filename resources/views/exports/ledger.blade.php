@@ -57,7 +57,7 @@
         <tbody>
         @forelse($report['entries'] as $entry)
             <tr>
-                <td>{{ $entry->transaction_date }}</td>
+                <td>@istDate($entry->transaction_date)</td>
                 <td>{{ $entry->voucher?->voucher_number ?? '-' }}</td>
                 <td>{{ $entry->voucher?->narration ?? '-' }}</td>
                 <td class="text-right">{{ $entry->debit > 0 ? number_format($entry->debit, 2) : '-' }}</td>

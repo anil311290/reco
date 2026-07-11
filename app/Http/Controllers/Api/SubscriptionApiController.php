@@ -53,14 +53,45 @@ class SubscriptionApiController extends Controller
             'billing_cycle' => 'required|in:monthly,yearly,lifetime',
         ]);
 
-        $companyId = $request->user()->company_id;
-        $subscription = $this->subscriptionService->subscribe(
-            $companyId,
+        $user = $request->user();
+        $result = $this->subscriptionService->subscribeWithPayment(
+            $user->company_id,
             $validated['plan_id'],
-            $validated['billing_cycle']
+            $validated['billing_cycle'],
+            $request->ip(),
+            ['name' => $user->name, 'email' => $user->email]
         );
 
-        return ResponseHelper::success(new SubscriptionResource($subscription), 'Subscription created', 201);
+        if ($result['requires_payment']) {
+            return ResponseHelper::success([
+                'requires_payment' => true,
+                'checkout' => $result['checkout'],
+            ], 'Complete payment to activate subscription');
+        }
+
+        return ResponseHelper::success(
+            new SubscriptionResource($result['subscription']),
+            'Subscription created',
+            201
+        );
+    }
+
+    public function verifyPayment(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'razorpay_order_id' => 'required|string',
+            'razorpay_payment_id' => 'required|string',
+            'razorpay_signature' => 'required|string',
+        ]);
+
+        $subscription = $this->subscriptionService->verifyAndActivatePayment(
+            $validated['razorpay_order_id'],
+            $validated['razorpay_payment_id'],
+            $validated['razorpay_signature'],
+            $request->ip()
+        );
+
+        return ResponseHelper::success(new SubscriptionResource($subscription), 'Payment verified');
     }
 
     /**
@@ -73,14 +104,23 @@ class SubscriptionApiController extends Controller
             'billing_cycle' => 'required|in:monthly,yearly,lifetime',
         ]);
 
-        $companyId = $request->user()->company_id;
-        $subscription = $this->subscriptionService->changePlan(
-            $companyId,
+        $user = $request->user();
+        $result = $this->subscriptionService->subscribeWithPayment(
+            $user->company_id,
             $validated['plan_id'],
-            $validated['billing_cycle']
+            $validated['billing_cycle'],
+            $request->ip(),
+            ['name' => $user->name, 'email' => $user->email]
         );
 
-        return ResponseHelper::success(new SubscriptionResource($subscription), 'Plan changed');
+        if ($result['requires_payment']) {
+            return ResponseHelper::success([
+                'requires_payment' => true,
+                'checkout' => $result['checkout'],
+            ], 'Complete payment to change plan');
+        }
+
+        return ResponseHelper::success(new SubscriptionResource($result['subscription']), 'Plan changed');
     }
 
     /**
@@ -92,5 +132,41 @@ class SubscriptionApiController extends Controller
         $this->subscriptionService->cancelActiveSubscription($companyId);
 
         return ResponseHelper::success(null, 'Subscription cancelled');
+    }
+
+    /**
+     * Get subscription invoices.
+     */
+    public function invoices(Request $request): JsonResponse
+    {
+        $companyId = $request->user()->company_id;
+        $perPage = (int) $request->input('per_page', 15);
+        $invoices = $this->subscriptionService->getInvoices($companyId, $perPage);
+
+        return ResponseHelper::success([
+            'data' => $invoices->items(),
+            'current_page' => $invoices->currentPage(),
+            'last_page' => $invoices->lastPage(),
+            'per_page' => $invoices->perPage(),
+            'total' => $invoices->total(),
+        ]);
+    }
+
+    /**
+     * Get subscription payments.
+     */
+    public function payments(Request $request): JsonResponse
+    {
+        $companyId = $request->user()->company_id;
+        $perPage = (int) $request->input('per_page', 15);
+        $payments = $this->subscriptionService->getPayments($companyId, $perPage);
+
+        return ResponseHelper::success([
+            'data' => $payments->items(),
+            'current_page' => $payments->currentPage(),
+            'last_page' => $payments->lastPage(),
+            'per_page' => $payments->perPage(),
+            'total' => $payments->total(),
+        ]);
     }
 }

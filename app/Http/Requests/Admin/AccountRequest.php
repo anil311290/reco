@@ -22,17 +22,30 @@ class AccountRequest extends BaseFormRequest
      */
     public function rules(): array
     {
-        $accountId = $this->route('account');
+        $accountId = $this->route('account') ?? $this->route('id');
+        $isAsset = $this->input('account_type') === 'asset';
 
         return [
-            'account_code' => [
-                'sometimes',
+            'account_name' => [
+                'required',
                 'string',
-                'max:20',
-                Rule::unique('accounts', 'account_code')->ignore($accountId),
+                'max:255',
+                Rule::unique('accounts', 'account_name')
+                    ->ignore($accountId)
+                    ->where(function ($query) {
+                        $companyId = $this->user()?->company_id;
+
+                        return $query
+                            ->where('company_id', $companyId)
+                            ->where('account_type', $this->input('account_type'));
+                    }),
             ],
-            'account_name' => 'required|string|max:255',
             'account_type' => ['required', Rule::in(['asset', 'liability', 'income', 'expense', 'equity'])],
+            'transaction_mode' => [
+                Rule::requiredIf($isAsset),
+                Rule::in(['cash', 'bank', 'od']),
+                'nullable',
+            ],
             'opening_balance' => 'nullable|numeric|min:0',
             'balance_type' => ['nullable', Rule::in(['debit', 'credit'])],
             'opening_date' => 'nullable|date',
@@ -50,7 +63,9 @@ class AccountRequest extends BaseFormRequest
             'account_name.required' => 'Account name is required',
             'account_type.required' => 'Account type is required',
             'account_type.in' => 'Invalid account type',
-            'account_code.unique' => 'This account code is already taken',
+            'account_name.unique' => 'An account with this name already exists for this type',
+            'transaction_mode.required' => 'Transaction mode is required for asset accounts',
+            'transaction_mode.in' => 'Transaction mode must be Cash, Bank, or OD',
         ];
     }
 }

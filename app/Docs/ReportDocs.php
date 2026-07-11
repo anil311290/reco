@@ -147,6 +147,30 @@ use OpenApi\Annotations as OA;
  * )
  *
  * @OA\Get(
+ *     path="/reports/cash-book",
+ *     tags={"Reports"},
+ *     summary="Get Cash Book report",
+ *     operationId="getCashBook",
+ *     security={{"bearerAuth":{}}},
+ *     @OA\Parameter(name="date_from", in="query", @OA\Schema(type="string", format="date")),
+ *     @OA\Parameter(name="date_to", in="query", @OA\Schema(type="string", format="date")),
+ *     @OA\Parameter(name="account_id", in="query", @OA\Schema(type="integer")),
+ *     @OA\Response(response=200, description="Success", @OA\JsonContent(ref="#/components/schemas/SuccessResponse"))
+ * )
+ *
+ * @OA\Get(
+ *     path="/reports/bank-book",
+ *     tags={"Reports"},
+ *     summary="Get Bank Book report",
+ *     operationId="getBankBook",
+ *     security={{"bearerAuth":{}}},
+ *     @OA\Parameter(name="date_from", in="query", @OA\Schema(type="string", format="date")),
+ *     @OA\Parameter(name="date_to", in="query", @OA\Schema(type="string", format="date")),
+ *     @OA\Parameter(name="account_id", in="query", @OA\Schema(type="integer")),
+ *     @OA\Response(response=200, description="Success", @OA\JsonContent(ref="#/components/schemas/SuccessResponse"))
+ * )
+ *
+ * @OA\Get(
  *     path="/reports/debtors-outstanding",
  *     tags={"Reports"},
  *     summary="Get Debtors Outstanding report",

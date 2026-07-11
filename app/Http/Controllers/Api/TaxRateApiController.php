@@ -90,4 +90,54 @@ class TaxRateApiController extends Controller
 
         return ResponseHelper::success(new TaxRateResource($taxRate->fresh()), 'Tax rate updated');
     }
+
+    /**
+     * Delete tax rate.
+     */
+    public function destroy(int $id): JsonResponse
+    {
+        $taxRate = $this->taxRateService->getById($id);
+
+        if (!$taxRate || $taxRate->company_id !== request()->user()->company_id) {
+            return ResponseHelper::notFound('Tax rate not found');
+        }
+
+        try {
+            $this->taxRateService->delete($id);
+
+            return ResponseHelper::success(null, 'Tax rate deleted successfully');
+        } catch (\Exception $e) {
+            return ResponseHelper::error($e->getMessage());
+        }
+    }
+
+    /**
+     * Toggle tax rate status.
+     */
+    public function status(int $id): JsonResponse
+    {
+        $taxRate = $this->taxRateService->getById($id);
+
+        if (!$taxRate || $taxRate->company_id !== request()->user()->company_id) {
+            return ResponseHelper::notFound('Tax rate not found');
+        }
+
+        try {
+            $taxRate = $this->taxRateService->toggleStatus($id);
+
+            return ResponseHelper::success(new TaxRateResource($taxRate), 'Status updated successfully');
+        } catch (\Exception $e) {
+            return ResponseHelper::error($e->getMessage());
+        }
+    }
+
+    /**
+     * Get tax rates for dropdown.
+     */
+    public function dropdown(Request $request): JsonResponse
+    {
+        $companyId = $request->user()->company_id;
+
+        return ResponseHelper::success($this->taxRateService->getAll($companyId));
+    }
 }

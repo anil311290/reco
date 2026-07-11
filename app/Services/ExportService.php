@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\Voucher;
+use App\Models\SalesInvoice;
 use App\Models\Account;
 use App\Models\FinancialYear;
 use App\Models\Party;
@@ -46,18 +47,6 @@ class ExportService
     }
 
     /**
-     * Export Cash Flow to PDF
-     */
-    public function exportCashFlowPdf(int $companyId, int $financialYearId): string
-    {
-        $report = $this->reportService->getCashFlow($companyId, $financialYearId);
-
-        $pdf = Pdf::loadView('exports.cash-flow', compact('report'));
-
-        return $pdf->output();
-    }
-
-    /**
      * Export Trial Balance to PDF
      */
     public function exportTrialBalancePdf(int $companyId, int $financialYearId): string
@@ -92,9 +81,33 @@ class ExportService
      */
     public function exportVoucherPdf(int $voucherId): string
     {
-        $voucher = Voucher::with(['party', 'lines.account', 'company'])->find($voucherId);
+        $voucher = Voucher::with(['party', 'lines.account', 'company'])
+            ->where('id', $voucherId)
+            ->orWhere('sales_invoice_id', $voucherId)
+            ->orWhere('purchase_invoice_id', $voucherId)
+            ->orderByRaw('CASE WHEN id = ? THEN 0 ELSE 1 END', [$voucherId])
+            ->firstOrFail();
 
         $pdf = Pdf::loadView('exports.voucher', compact('voucher'));
+
+        return $pdf->output();
+    }
+
+    /**
+     * Export Sales Invoice to PDF
+     */
+    public function exportSalesInvoicePdf(int $invoiceId): string
+    {
+        $invoice = SalesInvoice::with([
+            'company',
+            'party',
+            'lines.item',
+            'lines.taxRate',
+            'lines.account',
+            'financialYear',
+        ])->findOrFail($invoiceId);
+
+        $pdf = Pdf::loadView('exports.sales-invoice', compact('invoice'));
 
         return $pdf->output();
     }
@@ -205,22 +218,28 @@ class ExportService
                     ->all();
                 break;
 
-            case 'cash-flow':
-                $cashFlow = $this->reportService->getCashFlow($companyId, $filters['financial_year_id'] ?? FinancialYear::getCurrent($companyId)?->id);
-                $data = [
-                    [
-                        'description' => 'Cash Inflows',
-                        'amount' => $cashFlow['inflows'],
-                    ],
-                    [
-                        'description' => 'Cash Outflows',
-                        'amount' => $cashFlow['outflows'],
-                    ],
-                    [
-                        'description' => 'Net Cash Flow',
-                        'amount' => $cashFlow['net_cash_flow'],
-                    ],
-                ];
+            case 'cash-book':
+                $book = $this->reportService->getCashBankBook(
+                    $companyId,
+                    'cash',
+                    isset($filters['account_id']) ? (int) $filters['account_id'] : null,
+                    $filters['date_from'] ?? null,
+                    $filters['date_to'] ?? null,
+                    $filters['financial_year_id'] ?? FinancialYear::getCurrent($companyId)?->id
+                );
+                $ledger = $book['report'] ?? null;
+                $data = $ledger
+                    ? $ledger['entries']->map(function ($entry) {
+                        return [
+                            'transaction_date' => $entry->transaction_date,
+                            'voucher_number' => $entry->voucher?->voucher_number ?? '',
+                            'particulars' => $entry->description ?: ($entry->voucher?->narration ?? ''),
+                            'receipts' => $entry->debit,
+                            'payments' => $entry->credit,
+                            'balance' => $entry->running_balance,
+                        ];
+                    })->values()->all()
+                    : [];
                 break;
 
             case 'profit-loss':
@@ -274,14 +293,14 @@ class ExportService
 
             case 'day-book':
                 $dayBook = $this->reportService->getDayBook($companyId, $filters['date'] ?? date('Y-m-d'));
-                $data = $dayBook['vouchers']->map(function ($voucher) {
+                $data = collect($dayBook['rows'])->map(function ($row) {
                     return [
-                        'voucher_number' => $voucher->voucher_number,
-                        'voucher_type' => ucfirst($voucher->voucher_type ?? '-'),
-                        'party' => $voucher->party?->name ?? '-',
-                        'narration' => $voucher->narration ?? '-',
-                        'debit' => $voucher->total_debit,
-                        'credit' => $voucher->total_credit,
+                        'voucher_number' => $row['voucher_number'],
+                        'voucher_type' => ucfirst($row['voucher_type'] ?? '-'),
+                        'particulars' => $row['account_name'] ?? '-',
+                        'narration' => $row['narration'] ?? '-',
+                        'debit' => $row['debit'],
+                        'credit' => $row['credit'],
                     ];
                 })->values()->all();
                 break;
@@ -313,13 +332,28 @@ class ExportService
                 $data = $query->orderBy('name')->get()->toArray();
                 break;
 
-            case 'cash-flow':
-                $cashFlow = $this->reportService->getCashFlow($companyId, $filters['financial_year_id'] ?? FinancialYear::getCurrent($companyId)?->id);
-                $data = [
-                    ['description' => 'Cash Inflows', 'amount' => $cashFlow['inflows']],
-                    ['description' => 'Cash Outflows', 'amount' => $cashFlow['outflows']],
-                    ['description' => 'Net Cash Flow', 'amount' => $cashFlow['net_cash_flow']],
-                ];
+            case 'cash-book':
+                $book = $this->reportService->getCashBankBook(
+                    $companyId,
+                    'cash',
+                    isset($filters['account_id']) ? (int) $filters['account_id'] : null,
+                    $filters['date_from'] ?? null,
+                    $filters['date_to'] ?? null,
+                    $filters['financial_year_id'] ?? FinancialYear::getCurrent($companyId)?->id
+                );
+                $ledger = $book['report'] ?? null;
+                $data = $ledger
+                    ? $ledger['entries']->map(function ($entry) {
+                        return [
+                            'transaction_date' => $entry->transaction_date,
+                            'voucher_number' => $entry->voucher?->voucher_number ?? '',
+                            'particulars' => $entry->description ?: ($entry->voucher?->narration ?? ''),
+                            'receipts' => $entry->debit,
+                            'payments' => $entry->credit,
+                            'balance' => $entry->running_balance,
+                        ];
+                    })->values()->all()
+                    : [];
                 break;
 
             case 'profit-loss':
@@ -420,14 +454,14 @@ class ExportService
 
             case 'day-book':
                 $dayBook = $this->reportService->getDayBook($companyId, $filters['date'] ?? date('Y-m-d'));
-                $data = $dayBook['vouchers']->map(function ($voucher) {
+                $data = collect($dayBook['rows'])->map(function ($row) {
                     return [
-                        'voucher_number' => $voucher->voucher_number,
-                        'voucher_type' => ucfirst($voucher->voucher_type ?? '-'),
-                        'party' => $voucher->party?->name ?? '-',
-                        'narration' => $voucher->narration ?? '-',
-                        'debit' => $voucher->total_debit,
-                        'credit' => $voucher->total_credit,
+                        'voucher_number' => $row['voucher_number'],
+                        'voucher_type' => ucfirst($row['voucher_type'] ?? '-'),
+                        'particulars' => $row['account_name'] ?? '-',
+                        'narration' => $row['narration'] ?? '-',
+                        'debit' => $row['debit'],
+                        'credit' => $row['credit'],
                     ];
                 })->values()->all();
                 break;

@@ -93,7 +93,7 @@ $(document).ready(function() {
         columns: [
             { data: 'invoice_number' },
             { data: 'supplier_invoice_number' },
-            { data: 'invoice_date' },
+            istDateColumn('invoice_date'),
             { data: 'party', render: function(data) { return data ? data.name : '-'; }},
             { data: 'total', render: function(d) { return '₹' + parseFloat(d||0).toFixed(2); }},
             { data: 'amount_paid', render: function(d) { return '₹' + parseFloat(d||0).toFixed(2); }},

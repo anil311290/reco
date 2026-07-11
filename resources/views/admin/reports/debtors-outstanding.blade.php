@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'AR Aging')
+@section('title', 'Receivables Outstanding')
 
 @include('admin.reports._theme')
 
@@ -9,9 +9,9 @@
     <div class="report-hero">
         <div class="row g-4 align-items-center">
             <div class="col-lg-8">
-                <span class="report-eyebrow"><i class="bi bi-people"></i> Receivables Watch</span>
-                <h1 class="report-title">AR Aging</h1>
-                <p class="report-subtitle">Keep receivables visible with a clearer debtor list, sharper balance hierarchy, and quick summary metrics.</p>
+                <span class="report-eyebrow"><i class="bi bi-people"></i> Party Outstanding</span>
+                <h1 class="report-title">Receivables Outstanding</h1>
+                <p class="report-subtitle">Debtors with debit balances on their linked ledgers (Accounts Receivable).</p>
             </div>
             <div class="col-lg-4">
                 <div class="report-toolbar">
@@ -34,7 +34,7 @@
             <p class="report-stat-note">Open receivables from all debtors.</p>
         </div>
         <div class="report-stat report-stat--info">
-            <p class="report-stat-label">Total Debtors</p>
+            <p class="report-stat-label">Debtors Count</p>
             <h3 class="report-stat-value">{{ count($report['debtors']) }}</h3>
             <p class="report-stat-note">Customers with outstanding balances.</p>
         </div>
@@ -50,12 +50,11 @@
                 <thead>
                     <tr>
                         <th>#</th>
-                        <th>Party Name</th>
+                        <th>Party</th>
                         <th>Mobile</th>
                         <th>Email</th>
-                        <th class="text-end">Debit (₹)</th>
-                        <th class="text-end">Credit (₹)</th>
-                        <th class="text-end">Balance (₹)</th>
+                        <th class="text-end">Balance (₹) Dr</th>
+                        <th class="text-center">Ledger</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -65,19 +64,25 @@
                         <td class="fw-semibold">{{ $item['party']->name }}</td>
                         <td>{{ $item['party']->mobile ?? '-' }}</td>
                         <td>{{ $item['party']->email ?? '-' }}</td>
-                        <td class="text-end fw-semibold">₹{{ number_format($item['debit'], 2) }}</td>
-                        <td class="text-end fw-semibold">₹{{ number_format($item['credit'], 2) }}</td>
                         <td class="text-end fw-bold text-danger">₹{{ number_format($item['balance'], 2) }}</td>
+                        <td class="text-center">
+                            @if(!empty($item['account_id']))
+                                <a href="{{ route('admin.reports.ledger', ['account_id' => $item['account_id']]) }}" class="btn btn-sm btn-outline-primary">View</a>
+                            @else
+                                -
+                            @endif
+                        </td>
                     </tr>
                     @empty
-                    <tr><td colspan="7" class="text-muted text-center py-4">No outstanding debtors found</td></tr>
+                    <tr><td colspan="6" class="text-muted text-center py-4">No outstanding receivables</td></tr>
                     @endforelse
                 </tbody>
                 @if(count($report['debtors']) > 0)
                 <tfoot>
                     <tr>
-                        <td colspan="6">Total Outstanding</td>
+                        <td colspan="4">Total Outstanding</td>
                         <td class="text-end fw-bold">₹{{ number_format($report['total'], 2) }}</td>
+                        <td></td>
                     </tr>
                 </tfoot>
                 @endif

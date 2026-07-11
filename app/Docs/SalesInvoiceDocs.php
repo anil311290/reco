@@ -96,15 +96,34 @@ use OpenApi\Annotations as OA;
  *     @OA\Response(response=404, description="Not found", @OA\JsonContent(ref="#/components/schemas/ErrorResponse"))
  * )
  *
- * @OA\Post(
- *     path="/sales-invoices/{id}/generate-voucher",
- *     tags={"Sales Invoices", "Item Sales Invoices", "Service Sales Invoices"},
- *     summary="Generate voucher from sales invoice",
- *     operationId="generateSalesInvoiceVoucher",
+ * @OA\Put(
+ *     path="/sales-invoices/{id}",
+ *     tags={"Sales Invoices"},
+ *     summary="Update sales invoice",
+ *     operationId="updateSalesInvoice",
  *     security={{"bearerAuth":{}}},
  *     @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")),
- *     @OA\Response(response=200, description="Voucher generated", @OA\JsonContent(ref="#/components/schemas/SuccessResponse")),
- *     @OA\Response(response=404, description="Not found", @OA\JsonContent(ref="#/components/schemas/ErrorResponse"))
+ *     @OA\Response(response=200, description="Updated", @OA\JsonContent(ref="#/components/schemas/SuccessResponse"))
+ * )
+ *
+ * @OA\Delete(
+ *     path="/sales-invoices/{id}",
+ *     tags={"Sales Invoices"},
+ *     summary="Delete sales invoice",
+ *     operationId="deleteSalesInvoice",
+ *     security={{"bearerAuth":{}}},
+ *     @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")),
+ *     @OA\Response(response=200, description="Deleted", @OA\JsonContent(ref="#/components/schemas/SuccessResponse"))
+ * )
+ *
+ * @OA\Get(
+ *     path="/sales-invoices/{id}/pdf",
+ *     tags={"Sales Invoices"},
+ *     summary="Export sales invoice PDF",
+ *     operationId="exportSalesInvoicePdf",
+ *     security={{"bearerAuth":{}}},
+ *     @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")),
+ *     @OA\Response(response=200, description="PDF generated", @OA\JsonContent(ref="#/components/schemas/SuccessResponse"))
  * )
  */
 class SalesInvoiceDocs

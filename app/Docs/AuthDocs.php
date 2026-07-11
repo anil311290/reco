@@ -18,7 +18,12 @@ use OpenApi\Annotations as OA;
  *             required={"email", "password"},
  *             @OA\Property(property="email", type="string", format="email", example="superadmin@reco.app", description="User email address"),
  *             @OA\Property(property="password", type="string", format="password", minLength=6, example="12345678", description="User password"),
- *             @OA\Property(property="device_name", type="string", example="iPhone 14 Pro", description="Device name for token identification")
+ *             @OA\Property(property="device_id", type="string", example="android-abc123", description="Unique device identifier for sync tracking"),
+ *             @OA\Property(property="device_type", type="string", enum={"web","android","ios"}, example="android"),
+ *             @OA\Property(property="device_name", type="string", example="Samsung Galaxy S24"),
+ *             @OA\Property(property="device_os", type="string", example="Android 14"),
+ *             @OA\Property(property="fcm_token", type="string", description="Firebase push token"),
+ *             @OA\Property(property="push_token", type="string", description="Alternative push token")
  *         )
  *     ),
  *     @OA\Response(

@@ -19,7 +19,7 @@ class FinancialYearSeeder extends Seeder
             return;
         }
 
-        // Create current financial year (2025-2026)
+        // Keep only the current financial year needed for fresh seed data.
         FinancialYear::firstOrCreate(
             ['company_id' => $company->id, 'name' => '2025-2026'],
             [
@@ -27,18 +27,6 @@ class FinancialYearSeeder extends Seeder
                 'end_date' => '2026-03-31',
                 'is_current' => true,
                 'is_closed' => false,
-            ]
-        );
-
-        // Create previous financial year (2024-2025)
-        FinancialYear::firstOrCreate(
-            ['company_id' => $company->id, 'name' => '2024-2025'],
-            [
-                'start_date' => '2024-04-01',
-                'end_date' => '2025-03-31',
-                'is_current' => false,
-                'is_closed' => true,
-                'closed_at' => '2025-04-01',
             ]
         );
     }

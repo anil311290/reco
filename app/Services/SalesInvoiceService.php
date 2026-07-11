@@ -7,6 +7,7 @@ use App\Models\SalesInvoiceLine;
 use App\Models\Voucher;
 use App\Models\VoucherLine;
 use App\Models\Account;
+use App\Models\Setting;
 use App\Models\TaxRate;
 use App\Interfaces\SalesInvoiceRepositoryInterface;
 use App\Interfaces\AccountRepositoryInterface;
@@ -184,12 +185,9 @@ class SalesInvoiceService
     public function generateVoucher(SalesInvoice $invoice, ?int $accountId = null): ?Voucher
     {
         return DB::transaction(function () use ($invoice, $accountId) {
-            // Get default accounts
-            $salesAccounts = $this->accountRepository->getByType('income', $invoice->company_id);
-            $salesAccount = $accountId ? $salesAccounts->firstWhere('id', $accountId) : $salesAccounts->firstWhere('is_system', true) ?? $salesAccounts->first();
-
-            $assetAccounts = $this->accountRepository->getByType('asset', $invoice->company_id);
-            $debtorAccount = $assetAccounts->firstWhere('account_name', 'like', '%receivable%') ?? $assetAccounts->firstWhere('is_system', true);
+            // Resolve posting heads. Taxable value posts to Sales Revenue head, tax posts to Tax Ledger head.
+            $salesAccount = $this->resolveSalesIncomeAccount($invoice, $accountId);
+            $debtorAccount = $this->resolveDebtorAccount($invoice);
 
             if (!$salesAccount || !$debtorAccount) {
                 return null;
@@ -209,7 +207,14 @@ class SalesInvoiceService
                     continue;
                 }
 
-                $ledgerId = $this->resolveTaxLedgerId($line->taxRate, $invoice->company_id, 'sales');
+                $ledgerId = $this->resolveTaxLedgerId(
+                    $line->taxRate,
+                    $invoice->company_id,
+                    'sales',
+                    $invoice->financial_year_id,
+                    $invoice->created_by,
+                    $invoice->created_by_ip
+                );
 
                 if (!$ledgerId) {
                     throw new \Exception("Tax ledger account not configured for tax rate: {$line->taxRate->name}. Please configure tax posting accounts in settings.");
@@ -258,7 +263,7 @@ class SalesInvoiceService
                 'sales_invoice_id' => $invoice->id,
             ], $lines);
 
-            $invoice->update(['status' => 'posted']);
+            $invoice->update(['status' => 'sent']);
 
             return $voucher;
         });
@@ -385,7 +390,14 @@ class SalesInvoiceService
         return $prefix . '-' . str_pad($nextNumber, 6, '0', STR_PAD_LEFT);
     }
 
-    protected function resolveTaxLedgerId(TaxRate $taxRate, int $companyId, string $context): ?int
+    protected function resolveTaxLedgerId(
+        TaxRate $taxRate,
+        int $companyId,
+        string $context,
+        ?int $financialYearId = null,
+        ?int $createdBy = null,
+        ?string $createdByIp = null
+    ): ?int
     {
         $key = match ($taxRate->tax_category) {
             'GST', 'CGST', 'SGST', 'IGST' => $context === 'sales' ? 'sales_tax_ledger_id' : 'purchase_tax_ledger_id',
@@ -397,6 +409,208 @@ class SalesInvoiceService
 
         $ledgerId = $this->settingsService->get($key, null, $companyId);
 
-        return $ledgerId ? (int) $ledgerId : null;
+        if ($ledgerId) {
+            $account = Account::where('company_id', $companyId)->where('id', (int) $ledgerId)->first();
+            if ($account) {
+                return (int) $ledgerId;
+            }
+        }
+
+        $defaultTaxAccount = $this->ensureTaxPostingAccount(
+            $companyId,
+            $financialYearId,
+            $createdBy,
+            $createdByIp,
+            $context
+        );
+
+        Setting::setValue($key, (string) $defaultTaxAccount->id, $companyId, 'accounting');
+
+        return (int) $defaultTaxAccount->id;
+    }
+
+    protected function resolveSalesIncomeAccount(SalesInvoice $invoice, ?int $accountId = null): ?Account
+    {
+        if ($accountId) {
+            $explicit = Account::where('company_id', $invoice->company_id)
+                ->where('account_type', 'income')
+                ->where('id', $accountId)
+                ->first();
+
+            if ($explicit) {
+                return $explicit;
+            }
+        }
+
+        $byCode = $this->accountRepository->findByCode(
+            Account::CODE_AR_INCOME,
+            $invoice->company_id,
+            $invoice->financial_year_id
+        );
+
+        if ($byCode) {
+            return $byCode;
+        }
+
+        $fallback = $this->accountRepository->getByType('income', $invoice->company_id)
+            ->firstWhere('is_system', true)
+            ?? $this->accountRepository->getByType('income', $invoice->company_id)->first();
+
+        if ($fallback) {
+            return $fallback;
+        }
+
+        return $this->upsertSystemAccountByCode(
+            Account::CODE_AR_INCOME,
+            $invoice->company_id,
+            $invoice->financial_year_id,
+            'Sales Revenue (AR)',
+            'income',
+            'credit',
+            $invoice->created_by,
+            $invoice->created_by_ip,
+            'System income account for taxable sales posting.'
+        );
+    }
+
+    protected function resolveDebtorAccount(SalesInvoice $invoice): ?Account
+    {
+        $byCode = $this->accountRepository->findByCode(
+            Account::CODE_AR,
+            $invoice->company_id,
+            $invoice->financial_year_id
+        );
+
+        if ($byCode) {
+            return $byCode;
+        }
+
+        $assetFallback = $this->accountRepository->getByType('asset', $invoice->company_id)
+            ->firstWhere('is_system', true)
+            ?? $this->accountRepository->getByType('asset', $invoice->company_id)->first();
+
+        if ($assetFallback) {
+            return $assetFallback;
+        }
+
+        return $this->upsertSystemAccountByCode(
+            Account::CODE_AR,
+            $invoice->company_id,
+            $invoice->financial_year_id,
+            'Accounts Receivable',
+            'asset',
+            'debit',
+            $invoice->created_by,
+            $invoice->created_by_ip,
+            'System AR account for sales posting.'
+        );
+    }
+
+    protected function ensureTaxPostingAccount(
+        int $companyId,
+        ?int $financialYearId,
+        ?int $createdBy,
+        ?string $createdByIp,
+        string $context
+    ): Account {
+        $defaultName = $context === 'sales' ? 'Output Tax Payable' : 'Input Tax Credit';
+
+        $existing = Account::withTrashed()
+            ->where('company_id', $companyId)
+            ->where('account_type', 'liability')
+            ->where('account_name', $defaultName)
+            ->first();
+
+        if ($existing) {
+            if ($existing->trashed()) {
+                $existing->restore();
+            }
+
+            $existing->update([
+                'is_active' => true,
+                'entry_source' => 'system',
+                'updated_by' => $createdBy,
+                'updated_by_ip' => $createdByIp,
+            ]);
+
+            return $existing;
+        }
+
+        return Account::create([
+            'uuid' => (string) Str::uuid(),
+            'company_id' => $companyId,
+            'financial_year_id' => $financialYearId,
+            'account_code' => Account::generateCode('liability', $companyId),
+            'account_name' => $defaultName,
+            'account_type' => 'liability',
+            'entry_source' => 'system',
+            'opening_balance' => 0,
+            'balance_type' => 'credit',
+            'opening_date' => now()->toDateString(),
+            'remarks' => 'System tax posting account.',
+            'is_active' => true,
+            'is_system' => false,
+            'created_by' => $createdBy,
+            'updated_by' => $createdBy,
+            'created_by_ip' => $createdByIp,
+            'updated_by_ip' => $createdByIp,
+        ]);
+    }
+
+    protected function upsertSystemAccountByCode(
+        string $code,
+        int $companyId,
+        ?int $financialYearId,
+        string $name,
+        string $type,
+        string $balanceType,
+        ?int $createdBy,
+        ?string $createdByIp,
+        string $remarks
+    ): Account {
+        $existing = Account::withTrashed()
+            ->where('company_id', $companyId)
+            ->where('account_code', $code)
+            ->first();
+
+        if ($existing) {
+            if ($existing->trashed()) {
+                $existing->restore();
+            }
+
+            $existing->update([
+                'financial_year_id' => $existing->financial_year_id ?: $financialYearId,
+                'account_name' => $name,
+                'account_type' => $type,
+                'entry_source' => 'system',
+                'balance_type' => $balanceType,
+                'remarks' => $remarks,
+                'is_active' => true,
+                'updated_by' => $createdBy,
+                'updated_by_ip' => $createdByIp,
+            ]);
+
+            return $existing;
+        }
+
+        return Account::create([
+            'uuid' => (string) Str::uuid(),
+            'company_id' => $companyId,
+            'financial_year_id' => $financialYearId,
+            'account_code' => $code,
+            'account_name' => $name,
+            'account_type' => $type,
+            'entry_source' => 'system',
+            'opening_balance' => 0,
+            'balance_type' => $balanceType,
+            'opening_date' => now()->toDateString(),
+            'remarks' => $remarks,
+            'is_active' => true,
+            'is_system' => true,
+            'created_by' => $createdBy,
+            'updated_by' => $createdBy,
+            'created_by_ip' => $createdByIp,
+            'updated_by_ip' => $createdByIp,
+        ]);
     }
 }

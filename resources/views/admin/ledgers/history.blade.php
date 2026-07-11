@@ -35,7 +35,7 @@
                 <tbody>
                     @forelse($history as $item)
                     <tr>
-                        <td>{{ $item->created_at->format('Y-m-d H:i') }}</td>
+                        <td>@istDateTime($item->created_at)</td>
                         <td>{{ $item->party->name ?? 'N/A' }}</td>
                         <td>{{ $item->reference_type }} #{{ $item->reference_id }}</td>
                         <td>{{ $item->notes ?? '-' }}</td>

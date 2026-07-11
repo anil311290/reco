@@ -95,6 +95,56 @@ class ItemApiController extends Controller
     }
 
     /**
+     * Delete item.
+     */
+    public function destroy(int $id): JsonResponse
+    {
+        $item = $this->itemService->getById($id);
+
+        if (!$item || $item->company_id !== request()->user()->company_id) {
+            return ResponseHelper::notFound('Item not found');
+        }
+
+        try {
+            $this->itemService->delete($id);
+
+            return ResponseHelper::success(null, 'Item deleted successfully');
+        } catch (\Exception $e) {
+            return ResponseHelper::error($e->getMessage());
+        }
+    }
+
+    /**
+     * Toggle item status.
+     */
+    public function status(int $id): JsonResponse
+    {
+        $item = $this->itemService->getById($id);
+
+        if (!$item || $item->company_id !== request()->user()->company_id) {
+            return ResponseHelper::notFound('Item not found');
+        }
+
+        try {
+            $item = $this->itemService->toggleStatus($id);
+
+            return ResponseHelper::success(new ItemResource($item), 'Status updated successfully');
+        } catch (\Exception $e) {
+            return ResponseHelper::error($e->getMessage());
+        }
+    }
+
+    /**
+     * Get items for dropdown.
+     */
+    public function dropdown(Request $request): JsonResponse
+    {
+        $companyId = $request->user()->company_id;
+
+        return ResponseHelper::success($this->itemService->getAll($companyId));
+    }
+
+    /**
      * Get low stock items.
      */
     public function lowStock(Request $request): JsonResponse

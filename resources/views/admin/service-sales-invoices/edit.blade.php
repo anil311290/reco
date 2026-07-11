@@ -37,8 +37,13 @@
                             <input type="date" class="form-control" name="due_date" value="{{ $invoice->due_date->format('Y-m-d') }}" required>
                         </div>
                         <div class="col-md-6">
-                            <label class="form-label">Customer <span class="text-danger">*</span></label>
-                            <select class="form-select" name="party_id" required>
+                            <div class="d-flex justify-content-between align-items-center mb-1">
+                                <label class="form-label mb-0">Customer <span class="text-danger">*</span></label>
+                                @permission('parties.create')
+                                <button type="button" class="btn btn-link btn-sm p-0 quick-add-party-btn" data-party-quick-add-target="#party_id" data-party-quick-add-type="debtor">Quick Add</button>
+                                @endpermission
+                            </div>
+                            <select class="form-select" name="party_id" id="party_id" required>
                                 <option value="">Select Customer</option>
                                 @foreach($parties as $party)
                                 <option value="{{ $party->id }}" {{ $invoice->party_id == $party->id ? 'selected' : '' }}>{{ $party->name }}</option>
@@ -76,7 +81,7 @@
                                 <tr>
                                     <th style="width:40%">Service Account / Description</th>
                                     <th style="width:15%">Amount</th>
-                                    <th style="width:20%; min-width:160px;">Tax</th>
+                                    <th style="width:20%;">Tax</th>
                                     <th style="width:15%">Total</th>
                                     <th style="width:5%"></th>
                                 </tr>
@@ -206,6 +211,15 @@ $(document).on('change input', '#invoiceForm .is-invalid', function() {
     $(this).removeClass('is-invalid');
     $(this).nextAll('.invalid-feedback').first().remove();
 });
+
+$('#addServiceLine').on('click', function() {
+    let row = `<tr class="service-line-row">
+        <td>
+            <select class="form-select form-select-sm service-account-select" name="service_lines[${serviceLineIndex}][account_id]">
+                <option value="">Select Service Account</option>
+                @foreach($serviceAccounts as $account)
+                <option value="{{ $account['id'] }}">{{ $account['text'] }}</option>
+                @endforeach
             </select>
             <input type="text" class="form-control form-control-sm mt-1" name="service_lines[${serviceLineIndex}][description]" placeholder="Description">
         </td>
@@ -221,6 +235,7 @@ $(document).on('change input', '#invoiceForm .is-invalid', function() {
         <td><input type="text" class="form-control form-control-sm service-line-total" readonly></td>
         <td><button type="button" class="btn btn-sm btn-outline-danger remove-service-line"><i class="bi bi-trash"></i></button></td>
     </tr>`;
+
     $('#serviceLinesBody').append(row);
     serviceLineIndex++;
 });
@@ -278,6 +293,9 @@ function calculateTotals() {
     $('#taxAmount').text('₹' + totalTax.toFixed(2));
     $('#totalAmount').text('₹' + total.toFixed(2));
 }
+
+// Initialize summary on load for existing rows
+calculateTotals();
 
 ajaxFormSubmit('#invoiceForm', '{{ route("admin.service-sales-invoices.update", $invoice->id) }}', 'POST', '{{ route("admin.service-sales-invoices.show", $invoice->id) }}');
 </script>

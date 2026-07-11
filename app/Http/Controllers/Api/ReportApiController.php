@@ -89,6 +89,42 @@ class ReportApiController extends Controller
     }
 
     /**
+     * Cash Book
+     */
+    public function cashBook(Request $request): JsonResponse
+    {
+        $companyId = $request->user()->company_id;
+        $report = $this->reportService->getCashBankBook(
+            $companyId,
+            'cash',
+            $request->filled('account_id') ? (int) $request->account_id : null,
+            $request->date_from,
+            $request->date_to,
+            $request->financial_year_id
+        );
+
+        return ResponseHelper::success($report);
+    }
+
+    /**
+     * Bank Book
+     */
+    public function bankBook(Request $request): JsonResponse
+    {
+        $companyId = $request->user()->company_id;
+        $report = $this->reportService->getCashBankBook(
+            $companyId,
+            'bank',
+            $request->filled('account_id') ? (int) $request->account_id : null,
+            $request->date_from,
+            $request->date_to,
+            $request->financial_year_id
+        );
+
+        return ResponseHelper::success($report);
+    }
+
+    /**
      * Get Ledger report
      */
     public function ledger(Request $request): JsonResponse

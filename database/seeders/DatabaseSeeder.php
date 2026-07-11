@@ -15,7 +15,12 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
-        // Create default company
+        if (app()->environment('local')) {
+            $this->call([
+                OldDataCleanupSeeder::class,
+            ]);
+        }
+
         $company = Company::firstOrCreate(
             ['slug' => 'ledgerpro-demo'],
             [
@@ -38,7 +43,6 @@ class DatabaseSeeder extends Seeder
             ]
         );
 
-        // Create admin user
         $admin = User::firstOrCreate(
             ['email' => 'superadmin@reco.app'],
             [
@@ -46,7 +50,7 @@ class DatabaseSeeder extends Seeder
                 'password' => Hash::make('12345678'),
                 'company_id' => $company->id,
                 'phone' => '+91 9876543210',
-            'role' => 'admin',
+                'role' => 'admin',
                 'status' => 'active',
                 'email_verified_at' => now(),
                 'created_by_ip' => '127.0.0.1',
@@ -54,15 +58,13 @@ class DatabaseSeeder extends Seeder
             ]
         );
 
-        // Update company with admin as creator
         $company->update([
             'created_by' => $admin->id,
             'updated_by' => $admin->id,
         ]);
 
-        // Create manager user
         User::firstOrCreate(
-            ['email' => 'manager@ledgerpro.com'],
+            ['email' => 'manager@gmail.com'],
             [
                 'name' => 'Manager User',
                 'password' => Hash::make('12345678'),
@@ -77,8 +79,9 @@ class DatabaseSeeder extends Seeder
                 'updated_by_ip' => '127.0.0.1',
             ]
         );
+
         User::firstOrCreate(
-            ['email' => 'accountant@ledgerpro.com'],
+            ['email' => 'accountant@gmail.com'],
             [
                 'name' => 'Accountant User',
                 'password' => Hash::make('12345678'),
@@ -94,22 +97,16 @@ class DatabaseSeeder extends Seeder
             ]
         );
 
-        // Run additional seeders
         $this->call([
             PermissionSeeder::class,
             RoleSeeder::class,
             SubscriptionPlanSeeder::class,
-            PricingDisplaySeeder::class,
             ThemeSeeder::class,
             LocationSeeder::class,
             FinancialYearSeeder::class,
             AccountSeeder::class,
             TaxRateSeeder::class,
             PartySeeder::class,
-            VoucherSeeder::class,
-            WebsitePageSeeder::class,
-            FaqSeeder::class,
-            TestimonialSeeder::class,
         ]);
 
         $roleAssignments = [

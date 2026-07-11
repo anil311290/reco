@@ -48,16 +48,7 @@ $(function () {
         { data: 'subject', name: 'subject', defaultContent: '-' },
         { data: 'status_badge', name: 'status', orderable: false, searchable: false },
         { data: 'created_at', name: 'created_at', render: function(data) {
-            if (!data) {
-                return '-';
-            }
-
-            const parsed = new Date(data);
-            if (isNaN(parsed.getTime())) {
-                return data;
-            }
-
-            return parsed.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+            return formatDateTimeIst(data);
         }},
         { data: 'actions', name: 'actions', orderable: false, searchable: false, className: 'text-end' }
     ], {

@@ -2,7 +2,6 @@
 
 namespace App\Models;
 
-use App\Traits\HasAuditFields;
 use App\Traits\HasUuid;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -10,7 +9,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class Notification extends Model
 {
-    use HasFactory, HasAuditFields, HasUuid;
+    use HasFactory, HasUuid;
 
     protected $fillable = [
         'uuid',
@@ -40,8 +39,6 @@ class Notification extends Model
         'data' => 'array',
     ];
 
-    // ── Relationships ─────────────────────────────────────────
-
     public function company(): BelongsTo
     {
         return $this->belongsTo(Company::class);
@@ -51,8 +48,6 @@ class Notification extends Model
     {
         return $this->belongsTo(User::class);
     }
-
-    // ── Scopes ────────────────────────────────────────────────
 
     public function scopeUnread($query)
     {
@@ -69,35 +64,10 @@ class Notification extends Model
         return $query->where('company_id', $companyId);
     }
 
-    public function scopeByType($query, string $type)
-    {
-        return $query->where('type', $type);
-    }
-
-    public function scopeByPriority($query, string $priority)
-    {
-        return $query->where('priority', $priority);
-    }
-
-    public function scopeRecent($query, int $days = 7)
-    {
-        return $query->where('created_at', '>=', now()->subDays($days));
-    }
-
-    // ── Methods ───────────────────────────────────────────────
-
     public function markAsRead(): void
     {
         if (!$this->is_read) {
             $this->update(['is_read' => true, 'read_at' => now()]);
         }
-    }
-
-    public function getDeepLink(): ?string
-    {
-        if ($this->link_module && $this->link_id) {
-            return route("admin.{$this->link_module}.show", $this->link_id);
-        }
-        return null;
     }
 }

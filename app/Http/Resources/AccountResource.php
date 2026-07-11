@@ -20,6 +20,8 @@ class AccountResource extends JsonResource
             'account_name' => $this->account_name,
             'account_type' => $this->account_type,
             'type_label' => $this->type_label,
+            'transaction_mode' => $this->transaction_mode,
+            'transaction_mode_label' => $this->transaction_mode_label,
             'opening_balance' => $this->opening_balance,
             'opening_date' => $this->opening_date?->toISOString(),
             'remarks' => $this->remarks,

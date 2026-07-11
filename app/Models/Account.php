@@ -2,6 +2,8 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\FormatsHumanReadableDates;
+
 use App\Traits\HasAuditFields;
 use App\Traits\HasUuid;
 use App\Traits\HasVersioning;
@@ -12,7 +14,7 @@ use Illuminate\Support\Facades\Schema;
 
 class Account extends Model
 {
-    use HasFactory, HasAuditFields, HasUuid, HasVersioning, SoftDeletes;
+    use FormatsHumanReadableDates, HasFactory, HasAuditFields, HasUuid, HasVersioning, SoftDeletes;
 
     protected $fillable = [
         'uuid',
@@ -21,6 +23,8 @@ class Account extends Model
         'account_code',
         'account_name',
         'account_type',
+        'entry_source',
+        'transaction_mode',
         'opening_balance',
         'balance_type',
         'opening_date',
@@ -137,6 +141,19 @@ class Account extends Model
     }
 
     /**
+     * Get transaction mode label.
+     */
+    public function getTransactionModeLabelAttribute(): string
+    {
+        return match($this->transaction_mode) {
+            'cash' => 'Cash',
+            'bank' => 'Bank',
+            'od' => 'OD',
+            default => '-',
+        };
+    }
+
+    /**
      * Check if account has children (no parent-child hierarchy in current schema)
      */
     public function hasChildren(): bool
@@ -196,7 +213,8 @@ class Account extends Model
     {
         $range = self::CODE_RANGES[$type] ?? ['start' => 2501, 'end' => 9999];
 
-        $query = static::where('company_id', $companyId)
+        $query = static::withTrashed()
+            ->where('company_id', $companyId)
             ->whereRaw("CAST(account_code AS UNSIGNED) BETWEEN ? AND ?", [$range['start'], $range['end']]);
 
         if (Schema::getConnection()->getDriverName() === 'mysql') {

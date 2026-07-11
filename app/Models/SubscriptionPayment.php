@@ -2,14 +2,15 @@
 
 namespace App\Models;
 
-use App\Traits\HasAuditFields;
+use App\Models\Concerns\FormatsHumanReadableDates;
+
 use App\Traits\HasUuid;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class SubscriptionPayment extends Model
 {
-    use HasFactory, HasAuditFields, HasUuid;
+    use FormatsHumanReadableDates, HasFactory, HasUuid;
 
     protected $fillable = [
         'uuid',

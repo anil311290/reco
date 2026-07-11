@@ -2,13 +2,15 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\FormatsHumanReadableDates;
+
 use App\Traits\HasUuid;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class PurchaseInvoiceLine extends Model
 {
-    use HasFactory, HasUuid;
+    use FormatsHumanReadableDates, HasFactory, HasUuid;
 
     protected $fillable = [
         'uuid',

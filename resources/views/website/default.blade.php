@@ -40,7 +40,7 @@
                             ['icon' => 'bi-journal-bookmark', 'title' => 'Journal Vouchers', 'desc' => 'Create journal entries for adjustments, transfers, and complex transactions.', 'color' => 'warning'],
                             ['icon' => 'bi-people-fill', 'title' => 'Party Management', 'desc' => 'Manage debtors and creditors with detailed profiles, credit limits, and outstanding tracking.', 'color' => 'primary'],
                             ['icon' => 'bi-bank2', 'title' => 'Bank Reconciliation', 'desc' => 'Track multiple bank accounts with reconciliation and balance statements.', 'color' => 'info'],
-                            ['icon' => 'bi-file-earmark-bar-graph', 'title' => 'Financial Reports', 'desc' => 'Generate Balance Sheet, Profit & Loss, Trial Balance, Cash Flow, and Day Book reports.', 'color' => 'success'],
+                            ['icon' => 'bi-file-earmark-bar-graph', 'title' => 'Financial Reports', 'desc' => 'Generate Balance Sheet, Profit & Loss, Trial Balance, Cash Book, and Day Book reports.', 'color' => 'success'],
                             ['icon' => 'bi-clock-history', 'title' => 'Aging Reports', 'desc' => 'Track receivables and payables aging to manage cash flow effectively.', 'color' => 'warning'],
                             ['icon' => 'bi-cloud-arrow-down', 'title' => 'Offline-First', 'desc' => 'Work without internet connectivity. Data syncs automatically when connection is restored.', 'color' => 'primary'],
                             ['icon' => 'bi-shield-lock', 'title' => 'Role-Based Access', 'desc' => 'Control who can view, create, edit, or delete with granular permission settings.', 'color' => 'info'],

@@ -7,6 +7,7 @@ use App\Http\Requests\Api\LoginRequest;
 use App\Http\Requests\Api\RegisterRequest;
 use App\Http\Resources\UserResource;
 use App\Services\AuthService;
+use App\Services\LoginHistoryService;
 use App\Helpers\ResponseHelper;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -14,10 +15,12 @@ use Illuminate\Http\Request;
 class AuthController extends Controller
 {
     protected AuthService $authService;
+    protected LoginHistoryService $loginHistoryService;
 
-    public function __construct(AuthService $authService)
+    public function __construct(AuthService $authService, LoginHistoryService $loginHistoryService)
     {
         $this->authService = $authService;
+        $this->loginHistoryService = $loginHistoryService;
     }
 
     /**
@@ -26,7 +29,25 @@ class AuthController extends Controller
     public function login(LoginRequest $request): JsonResponse
     {
         try {
-            $result = $this->authService->login($request->validated());
+            $validated = $request->validated();
+            $result = $this->authService->login($validated);
+
+            if (!empty($validated['device_id']) && $result['user']->company_id) {
+                $this->loginHistoryService->registerDevice(
+                    $result['user']->id,
+                    $result['user']->company_id,
+                    [
+                        'device_id' => $validated['device_id'],
+                        'device_type' => $validated['device_type'] ?? 'android',
+                        'device_name' => $validated['device_name'] ?? null,
+                        'device_os' => $validated['device_os'] ?? null,
+                        'fcm_token' => $validated['fcm_token'] ?? null,
+                        'push_token' => $validated['push_token'] ?? null,
+                        'created_by_ip' => $request->ip(),
+                        'updated_by_ip' => $request->ip(),
+                    ]
+                );
+            }
 
             return ResponseHelper::success([
                 'user' => new UserResource($result['user']),

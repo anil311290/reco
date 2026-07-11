@@ -61,19 +61,19 @@
     <div class="container">
         <div class="header">
             <h1>Voucher</h1>
-            <div class="muted">{{ $voucher->voucher_number ?? 'N/A' }}</div>
+            <div class="muted">{{ optional($voucher)->voucher_number ?? 'N/A' }}</div>
         </div>
 
         <table class="meta">
             <tr>
-                <td><strong>Company</strong><br>{{ $voucher->company->name ?? '-' }}</td>
-                <td><strong>Date</strong><br>{{ optional($voucher->voucher_date)->format('d/m/Y') }}</td>
-                <td><strong>Type</strong><br>{{ ucfirst($voucher->voucher_type ?? '-') }}</td>
+                <td><strong>Company</strong><br>{{ optional($voucher->company)->name ?? '-' }}</td>
+                <td><strong>Date</strong><br>@istDate(optional($voucher)->voucher_date)</td>
+                <td><strong>Type</strong><br>{{ ucfirst(optional($voucher)->voucher_type ?? '-') }}</td>
             </tr>
             <tr>
-                <td><strong>Party</strong><br>{{ $voucher->party->name ?? '-' }}</td>
-                <td><strong>Status</strong><br>{{ ucfirst($voucher->status ?? '-') }}</td>
-                <td><strong>Narration</strong><br>{{ $voucher->narration ?: '-' }}</td>
+                <td><strong>Party</strong><br>{{ optional($voucher->party)->name ?? '-' }}</td>
+                <td><strong>Status</strong><br>{{ ucfirst(optional($voucher)->status ?? '-') }}</td>
+                <td><strong>Narration</strong><br>{{ optional($voucher)->narration ?: '-' }}</td>
             </tr>
         </table>
 
@@ -87,7 +87,7 @@
                 </tr>
             </thead>
             <tbody>
-                @forelse($voucher->lines as $line)
+                @forelse(optional($voucher)->lines ?? [] as $line)
                     <tr>
                         <td>{{ $line->account->account_name ?? '-' }}</td>
                         <td class="text-right">{{ number_format((float) $line->debit, 2) }}</td>
@@ -103,15 +103,15 @@
             <tfoot>
                 <tr>
                     <th class="text-right">Totals</th>
-                    <th class="text-right">{{ number_format((float) ($voucher->total_debit ?? 0), 2) }}</th>
-                    <th class="text-right">{{ number_format((float) ($voucher->total_credit ?? 0), 2) }}</th>
+                    <th class="text-right">{{ number_format((float) (optional($voucher)->total_debit ?? 0), 2) }}</th>
+                    <th class="text-right">{{ number_format((float) (optional($voucher)->total_credit ?? 0), 2) }}</th>
                     <th></th>
                 </tr>
             </tfoot>
         </table>
 
         <div class="footer-note">
-            <strong>Remarks:</strong> {{ $voucher->remarks ?: '-' }}
+            <strong>Remarks:</strong> {{ optional($voucher)->remarks ?: '-' }}
         </div>
     </div>
 </body>

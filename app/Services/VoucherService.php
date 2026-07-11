@@ -16,15 +16,18 @@ class VoucherService
     protected VoucherRepositoryInterface $voucherRepository;
     protected VoucherLineRepositoryInterface $voucherLineRepository;
     protected LedgerService $ledgerService;
+    protected JournalEntryService $journalEntryService;
 
     public function __construct(
         VoucherRepositoryInterface $voucherRepository,
         VoucherLineRepositoryInterface $voucherLineRepository,
-        LedgerService $ledgerService
+        LedgerService $ledgerService,
+        JournalEntryService $journalEntryService
     ) {
         $this->voucherRepository = $voucherRepository;
         $this->voucherLineRepository = $voucherLineRepository;
         $this->ledgerService = $ledgerService;
+        $this->journalEntryService = $journalEntryService;
     }
     /**
      * Get all vouchers with filters
@@ -136,21 +139,41 @@ class VoucherService
             $data['total_debit'] = $totalDebit;
             $data['total_credit'] = $totalCredit;
 
+            $lines = $data['lines'] ?? [];
+            unset(
+                $data['lines'],
+                $data['payment_rows'],
+                $data['adjustment_rows'],
+                $data['payment_mode'],
+                $data['cash_bank_account_id']
+            );
+
+            // Payment / Receipt / Adjustment: CA style — post immediately so
+            // ledger + journal_entries are available for reports.
+            if (empty($data['status']) && in_array($data['voucher_type'] ?? '', ['payment', 'receipt', 'journal', 'adjustment'], true)) {
+                $data['status'] = 'posted';
+            }
+
             // Create voucher
             $voucher = $this->voucherRepository->create($data);
 
             // Create voucher lines
-            if (isset($data['lines'])) {
-                foreach ($data['lines'] as $lineData) {
-                    $lineData['voucher_id'] = $voucher->id;
-                    $lineData['created_by'] = $data['created_by'] ?? auth('sanctum')->user()?->id;
-                    $this->voucherLineRepository->create($lineData);
-                }
+            foreach ($lines as $lineData) {
+                $lineData['voucher_id'] = $voucher->id;
+                $lineData['created_by'] = $data['created_by'] ?? auth('sanctum')->user()?->id;
+                $this->voucherLineRepository->create($lineData);
+            }
+
+            $voucher = $voucher->load(['party', 'lines.account']);
+
+            if ($voucher->status === 'posted') {
+                $this->ledgerService->generateForVoucher($voucher);
+                $this->journalEntryService->syncFromVoucher($voucher);
             }
 
             DB::commit();
 
-            return $voucher->load(['party', 'lines.account']);
+            return $voucher->fresh(['party', 'lines.account']);
         } catch (\Exception $e) {
             DB::rollBack();
             throw $e;
@@ -201,6 +224,13 @@ class VoucherService
                 unset($data['lines']);
             }
 
+            unset(
+                $data['payment_rows'],
+                $data['adjustment_rows'],
+                $data['payment_mode'],
+                $data['cash_bank_account_id']
+            );
+
             $this->voucherRepository->update($voucher->id, $data);
 
             DB::commit();
@@ -244,10 +274,12 @@ class VoucherService
 
         $result = $voucher->post();
 
-        // Generate ledger entries when voucher is posted
+        // Generate ledger + journal entries when voucher is posted
         if ($result) {
             $voucher->refresh();
+            $voucher->load(['party', 'lines.account']);
             $this->ledgerService->generateForVoucher($voucher);
+            $this->journalEntryService->syncFromVoucher($voucher);
         }
 
         return $result;
@@ -264,7 +296,15 @@ class VoucherService
             return false;
         }
 
-        return $voucher->cancel();
+        $result = $voucher->cancel();
+
+        if ($result) {
+            $voucher->refresh();
+            $this->ledgerService->deleteEntriesByReference('voucher', $voucher->id);
+            $this->journalEntryService->cancelForVoucher($voucher);
+        }
+
+        return $result;
     }
 
     /**
@@ -330,6 +370,7 @@ class VoucherService
 
             // Generate ledger entries
             $this->ledgerService->generateForVoucher($voucher);
+            $this->journalEntryService->syncFromVoucher($voucher, 'sales_invoice', 'sales');
 
             return $voucher;
         });
@@ -371,6 +412,7 @@ class VoucherService
 
             // Generate ledger entries
             $this->ledgerService->generateForVoucher($voucher);
+            $this->journalEntryService->syncFromVoucher($voucher, 'purchase_invoice', 'purchase');
 
             return $voucher;
         });

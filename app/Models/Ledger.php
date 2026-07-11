@@ -2,6 +2,8 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\FormatsHumanReadableDates;
+
 use App\Traits\HasUuid;
 use App\Traits\HasVersioning;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -9,7 +11,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class Ledger extends Model
 {
-    use HasFactory, HasUuid, HasVersioning;
+    use FormatsHumanReadableDates, HasFactory, HasUuid, HasVersioning;
 
     protected static function booted(): void
     {

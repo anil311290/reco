@@ -9,9 +9,9 @@
     <div class="report-hero">
         <div class="row g-4 align-items-center">
             <div class="col-lg-8">
-                <span class="report-eyebrow"><i class="bi bi-calendar-day"></i> Daily Activity</span>
+                <span class="report-eyebrow"><i class="bi bi-calendar-day"></i> Books of Accounts</span>
                 <h1 class="report-title">Day Book</h1>
-                <p class="report-subtitle">Scan voucher activity for any selected date with quick totals and a cleaner transaction layout.</p>
+                <p class="report-subtitle">All posted voucher lines for the selected date — Tally-style daily book with particulars.</p>
             </div>
             <div class="col-lg-4">
                 <div class="report-toolbar">
@@ -48,21 +48,26 @@
             <p class="report-stat-note">Selected day for voucher activity.</p>
         </div>
         <div class="report-stat report-stat--primary">
-            <p class="report-stat-label">Voucher Count</p>
+            <p class="report-stat-label">Vouchers</p>
             <h3 class="report-stat-value">{{ $report['vouchers']->count() }}</h3>
-            <p class="report-stat-note">Transactions recorded for the selected day.</p>
+            <p class="report-stat-note">Posted vouchers for the day.</p>
         </div>
         <div class="report-stat report-stat--success">
-            <p class="report-stat-label">Daily Total</p>
+            <p class="report-stat-label">Total Debit</p>
             <h3 class="report-stat-value">₹{{ number_format($report['total_debit'], 2) }}</h3>
-            <p class="report-stat-note">Debit and credit totals for the day.</p>
+            <p class="report-stat-note">Must equal Total Credit.</p>
+        </div>
+        <div class="report-stat report-stat--warning">
+            <p class="report-stat-label">Total Credit</p>
+            <h3 class="report-stat-value">₹{{ number_format($report['total_credit'], 2) }}</h3>
+            <p class="report-stat-note">Must equal Total Debit.</p>
         </div>
     </div>
 
     <div class="report-panel">
         <div class="report-panel-header">
-            <h6 class="report-panel-title"><i class="bi bi-clock-history text-primary"></i>Transactions</h6>
-            <span class="report-pill report-pill--info">{{ $report['vouchers']->count() }} vouchers</span>
+            <h6 class="report-panel-title"><i class="bi bi-clock-history text-primary"></i>Day Book Entries</h6>
+            <span class="report-pill report-pill--info">{{ count($report['rows']) }} lines</span>
         </div>
         <div class="report-panel-body report-panel-body--flush">
             <table class="table report-table table-hover mb-0">
@@ -70,27 +75,27 @@
                     <tr>
                         <th>Voucher #</th>
                         <th>Type</th>
-                        <th>Party</th>
+                        <th>Particulars</th>
                         <th>Narration</th>
                         <th class="text-end">Debit (₹)</th>
                         <th class="text-end">Credit (₹)</th>
                     </tr>
                 </thead>
                 <tbody>
-                    @forelse($report['vouchers'] as $voucher)
+                    @forelse($report['rows'] as $row)
                     <tr>
-                        <td class="fw-semibold">{{ $voucher->voucher_number }}</td>
-                        <td><span class="report-pill report-pill--info">{{ ucfirst($voucher->voucher_type) }}</span></td>
-                        <td>{{ $voucher->party->name ?? '-' }}</td>
-                        <td class="text-muted small">{{ Str::limit($voucher->narration, 50) }}</td>
-                        <td class="text-end fw-semibold">{{ $voucher->total_debit > 0 ? '₹' . number_format($voucher->total_debit, 2) : '-' }}</td>
-                        <td class="text-end fw-semibold">{{ $voucher->total_credit > 0 ? '₹' . number_format($voucher->total_credit, 2) : '-' }}</td>
+                        <td class="fw-semibold">{{ $row['voucher_number'] }}</td>
+                        <td><span class="report-pill report-pill--info">{{ ucfirst($row['voucher_type']) }}</span></td>
+                        <td>{{ $row['account_name'] }}</td>
+                        <td class="text-muted small">{{ Str::limit($row['narration'] ?? ($row['party_name'] ?? '-'), 60) }}</td>
+                        <td class="text-end fw-semibold">{{ $row['debit'] > 0 ? '₹' . number_format($row['debit'], 2) : '-' }}</td>
+                        <td class="text-end fw-semibold">{{ $row['credit'] > 0 ? '₹' . number_format($row['credit'], 2) : '-' }}</td>
                     </tr>
                     @empty
-                    <tr><td colspan="6" class="text-muted text-center py-4">No transactions found for {{ $date }}</td></tr>
+                    <tr><td colspan="6" class="text-muted text-center py-4">No posted transactions found for {{ $date }}</td></tr>
                     @endforelse
                 </tbody>
-                @if($report['vouchers']->count() > 0)
+                @if(count($report['rows']) > 0)
                 <tfoot>
                     <tr>
                         <td colspan="4">Total</td>

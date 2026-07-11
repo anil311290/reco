@@ -2,6 +2,8 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\FormatsHumanReadableDates;
+
 use Illuminate\Database\Eloquent\Model;
 
 class LoginHistory extends Model

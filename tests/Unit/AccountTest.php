@@ -37,6 +37,7 @@ class AccountTest extends TestCase
             'company_id' => $this->company->id,
             'account_name' => 'Cash',
             'account_type' => 'asset',
+            'transaction_mode' => 'cash',
         ];
 
         $account = $this->accountService->create($accountData);
@@ -53,41 +54,57 @@ class AccountTest extends TestCase
             'company_id' => $this->company->id,
             'account_name' => 'Bank Account',
             'account_type' => 'asset',
+            'transaction_mode' => 'bank',
         ]);
 
-        $this->assertStringStartsWith('AST', $account->account_code);
+        // Numeric chart-of-accounts range (asset starts at 1000)
+        $this->assertMatchesRegularExpression('/^\d{4}$/', (string) $account->account_code);
+        $this->assertGreaterThanOrEqual(1000, (int) $account->account_code);
+        $this->assertLessThan(2000, (int) $account->account_code);
     }
 
-    public function test_can_create_account_with_parent(): void
+    public function test_can_create_account_with_transaction_mode(): void
     {
-        $parent = Account::factory()->create([
+        $account = $this->accountService->create([
             'company_id' => $this->company->id,
+            'account_name' => 'Cash in Hand',
             'account_type' => 'asset',
+            'transaction_mode' => 'cash',
         ]);
 
-        $child = $this->accountService->create([
-            'company_id' => $this->company->id,
-            'account_name' => 'Savings Account',
-            'account_type' => 'asset',
-            'parent_id' => $parent->id,
-        ]);
-
-        $this->assertEquals($parent->id, $child->parent_id);
-        $this->assertTrue($parent->fresh()->hasChildren());
+        $this->assertEquals('cash', $account->transaction_mode);
+        $this->assertEquals('Cash in Hand', $account->account_name);
     }
 
-    public function test_can_update_account(): void
+    public function test_can_update_account_status_and_remarks(): void
     {
         $account = Account::factory()->create([
             'company_id' => $this->company->id,
+            'account_name' => 'Cash',
+            'remarks' => 'Old',
         ]);
 
         $updated = $this->accountService->update($account->id, [
-            'account_name' => 'Updated Account',
+            'account_name' => 'Should Stay Immutable',
+            'remarks' => 'Updated remarks',
         ]);
 
         $this->assertTrue($updated);
-        $this->assertEquals('Updated Account', $account->fresh()->account_name);
+        $fresh = $account->fresh();
+        $this->assertEquals('Cash', $fresh->account_name);
+        $this->assertEquals('Updated remarks', $fresh->remarks);
+    }
+
+    public function test_transaction_mode_is_cleared_for_non_asset_accounts(): void
+    {
+        $account = $this->accountService->create([
+            'company_id' => $this->company->id,
+            'account_name' => 'Sales',
+            'account_type' => 'income',
+            'transaction_mode' => 'cash',
+        ]);
+
+        $this->assertNull($account->transaction_mode);
     }
 
     public function test_can_delete_non_system_account(): void
@@ -114,22 +131,6 @@ class AccountTest extends TestCase
         $this->accountService->delete($account->id);
     }
 
-    public function test_cannot_delete_account_with_children(): void
-    {
-        $parent = Account::factory()->create([
-            'company_id' => $this->company->id,
-            'is_system' => false,
-        ]);
-
-        Account::factory()->create([
-            'company_id' => $this->company->id,
-            'parent_id' => $parent->id,
-        ]);
-
-        $this->expectException(\Exception::class);
-        $this->accountService->delete($parent->id);
-    }
-
     public function test_can_get_accounts_by_type(): void
     {
         Account::factory()->count(3)->create([
@@ -150,25 +151,6 @@ class AccountTest extends TestCase
         $this->assertCount(3, $assetAccounts);
     }
 
-    public function test_can_get_account_tree(): void
-    {
-        $parent = Account::factory()->create([
-            'company_id' => $this->company->id,
-            'account_type' => 'asset',
-            'parent_id' => null,
-        ]);
-
-        $child = Account::factory()->create([
-            'company_id' => $this->company->id,
-            'account_type' => 'asset',
-            'parent_id' => $parent->id,
-        ]);
-
-        $tree = $this->accountService->getTree($this->company->id, 'asset');
-
-        $this->assertNotEmpty($tree);
-    }
-
     public function test_account_type_label(): void
     {
         $account = Account::factory()->create([
@@ -177,28 +159,6 @@ class AccountTest extends TestCase
         ]);
 
         $this->assertEquals('Asset', $account->type_label);
-    }
-
-    public function test_account_full_path(): void
-    {
-        $grandparent = Account::factory()->create([
-            'company_id' => $this->company->id,
-            'account_name' => 'Assets',
-        ]);
-
-        $parent = Account::factory()->create([
-            'company_id' => $this->company->id,
-            'account_name' => 'Current Assets',
-            'parent_id' => $grandparent->id,
-        ]);
-
-        $child = Account::factory()->create([
-            'company_id' => $this->company->id,
-            'account_name' => 'Cash',
-            'parent_id' => $parent->id,
-        ]);
-
-        $this->assertEquals('Assets > Current Assets > Cash', $child->full_path);
     }
 
     public function test_can_toggle_account_status(): void

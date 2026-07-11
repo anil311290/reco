@@ -36,7 +36,7 @@ class FaqSeeder extends Seeder
             ],
             [
                 'question' => 'What reports can I generate?',
-                'answer' => 'Reco supports a wide range of financial reports including Balance Sheet, Profit & Loss Statement, Trial Balance, Cash Flow Statement, Day Book, Detailed Ledger, AR Aging, and AP Aging reports. All reports can be exported to PDF and Excel.',
+                'answer' => 'Reco supports Tally-style reports including Day Book, Cash Book, Bank Book, Ledger, Trial Balance, Profit & Loss, Balance Sheet, Receivables Outstanding, and Payables Outstanding. Reports can be exported to PDF and Excel.',
                 'category' => 'Features',
                 'sort_order' => 5,
             ],

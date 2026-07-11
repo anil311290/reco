@@ -1,0 +1,3987 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RECO - Complete User Guide & Documentation</title>
+    <style>
+        :root {
+            --primary: #4F46E5;
+            --primary-light: #EEF2FF;
+            --secondary: #10B981;
+            --dark: #1E293B;
+            --text: #334155;
+            --text-light: #64748B;
+            --border: #E2E8F0;
+            --bg: #F8FAFC;
+            --white: #FFFFFF;
+            --danger: #EF4444;
+            --warning: #F59E0B;
+            --code-bg: #1E293B;
+            --code-text: #E2E8F0;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html {
+            scroll-behavior: smooth;
+            font-size: 16px;
+        }
+
+        body {
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            color: var(--text);
+            background: var(--bg);
+            line-height: 1.7;
+        }
+
+        /* ── Sidebar ── */
+        .sidebar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 280px;
+            height: 100vh;
+            background: var(--dark);
+            color: #CBD5E1;
+            overflow-y: auto;
+            z-index: 1000;
+            padding: 24px 0;
+            border-right: 1px solid rgba(255, 255, 255, .06);
+        }
+
+        .sidebar-logo {
+            padding: 0 24px 20px;
+            border-bottom: 1px solid rgba(255, 255, 255, .1);
+            margin-bottom: 16px;
+        }
+
+        .sidebar-logo h1 {
+            color: #fff;
+            font-size: 1.4rem;
+            font-weight: 700;
+            letter-spacing: -.5px;
+        }
+
+        .sidebar-logo span {
+            font-size: .75rem;
+            color: var(--secondary);
+            font-weight: 500;
+        }
+
+        .sidebar nav a {
+            display: block;
+            padding: 8px 24px;
+            color: #94A3B8;
+            text-decoration: none;
+            font-size: .875rem;
+            transition: all .15s;
+            border-left: 3px solid transparent;
+        }
+
+        .sidebar nav a:hover,
+        .sidebar nav a.active {
+            color: #fff;
+            background: rgba(255, 255, 255, .06);
+            border-left-color: var(--primary);
+        }
+
+        .sidebar nav .nav-section {
+            color: #64748B;
+            font-size: .7rem;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            padding: 16px 24px 6px;
+            font-weight: 700;
+        }
+
+        .sidebar nav .nav-sub {
+            padding-left: 36px;
+            font-size: .8rem;
+        }
+
+        /* ── Main Content ── */
+        .main {
+            margin-left: 280px;
+            padding: 40px 56px;
+            max-width: 960px;
+        }
+
+        h2 {
+            font-size: 1.75rem;
+            color: var(--dark);
+            margin: 48px 0 16px;
+            padding-bottom: 8px;
+            border-bottom: 2px solid var(--border);
+        }
+
+        h2:first-of-type {
+            margin-top: 0;
+        }
+
+        h3 {
+            font-size: 1.25rem;
+            color: var(--dark);
+            margin: 32px 0 12px;
+        }
+
+        h4 {
+            font-size: 1.05rem;
+            color: var(--dark);
+            margin: 20px 0 8px;
+        }
+
+        p {
+            margin: 0 0 14px;
+            color: var(--text);
+        }
+
+        /* ── Hero ── */
+        .hero {
+            background: linear-gradient(135deg, var(--primary) 0%, #7C3AED 100%);
+            color: #fff;
+            padding: 48px 40px;
+            border-radius: 16px;
+            margin-bottom: 32px;
+        }
+
+        .hero h1 {
+            font-size: 2.2rem;
+            font-weight: 800;
+        }
+
+        .hero p {
+            color: rgba(255, 255, 255, .85);
+            font-size: 1.1rem;
+            margin-top: 8px;
+        }
+
+        .hero .badges {
+            display: flex;
+            gap: 10px;
+            margin-top: 16px;
+            flex-wrap: wrap;
+        }
+
+        .hero .badge {
+            background: rgba(255, 255, 255, .15);
+            border: 1px solid rgba(255, 255, 255, .2);
+            padding: 4px 14px;
+            border-radius: 20px;
+            font-size: .8rem;
+        }
+
+        /* ── Cards ── */
+        .card-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+            gap: 16px;
+            margin: 20px 0;
+        }
+
+        .card {
+            background: var(--white);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 20px;
+            transition: box-shadow .2s;
+        }
+
+        .card:hover {
+            box-shadow: 0 4px 20px rgba(0, 0, 0, .08);
+        }
+
+        .card .card-icon {
+            width: 42px;
+            height: 42px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.3rem;
+            margin-bottom: 10px;
+        }
+
+        .card h4 {
+            margin: 0 0 6px;
+            font-size: 1rem;
+        }
+
+        .card p {
+            font-size: .85rem;
+            color: var(--text-light);
+            margin: 0;
+        }
+
+        /* ── Tables ── */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 16px 0;
+            font-size: .9rem;
+        }
+
+        th,
+        td {
+            padding: 10px 14px;
+            text-align: left;
+            border-bottom: 1px solid var(--border);
+        }
+
+        th {
+            background: var(--primary-light);
+            color: var(--primary);
+            font-weight: 600;
+            font-size: .8rem;
+            text-transform: uppercase;
+            letter-spacing: .5px;
+        }
+
+        tr:hover td {
+            background: #F1F5F9;
+        }
+
+        /* ── Info / Warning / Tip Boxes ── */
+        .info-box,
+        .warn-box,
+        .tip-box,
+        .success-box {
+            border-radius: 8px;
+            padding: 16px 20px;
+            margin: 16px 0;
+            font-size: .9rem;
+            border-left: 4px solid;
+        }
+
+        .info-box {
+            background: #EFF6FF;
+            border-color: #3B82F6;
+            color: #1E40AF;
+        }
+
+        .warn-box {
+            background: #FFFBEB;
+            border-color: var(--warning);
+            color: #92400E;
+        }
+
+        .tip-box {
+            background: #ECFDF5;
+            border-color: var(--secondary);
+            color: #065F46;
+        }
+
+        .success-box {
+            background: #F0FDF4;
+            border-color: #22C55E;
+            color: #166534;
+        }
+
+        .info-box strong,
+        .warn-box strong,
+        .tip-box strong,
+        .success-box strong {
+            display: block;
+            margin-bottom: 4px;
+        }
+
+        /* ── Code ── */
+        code {
+            background: var(--code-bg);
+            color: var(--code-text);
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: 'SF Mono', 'Fira Code', monospace;
+            font-size: .85rem;
+        }
+
+        pre {
+            background: var(--code-bg);
+            color: var(--code-text);
+            padding: 20px;
+            border-radius: 8px;
+            overflow-x: auto;
+            margin: 12px 0;
+            font-size: .82rem;
+            line-height: 1.5;
+        }
+
+        pre code {
+            padding: 0;
+            background: none;
+            font-size: inherit;
+        }
+
+        /* ── Flow / Steps ── */
+        .flow {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin: 16px 0;
+            flex-wrap: wrap;
+        }
+
+        .flow .step {
+            background: var(--primary-light);
+            color: var(--primary);
+            padding: 8px 16px;
+            border-radius: 6px;
+            font-weight: 600;
+            font-size: .85rem;
+        }
+
+        .flow .arrow {
+            color: var(--text-light);
+            font-weight: 700;
+        }
+
+        /* ── Step List ── */
+        .step-list {
+            counter-reset: step;
+            list-style: none;
+            padding: 0;
+            margin: 16px 0;
+        }
+
+        .step-list li {
+            counter-increment: step;
+            position: relative;
+            padding-left: 48px;
+            margin-bottom: 20px;
+        }
+
+        .step-list li::before {
+            content: counter(step);
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 32px;
+            height: 32px;
+            background: var(--primary);
+            color: #fff;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: .85rem;
+        }
+
+        /* ── Responsive ── */
+        @media (max-width: 900px) {
+            .sidebar {
+                display: none;
+            }
+
+            .main {
+                margin-left: 0;
+                padding: 24px;
+            }
+        }
+
+        /* ── Print ── */
+        @media print {
+            .sidebar {
+                display: none;
+            }
+
+            .main {
+                margin-left: 0;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- ═══════════════════ SIDEBAR ═══════════════════ -->
+    <aside class="sidebar">
+        <div class="sidebar-logo">
+            <h1>RECO</h1>
+            <span>User Guide v1.0</span>
+        </div>
+        <nav>
+            <div class="nav-section">Introduction</div>
+            <a href="#overview">Project Overview</a>
+            <a href="#tech-stack">Technology Stack</a>
+            <a href="#architecture">System Architecture</a>
+            <a href="#roles-permissions">Roles &amp; Permissions</a>
+
+            <div class="nav-section">Getting Started</div>
+            <a href="#setup">Installation &amp; Setup</a>
+            <a href="#login">Login &amp; Registration</a>
+            <a href="#dashboard">Dashboard</a>
+
+            <div class="nav-section">Core Modules</div>
+            <a href="#financial-years">Financial Years</a>
+            <a href="#accounts">Accounts (Chart of Accounts)</a>
+            <a href="#parties">Parties (Debtors &amp; Creditors)</a>
+            <a href="#vouchers">Vouchers</a>
+            <a href="#ledger-party-history" class="nav-sub">Ledger Party History</a>
+            <a href="#sales-invoices">Sales Invoices</a>
+            <a href="#purchase-invoices">Purchase Invoices</a>
+            <a href="#service-sales-invoices" class="nav-sub">Service Sales Invoices</a>
+            <a href="#items">Items &amp; Inventory</a>
+            <a href="#item-categories" class="nav-sub">Item Categories</a>
+            <a href="#bank-accounts">Bank Accounts</a>
+            <a href="#tax-rates">Tax Rates</a>
+            <a href="#locations" class="nav-sub">Locations &amp; Dropdowns</a>
+
+            <div class="nav-section">Reports (9 Total)</div>
+            <a href="#reports-overview" class="nav-sub">Reports Overview</a>
+            <a href="#report-profit-loss" class="nav-sub">1. Profit &amp; Loss</a>
+            <a href="#report-balance-sheet" class="nav-sub">2. Balance Sheet</a>
+            <a href="#report-trial-balance" class="nav-sub">3. Trial Balance</a>
+            <a href="#report-day-book" class="nav-sub">4. Day Book</a>
+            <a href="#report-ledger" class="nav-sub">5. Account Ledger</a>
+            <a href="#report-cash-book" class="nav-sub">6. Cash Book</a>
+            <a href="#report-bank-book" class="nav-sub">7. Bank Book</a>
+            <a href="#report-debtors" class="nav-sub">8. Debtors Outstanding</a>
+            <a href="#report-creditors" class="nav-sub">9. Creditors Outstanding</a>
+
+            <div class="nav-section">Export System</div>
+            <a href="#exports">PDF / Excel / CSV Export</a>
+
+            <div class="nav-section">Administration</div>
+            <a href="#settings">Settings &amp; Themes</a>
+            <a href="#subscriptions">Subscriptions &amp; Billing</a>
+            <a href="#audit-logs">Audit Logs</a>
+            <a href="#cms">CMS &amp; Website</a>
+
+            <div class="nav-section">Advanced</div>
+            <a href="#security">Security Features</a>
+            <a href="#api-reference">API Reference</a>
+
+            <div class="nav-section">Reference</div>
+            <a href="#database-tables">Complete Database Tables</a>
+            <a href="#file-structure">File Structure</a>
+        </nav>
+    </aside>
+
+    <!-- ═══════════════════ MAIN CONTENT ═══════════════════ -->
+    <main class="main">
+
+        <!-- ── Hero ── -->
+        <div class="hero">
+            <h1>RECO – Complete User Guide</h1>
+            <p>Accounting &amp; Receivables Management SaaS Platform</p>
+            <div class="badges">
+                <span class="badge">Laravel 12</span>
+                <span class="badge">PHP 8.3+</span>
+                <span class="badge">MySQL 8.x</span>
+                <span class="badge">Bootstrap 5</span>
+                <span class="badge">Multi-Tenant</span>
+                <span class="badge">SaaS</span>
+            </div>
+        </div>
+
+        <!-- ═══════════════════════════ SECTION 1: OVERVIEW ═══════════════════════════ -->
+        <h2 id="overview">1. Project Overview</h2>
+
+        <p><strong>RECO</strong> is an <strong>Accounting &amp; Receivables Management SaaS platform</strong>
+            designed for Indian businesses. It provides double-entry bookkeeping, invoice management, receivables
+            tracking, GST tax compliance, and financial reporting.</p>
+
+        <p>The application includes a <strong>web admin panel</strong> and a <strong>REST API</strong> at
+            <code>/api/v1/*</code> with matching functionality for mobile apps.</p>
+
+        <div class="info-box">
+            <strong>Production Ready</strong>
+            Web admin, REST API, journal posting, 9 financial reports, and Swagger docs at
+            <code>/api/documentation</code>. User guide at <code>/user-guide</code>.
+        </div>
+
+        <div class="card-grid">
+            <div class="card">
+                <div class="card-icon" style="background:#EEF2FF;">📊</div>
+                <h4>Double-Entry Accounting</h4>
+                <p>Full ledger engine with running balances, 5 account types, 6 voucher types</p>
+            </div>
+            <div class="card">
+                <div class="card-icon" style="background:#ECFDF5;">📱</div>
+                <h4>Mobile API + Offline Sync</h4>
+                <p>REST API with Sanctum auth, offline queue sync, manual sync button, and delta download when back online</p>
+            </div>
+            <div class="card">
+                <div class="card-icon" style="background:#FEF3C7;">🔔</div>
+                <h4>Notifications &amp; Support</h4>
+                <p>In-app notifications plus ticket-based chat between tenant admin and SuperAdmin support team</p>
+            </div>
+            <div class="card">
+                <div class="card-icon" style="background:#FFF7ED;">🏢</div>
+                <h4>Multi-Tenant</h4>
+                <p>Company-based isolation. Each company has its own data, users, and settings</p>
+            </div>
+            <div class="card">
+                <div class="card-icon" style="background:#FDF2F8;">📈</div>
+                <h4>9 Financial Reports</h4>
+                <p>P&amp;L, Balance Sheet, Trial Balance, Day Book, Ledger, Cash Book, Bank Book, AR &amp; AP Aging</p>
+            </div>
+            <div class="card">
+                <div class="card-icon" style="background:#F0F9FF;">🔐</div>
+                <h4>Role-Based Access</h4>
+                <p>5 roles (SuperAdmin, Admin, Manager, Accountant, Viewer) with 26 granular permissions</p>
+            </div>
+            <div class="card">
+                <div class="card-icon" style="background:#FAF5FF;">💳</div>
+                <h4>SaaS Billing</h4>
+                <p>Subscription plans, Razorpay payments, invoice generation, plan management</p>
+            </div>
+        </div>
+
+        <!-- ═══════════════════════════ SECTION 2: TECH STACK ═══════════════════════════ -->
+        <h2 id="tech-stack">2. Technology Stack</h2>
+
+        <table>
+            <tr>
+                <th>Layer</th>
+                <th>Technology</th>
+                <th>Version</th>
+            </tr>
+            <tr>
+                <td>Backend Framework</td>
+                <td>Laravel</td>
+                <td>12.x</td>
+            </tr>
+            <tr>
+                <td>Language</td>
+                <td>PHP</td>
+                <td>8.3+</td>
+            </tr>
+            <tr>
+                <td>Database</td>
+                <td>MySQL</td>
+                <td>8.x (Port 3307)</td>
+            </tr>
+            <tr>
+                <td>Web Auth</td>
+                <td>Laravel UI + Session</td>
+                <td>&mdash;</td>
+            </tr>
+            <tr>
+                <td>API Auth</td>
+                <td>Laravel Sanctum (Token-based)</td>
+                <td>4.3</td>
+            </tr>
+            <tr>
+                <td>Frontend CSS</td>
+                <td>Bootstrap 5 + Tailwind CSS 4</td>
+                <td>Latest</td>
+            </tr>
+            <tr>
+                <td>Frontend JS</td>
+                <td>jQuery 3.7 + Chart.js 4.4</td>
+                <td>Latest</td>
+            </tr>
+            <tr>
+                <td>Data Tables</td>
+                <td>DataTables.net (Server-side via Yajra)</td>
+                <td>13.1</td>
+            </tr>
+            <tr>
+                <td>API Docs</td>
+                <td>L5-Swagger (OpenAPI)</td>
+                <td>11.0</td>
+            </tr>
+            <tr>
+                <td>PDF Generation</td>
+                <td>Barryvdh DomPDF</td>
+                <td>3.1</td>
+            </tr>
+            <tr>
+                <td>Excel Export</td>
+                <td>Maatwebsite Excel</td>
+                <td>3.1</td>
+            </tr>
+            <tr>
+                <td>Payment Gateway</td>
+                <td>Razorpay</td>
+                <td>Integrated</td>
+            </tr>
+            <tr>
+                <td>Build Tool</td>
+                <td>Vite 8</td>
+                <td>Latest</td>
+            </tr>
+            <tr>
+                <td>Testing</td>
+                <td>PHPUnit</td>
+                <td>12.5</td>
+            </tr>
+        </table>
+
+        <h3>Key Frontend Libraries (package.json)</h3>
+        <table>
+            <tr>
+                <th>Library</th>
+                <th>Purpose</th>
+            </tr>
+            <tr>
+                <td><code>jquery</code></td>
+                <td>DOM manipulation &amp; AJAX</td>
+            </tr>
+            <tr>
+                <td><code>bootstrap + bootstrap-icons</code></td>
+                <td>UI framework &amp; icons</td>
+            </tr>
+            <tr>
+                <td><code>chart.js</code></td>
+                <td>Dashboard charts &amp; graphs</td>
+            </tr>
+            <tr>
+                <td><code>datatables.net</code></td>
+                <td>Interactive data tables</td>
+            </tr>
+            <tr>
+                <td><code>select2</code></td>
+                <td>Enhanced dropdowns with search</td>
+            </tr>
+            <tr>
+                <td><code>moment</code></td>
+                <td>Date formatting &amp; manipulation</td>
+            </tr>
+            <tr>
+                <td><code>sweetalert2</code></td>
+                <td>Beautiful alert dialogs</td>
+            </tr>
+            <tr>
+                <td><code>summernote</code></td>
+                <td>Rich text editor</td>
+            </tr>
+            <tr>
+                <td><code>toastr</code></td>
+                <td>Toast notifications</td>
+            </tr>
+            <tr>
+                <td><code>pdfmake</code></td>
+                <td>Client-side PDF generation</td>
+            </tr>
+            <tr>
+                <td><code>jszip</code></td>
+                <td>ZIP file creation for exports</td>
+            </tr>
+        </table>
+
+        <!-- ═══════════════════════════ SECTION 3: ARCHITECTURE ═══════════════════════════ -->
+        <h2 id="architecture">3. System Architecture</h2>
+
+        <h3>3.1 Request Flow</h3>
+        <pre><code>Browser / Mobile App
+      │
+      ▼
+┌──────────────┐     ┌──────────────┐     ┌──────────────┐
+│  Route/URL   │ ──▶ │  Controller  │ ──▶ │   Service    │
+└──────────────┘     └──────────────┘     └──────────────┘
+                                                 │
+                      ┌──────────────┐            ▼
+                      │   Response   │ ◀── ┌──────────────┐
+                      └──────────────┘     │  Repository  │
+                                           └──────────────┘
+                                                 │
+                                                 ▼
+                                           ┌──────────────┐
+                                           │  Eloquent     │
+                                           │  Model (ORM)  │
+                                           └──────────────┘
+                                                 │
+                                                 ▼
+                                           ┌──────────────┐
+                                           │  MySQL        │
+                                           │  Database     │
+                                           └──────────────┘</code></pre>
+
+        <h3>3.2 Multi-Tenancy</h3>
+        <p>RECO uses a <strong>shared-database, shared-schema</strong> multi-tenancy approach. Every table includes a
+            <code>company_id</code> column. All queries are automatically scoped to the authenticated user's company:
+        </p>
+
+        <ul>
+            <li>Each <strong>Company</strong> has its own users, accounts, parties, vouchers, reports, and settings</li>
+            <li>Companies are registered via the public website and require <strong>SuperAdmin approval</strong></li>
+            <li>A <strong>SuperAdmin</strong> role manages all companies, plans, themes, and CMS content</li>
+            <li>Users within a company are assigned roles (Admin, Manager, Accountant, Viewer)</li>
+        </ul>
+
+        <h3>3.3 Directory Structure</h3>
+        <table>
+            <tr>
+                <th>Directory</th>
+                <th>Purpose</th>
+            </tr>
+            <tr>
+                <td><code>app/Http/Controllers/Admin/</code></td>
+                <td>Web admin panel controllers (31 files)</td>
+            </tr>
+            <tr>
+                <td><code>app/Http/Controllers/Api/</code></td>
+                <td>REST API controllers for mobile (22 files)</td>
+            </tr>
+            <tr>
+                <td><code>app/Http/Controllers/Auth/</code></td>
+                <td>Authentication controllers (7 files)</td>
+            </tr>
+            <tr>
+                <td><code>app/Models/</code></td>
+                <td>Eloquent ORM models (44 models)</td>
+            </tr>
+            <tr>
+                <td><code>app/Services/</code></td>
+                <td>Business logic layer (23 services)</td>
+            </tr>
+            <tr>
+                <td><code>app/Repositories/</code></td>
+                <td>Data access layer (3 repositories)</td>
+            </tr>
+            <tr>
+                <td><code>app/Interfaces/</code></td>
+                <td>Repository contracts (3 interfaces)</td>
+            </tr>
+            <tr>
+                <td><code>app/Exports/</code></td>
+                <td>Excel/CSV export classes</td>
+            </tr>
+            <tr>
+                <td><code>app/Docs/</code></td>
+                <td>OpenAPI/Swagger annotations</td>
+            </tr>
+            <tr>
+                <td><code>app/Http/Middleware/</code></td>
+                <td>Auth, permissions, role checks (4 middleware)</td>
+            </tr>
+            <tr>
+                <td><code>database/migrations/</code></td>
+                <td>67 migration files for schema</td>
+            </tr>
+            <tr>
+                <td><code>resources/views/admin/</code></td>
+                <td>Blade views for admin panel</td>
+            </tr>
+            <tr>
+                <td><code>resources/views/exports/</code></td>
+                <td>PDF export templates</td>
+            </tr>
+            <tr>
+                <td><code>routes/web.php</code></td>
+                <td>Web routes (566 lines)</td>
+            </tr>
+            <tr>
+                <td><code>routes/api.php</code></td>
+                <td>API routes (179 lines)</td>
+            </tr>
+            <tr>
+                <td><code>docs/</code></td>
+                <td>Documentation files</td>
+            </tr>
+        </table>
+
+        <!-- ═══════════════════════════ SECTION 4: ROLES ═══════════════════════════ -->
+        <h2 id="roles-permissions">4. Roles &amp; Permissions</h2>
+
+        <table>
+            <tr>
+                <th>Role</th>
+                <th>Description</th>
+                <th>Access Level</th>
+            </tr>
+            <tr>
+                <td><strong>SuperAdmin</strong></td>
+                <td>Platform owner. Full system access</td>
+                <td>All companies, plans, themes, CMS, approvals</td>
+            </tr>
+            <tr>
+                <td><strong>Admin</strong></td>
+                <td>Company administrator</td>
+                <td>All modules within their company</td>
+            </tr>
+            <tr>
+                <td><strong>Manager</strong></td>
+                <td>Company manager</td>
+                <td>Most modules with create/edit access</td>
+            </tr>
+            <tr>
+                <td><strong>Accountant</strong></td>
+                <td>Accounting operations</td>
+                <td>Vouchers, accounts, reports, invoices</td>
+            </tr>
+            <tr>
+                <td><strong>Viewer</strong></td>
+                <td>Read-only access</td>
+                <td>View reports and data only</td>
+            </tr>
+        </table>
+
+        <h3>Permission List (26 Total)</h3>
+        <table>
+            <tr>
+                <th>Module</th>
+                <th>Permissions</th>
+            </tr>
+            <tr>
+                <td>Dashboard</td>
+                <td><code>dashboard.view</code></td>
+            </tr>
+            <tr>
+                <td>Roles</td>
+                <td><code>roles.view</code>, <code>roles.create</code>, <code>roles.edit</code>,
+                    <code>roles.delete</code></td>
+            </tr>
+            <tr>
+                <td>Settings</td>
+                <td><code>settings.view</code>, <code>settings.edit</code></td>
+            </tr>
+            <tr>
+                <td>Financial Years</td>
+                <td><code>financial-years.view</code>, <code>financial-years.create</code>,
+                    <code>financial-years.edit</code>, <code>financial-years.delete</code>,
+                    <code>financial-years.close</code></td>
+            </tr>
+            <tr>
+                <td>Accounts</td>
+                <td><code>accounts.view</code>, <code>accounts.create</code>, <code>accounts.edit</code>,
+                    <code>accounts.delete</code>, <code>accounts.export</code></td>
+            </tr>
+            <tr>
+                <td>Parties</td>
+                <td><code>parties.view</code>, <code>parties.create</code>, <code>parties.edit</code>,
+                    <code>parties.delete</code></td>
+            </tr>
+            <tr>
+                <td>Vouchers</td>
+                <td><code>vouchers.view</code>, <code>vouchers.create</code>, <code>vouchers.edit</code>,
+                    <code>vouchers.delete</code>, <code>vouchers.approve</code></td>
+            </tr>
+            <tr>
+                <td>Reports</td>
+                <td><code>reports.view</code>, <code>reports.export</code></td>
+            </tr>
+            <tr>
+                <td>Audit Logs</td>
+                <td><code>audit-logs.view</code></td>
+            </tr>
+        </table>
+
+        <h3>Database Table: <code>users</code> (Complete Schema)</h3>
+        <table>
+            <tr>
+                <th>Column</th>
+                <th>Type</th>
+                <th>Description</th>
+            </tr>
+            <tr><td><code>id</code></td><td>BIGINT PK</td><td>Primary key</td></tr>
+            <tr><td><code>uuid</code></td><td>CHAR(36)</td><td>Unique record identifier</td></tr>
+            <tr><td><code>company_id</code></td><td>BIGINT FK</td><td>→ companies.id SET NULL</td></tr>
+            <tr><td><code>name</code></td><td>VARCHAR(255)</td><td>Full name</td></tr>
+            <tr><td><code>email</code></td><td>VARCHAR(255)</td><td>Login email (unique)</td></tr>
+            <tr><td><code>phone</code></td><td>VARCHAR(255)</td><td>Phone number</td></tr>
+            <tr><td><code>avatar</code></td><td>VARCHAR(255)</td><td>Avatar file path</td></tr>
+            <tr><td><code>password</code></td><td>VARCHAR(255)</td><td>Hashed password</td></tr>
+            <tr><td><code>pin</code></td><td>VARCHAR(255)</td><td>Mobile app PIN</td></tr>
+            <tr><td><code>has_pin</code></td><td>BOOLEAN</td><td>Whether PIN is set</td></tr>
+            <tr><td><code>app_lock_enabled</code></td><td>BOOLEAN</td><td>App lock enabled</td></tr>
+            <tr><td><code>biometric_enabled</code></td><td>BOOLEAN</td><td>Biometric auth enabled</td></tr>
+            <tr><td><code>role</code></td><td>ENUM</td><td><code>admin</code>, <code>manager</code>, <code>accountant</code>, <code>viewer</code></td></tr>
+            <tr><td><code>status</code></td><td>ENUM</td><td><code>active</code>, <code>inactive</code>, <code>suspended</code></td></tr>
+            <tr><td><code>email_verified_at</code></td><td>TIMESTAMP</td><td>Email verification timestamp</td></tr>
+            <tr><td><code>last_login_at</code></td><td>TIMESTAMP</td><td>Last login timestamp</td></tr>
+            <tr><td><code>last_login_ip</code></td><td>VARCHAR(45)</td><td>Last login IP</td></tr>
+            <tr><td><code>remember_token</code></td><td>VARCHAR(100)</td><td>Remember-me token</td></tr>
+            <tr><td><code>created_by</code></td><td>BIGINT FK</td><td>→ users.id</td></tr>
+            <tr><td><code>updated_by</code></td><td>BIGINT FK</td><td>→ users.id</td></tr>
+            <tr><td><code>deleted_by</code></td><td>VARCHAR(255)</td><td>Who soft-deleted</td></tr>
+            <tr><td><code>deleted_by_id</code></td><td>BIGINT FK</td><td>→ users.id</td></tr>
+            <tr><td><code>version</code></td><td>INT</td><td>Sync version (default: 1)</td></tr>
+            <tr><td><code>synced_at</code></td><td>TIMESTAMP</td><td>Last sync timestamp</td></tr>
+            <tr><td><code>created_at</code></td><td>TIMESTAMP</td><td>Record created</td></tr>
+            <tr><td><code>updated_at</code></td><td>TIMESTAMP</td><td>Last updated</td></tr>
+            <tr><td><code>deleted_at</code></td><td>TIMESTAMP</td><td>Soft delete</td></tr>
+        </table>
+
+        <h3>Database Table: <code>roles</code> (Complete Schema)</h3>
+        <table>
+            <tr>
+                <th>Column</th>
+                <th>Type</th>
+                <th>Description</th>
+            </tr>
+            <tr><td><code>id</code></td><td>BIGINT PK</td><td>Primary key</td></tr>
+            <tr><td><code>uuid</code></td><td>CHAR(36)</td><td>Unique record identifier</td></tr>
+            <tr><td><code>company_id</code></td><td>BIGINT FK</td><td>→ companies.id SET NULL</td></tr>
+            <tr><td><code>name</code></td><td>VARCHAR(255)</td><td>Role name</td></tr>
+            <tr><td><code>slug</code></td><td>VARCHAR(255)</td><td>Code identifier (unique)</td></tr>
+            <tr><td><code>description</code></td><td>TEXT</td><td>Description</td></tr>
+            <tr><td><code>is_default</code></td><td>BOOLEAN</td><td>Auto-assigned to new users</td></tr>
+            <tr><td><code>is_active</code></td><td>BOOLEAN</td><td>Active status</td></tr>
+            <tr><td><code>created_by</code></td><td>BIGINT FK</td><td>→ users.id</td></tr>
+            <tr><td><code>updated_by</code></td><td>BIGINT FK</td><td>→ users.id</td></tr>
+            <tr><td><code>deleted_by</code></td><td>VARCHAR(255)</td><td>Who soft-deleted</td></tr>
+            <tr><td><code>deleted_by_id</code></td><td>BIGINT FK</td><td>→ users.id</td></tr>
+            <tr><td><code>version</code></td><td>INT</td><td>Sync version (default: 1)</td></tr>
+            <tr><td><code>synced_at</code></td><td>TIMESTAMP</td><td>Last sync timestamp</td></tr>
+            <tr><td><code>created_at</code></td><td>TIMESTAMP</td><td>Record created</td></tr>
+            <tr><td><code>updated_at</code></td><td>TIMESTAMP</td><td>Last updated</td></tr>
+            <tr><td><code>deleted_at</code></td><td>TIMESTAMP</td><td>Soft delete</td></tr>
+        </table>
+
+        <h3>Database Table: <code>permissions</code> (Complete Schema)</h3>
+        <table>
+            <tr>
+                <th>Column</th>
+                <th>Type</th>
+                <th>Description</th>
+            </tr>
+            <tr><td><code>id</code></td><td>BIGINT PK</td><td>Primary key</td></tr>
+            <tr><td><code>name</code></td><td>VARCHAR(255)</td><td>Display name</td></tr>
+            <tr><td><code>slug</code></td><td>VARCHAR(255)</td><td>Code identifier (unique)</td></tr>
+            <tr><td><code>module</code></td><td>VARCHAR(255)</td><td>Module grouping</td></tr>
+            <tr><td><code>description</code></td><td>TEXT</td><td>Description</td></tr>
+            <tr><td><code>is_active</code></td><td>BOOLEAN</td><td>Active status</td></tr>
+            <tr><td><code>created_by</code></td><td>BIGINT FK</td><td>→ users.id</td></tr>
+            <tr><td><code>updated_by</code></td><td>BIGINT FK</td><td>→ users.id</td></tr>
+            <tr><td><code>deleted_by</code></td><td>VARCHAR(255)</td><td>Who soft-deleted</td></tr>
+            <tr><td><code>deleted_by_id</code></td><td>BIGINT FK</td><td>→ users.id</td></tr>
+            <tr><td><code>created_at</code></td><td>TIMESTAMP</td><td>Record created</td></tr>
+            <tr><td><code>updated_at</code></td><td>TIMESTAMP</td><td>Last updated</td></tr>
+            <tr><td><code>deleted_at</code></td><td>TIMESTAMP</td><td>Soft delete</td></tr>
+        </table>
+        <p><strong>Pivot tables:</strong> <code>permission_role</code> (permissions ↔ roles) and <code>role_user</code>
+            (roles ↔ users) implement the many-to-many RBAC relationships.</p>
+
+        <!-- ═══════════════════════════ SECTION 5: SETUP ═══════════════════════════ -->
+        <h2 id="setup">5. Installation &amp; Setup</h2>
+
+        <h3>Prerequisites</h3>
+        <ul>
+            <li>PHP 8.3+</li>
+            <li>MySQL 8.x</li>
+            <li>Composer 2.x</li>
+            <li>Node.js 18+ &amp; npm</li>
+        </ul>
+
+        <h3>Quick Setup</h3>
+        <ol class="step-list">
+            <li>
+                <strong>Clone the repository</strong>
+                <pre><code>git clone &lt;repo-url&gt;
+cd Reco</code></pre>
+            </li>
+            <li>
+                <strong>Run setup script</strong> (installs dependencies, creates DB, builds assets)
+                <pre><code>composer setup</code></pre>
+                <p>This single command runs: <code>composer install</code> → <code>copy .env</code> →
+                    <code>php artisan key:generate</code> → <code>php artisan migrate</code> → <code>npm install</code>
+                    → <code>npm run build</code></p>
+            </li>
+            <li>
+                <strong>Configure <code>.env</code></strong>
+                <pre><code>DB_CONNECTION=mysql
+DB_HOST=127.0.0.1
+DB_PORT=3307
+DB_DATABASE=laravel_onlinefirstman
+DB_USERNAME=root
+DB_PASSWORD=</code></pre>
+            </li>
+            <li>
+                <strong>Seed the database</strong> (creates default roles, permissions, accounts)
+                <pre><code>php artisan db:seed</code></pre>
+            </li>
+            <li>
+                <strong>Start development server</strong>
+                <pre><code>composer dev</code></pre>
+                <p>Starts 4 services concurrently: PHP server (port 8000), Queue worker, Log viewer (Pail), and Vite dev
+                    server</p>
+            </li>
+        </ol>
+
+        <h3>Routes Summary</h3>
+        <table>
+            <tr>
+                <th>URL Pattern</th>
+                <th>Purpose</th>
+            </tr>
+            <tr>
+                <td><code>/</code></td>
+                <td>Public website homepage</td>
+            </tr>
+            <tr>
+                <td><code>/register</code></td>
+                <td>Company registration</td>
+            </tr>
+            <tr>
+                <td><code>/admin/login</code></td>
+                <td>Admin panel login</td>
+            </tr>
+            <tr>
+                <td><code>/admin/dashboard</code></td>
+                <td>Main dashboard (requires auth)</td>
+            </tr>
+            <tr>
+                <td><code>/admin/accounts</code></td>
+                <td>Chart of accounts</td>
+            </tr>
+            <tr>
+                <td><code>/admin/vouchers</code></td>
+                <td>Voucher management</td>
+            </tr>
+            <tr>
+                <td><code>/admin/reports/*</code></td>
+                <td>All 8 reports</td>
+            </tr>
+            <tr>
+                <td><code>/api/v1/*</code></td>
+                <td>REST API (Sanctum auth)</td>
+            </tr>
+        </table>
+
+        <!-- ═══════════════════════════ SECTION 6: LOGIN ═══════════════════════════ -->
+        <h2 id="login">6. Login &amp; Registration</h2>
+
+        <h3>Web Panel Login</h3>
+        <ol class="step-list">
+            <li>Visit <code>/admin/login</code></li>
+            <li>Enter email and password</li>
+            <li>After login, redirected to <code>/admin/dashboard</code></li>
+        </ol>
+
+        <h3>Company Registration Flow</h3>
+        <ol class="step-list">
+            <li>Visit <code>/register</code> on the public website</li>
+            <li>Fill company details (name, GST, PAN, address, etc.)</li>
+            <li>Fill admin user details (name, email, password)</li>
+            <li>Submit → Company status set to "pending"</li>
+            <li>SuperAdmin approves the company from <code>/admin/companies/approval</code></li>
+            <li>After approval, the company admin can log in and start using the system</li>
+        </ol>
+
+        <h3>API Authentication</h3>
+        <p>The API uses <strong>Laravel Sanctum</strong> for token-based authentication:</p>
+        <pre><code>POST /api/v1/login
+Body: {
+  "email": "user@example.com",
+  "password": "password",
+  "device_id": "android-abc123",
+  "device_type": "android",
+  "device_name": "Samsung Galaxy S24",
+  "device_os": "Android 14",
+  "fcm_token": "firebase-token..."
+}
+Response: { "token": "1|abc123...", "user": { ... } }
+
+All subsequent requests:
+Authorization: Bearer 1|abc123...</code></pre>
+
+        <p>Device fields on login are optional but recommended for mobile apps — they register the device for offline sync tracking and push notifications. You can also call <code>POST /api/v1/devices/register</code> after login when the FCM token refreshes.</p>
+        <p>Additional API auth features: PIN login, app lock toggle, biometric auth, device management.</p>
+
+        <h3>Demo Credentials</h3>
+        <div class="success-box">
+            <strong>Default SuperAdmin Account</strong>
+            Email: <code>superadmin@reco.app</code><br>
+            Password: <code>12345678</code><br>
+            Use this account to access the platform after running database seeders.
+        </div>
+
+        <!-- ═══════════════════════════ SECTION 7: DASHBOARD ═══════════════════════════ -->
+        <h2 id="dashboard">7. Dashboard</h2>
+
+        <p>The dashboard (<code>/admin/dashboard</code>) provides a comprehensive overview of the company's financial
+            health:</p>
+
+        <h3>Dashboard Statistics</h3>
+        <table>
+            <tr>
+                <th>Statistic</th>
+                <th>Description</th>
+                <th>Source</th>
+            </tr>
+            <tr>
+                <td>Total Income</td>
+                <td>Sum of all income vouchers for current FY</td>
+                <td><code>vouchers</code> table (type = income)</td>
+            </tr>
+            <tr>
+                <td>Total Expense</td>
+                <td>Sum of all expense vouchers for current FY</td>
+                <td><code>vouchers</code> table (type = expense)</td>
+            </tr>
+            <tr>
+                <td>Outstanding Receivables</td>
+                <td>Total unpaid from debtors</td>
+                <td>Calculated from <code>parties</code> (debtor) and ledger entries</td>
+            </tr>
+            <tr>
+                <td>Outstanding Payables</td>
+                <td>Total unpaid to creditors</td>
+                <td>Calculated from <code>parties</code> (creditor) and ledger entries</td>
+            </tr>
+            <tr>
+                <td>Overdue Invoices</td>
+                <td>Count of invoices past due date</td>
+                <td><code>sales_invoices</code> where due_date &lt; today</td>
+            </tr>
+            <tr>
+                <td>Low Stock Items</td>
+                <td>Count of items below reorder level</td>
+                <td><code>items</code> filtered by stock threshold</td>
+            </tr>
+            <tr>
+                <td>Total Accounts</td>
+                <td>Count of active accounts</td>
+                <td><code>accounts</code> table</td>
+            </tr>
+            <tr>
+                <td>Total Parties</td>
+                <td>Count of active debtors + creditors</td>
+                <td><code>parties</code> table</td>
+            </tr>
+            <tr>
+                <td>Cash Balance</td>
+                <td>Total balance in Cash &amp; Bank accounts</td>
+                <td><code>ledgers</code> for cash/bank accounts</td>
+            </tr>
+        </table>
+
+        <h3>Dashboard Charts (via Chart.js + API)</h3>
+        <table>
+            <tr>
+                <th>Chart</th>
+                <th>API Endpoint</th>
+                <th>Data Points</th>
+            </tr>
+            <tr>
+                <td>Monthly Income vs Expense</td>
+                <td><code>/api/v1/dashboard/monthly-data</code></td>
+                <td>12 months, income &amp; expense per month</td>
+            </tr>
+            <tr>
+                <td>Receivables Trend</td>
+                <td><code>/api/v1/dashboard/receivables-trend</code></td>
+                <td>Monthly AR trend</td>
+            </tr>
+            <tr>
+                <td>Payables Trend</td>
+                <td><code>/api/v1/dashboard/payables-trend</code></td>
+                <td>Monthly AP trend</td>
+            </tr>
+        </table>
+
+        <!-- ═══════════════════════════ SECTION 8: FINANCIAL YEARS ═══════════════════════════ -->
+        <h2 id="financial-years">8. Financial Years</h2>
+
+        <p>Financial years define the accounting periods. All transactions and reports are scoped to a financial year.
+        </p>
+
+        <h3>Database Table: <code>financial_years</code></h3>
+        <table>
+            <tr>
+                <th>Column</th>
+                <th>Type</th>
+                <th>Description</th>
+            </tr>
+            <tr>
+                <td><code>id</code></td>
+                <td>BIGINT PK</td>
+                <td>Primary key</td>
+            </tr>
+            <tr>
+                <td><code>company_id</code></td>
+                <td>BIGINT FK</td>
+                <td>Belongs to company</td>
+            </tr>
+            <tr>
+                <td><code>start_date</code></td>
+                <td>DATE</td>
+                <td>FY start (e.g., 2025-04-01)</td>
+            </tr>
+            <tr>
+                <td><code>end_date</code></td>
+                <td>DATE</td>
+                <td>FY end (e.g., 2026-03-31)</td>
+            </tr>
+            <tr>
+                <td><code>is_current</code></td>
+                <td>BOOLEAN</td>
+                <td>Active FY flag</td>
+            </tr>
+            <tr>
+                <td><code>is_closed</code></td>
+                <td>BOOLEAN</td>
+                <td>Year-end closed</td>
+            </tr>
+            <tr>
+                <td><code>closed_at</code></td>
+                <td>DATE</td>
+                <td>When closed</td>
+            </tr>
+            <tr>
+                <td><code>created_by</code></td>
+                <td>BIGINT FK</td>
+                <td>→ users.id</td>
+            </tr>
+            <tr>
+                <td><code>updated_by</code></td>
+                <td>BIGINT FK</td>
+                <td>→ users.id</td>
+            </tr>
+            <tr>
+                <td><code>deleted_by</code></td>
+                <td>VARCHAR(255)</td>
+                <td>Who soft-deleted this record</td>
+            </tr>
+            <tr>
+                <td><code>deleted_by_id</code></td>
+                <td>BIGINT FK</td>
+                <td>→ users.id</td>
+            </tr>
+            <tr>
+                <td><code>version</code></td>
+                <td>INT</td>
+                <td>Record version for change tracking</td>
+            </tr>
+            <tr>
+                <td><code>synced_at</code></td>
+                <td>TIMESTAMP</td>
+                <td>Last sync timestamp</td>
+            </tr>
+            <tr>
+                <td><code>created_at</code></td>
+                <td>TIMESTAMP</td>
+                <td>Record creation time</td>
+            </tr>
+            <tr>
+                <td><code>updated_at</code></td>
+                <td>TIMESTAMP</td>
+                <td>Last update time</td>
+            </tr>
+            <tr>
+                <td><code>deleted_at</code></td>
+                <td>TIMESTAMP</td>
+                <td>Soft delete timestamp</td>
+            </tr>
+            <tr>
+                <td><code>uuid</code></td>
+                <td>CHAR(36)</td>
+                <td>Unique record identifier</td>
+            </tr>
+        </table>
+
+        <h3>Features</h3>
+        <ul>
+            <li>Create multiple financial years</li>
+            <li>Set current/active year (only one can be current at a time)</li>
+            <li>Close a financial year (prevents new transactions in that year)</li>
+            <li>Routes: <code>/admin/financial-years</code></li>
+        </ul>
+
+        <!-- ═══════════════════════════ SECTION 9: ACCOUNTS ═══════════════════════════ -->
+        <h2 id="accounts">9. Accounts (Chart of Accounts)</h2>
+
+        <p>The chart of accounts is a hierarchical tree of all financial accounts. It's the foundation of the
+            double-entry system.</p>
+
+        <h3>Database Table: <code>accounts</code></h3>
+        <table>
+            <tr>
+                <th>Column</th>
+                <th>Type</th>
+                <th>Description</th>
+            </tr>
+            <tr>
+                <td><code>id</code></td>
+                <td>BIGINT PK</td>
+                <td>Primary key</td>
+            </tr>
+            <tr>
+                <td><code>company_id</code></td>
+                <td>BIGINT FK</td>
+                <td>Belongs to company</td>
+            </tr>
+            <tr>
+                <td><code>account_code</code></td>
+                <td>VARCHAR(255)</td>
+                <td>Unique code (e.g., "1001")</td>
+            </tr>
+            <tr>
+                <td><code>account_name</code></td>
+                <td>VARCHAR(255)</td>
+                <td>Display name</td>
+            </tr>
+            <tr>
+                <td><code>account_type</code></td>
+                <td>ENUM</td>
+                <td><code>asset</code>, <code>liability</code>, <code>income</code>, <code>expense</code>,
+                    <code>equity</code></td>
+            </tr>
+            <tr>
+                <td><code>parent_id</code></td>
+                <td>BIGINT FK (self)</td>
+                <td>Parent account (hierarchical)</td>
+            </tr>
+            <tr>
+                <td><code>opening_balance</code></td>
+                <td>DECIMAL(15,2)</td>
+                <td>Initial balance</td>
+            </tr>
+            <tr>
+                <td><code>is_active</code></td>
+                <td>BOOLEAN</td>
+                <td>Active status</td>
+            </tr>
+            <tr>
+                <td><code>is_system</code></td>
+                <td>BOOLEAN</td>
+                <td>System-generated (cannot delete)</td>
+            </tr>
+            <tr>
+                <td><code>uuid</code></td>
+                <td>CHAR(36)</td>
+                <td>Unique record identifier</td>
+            </tr>
+            <tr>
+                <td><code>financial_year_id</code></td>
+                <td>BIGINT FK</td>
+                <td>→ financial_years.id</td>
+            </tr>
+            <tr>
+                <td><code>opening_date</code></td>
+                <td>DATE</td>
+                <td>Date of opening balance</td>
+            </tr>
+            <tr>
+                <td><code>remarks</code></td>
+                <td>TEXT</td>
+                <td>Additional notes</td>
+            </tr>
+            <tr>
+                <td><code>is_bank_account</code></td>
+                <td>BOOLEAN</td>
+                <td>Linked to bank account (default: false)</td>
+            </tr>
+            <tr>
+                <td><code>sort_order</code></td>
+                <td>INT</td>
+                <td>Display order (default: 0)</td>
+            </tr>
+            <tr>
+                <td><code>created_by</code></td>
+                <td>BIGINT FK</td>
+                <td>→ users.id</td>
+            </tr>
+            <tr>
+                <td><code>updated_by</code></td>
+                <td>BIGINT FK</td>
+                <td>→ users.id</td>
+            </tr>
+            <tr>
+                <td><code>deleted_by</code></td>
+                <td>VARCHAR(255)</td>
+                <td>Who soft-deleted</td>
+            </tr>
+            <tr>
+                <td><code>deleted_by_id</code></td>
+                <td>BIGINT FK</td>
+                <td>→ users.id</td>
+            </tr>
+            <tr>
+                <td><code>version</code></td>
+                <td>INT</td>
+                <td>Sync version (default: 1)</td>
+            </tr>
+            <tr>
+                <td><code>synced_at</code></td>
+                <td>TIMESTAMP</td>
+                <td>Last sync timestamp</td>
+            </tr>
+            <tr>
+                <td><code>created_at</code></td>
+                <td>TIMESTAMP</td>
+                <td>Record created</td>
+            </tr>
+            <tr>
+                <td><code>updated_at</code></td>
+                <td>TIMESTAMP</td>
+                <td>Last updated</td>
+            </tr>
+            <tr>
+                <td><code>deleted_at</code></td>
+                <td>TIMESTAMP</td>
+                <td>Soft delete</td>
+            </tr>
+        </table>
+
+        <h3>5 Account Types &amp; Normal Balances</h3>
+        <table>
+            <tr>
+                <th>Type</th>
+                <th>Normal Balance</th>
+                <th>Examples</th>
+                <th>Balance Formula</th>
+            </tr>
+            <tr>
+                <td><strong>Asset</strong></td>
+                <td>Debit</td>
+                <td>Cash, Bank, Inventory, AR (1250), Furniture</td>
+                <td><code>prev - credit + debit</code></td>
+            </tr>
+            <tr>
+                <td><strong>Liability</strong></td>
+                <td>Credit</td>
+                <td>Loans, AP (1500), Taxes Payable</td>
+                <td><code>prev + credit - debit</code></td>
+            </tr>
+            <tr>
+                <td><strong>Income</strong></td>
+                <td>Credit</td>
+                <td>Sales, Service Revenue, Interest Income</td>
+                <td><code>prev + credit - debit</code></td>
+            </tr>
+            <tr>
+                <td><strong>Expense</strong></td>
+                <td>Debit</td>
+                <td>Rent, Salary, Utilities, COGS</td>
+                <td><code>prev - credit + debit</code></td>
+            </tr>
+            <tr>
+                <td><strong>Equity</strong></td>
+                <td>Credit</td>
+                <td>Owner's Capital, Retained Earnings</td>
+                <td><code>prev + credit - debit</code></td>
+            </tr>
+        </table>
+
+        <h3>Special System Accounts</h3>
+        <table>
+            <tr>
+                <th>Code</th>
+                <th>Name</th>
+                <th>Purpose</th>
+            </tr>
+            <tr>
+                <td><code>1000</code></td>
+                <td>Suspense Account</td>
+                <td>Temporary holding account for unmatched entries</td>
+            </tr>
+            <tr>
+                <td><code>1250</code></td>
+                <td>Accounts Receivable (AR)</td>
+                <td>Money owed by debtors</td>
+            </tr>
+            <tr>
+                <td><code>1500</code></td>
+                <td>Accounts Payable (AP)</td>
+                <td>Money owed to creditors</td>
+            </tr>
+            <tr>
+                <td><code>1501</code></td>
+                <td>AR Income</td>
+                <td>Income from receivable transactions</td>
+            </tr>
+            <tr>
+                <td><code>1751</code></td>
+                <td>AP Expense</td>
+                <td>Expense from payable transactions</td>
+            </tr>
+        </table>
+
+        <h3>How to Create an Account</h3>
+        <ol class="step-list">
+            <li>Go to <code>/admin/accounts</code></li>
+            <li>Click <strong>Create Account</strong></li>
+            <li>Select account type (Asset / Liability / Income / Expense / Equity)</li>
+            <li>Optionally select a parent account for hierarchy</li>
+            <li>Enter account code and name</li>
+            <li>Enter opening balance and date (optional)</li>
+            <li>Click <strong>Save</strong></li>
+        </ol>
+
+        <!-- ═══════════════════════════ SECTION 10: PARTIES ═══════════════════════════ -->
+        <h2 id="parties">10. Parties (Debtors &amp; Creditors)</h2>
+
+        <p>Parties are individuals or businesses you transact with &mdash; customers (debtors) and suppliers
+            (creditors).</p>
+
+        <h3>Database Table: <code>parties</code></h3>
+        <table>
+            <tr>
+                <th>Column</th>
+                <th>Type</th>
+                <th>Description</th>
+            </tr>
+            <tr>
+                <td><code>id</code></td>
+                <td>BIGINT PK</td>
+                <td>Primary key</td>
+            </tr>
+            <tr>
+                <td><code>company_id</code></td>
+                <td>BIGINT FK</td>
+                <td>Belongs to company</td>
+            </tr>
+            <tr>
+                <td><code>party_code</code></td>
+                <td>VARCHAR (UNIQUE)</td>
+                <td>Unique party code</td>
+            </tr>
+            <tr>
+                <td><code>name</code></td>
+                <td>VARCHAR(255)</td>
+                <td>Party display name</td>
+            </tr>
+            <tr>
+                <td><code>type</code></td>
+                <td>ENUM</td>
+                <td><code>debtor</code> (customer) or <code>creditor</code> (supplier)</td>
+            </tr>
+            <tr>
+                <td><code>mobile</code>, <code>email</code></td>
+                <td>VARCHAR</td>
+                <td>Contact info</td>
+            </tr>
+            <tr>
+                <td><code>address</code>, <code>city</code>, <code>state</code>, <code>country</code></td>
+                <td>VARCHAR/TEXT</td>
+                <td>Address fields</td>
+            </tr>
+            <tr>
+                <td><code>gst_number</code>, <code>pan_number</code></td>
+                <td>VARCHAR</td>
+                <td>Tax IDs</td>
+            </tr>
+            <tr>
+                <td><code>credit_limit</code></td>
+                <td>INT</td>
+                <td>Max credit allowed (for debtors)</td>
+            </tr>
+            <tr>
+                <td><code>payment_terms_days</code></td>
+                <td>INT</td>
+                <td>Default payment terms (default 30)</td>
+            </tr>
+            <tr>
+                <td><code>uuid</code></td>
+                <td>CHAR(36)</td>
+                <td>Unique record identifier</td>
+            </tr>
+            <tr>
+                <td><code>financial_year_id</code></td>
+                <td>BIGINT FK</td>
+                <td>→ financial_years.id</td>
+            </tr>
+            <tr>
+                <td><code>postal_code</code></td>
+                <td>VARCHAR(255)</td>
+                <td>Postal/ZIP code</td>
+            </tr>
+            <tr>
+                <td><code>opening_balance</code></td>
+                <td>DECIMAL(15,2)</td>
+                <td>Initial balance (default: 0)</td>
+            </tr>
+            <tr>
+                <td><code>opening_date</code></td>
+                <td>DATE</td>
+                <td>Date of opening balance</td>
+            </tr>
+            <tr>
+                <td><code>remarks</code></td>
+                <td>TEXT</td>
+                <td>Additional notes</td>
+            </tr>
+            <tr>
+                <td><code>is_active</code></td>
+                <td>BOOLEAN</td>
+                <td>Active status (default: true)</td>
+            </tr>
+            <tr>
+                <td><code>created_by</code></td>
+                <td>BIGINT FK</td>
+                <td>→ users.id</td>
+            </tr>
+            <tr>
+                <td><code>updated_by</code></td>
+                <td>BIGINT FK</td>
+                <td>→ users.id</td>
+            </tr>
+            <tr>
+                <td><code>deleted_by</code></td>
+                <td>VARCHAR(255)</td>
+                <td>Who soft-deleted</td>
+            </tr>
+            <tr>
+                <td><code>deleted_by_id</code></td>
+                <td>BIGINT FK</td>
+                <td>→ users.id</td>
+            </tr>
+            <tr>
+                <td><code>version</code></td>
+                <td>INT</td>
+                <td>Sync version (default: 1)</td>
+            </tr>
+            <tr>
+                <td><code>synced_at</code></td>
+                <td>TIMESTAMP</td>
+                <td>Last sync timestamp</td>
+            </tr>
+            <tr>
+                <td><code>created_at</code></td>
+                <td>TIMESTAMP</td>
+                <td>Record created</td>
+            </tr>
+            <tr>
+                <td><code>updated_at</code></td>
+                <td>TIMESTAMP</td>
+                <td>Last updated</td>
+            </tr>
+            <tr>
+                <td><code>deleted_at</code></td>
+                <td>TIMESTAMP</td>
+                <td>Soft delete</td>
+            </tr>
+        </table>
+
+        <div class="tip-box">
+            <strong>Tip</strong>
+            When creating a debtor, entries auto-post to the AR account (code 1250). For creditors, entries go to AP
+            (code 1500).
+        </div>
+
+        <!-- ═══════════════════════════ SECTION 11: VOUCHERS ═══════════════════════════ -->
+        <h2 id="vouchers">11. Vouchers</h2>
+
+        <p>Vouchers are the core transaction documents. Each voucher must balance (total debit = total credit). When
+            posted, a voucher automatically generates ledger entries.</p>
+
+        <h3>Database Tables: <code>vouchers</code> + <code>voucher_lines</code></h3>
+
+        <h4><code>vouchers</code></h4>
+        <table>
+            <tr>
+                <th>Column</th>
+                <th>Type</th>
+                <th>Description</th>
+            </tr>
+            <tr>
+                <td><code>id</code></td>
+                <td>BIGINT PK</td>
+                <td>Primary key</td>
+            </tr>
+            <tr>
+                <td><code>voucher_number</code></td>
+                <td>VARCHAR(255)</td>
+                <td>Auto-generated unique number</td>
+            </tr>
+            <tr>
+                <td><code>voucher_type</code></td>
+                <td>ENUM</td>
+                <td><code>income</code>, <code>expense</code>, <code>receipt</code>, <code>payment</code>,
+                    <code>journal</code>, <code>adjustment</code></td>
+            </tr>
+            <tr>
+                <td><code>voucher_date</code></td>
+                <td>DATE</td>
+                <td>Transaction date</td>
+            </tr>
+            <tr>
+                <td><code>party_id</code></td>
+                <td>BIGINT FK</td>
+                <td>Linked party (optional)</td>
+            </tr>
+            <tr>
+                <td><code>narration</code></td>
+                <td>TEXT</td>
+                <td>Description of transaction</td>
+            </tr>
+            <tr>
+                <td><code>total_debit</code></td>
+                <td>DECIMAL(15,2)</td>
+                <td>Sum of all debit lines</td>
+            </tr>
+            <tr>
+                <td><code>total_credit</code></td>
+                <td>DECIMAL(15,2)</td>
+                <td>Sum of all credit lines (must = total_debit)</td>
+            </tr>
+            <tr>
+                <td><code>status</code></td>
+                <td>ENUM</td>
+                <td><code>draft</code> → <code>posted</code> → (optionally <code>cancelled</code>)</td>
+            </tr>
+            <tr>
+                <td><code>uuid</code></td>
+                <td>CHAR(36)</td>
+                <td>Unique record identifier</td>
+            </tr>
+            <tr>
+                <td><code>company_id</code></td>
+                <td>BIGINT FK</td>
+                <td>→ companies.id CASCADE</td>
+            </tr>
+            <tr>
+                <td><code>financial_year_id</code></td>
+                <td>BIGINT FK</td>
+                <td>→ financial_years.id</td>
+            </tr>
+            <tr>
+                <td><code>sales_invoice_id</code></td>
+                <td>BIGINT FK</td>
+                <td>→ sales_invoices.id (if auto-generated from invoice)</td>
+            </tr>
+            <tr>
+                <td><code>purchase_invoice_id</code></td>
+                <td>BIGINT FK</td>
+                <td>→ purchase_invoices.id (if auto-generated from invoice)</td>
+            </tr>
+            <tr>
+                <td><code>remarks</code></td>
+                <td>TEXT</td>
+                <td>Additional notes</td>
+            </tr>
+            <tr>
+                <td><code>created_by</code></td>
+                <td>BIGINT FK</td>
+                <td>→ users.id</td>
+            </tr>
+            <tr>
+                <td><code>updated_by</code></td>
+                <td>BIGINT FK</td>
+                <td>→ users.id</td>
+            </tr>
+            <tr>
+                <td><code>deleted_by</code></td>
+                <td>VARCHAR(255)</td>
+                <td>Who soft-deleted</td>
+            </tr>
+            <tr>
+                <td><code>deleted_by_id</code></td>
+                <td>BIGINT FK</td>
+                <td>→ users.id</td>
+            </tr>
+            <tr>
+                <td><code>version</code></td>
+                <td>INT</td>
+                <td>Sync version (default: 1)</td>
+            </tr>
+            <tr>
+                <td><code>synced_at</code></td>
+                <td>TIMESTAMP</td>
+                <td>Last sync timestamp</td>
+            </tr>
+            <tr>
+                <td><code>created_at</code></td>
+                <td>TIMESTAMP</td>
+                <td>Record created</td>
+            </tr>
+            <tr>
+                <td><code>updated_at</code></td>
+                <td>TIMESTAMP</td>
+                <td>Last updated</td>
+            </tr>
+            <tr>
+                <td><code>deleted_at</code></td>
+                <td>TIMESTAMP</td>
+                <td>Soft delete</td>
+            </tr>
+        </table>
+        <p><strong>Validation Rule:</strong> <code>total_debit</code> must equal <code>total_credit</code> before a
+            voucher can be posted.</p>
+
+        <h4><code>voucher_lines</code></h4>
+        <table>
+            <tr>
+                <th>Column</th>
+                <th>Type</th>
+                <th>Description</th>
+            </tr>
+            <tr>
+                <td><code>id</code></td>
+                <td>BIGINT PK</td>
+                <td>Primary key</td>
+            </tr>
+            <tr>
+                <td><code>voucher_id</code></td>
+                <td>BIGINT FK</td>
+                <td>Parent voucher</td>
+            </tr>
+            <tr>
+                <td><code>account_id</code></td>
+                <td>BIGINT FK</td>
+                <td>Account for this line</td>
+            </tr>
+            <tr>
+                <td><code>debit</code></td>
+                <td>DECIMAL(15,2)</td>
+                <td>Debit amount (0 if credit line)</td>
+            </tr>
+            <tr>
+                <td><code>credit</code></td>
+                <td>DECIMAL(15,2)</td>
+                <td>Credit amount (0 if debit line)</td>
+            </tr>
+            <tr>
+                <td><code>description</code></td>
+                <td>TEXT</td>
+                <td>Line-level note</td>
+            </tr>
+            <tr>
+                <td><code>uuid</code></td>
+                <td>CHAR(36)</td>
+                <td>Unique record identifier</td>
+            </tr>
+            <tr>
+                <td><code>sort_order</code></td>
+                <td>INT</td>
+                <td>Display order of line (default: 0)</td>
+            </tr>
+            <tr>
+                <td><code>created_by</code></td>
+                <td>BIGINT FK</td>
+                <td>→ users.id</td>
+            </tr>
+            <tr>
+                <td><code>updated_by</code></td>
+                <td>BIGINT FK</td>
+                <td>→ users.id</td>
+            </tr>
+            <tr>
+                <td><code>version</code></td>
+                <td>INT</td>
+                <td>Sync version (default: 1)</td>
+            </tr>
+            <tr>
+                <td><code>synced_at</code></td>
+                <td>TIMESTAMP</td>
+                <td>Last sync timestamp</td>
+            </tr>
+        </table>
+
+        <h3>6 Voucher Types &amp; Their Purpose</h3>
+        <table>
+            <tr>
+                <th>Type</th>
+                <th>Used For</th>
+                <th>Example Debit</th>
+                <th>Example Credit</th>
+            </tr>
+            <tr>
+                <td><strong>Income</strong></td>
+                <td>Recording revenue</td>
+                <td>Cash/Bank/Party</td>
+                <td>Sales/Service Income</td>
+            </tr>
+            <tr>
+                <td><strong>Expense</strong></td>
+                <td>Recording costs</td>
+                <td>Rent/Salary/etc.</td>
+                <td>Cash/Bank/Party</td>
+            </tr>
+            <tr>
+                <td><strong>Receipt</strong></td>
+                <td>Money received from debtors</td>
+                <td>Cash/Bank</td>
+                <td>Party (Debtor)</td>
+            </tr>
+            <tr>
+                <td><strong>Payment</strong></td>
+                <td>Money paid to creditors</td>
+                <td>Party (Creditor)</td>
+                <td>Cash/Bank</td>
+            </tr>
+            <tr>
+                <td><strong>Journal</strong></td>
+                <td>Adjustments, transfers, corrections</td>
+                <td>Any Account</td>
+                <td>Any Account</td>
+            </tr>
+            <tr>
+                <td><strong>Adjustment</strong></td>
+                <td>Special accounting adjustments</td>
+                <td>Any Account</td>
+                <td>Any Account</td>
+            </tr>
+        </table>
+
+        <h3>Voucher Lifecycle</h3>
+        <ol class="step-list">
+            <li><strong>Create</strong> - User fills voucher form with lines (status: <code>draft</code>)</li>
+            <li><strong>Store</strong> - Voucher is saved to database but NOT yet in ledger</li>
+            <li><strong>Post</strong> - System validates debit=credit, generates ledger entries via
+                <code>LedgerService::generateForVoucher()</code>, status becomes <code>posted</code></li>
+            <li><strong>Cancel</strong> (optional) - Reverses ledger entries, status becomes <code>cancelled</code></li>
+        </ol>
+
+        <h3>How Ledger Entries Are Generated</h3>
+        <p>When a voucher is posted, <code>LedgerService::generateForVoucher()</code>:</p>
+        <ol>
+            <li>Iterates through each <code>voucher_line</code></li>
+            <li>For each line, creates a record in the <code>ledgers</code> table with:
+                <ul>
+                    <li><code>debit</code> / <code>credit</code> values from the line</li>
+                    <li><code>running_balance</code> calculated based on account type's normal balance</li>
+                    <li><code>balance_type</code> set to <code>debit</code> or <code>credit</code></li>
+                </ul>
+            </li>
+            <li>Running balance formula depends on account type:
+                <ul>
+                    <li>Debit-normal (Asset/Expense): <code>running_balance = previous_balance - credit + debit</code>
+                    </li>
+                    <li>Credit-normal (Liability/Income/Equity):
+                        <code>running_balance = previous_balance + credit - debit</code></li>
+                </ul>
+            </li>
+        </ol>
+
+        <div class="warn-box">
+            <strong>Important</strong>
+            A voucher cannot be posted unless <code>total_debit == total_credit</code> (double-entry validation). Always
+            ensure your lines balance before posting.
+        </div>
+
+        <h3>Database Table: <code>ledgers</code></h3>
+        <p>The <code>ledgers</code> table is the heart of the accounting engine — every posted transaction creates one
+            row per account with a pre-computed running balance. All financial reports read from this table.</p>
+        <table>
+            <tr>
+                <th>Column</th>
+                <th>Type</th>
+                <th>Description</th>
+            </tr>
+            <tr><td><code>id</code></td><td>BIGINT PK</td><td>Primary key</td></tr>
+            <tr><td><code>uuid</code></td><td>CHAR(36)</td><td>Unique record identifier</td></tr>
+            <tr><td><code>company_id</code></td><td>BIGINT FK</td><td>→ companies.id CASCADE</td></tr>
+            <tr><td><code>financial_year_id</code></td><td>BIGINT FK</td><td>→ financial_years.id SET NULL</td></tr>
+            <tr><td><code>account_id</code></td><td>BIGINT FK</td><td>→ accounts.id CASCADE</td></tr>
+            <tr><td><code>party_id</code></td><td>BIGINT FK</td><td>→ parties.id SET NULL</td></tr>
+            <tr><td><code>voucher_id</code></td><td>BIGINT FK</td><td>→ vouchers.id SET NULL (source voucher)</td></tr>
+            <tr><td><code>transaction_date</code></td><td>DATE</td><td>Transaction date</td></tr>
+            <tr><td><code>reference_id</code></td><td>BIGINT</td><td>Polymorphic reference id</td></tr>
+            <tr><td><code>description</code></td><td>TEXT</td><td>Entry description</td></tr>
+            <tr><td><code>debit</code></td><td>DECIMAL(15,2)</td><td>Debit amount (default: 0)</td></tr>
+            <tr><td><code>credit</code></td><td>DECIMAL(15,2)</td><td>Credit amount (default: 0)</td></tr>
+            <tr><td><code>running_balance</code></td><td>DECIMAL(15,2)</td><td>Pre-computed balance after this entry</td></tr>
+            <tr><td><code>balance_type</code></td><td>ENUM</td><td><code>debit</code>, <code>credit</code> (default: debit)</td></tr>
+            <tr><td><code>created_by</code></td><td>BIGINT FK</td><td>→ users.id</td></tr>
+            <tr><td><code>updated_by</code></td><td>BIGINT FK</td><td>→ users.id</td></tr>
+            <tr><td><code>version</code></td><td>INT</td><td>Sync version (default: 1)</td></tr>
+            <tr><td><code>synced_at</code></td><td>TIMESTAMP</td><td>Last sync timestamp</td></tr>
+        </table>
+        <p><strong>Key Indexes:</strong> <code>uuid</code> (UNIQUE), <code>(company_id, account_id, transaction_date)</code>,
+            <code>(company_id, financial_year_id)</code>. These indexes make report queries fast even with millions of rows.</p>
+
+        <!-- ═══════════════════════════ SECTION 18: LEDGER PARTY HISTORY ═══════════════════════════ -->
+        <h2 id="ledger-party-history">11a. Ledger Party History</h2>
+
+        <p>Ledger Party History stores historical snapshot records of party (debtor/creditor) ledger balances. This enables
+            tracking balance changes over time for each party.</p>
+
+        <h3>Table: <code>ledger_party_histories</code></h3>
+        <table>
+            <tr>
+                <th>Column</th>
+                <th>Type</th>
+                <th>Description</th>
+            </tr>
+            <tr><td><code>id</code></td><td>BIGINT PK</td><td>Primary key</td></tr>
+            <tr><td><code>uuid</code></td><td>CHAR(36)</td><td>Unique record identifier</td></tr>
+            <tr><td><code>company_id</code></td><td>BIGINT FK</td><td>→ companies.id CASCADE</td></tr>
+            <tr><td><code>financial_year_id</code></td><td>BIGINT FK</td><td>→ financial_years.id SET NULL</td></tr>
+            <tr><td><code>ledger_id</code></td><td>BIGINT FK</td><td>→ ledgers.id CASCADE</td></tr>
+            <tr><td><code>party_id</code></td><td>BIGINT FK</td><td>→ parties.id CASCADE (debtor or creditor)</td></tr>
+            <tr><td><code>reference_type</code></td><td>VARCHAR(255)</td><td>Polymorphic reference type</td></tr>
+            <tr><td><code>reference_id</code></td><td>BIGINT</td><td>Polymorphic reference id</td></tr>
+            <tr><td><code>notes</code></td><td>TEXT</td><td>Notes</td></tr>
+            <tr><td><code>created_by</code></td><td>BIGINT FK</td><td>→ users.id SET NULL</td></tr>
+            <tr><td><code>created_by_ip</code></td><td>VARCHAR(255)</td><td>Creator IP address</td></tr>
+            <tr><td><code>version</code></td><td>INT</td><td>Sync version (default: 1)</td></tr>
+            <tr><td><code>synced_at</code></td><td>TIMESTAMP</td><td>Last sync timestamp</td></tr>
+            <tr><td><code>created_at</code></td><td>TIMESTAMP</td><td>Record created</td></tr>
+            <tr><td><code>updated_at</code></td><td>TIMESTAMP</td><td>Last updated</td></tr>
+        </table>
+
+        <h3>Usage</h3>
+        <ul>
+            <li>View history at <code>/admin/ledgers/{ledger}/history</code></li>
+            <li>API: <code>GET /api/v1/ledgers/{id}/history</code></li>
+            <li>Used by debtors/creditors outstanding reports for balance tracking</li>
+            <li>Service: <code>LedgerPartyHistoryService</code> | Repository:
+                <code>LedgerPartyHistoryRepository</code></li>
+        </ul>
+
+        <!-- ═══════════════════════════ SECTION 12: SALES INVOICES ═══════════════════════════ -->
+        <h2 id="sales-invoices">12. Sales Invoices</h2>
+
+        <p>Sales invoices track sales to customers with line items, tax calculations, and payment tracking.</p>
+
+        <h3>Tables: <code>sales_invoices</code> + <code>sales_invoice_lines</code></h3>
+
+        <h4><code>sales_invoices</code> — Complete Schema</h4>
+        <table>
+            <tr>
+                <th>Column</th>
+                <th>Type</th>
+                <th>Description</th>
+            </tr>
+            <tr><td><code>id</code></td><td>BIGINT PK</td><td>Primary key</td></tr>
+            <tr><td><code>uuid</code></td><td>CHAR(36)</td><td>Unique record identifier</td></tr>
+            <tr><td><code>company_id</code></td><td>BIGINT FK</td><td>→ companies.id CASCADE</td></tr>
+            <tr><td><code>financial_year_id</code></td><td>BIGINT FK</td><td>→ financial_years.id SET NULL</td></tr>
+            <tr><td><code>party_id</code></td><td>BIGINT FK</td><td>→ parties.id SET NULL (customer/debtor)</td></tr>
+            <tr><td><code>invoice_number</code></td><td>VARCHAR(255)</td><td>Auto-generated (unique)</td></tr>
+            <tr><td><code>invoice_date</code></td><td>DATE</td><td>Invoice date</td></tr>
+            <tr><td><code>due_date</code></td><td>DATE</td><td>Payment due date</td></tr>
+            <tr><td><code>reference_number</code></td><td>VARCHAR(255)</td><td>External reference</td></tr>
+            <tr><td><code>notes</code></td><td>TEXT</td><td>Notes</td></tr>
+            <tr><td><code>subtotal</code></td><td>DECIMAL(15,2)</td><td>Sum of line totals before tax</td></tr>
+            <tr><td><code>discount_amount</code></td><td>DECIMAL(10,2)</td><td>Total discount amount</td></tr>
+            <tr><td><code>discount_percentage</code></td><td>DECIMAL(5,2)</td><td>Discount percentage</td></tr>
+            <tr><td><code>tax_amount</code></td><td>DECIMAL(15,2)</td><td>Total tax</td></tr>
+            <tr><td><code>total</code></td><td>DECIMAL(15,2)</td><td>Grand total</td></tr>
+            <tr><td><code>amount_paid</code></td><td>DECIMAL(15,2)</td><td>Amount received</td></tr>
+            <tr><td><code>balance_due</code></td><td>DECIMAL(15,2)</td><td>Outstanding balance</td></tr>
+            <tr><td><code>currency</code></td><td>VARCHAR(3)</td><td>Currency code (default: INR)</td></tr>
+            <tr><td><code>status</code></td><td>ENUM</td><td><code>draft</code>, <code>sent</code>, <code>partial</code>, <code>paid</code>, <code>overdue</code>, <code>cancelled</code>, <code>credit_note</code></td></tr>
+            <tr><td><code>is_recurring</code></td><td>BOOLEAN</td><td>Recurring invoice flag</td></tr>
+            <tr><td><code>version</code></td><td>INT</td><td>Sync version (default: 1)</td></tr>
+            <tr><td><code>synced_at</code></td><td>TIMESTAMP</td><td>Last sync timestamp</td></tr>
+            <tr><td><code>created_by</code></td><td>BIGINT FK</td><td>→ users.id</td></tr>
+            <tr><td><code>updated_by</code></td><td>BIGINT FK</td><td>→ users.id</td></tr>
+            <tr><td><code>deleted_by</code></td><td>VARCHAR(255)</td><td>Who soft-deleted</td></tr>
+            <tr><td><code>deleted_by_id</code></td><td>BIGINT FK</td><td>→ users.id</td></tr>
+            <tr><td><code>created_at</code></td><td>TIMESTAMP</td><td>Record created</td></tr>
+            <tr><td><code>updated_at</code></td><td>TIMESTAMP</td><td>Last updated</td></tr>
+            <tr><td><code>deleted_at</code></td><td>TIMESTAMP</td><td>Soft delete</td></tr>
+        </table>
+
+        <h4><code>sales_invoice_lines</code> — Complete Schema</h4>
+        <table>
+            <tr>
+                <th>Column</th>
+                <th>Type</th>
+                <th>Description</th>
+            </tr>
+            <tr><td><code>id</code></td><td>BIGINT PK</td><td>Primary key</td></tr>
+            <tr><td><code>uuid</code></td><td>CHAR(36)</td><td>Unique record identifier</td></tr>
+            <tr><td><code>sales_invoice_id</code></td><td>BIGINT FK</td><td>→ sales_invoices.id CASCADE</td></tr>
+            <tr><td><code>item_id</code></td><td>BIGINT FK</td><td>→ items.id SET NULL</td></tr>
+            <tr><td><code>account_id</code></td><td>BIGINT FK</td><td>→ accounts.id SET NULL</td></tr>
+            <tr><td><code>tax_rate_id</code></td><td>BIGINT FK</td><td>→ tax_rates.id SET NULL</td></tr>
+            <tr><td><code>description</code></td><td>VARCHAR(255)</td><td>Line description</td></tr>
+            <tr><td><code>quantity</code></td><td>DECIMAL(15,3)</td><td>Quantity (default: 1)</td></tr>
+            <tr><td><code>unit_price</code></td><td>DECIMAL(15,2)</td><td>Price per unit</td></tr>
+            <tr><td><code>discount_percentage</code></td><td>DECIMAL(5,2)</td><td>Line discount %</td></tr>
+            <tr><td><code>discount_amount</code></td><td>DECIMAL(10,2)</td><td>Line discount amount</td></tr>
+            <tr><td><code>tax_amount</code></td><td>DECIMAL(15,2)</td><td>Line tax</td></tr>
+            <tr><td><code>total</code></td><td>DECIMAL(15,2)</td><td>Line total</td></tr>
+            <tr><td><code>sort_order</code></td><td>INT</td><td>Display order (default: 0)</td></tr>
+            <tr><td><code>version</code></td><td>INT</td><td>Sync version (default: 1)</td></tr>
+            <tr><td><code>synced_at</code></td><td>TIMESTAMP</td><td>Last sync timestamp</td></tr>
+        </table>
+
+        <h3>Workflow</h3>
+        <ol class="step-list">
+            <li>Create invoice at <code>/admin/sales-invoices/create</code></li>
+            <li>Add line items (item, quantity, rate, tax)
+                <ul>
+                    <li>Items are looked up from <code>items</code> table</li>
+                    <li>Tax is calculated using <code>tax_rates</code> table</li>
+                    <li>Total = sum of (qty × rate) + tax</li>
+                </ul>
+            </li>
+            <li>Save invoice (status: <code>draft</code>)</li>
+            <li>Record payment via <code>/admin/sales-invoices/{id}/payment</code></li>
+            <li>Once fully paid, status becomes <code>paid</code></li>
+            <li>If past due date and unpaid, status becomes <code>overdue</code></li>
+            <li>Overdue invoices visible at <code>/admin/sales-invoices/overdue</code></li>
+        </ol>
+
+        <div class="info-box">
+            <strong>Voucher Auto-Generation</strong>
+            When a sales invoice is paid or sent, you can generate an income voucher automatically. This posts the
+            transaction to the ledger (debit: AR 1250 / Party, credit: Sales Income).
+        </div>
+
+        <!-- ═══════════════════════════ SECTION 13: PURCHASE INVOICES ═══════════════════════════ -->
+        <h2 id="purchase-invoices">13. Purchase Invoices</h2>
+
+        <p>Purchase invoices track purchases from suppliers. Similar structure to sales invoices but for creditors.</p>
+
+        <h3>Tables: <code>purchase_invoices</code> + <code>purchase_invoice_lines</code></h3>
+
+        <h4><code>purchase_invoices</code> — Complete Schema</h4>
+        <table>
+            <tr>
+                <th>Column</th>
+                <th>Type</th>
+                <th>Description</th>
+            </tr>
+            <tr><td><code>id</code></td><td>BIGINT PK</td><td>Primary key</td></tr>
+            <tr><td><code>uuid</code></td><td>CHAR(36)</td><td>Unique record identifier</td></tr>
+            <tr><td><code>company_id</code></td><td>BIGINT FK</td><td>→ companies.id CASCADE</td></tr>
+            <tr><td><code>financial_year_id</code></td><td>BIGINT FK</td><td>→ financial_years.id SET NULL</td></tr>
+            <tr><td><code>party_id</code></td><td>BIGINT FK</td><td>→ parties.id SET NULL (supplier/creditor)</td></tr>
+            <tr><td><code>invoice_number</code></td><td>VARCHAR(255)</td><td>Auto-generated (unique)</td></tr>
+            <tr><td><code>supplier_invoice_number</code></td><td>VARCHAR(255)</td><td>Supplier's reference number</td></tr>
+            <tr><td><code>invoice_date</code></td><td>DATE</td><td>Invoice date</td></tr>
+            <tr><td><code>due_date</code></td><td>DATE</td><td>Payment due date</td></tr>
+            <tr><td><code>notes</code></td><td>TEXT</td><td>Notes</td></tr>
+            <tr><td><code>subtotal</code></td><td>DECIMAL(15,2)</td><td>Sum of line totals before tax</td></tr>
+            <tr><td><code>discount_amount</code></td><td>DECIMAL(10,2)</td><td>Total discount amount</td></tr>
+            <tr><td><code>discount_percentage</code></td><td>DECIMAL(5,2)</td><td>Discount percentage</td></tr>
+            <tr><td><code>tax_amount</code></td><td>DECIMAL(15,2)</td><td>Total tax</td></tr>
+            <tr><td><code>total</code></td><td>DECIMAL(15,2)</td><td>Grand total</td></tr>
+            <tr><td><code>amount_paid</code></td><td>DECIMAL(15,2)</td><td>Amount paid</td></tr>
+            <tr><td><code>balance_due</code></td><td>DECIMAL(15,2)</td><td>Outstanding balance</td></tr>
+            <tr><td><code>currency</code></td><td>VARCHAR(3)</td><td>Currency code (default: INR)</td></tr>
+            <tr><td><code>status</code></td><td>ENUM</td><td><code>draft</code>, <code>verified</code>, <code>partial</code>, <code>paid</code>, <code>overdue</code>, <code>cancelled</code>, <code>debit_note</code></td></tr>
+            <tr><td><code>version</code></td><td>INT</td><td>Sync version (default: 1)</td></tr>
+            <tr><td><code>synced_at</code></td><td>TIMESTAMP</td><td>Last sync timestamp</td></tr>
+            <tr><td><code>created_by</code></td><td>BIGINT FK</td><td>→ users.id</td></tr>
+            <tr><td><code>updated_by</code></td><td>BIGINT FK</td><td>→ users.id</td></tr>
+            <tr><td><code>deleted_by</code></td><td>VARCHAR(255)</td><td>Who soft-deleted</td></tr>
+            <tr><td><code>deleted_by_id</code></td><td>BIGINT FK</td><td>→ users.id</td></tr>
+            <tr><td><code>created_at</code></td><td>TIMESTAMP</td><td>Record created</td></tr>
+            <tr><td><code>updated_at</code></td><td>TIMESTAMP</td><td>Last updated</td></tr>
+            <tr><td><code>deleted_at</code></td><td>TIMESTAMP</td><td>Soft delete</td></tr>
+        </table>
+
+        <h4><code>purchase_invoice_lines</code> — Complete Schema</h4>
+        <table>
+            <tr>
+                <th>Column</th>
+                <th>Type</th>
+                <th>Description</th>
+            </tr>
+            <tr><td><code>id</code></td><td>BIGINT PK</td><td>Primary key</td></tr>
+            <tr><td><code>uuid</code></td><td>CHAR(36)</td><td>Unique record identifier</td></tr>
+            <tr><td><code>purchase_invoice_id</code></td><td>BIGINT FK</td><td>→ purchase_invoices.id CASCADE</td></tr>
+            <tr><td><code>item_id</code></td><td>BIGINT FK</td><td>→ items.id SET NULL</td></tr>
+            <tr><td><code>account_id</code></td><td>BIGINT FK</td><td>→ accounts.id SET NULL</td></tr>
+            <tr><td><code>tax_rate_id</code></td><td>BIGINT FK</td><td>→ tax_rates.id SET NULL</td></tr>
+            <tr><td><code>description</code></td><td>VARCHAR(255)</td><td>Line description</td></tr>
+            <tr><td><code>quantity</code></td><td>DECIMAL(15,3)</td><td>Quantity (default: 1)</td></tr>
+            <tr><td><code>unit_price</code></td><td>DECIMAL(15,2)</td><td>Price per unit</td></tr>
+            <tr><td><code>discount_percentage</code></td><td>DECIMAL(5,2)</td><td>Line discount %</td></tr>
+            <tr><td><code>discount_amount</code></td><td>DECIMAL(10,2)</td><td>Line discount amount</td></tr>
+            <tr><td><code>tax_amount</code></td><td>DECIMAL(15,2)</td><td>Line tax</td></tr>
+            <tr><td><code>total</code></td><td>DECIMAL(15,2)</td><td>Line total</td></tr>
+            <tr><td><code>sort_order</code></td><td>INT</td><td>Display order (default: 0)</td></tr>
+            <tr><td><code>version</code></td><td>INT</td><td>Sync version (default: 1)</td></tr>
+            <tr><td><code>synced_at</code></td><td>TIMESTAMP</td><td>Last sync timestamp</td></tr>
+        </table>
+
+        <h3>Workflow</h3>
+        <ol class="step-list">
+            <li>Create invoice at <code>/admin/purchase-invoices/create</code></li>
+            <li>Add line items with items, quantities, rates, and taxes</li>
+            <li>Save invoice</li>
+            <li>Record payment via <code>/admin/purchase-invoices/{id}/payment</code></li>
+            <li>Generate expense voucher to post to ledger</li>
+        </ol>
+
+        <div class="info-box">
+            <strong>Voucher Auto-Generation</strong>
+            When a purchase invoice is paid, you can generate an expense voucher. This posts: Debit → Expense/Purchase
+            account, Credit → AP 1500 / Party.
+        </div>
+
+        <!-- ═══════════════════════════ SECTION 14: ITEMS ═══════════════════════════ -->
+        <h2 id="items">14. Items &amp; Inventory</h2>
+
+        <p>Item management with categories, stock tracking, and tax rates.</p>
+
+        <h3>Tables: <code>items</code> + <code>item_categories</code></h3>
+
+        <h4><code>items</code> — Complete Schema</h4>
+        <table>
+            <tr>
+                <th>Column</th>
+                <th>Type</th>
+                <th>Description</th>
+            </tr>
+            <tr><td><code>id</code></td><td>BIGINT PK</td><td>Primary key</td></tr>
+            <tr><td><code>uuid</code></td><td>CHAR(36)</td><td>Unique record identifier</td></tr>
+            <tr><td><code>company_id</code></td><td>BIGINT FK</td><td>→ companies.id CASCADE</td></tr>
+            <tr><td><code>item_code</code></td><td>VARCHAR(255)</td><td>Unique code / SKU</td></tr>
+            <tr><td><code>name</code></td><td>VARCHAR(255)</td><td>Item name</td></tr>
+            <tr><td><code>hsn_sac_code</code></td><td>VARCHAR(255)</td><td>HSN/SAC tax code</td></tr>
+            <tr><td><code>type</code></td><td>ENUM</td><td><code>goods</code>, <code>service</code></td></tr>
+            <tr><td><code>tax_rate_id</code></td><td>BIGINT FK</td><td>→ tax_rates.id SET NULL (default tax)</td></tr>
+            <tr><td><code>income_account_id</code></td><td>BIGINT FK</td><td>→ accounts.id SET NULL (sales income)</td></tr>
+            <tr><td><code>expense_account_id</code></td><td>BIGINT FK</td><td>→ accounts.id SET NULL (purchase expense)</td></tr>
+            <tr><td><code>purchase_price</code></td><td>DECIMAL(15,2)</td><td>Cost price</td></tr>
+            <tr><td><code>selling_price</code></td><td>DECIMAL(15,2)</td><td>Default sale price</td></tr>
+            <tr><td><code>unit</code></td><td>VARCHAR(255)</td><td>Unit of measure (default: nos)</td></tr>
+            <tr><td><code>description</code></td><td>TEXT</td><td>Item description</td></tr>
+            <tr><td><code>barcode</code></td><td>VARCHAR(255)</td><td>Barcode</td></tr>
+            <tr><td><code>opening_stock</code></td><td>DECIMAL(15,2)</td><td>Initial stock quantity</td></tr>
+            <tr><td><code>current_stock</code></td><td>DECIMAL(15,2)</td><td>Current quantity in stock</td></tr>
+            <tr><td><code>reorder_level</code></td><td>DECIMAL(15,2)</td><td>Low stock threshold</td></tr>
+            <tr><td><code>is_active</code></td><td>BOOLEAN</td><td>Active status (default: true)</td></tr>
+            <tr><td><code>is_stockable</code></td><td>BOOLEAN</td><td>Tracks stock (default: true)</td></tr>
+            <tr><td><code>version</code></td><td>INT</td><td>Sync version (default: 1)</td></tr>
+            <tr><td><code>synced_at</code></td><td>TIMESTAMP</td><td>Last sync timestamp</td></tr>
+            <tr><td><code>created_by</code></td><td>BIGINT FK</td><td>→ users.id</td></tr>
+            <tr><td><code>updated_by</code></td><td>BIGINT FK</td><td>→ users.id</td></tr>
+            <tr><td><code>deleted_by</code></td><td>VARCHAR(255)</td><td>Who soft-deleted</td></tr>
+            <tr><td><code>deleted_by_id</code></td><td>BIGINT FK</td><td>→ users.id</td></tr>
+            <tr><td><code>created_at</code></td><td>TIMESTAMP</td><td>Record created</td></tr>
+            <tr><td><code>updated_at</code></td><td>TIMESTAMP</td><td>Last updated</td></tr>
+            <tr><td><code>deleted_at</code></td><td>TIMESTAMP</td><td>Soft delete</td></tr>
+        </table>
+        <p><strong>Note:</strong> Items support both <code>goods</code> (stockable products) and <code>service</code> types.
+            Stock is only tracked when <code>is_stockable</code> is true.</p>
+
+        <h3>Features</h3>
+        <ul>
+            <li>CRUD items at <code>/admin/items</code></li>
+            <li>CRUD categories at <code>/admin/item-categories</code></li>
+            <li>Stock automatically updates when items are used in sales/purchase invoices</li>
+            <li>Low stock alerts: <code>/admin/items/low-stock</code> shows items below reorder level</li>
+        </ul>
+
+        <!-- ═══════════════════════════ SECTION 15: BANK ACCOUNTS ═══════════════════════════ -->
+        <h2 id="bank-accounts">15. Bank Accounts</h2>
+
+        <p>Manage company bank accounts for payments and receipts.</p>
+
+        <h3>Table: <code>bank_accounts</code></h3>
+
+        <table>
+            <tr>
+                <th>Column</th>
+                <th>Type</th>
+                <th>Description</th>
+            </tr>
+            <tr><td><code>id</code></td><td>BIGINT PK</td><td>Primary key</td></tr>
+            <tr><td><code>uuid</code></td><td>CHAR(36)</td><td>Unique record identifier</td></tr>
+            <tr><td><code>company_id</code></td><td>BIGINT FK</td><td>→ companies.id CASCADE</td></tr>
+            <tr><td><code>account_id</code></td><td>BIGINT FK</td><td>→ accounts.id SET NULL (linked ledger account)</td></tr>
+            <tr><td><code>bank_name</code></td><td>VARCHAR(255)</td><td>Name of bank</td></tr>
+            <tr><td><code>branch_name</code></td><td>VARCHAR(255)</td><td>Bank branch</td></tr>
+            <tr><td><code>account_number</code></td><td>VARCHAR(255)</td><td>Bank account number</td></tr>
+            <tr><td><code>ifsc_code</code></td><td>VARCHAR(255)</td><td>IFSC code (Indian banks)</td></tr>
+            <tr><td><code>account_holder_name</code></td><td>VARCHAR(255)</td><td>Account holder name</td></tr>
+            <tr><td><code>account_type</code></td><td>ENUM</td><td><code>savings</code>, <code>current</code>, <code>fixed_deposit</code>, <code>cc_od</code></td></tr>
+            <tr><td><code>opening_balance</code></td><td>DECIMAL(15,2)</td><td>Initial balance</td></tr>
+            <tr><td><code>opening_date</code></td><td>DATE</td><td>Opening balance date</td></tr>
+            <tr><td><code>upi_id</code></td><td>VARCHAR(255)</td><td>UPI ID</td></tr>
+            <tr><td><code>is_default</code></td><td>BOOLEAN</td><td>Default for payments</td></tr>
+            <tr><td><code>is_active</code></td><td>BOOLEAN</td><td>Active status</td></tr>
+            <tr><td><code>remarks</code></td><td>TEXT</td><td>Notes</td></tr>
+            <tr><td><code>version</code></td><td>INT</td><td>Sync version (default: 1)</td></tr>
+            <tr><td><code>synced_at</code></td><td>TIMESTAMP</td><td>Last sync timestamp</td></tr>
+            <tr><td><code>created_by</code></td><td>BIGINT FK</td><td>→ users.id</td></tr>
+            <tr><td><code>updated_by</code></td><td>BIGINT FK</td><td>→ users.id</td></tr>
+            <tr><td><code>deleted_by</code></td><td>VARCHAR(255)</td><td>Who soft-deleted</td></tr>
+            <tr><td><code>deleted_by_id</code></td><td>BIGINT FK</td><td>→ users.id</td></tr>
+            <tr><td><code>created_at</code></td><td>TIMESTAMP</td><td>Record created</td></tr>
+            <tr><td><code>updated_at</code></td><td>TIMESTAMP</td><td>Last updated</td></tr>
+            <tr><td><code>deleted_at</code></td><td>TIMESTAMP</td><td>Soft delete</td></tr>
+        </table>
+
+        <p>Managed at <code>/admin/bank-accounts</code>.</p>
+
+        <!-- ═══════════════════════════ SECTION 16: TAX RATES ═══════════════════════════ -->
+        <h2 id="tax-rates">16. Tax Rates</h2>
+
+        <h3>Table: <code>tax_rates</code></h3>
+
+        <table>
+            <tr>
+                <th>Column</th>
+                <th>Type</th>
+                <th>Description</th>
+            </tr>
+            <tr><td><code>id</code></td><td>BIGINT PK</td><td>Primary key</td></tr>
+            <tr><td><code>uuid</code></td><td>CHAR(36)</td><td>Unique record identifier</td></tr>
+            <tr><td><code>company_id</code></td><td>BIGINT FK</td><td>→ companies.id CASCADE</td></tr>
+            <tr><td><code>type</code></td><td>ENUM</td><td><code>gst</code>, <code>igst</code>, <code>cgst_sgst</code>, <code>vat</code>, <code>exempt</code></td></tr>
+            <tr><td><code>cgst_rate</code></td><td>DECIMAL(5,2)</td><td>CGST percentage</td></tr>
+            <tr><td><code>sgst_rate</code></td><td>DECIMAL(5,2)</td><td>SGST percentage</td></tr>
+            <tr><td><code>igst_rate</code></td><td>DECIMAL(5,2)</td><td>IGST percentage</td></tr>
+            <tr><td><code>is_inclusive</code></td><td>BOOLEAN</td><td>Tax-inclusive pricing</td></tr>
+            <tr><td><code>is_active</code></td><td>BOOLEAN</td><td>Active status</td></tr>
+            <tr><td><code>version</code></td><td>INT</td><td>Sync version (default: 1)</td></tr>
+            <tr><td><code>synced_at</code></td><td>TIMESTAMP</td><td>Last sync timestamp</td></tr>
+            <tr><td><code>created_by</code></td><td>BIGINT FK</td><td>→ users.id</td></tr>
+            <tr><td><code>updated_by</code></td><td>BIGINT FK</td><td>→ users.id</td></tr>
+            <tr><td><code>created_by_ip</code></td><td>VARCHAR(255)</td><td>Creator IP address</td></tr>
+            <tr><td><code>updated_by_ip</code></td><td>VARCHAR(255)</td><td>Updater IP address</td></tr>
+        </table>
+
+        <p>Managed at <code>/admin/tax-rates</code>. Tax rates are applied to invoice lines automatically.</p>
+
+        <!-- ═══════════════════════════ SECTION 17: SERVICE SALES INVOICES ═══════════════════════════ -->
+        <h2 id="service-sales-invoices">16a. Service Sales Invoices</h2>
+
+        <p>Service Sales Invoices are a separate module for service-based businesses that don't need inventory/stock
+            tracking. Unlike regular sales invoices which use <code>items</code> for line items, service invoices allow
+            free-form service descriptions with accounts and tax rates.</p>
+
+        <h3>Tables: <code>sales_invoices</code> + <code>sales_invoice_lines</code> (shared with regular invoices, with
+            type differentiation)</h3>
+
+        <h3>Workflow</h3>
+        <ol class="step-list">
+            <li>Create invoice at <code>/admin/service-sales-invoices/create</code></li>
+            <li>Add service lines (account, description, rate, tax, quantity)
+                <ul>
+                    <li>Each line links to an <code>account</code> instead of an <code>item</code></li>
+                    <li>Tax is calculated using <code>tax_rates</code> table</li>
+                </ul>
+            </li>
+            <li>Save invoice — voucher and journal entries are posted automatically on create</li>
+            <li>Manage at <code>/admin/service-sales-invoices</code></li>
+            <li>API: use <code>POST /api/v1/sales-invoices</code> with <code>invoice_type=service</code></li>
+        </ol>
+
+        <div class="tip-box">
+            <strong>Use Case</strong>
+            Ideal for consultants, agencies, and professional services where you bill based on services rendered rather
+            than physical products.
+        </div>
+
+        <!-- ═══════════════════════════ SECTION 18: ITEM CATEGORIES ═══════════════════════════ -->
+        <h2 id="item-categories">16b. Item Categories</h2>
+
+        <p>Organize items into categories for better inventory management and reporting.</p>
+
+        <h3>Table: <code>item_categories</code></h3>
+        <table>
+            <tr>
+                <th>Column</th>
+                <th>Type</th>
+                <th>Description</th>
+            </tr>
+            <tr><td><code>id</code></td><td>BIGINT PK</td><td>Primary key</td></tr>
+            <tr><td><code>uuid</code></td><td>CHAR(36)</td><td>Unique record identifier</td></tr>
+            <tr><td><code>company_id</code></td><td>BIGINT FK</td><td>→ companies.id CASCADE</td></tr>
+            <tr><td><code>name</code></td><td>VARCHAR(255)</td><td>Category name (unique per company)</td></tr>
+            <tr><td><code>code</code></td><td>VARCHAR(255)</td><td>Category code (unique per company)</td></tr>
+            <tr><td><code>description</code></td><td>TEXT</td><td>Category description</td></tr>
+            <tr><td><code>is_active</code></td><td>BOOLEAN</td><td>Active status (default: true)</td></tr>
+            <tr><td><code>sort_order</code></td><td>INT</td><td>Display order (default: 0)</td></tr>
+            <tr><td><code>version</code></td><td>INT</td><td>Sync version (default: 1)</td></tr>
+            <tr><td><code>synced_at</code></td><td>TIMESTAMP</td><td>Last sync timestamp</td></tr>
+            <tr><td><code>created_by</code></td><td>BIGINT FK</td><td>→ users.id SET NULL</td></tr>
+            <tr><td><code>updated_by</code></td><td>BIGINT FK</td><td>→ users.id SET NULL</td></tr>
+            <tr><td><code>created_by_ip</code></td><td>VARCHAR(255)</td><td>Creator IP address</td></tr>
+            <tr><td><code>updated_by_ip</code></td><td>VARCHAR(255)</td><td>Updater IP address</td></tr>
+            <tr><td><code>deleted_by</code></td><td>VARCHAR(255)</td><td>Who soft-deleted</td></tr>
+            <tr><td><code>deleted_by_id</code></td><td>BIGINT FK</td><td>→ users.id SET NULL</td></tr>
+            <tr><td><code>created_at</code></td><td>TIMESTAMP</td><td>Record created</td></tr>
+            <tr><td><code>updated_at</code></td><td>TIMESTAMP</td><td>Last updated</td></tr>
+            <tr><td><code>deleted_at</code></td><td>TIMESTAMP</td><td>Soft delete</td></tr>
+        </table>
+
+        <p>Managed at <code>/admin/item-categories</code>. Categories are used to group items and can be selected via
+            dropdown (<code>/admin/item-categories/dropdown</code>).</p>
+
+        <!-- ═══════════════════════════ SECTION 19: LOCATIONS ═══════════════════════════ -->
+        <h2 id="locations">16c. Locations &amp; Cascading Dropdowns</h2>
+
+        <p>RECO includes pre-loaded country/state/city data for India and other countries. This powers cascading
+            dropdowns used in company settings, party registration, and registration forms.</p>
+
+        <h3>Tables: <code>countries</code> + <code>states</code> + <code>cities</code></h3>
+
+        <h3>Web Routes (AJAX)</h3>
+        <pre><code>GET /api/locations/countries          → List all countries
+GET /api/locations/{countryId}/states → States for selected country
+GET /api/locations/{stateId}/cities   → Cities for selected state</code></pre>
+
+        <h3>API Routes (with Sanctum auth)</h3>
+        <pre><code>GET /api/v1/locations/countries          → List countries
+GET /api/v1/locations/{countryId}/states → List states
+GET /api/v1/locations/{stateId}/cities   → List cities</code></pre>
+
+        <p>Also available as public endpoints: <code>/api/v1/states</code> and
+            <code>/api/v1/states/{stateId}/cities</code> (no auth required, used by website registration form).</p>
+
+        <!-- ═══════════════════ REPORTS SECTION ═══════════════════ -->
+
+        <h2 id="reports-overview">17. Reports Overview</h2>
+
+        <p>RECO includes <strong>9 comprehensive financial reports</strong>. All reports are accessible from the web
+            admin panel (<code>/admin/reports</code>) and via REST API (<code>/api/v1/reports/*</code>). Each report can
+            be exported as <strong>PDF</strong> (via DomPDF), <strong>Excel</strong> (via Maatwebsite), or
+            <strong>CSV</strong>.</p>
+
+        <h3>Reports Index</h3>
+        <table>
+            <tr>
+                <th>#</th>
+                <th>Report</th>
+                <th>Web URL</th>
+                <th>API Endpoint</th>
+                <th>Primary Tables</th>
+            </tr>
+            <tr>
+                <td>1</td>
+                <td>Profit &amp; Loss</td>
+                <td><code>/admin/reports/profit-loss</code></td>
+                <td><code>GET /api/v1/reports/profit-loss</code></td>
+                <td><code>accounts</code>, <code>ledgers</code></td>
+            </tr>
+            <tr>
+                <td>2</td>
+                <td>Balance Sheet</td>
+                <td><code>/admin/reports/balance-sheet</code></td>
+                <td><code>GET /api/v1/reports/balance-sheet</code></td>
+                <td><code>accounts</code>, <code>ledgers</code></td>
+            </tr>
+            <tr>
+                <td>3</td>
+                <td>Trial Balance</td>
+                <td><code>/admin/reports/trial-balance</code></td>
+                <td><code>GET /api/v1/reports/trial-balance</code></td>
+                <td><code>accounts</code>, <code>ledgers</code></td>
+            </tr>
+            <tr>
+                <td>4</td>
+                <td>Day Book</td>
+                <td><code>/admin/reports/day-book</code></td>
+                <td><code>GET /api/v1/reports/day-book</code></td>
+                <td><code>ledgers</code>, <code>vouchers</code>, <code>voucher_lines</code></td>
+            </tr>
+            <tr>
+                <td>5</td>
+                <td>Account Ledger</td>
+                <td><code>/admin/reports/ledger</code></td>
+                <td><code>GET /api/v1/reports/ledger</code></td>
+                <td><code>accounts</code>, <code>ledgers</code></td>
+            </tr>
+            <tr>
+                <td>6</td>
+                <td>Cash Book</td>
+                <td><code>/admin/reports/cash-book</code></td>
+                <td><code>GET /api/v1/reports/cash-book</code></td>
+                <td><code>accounts</code>, <code>ledgers</code>, <code>journal_entries</code></td>
+            </tr>
+            <tr>
+                <td>7</td>
+                <td>Bank Book</td>
+                <td><code>/admin/reports/bank-book</code></td>
+                <td><code>GET /api/v1/reports/bank-book</code></td>
+                <td><code>accounts</code>, <code>ledgers</code>, <code>journal_entries</code></td>
+            </tr>
+            <tr>
+                <td>8</td>
+                <td>Debtors Outstanding</td>
+                <td><code>/admin/reports/debtors-outstanding</code></td>
+                <td><code>GET /api/v1/reports/debtors-outstanding</code></td>
+                <td><code>parties</code>, <code>ledgers</code>, <code>vouchers</code></td>
+            </tr>
+            <tr>
+                <td>9</td>
+                <td>Creditors Outstanding</td>
+                <td><code>/admin/reports/creditors-outstanding</code></td>
+                <td><code>GET /api/v1/reports/creditors-outstanding</code></td>
+                <td><code>parties</code>, <code>ledgers</code>, <code>vouchers</code></td>
+            </tr>
+        </table>
+
+        <h3>Report Data Flow (All Reports)</h3>
+        <pre><code>User opens report page (with optional filters like financial_year_id, date, account_id)
+      │
+      ▼
+ReportController / ReportApiController receives request
+      │
+      ▼
+ReportService or LedgerService processes the request
+      │
+      ▼
+LedgerRepository / AccountRepository queries database
+      │
+      ▼
+Eloquent Models query: accounts, ledgers, vouchers, parties tables
+      │
+      ▼
+Data is aggregated, calculated, and returned to view
+      │
+      ▼
+Blade view renders HTML (or PDF/Excel/CSV export)</code></pre>
+
+        <div class="info-box">
+            <strong>Key Architecture Decision</strong>
+            Running balances are <strong>pre-computed and stored</strong> in the <code>ledgers</code> table at the time
+            of voucher posting. Reports READ these pre-computed balances instead of recalculating on-the-fly, which
+            makes report generation fast. There are <strong>zero stored procedures or database views</strong> — all
+            logic is in PHP/Laravel service classes.
+        </div>
+
+        <!-- ── REPORT 1: PROFIT & LOSS ── -->
+        <h2 id="report-profit-loss">17.1 Profit &amp; Loss Statement</h2>
+
+        <div class="success-box">
+            <strong>Purpose</strong>
+            Shows income, expenses, and net profit/loss for a selected financial year. This is the primary performance
+            report for any business.
+        </div>
+
+        <h3>Tables Used</h3>
+        <table>
+            <tr>
+                <th>Table</th>
+                <th>How It's Used</th>
+            </tr>
+            <tr>
+                <td><code>accounts</code></td>
+                <td>Fetch all active accounts where <code>account_type = 'income'</code> OR
+                    <code>account_type = 'expense'</code></td>
+            </tr>
+            <tr>
+                <td><code>ledgers</code></td>
+                <td>Get running balance for each income/expense account via
+                    <code>LedgerService::getAccountBalance()</code>
+                    <br>Filtered by: <code>company_id</code>, <code>account_id</code>, <code>financial_year_id</code>
+                    <br>Uses the <strong>last ledger entry</strong> for each account to get <code>running_balance</code>
+                    and <code>balance_type</code>
+                </td>
+            </tr>
+        </table>
+
+        <h3>Generation Logic (Step by Step)</h3>
+        <ol class="step-list">
+            <li><code>ReportService::getProfitLoss(financial_year_id)</code> is called</li>
+            <li>Queries <code>accounts</code> table:
+                <code>WHERE company_id = ? AND account_type IN ('income', 'expense') AND is_active = 1</code></li>
+            <li>For each income account, calls <code>LedgerService::getAccountBalance()</code> to get the credit balance
+            </li>
+            <li>For each expense account, calls <code>LeadgerService::getAccountBalance()</code> to get the debit
+                balance</li>
+            <li><code>getAccountBalance()</code> queries the <code>ledgers</code> table for the <strong>last
+                    entry</strong> of that account within the FY:
+                <code>SELECT * FROM ledgers WHERE company_id = ? AND account_id = ? ORDER BY transaction_date DESC, id DESC LIMIT 1</code>
+            </li>
+            <li>Total Income = sum of all income balances (credit normal)</li>
+            <li>Total Expense = sum of all expense balances (debit normal)</li>
+            <li>Net Profit/Loss = Total Income − Total Expense</li>
+            <li>Positive = Profit, Negative = Loss</li>
+        </ol>
+
+        <h3>What the Report Shows</h3>
+        <table>
+            <tr>
+                <th>Section</th>
+                <th>Content</th>
+            </tr>
+            <tr>
+                <td>Income Accounts</td>
+                <td>Each income account with name, code, and amount</td>
+            </tr>
+            <tr>
+                <td>Total Income</td>
+                <td>Sum of all income</td>
+            </tr>
+            <tr>
+                <td>Expense Accounts</td>
+                <td>Each expense account with name, code, and amount</td>
+            </tr>
+            <tr>
+                <td>Total Expense</td>
+                <td>Sum of all expenses</td>
+            </tr>
+            <tr>
+                <td><strong>Net Profit/Loss</strong></td>
+                <td>Income − Expense. Highlighted as profit (green) or loss (red)</td>
+            </tr>
+            <tr>
+                <td>Financial Year</td>
+                <td>The FY this report covers</td>
+            </tr>
+        </table>
+
+        <h3>Filters</h3>
+        <table>
+            <tr>
+                <th>Filter</th>
+                <th>Default</th>
+                <th>Options</th>
+            </tr>
+            <tr>
+                <td><code>financial_year_id</code></td>
+                <td>Current FY</td>
+                <td>Any financial year from <code>financial_years</code> table</td>
+            </tr>
+        </table>
+
+        <h3>Export URLs</h3>
+        <pre><code>PDF:  /admin/export/profit-loss/pdf?financial_year_id=1
+Excel: /admin/export/profit-loss/excel?financial_year_id=1
+CSV:  /admin/export/profit-loss/csv?financial_year_id=1</code></pre>
+
+        <div class="tip-box">
+            <strong>Important</strong>
+            Profit &amp; Loss only shows accounts of type <code>income</code> and <code>expense</code>. Asset,
+            liability, and equity accounts are NOT included here — they appear in the Balance Sheet.
+        </div>
+
+        <!-- ── REPORT 2: BALANCE SHEET ── -->
+        <h2 id="report-balance-sheet">17.2 Balance Sheet</h2>
+
+        <div class="success-box">
+            <strong>Purpose</strong>
+            Shows assets, liabilities, and equity for a financial year. Demonstrates the fundamental accounting
+            equation: <strong>Assets = Liabilities + Equity</strong>.
+        </div>
+
+        <h3>Tables Used</h3>
+        <table>
+            <tr>
+                <th>Table</th>
+                <th>How It's Used</th>
+            </tr>
+            <tr>
+                <td><code>accounts</code></td>
+                <td>Fetch active accounts where <code>account_type = 'asset'</code>, <code>'liability'</code>, or
+                    <code>'equity'</code></td>
+            </tr>
+            <tr>
+                <td><code>ledgers</code></td>
+                <td>Get running balance for each account via <code>LedgerService::getAccountBalance()</code></td>
+            </tr>
+            <tr>
+                <td><code>(Internal)</code></td>
+                <td>Calls <code>getProfitLoss()</code> internally to include Net Profit/Loss in the Equity section</td>
+            </tr>
+        </table>
+
+        <h3>Generation Logic (Step by Step)</h3>
+        <ol class="step-list">
+            <li><code>ReportService::getBalanceSheet(financial_year_id)</code> is called</li>
+            <li>Queries <code>accounts</code>:
+                <code>WHERE account_type IN ('asset', 'liability', 'equity') AND is_active = 1</code></li>
+            <li>For each asset account, gets balance from ledger</li>
+            <li>For each liability account, gets balance from ledger</li>
+            <li>For each equity account, gets balance from ledger</li>
+            <li>Calls <code>getProfitLoss()</code> to get Net Profit/Loss</li>
+            <li>Adds Net Profit/Loss to Equity total (Retained Earnings)</li>
+            <li>Checks: <strong>Total Assets == Total Liabilities + Total Equity</strong></li>
+            <li>Reports whether the balance sheet is balanced or out of balance</li>
+        </ol>
+
+        <h3>What the Report Shows</h3>
+        <table>
+            <tr>
+                <th>Section</th>
+                <th>Content</th>
+            </tr>
+            <tr>
+                <td>Assets</td>
+                <td>All asset accounts (Cash, Bank, AR, Inventory, Fixed Assets, etc.) with amounts</td>
+            </tr>
+            <tr>
+                <td>Total Assets</td>
+                <td>Sum of all assets</td>
+            </tr>
+            <tr>
+                <td>Liabilities</td>
+                <td>All liability accounts (Loans, AP, Taxes Payable, etc.) with amounts</td>
+            </tr>
+            <tr>
+                <td>Total Liabilities</td>
+                <td>Sum of all liabilities</td>
+            </tr>
+            <tr>
+                <td>Equity</td>
+                <td>Capital + Net Profit/Loss + Other equity accounts</td>
+            </tr>
+            <tr>
+                <td>Total Liabilities + Equity</td>
+                <td>Must equal Total Assets</td>
+            </tr>
+            <tr>
+                <td><strong>Balance Status</strong></td>
+                <td>"Balanced" or "Out of Balance" with the difference</td>
+            </tr>
+        </table>
+
+        <h3>Filters</h3>
+        <table>
+            <tr>
+                <th>Filter</th>
+                <th>Default</th>
+            </tr>
+            <tr>
+                <td><code>financial_year_id</code></td>
+                <td>Current FY</td>
+            </tr>
+        </table>
+
+        <h3>Export URLs</h3>
+        <pre><code>PDF:  /admin/export/balance-sheet/pdf?financial_year_id=1
+Excel: /admin/export/balance-sheet/excel?financial_year_id=1
+CSV:  /admin/export/balance-sheet/csv?financial_year_id=1</code></pre>
+
+        <!-- ── REPORT 3: TRIAL BALANCE ── -->
+        <h2 id="report-trial-balance">17.3 Trial Balance</h2>
+
+        <div class="success-box">
+            <strong>Purpose</strong>
+            Lists ALL accounts with their debit/credit balances. Used by accountants to verify that the books are
+            balanced before preparing final statements.
+        </div>
+
+        <h3>Tables Used</h3>
+        <table>
+            <tr>
+                <th>Table</th>
+                <th>How It's Used</th>
+            </tr>
+            <tr>
+                <td><code>accounts</code></td>
+                <td>Fetch ALL active accounts (all 5 types)</td>
+            </tr>
+            <tr>
+                <td><code>ledgers</code></td>
+                <td>Get running balance for EACH account. The last ledger entry gives <code>running_balance</code> and
+                    <code>balance_type</code> (debit or credit)</td>
+            </tr>
+        </table>
+
+        <h3>Generation Logic (Step by Step)</h3>
+        <ol class="step-list">
+            <li><code>LedgerService::getTrialBalance(financial_year_id)</code> is called</li>
+            <li>Fetches all active accounts: <code>WHERE company_id = ? AND is_active = 1</code></li>
+            <li>For each account, calls <code>getAccountBalance()</code></li>
+            <li>The balance is placed in either "Debit" or "Credit" column based on <code>balance_type</code>
+                <ul>
+                    <li>If <code>balance_type = 'debit'</code> → amount goes in Debit column</li>
+                    <li>If <code>balance_type = 'credit'</code> → amount goes in Credit column</li>
+                </ul>
+            </li>
+            <li>Sum of Debit column = Sum of Credit column → "Balanced"</li>
+        </ol>
+
+        <h3>What the Report Shows</h3>
+        <table>
+            <tr>
+                <th>Column</th>
+                <th>Description</th>
+            </tr>
+            <tr>
+                <td>Account Code</td>
+                <td>Unique account code (e.g., "1001")</td>
+            </tr>
+            <tr>
+                <td>Account Name</td>
+                <td>Display name</td>
+            </tr>
+            <tr>
+                <td>Account Type</td>
+                <td>Asset / Liability / Income / Expense / Equity</td>
+            </tr>
+            <tr>
+                <td>Debit Amount</td>
+                <td>Amount if balance is debit</td>
+            </tr>
+            <tr>
+                <td>Credit Amount</td>
+                <td>Amount if balance is credit</td>
+            </tr>
+            <tr>
+                <td><strong>Totals</strong></td>
+                <td>Total Debit and Total Credit (must be equal)</td>
+            </tr>
+        </table>
+
+        <h3>Filters</h3>
+        <table>
+            <tr>
+                <th>Filter</th>
+                <th>Default</th>
+            </tr>
+            <tr>
+                <td><code>financial_year_id</code></td>
+                <td>Current FY</td>
+            </tr>
+        </table>
+
+        <h3>Export URLs</h3>
+        <pre><code>PDF:  /admin/export/trial-balance/pdf?financial_year_id=1
+Excel: /admin/export/trial-balance/excel?financial_year_id=1
+CSV:  /admin/export/trial-balance/csv?financial_year_id=1</code></pre>
+
+        <!-- ── REPORT 4: DAY BOOK ── -->
+        <h2 id="report-day-book">17.4 Day Book</h2>
+
+        <div class="success-box">
+            <strong>Purpose</strong>
+            Lists all voucher transactions for a specific date. Think of it as a daily transaction register.
+        </div>
+
+        <h3>Tables Used</h3>
+        <table>
+            <tr>
+                <th>Table</th>
+                <th>How It's Used</th>
+            </tr>
+            <tr>
+                <td><code>ledgers</code></td>
+                <td>Query all ledger entries for the given <code>transaction_date</code>. Collect unique
+                    <code>voucher_id</code> values</td>
+            </tr>
+            <tr>
+                <td><code>vouchers</code></td>
+                <td>Load full voucher with <code>party</code> and <code>lines.account</code> relationships for each
+                    unique voucher ID</td>
+            </tr>
+            <tr>
+                <td><code>voucher_lines</code></td>
+                <td>Via relationship: each voucher's debit/credit lines</td>
+            </tr>
+            <tr>
+                <td><code>parties</code></td>
+                <td>Via relationship: the party linked to each voucher</td>
+            </tr>
+            <tr>
+                <td><code>accounts</code></td>
+                <td>Via relationship: accounts in voucher lines</td>
+            </tr>
+        </table>
+
+        <h3>Generation Logic (Step by Step)</h3>
+        <ol class="step-list">
+            <li><code>ReportService::getDayBook(date)</code> is called</li>
+            <li>Queries <code>ledgers</code>: <code>WHERE company_id = ? AND transaction_date = ?</code></li>
+            <li>Collects all unique <code>voucher_id</code> values from results</li>
+            <li>Loads full <code>Voucher</code> models with eager-loaded relationships:
+                <ul>
+                    <li><code>party</code> (debtor/creditor)</li>
+                    <li><code>lines.account</code> (voucher lines with account details)</li>
+                </ul>
+            </li>
+            <li>Displays each voucher with its type, party, narration, and debit/credit totals</li>
+            <li>Calculates daily totals for debit and credit</li>
+        </ol>
+
+        <h3>What the Report Shows</h3>
+        <table>
+            <tr>
+                <th>Column</th>
+                <th>Description</th>
+            </tr>
+            <tr>
+                <td>Voucher Number</td>
+                <td>Auto-generated number</td>
+            </tr>
+            <tr>
+                <td>Voucher Type</td>
+                <td>Income / Expense / Receipt / Payment / Journal / Adjustment</td>
+            </tr>
+            <tr>
+                <td>Party Name</td>
+                <td>Linked debtor or creditor (if any)</td>
+            </tr>
+            <tr>
+                <td>Narration</td>
+                <td>Transaction description</td>
+            </tr>
+            <tr>
+                <td>Debit Total</td>
+                <td>Sum of all debit lines in this voucher</td>
+            </tr>
+            <tr>
+                <td>Credit Total</td>
+                <td>Sum of all credit lines in this voucher</td>
+            </tr>
+            <tr>
+                <td><strong>Daily Totals</strong></td>
+                <td>Total Debit and Total Credit for the day</td>
+            </tr>
+        </table>
+
+        <h3>Filters</h3>
+        <table>
+            <tr>
+                <th>Filter</th>
+                <th>Default</th>
+            </tr>
+            <tr>
+                <td><code>date</code></td>
+                <td>Today's date</td>
+            </tr>
+        </table>
+
+        <h3>Export URLs</h3>
+        <pre><code>PDF:  /admin/export/day-book/pdf?date=2025-06-15
+Excel: /admin/export/day-book/excel?date=2025-06-15
+CSV:  /admin/export/day-book/csv?date=2025-06-15</code></pre>
+
+        <!-- ── REPORT 5: ACCOUNT LEDGER ── -->
+        <h2 id="report-ledger">17.5 Account Ledger</h2>
+
+        <div class="success-box">
+            <strong>Purpose</strong>
+            Shows all transactions for a specific account with opening balance, running balances, and closing balance.
+            The most detailed single-account report.
+        </div>
+
+        <h3>Tables Used</h3>
+        <table>
+            <tr>
+                <th>Table</th>
+                <th>How It's Used</th>
+            </tr>
+            <tr>
+                <td><code>accounts</code></td>
+                <td>Get account details (code, name) for the selected account</td>
+            </tr>
+            <tr>
+                <td><code>ledgers</code></td>
+                <td>The PRIMARY table. Queries all ledger entries for the selected account:
+                    <br><code>WHERE company_id = ? AND account_id = ? AND transaction_date BETWEEN ? AND ?</code>
+                    <br>Ordered by <code>transaction_date ASC</code>
+                </td>
+            </tr>
+            <tr>
+                <td><code>vouchers</code></td>
+                <td>Via relationship: voucher details linked to each ledger entry</td>
+            </tr>
+            <tr>
+                <td><code>financial_years</code></td>
+                <td>To determine opening balance</td>
+            </tr>
+        </table>
+
+        <h3>Generation Logic (Step by Step)</h3>
+        <ol class="step-list">
+            <li><code>LedgerService::getAccountLedger(account_id, date_from, date_to)</code> is called</li>
+            <li>Fetches account details from <code>accounts</code> table</li>
+            <li>Calculates <strong>Opening Balance</strong>:
+                <ul>
+                    <li>Queries <code>ledgers</code> for the LAST entry before <code>date_from</code></li>
+                    <li>OR uses the account's <code>opening_balance</code> if no prior entries exist</li>
+                </ul>
+            </li>
+            <li>Fetches all ledger entries within the date range:
+                <code>WHERE account_id = ? AND transaction_date BETWEEN from AND to ORDER BY transaction_date</code>
+            </li>
+            <li>For each ledger entry, reads:
+                <ul>
+                    <li><code>transaction_date</code>, <code>voucher_id</code> (via relationship: voucher number),
+                        <code>description</code></li>
+                    <li><code>debit</code>, <code>credit</code></li>
+                    <li><code>running_balance</code> (pre-computed)</li>
+                </ul>
+            </li>
+            <li>Closing Balance = last entry's <code>running_balance</code></li>
+            <li>Total Debit and Total Credit for the period</li>
+        </ol>
+
+        <h3>What the Report Shows</h3>
+        <table>
+            <tr>
+                <th>Column</th>
+                <th>Description</th>
+            </tr>
+            <tr>
+                <td colspan="2"><strong>Header:</strong> Account Code, Account Name</td>
+            </tr>
+            <tr>
+                <td colspan="2"><strong>Opening Balance</strong> (before the date range)</td>
+            </tr>
+            <tr>
+                <td>Date</td>
+                <td>Transaction date</td>
+            </tr>
+            <tr>
+                <td>Voucher #</td>
+                <td>Linked voucher number</td>
+            </tr>
+            <tr>
+                <td>Description</td>
+                <td>Transaction description</td>
+            </tr>
+            <tr>
+                <td>Debit</td>
+                <td>Debit amount for this entry</td>
+            </tr>
+            <tr>
+                <td>Credit</td>
+                <td>Credit amount for this entry</td>
+            </tr>
+            <tr>
+                <td>Running Balance</td>
+                <td>Cumulative balance after this entry</td>
+            </tr>
+            <tr>
+                <td colspan="2"><strong>Closing Balance</strong> | <strong>Total Debit</strong> | <strong>Total
+                        Credit</strong></td>
+            </tr>
+        </table>
+
+        <h3>Filters</h3>
+        <table>
+            <tr>
+                <th>Filter</th>
+                <th>Required?</th>
+                <th>Description</th>
+            </tr>
+            <tr>
+                <td><code>account_id</code></td>
+                <td><strong>Yes</strong></td>
+                <td>Select the account to view</td>
+            </tr>
+            <tr>
+                <td><code>date_from</code></td>
+                <td>No</td>
+                <td>Start date (default: FY start)</td>
+            </tr>
+            <tr>
+                <td><code>date_to</code></td>
+                <td>No</td>
+                <td>End date (default: FY end)</td>
+            </tr>
+        </table>
+
+        <h3>Export URLs</h3>
+        <pre><code>PDF:  /admin/export/ledger/pdf?account_id=5&date_from=2025-04-01&date_to=2025-06-30
+Excel: /admin/export/ledger/excel?account_id=5&date_from=2025-04-01&date_to=2025-06-30
+CSV:  /admin/export/ledger/csv?account_id=5&date_from=2025-04-01&date_to=2025-06-30</code></pre>
+
+        <div class="tip-box">
+            <strong>Performance Note</strong>
+            Running balances are pre-computed in the <code>ledgers</code> table when vouchers are posted. The ledger
+            report simply reads these values — no on-the-fly calculation needed. This makes the report fast even for
+            accounts with thousands of entries.
+        </div>
+
+        <!-- ── REPORT 6: CASH BOOK ── -->
+        <h2 id="report-cash-book">17.6 Cash Book</h2>
+
+        <div class="success-box">
+            <strong>Purpose</strong>
+            Shows all cash account transactions for a selected date range. Replaces the legacy Cash Flow report.
+        </div>
+
+        <h3>How to Use</h3>
+        <ol class="step-list">
+            <li>Go to <code>/admin/reports/cash-book</code></li>
+            <li>Select date range and optionally a specific cash account</li>
+            <li>View debit/credit entries with running balance</li>
+            <li>Export via API: <code>GET /api/v1/reports/cash-book?date_from=...&amp;date_to=...</code></li>
+        </ol>
+
+        <h3>Filters</h3>
+        <table>
+            <tr>
+                <th>Filter</th>
+                <th>Description</th>
+            </tr>
+            <tr>
+                <td><code>date_from</code> / <code>date_to</code></td>
+                <td>Transaction date range</td>
+            </tr>
+            <tr>
+                <td><code>account_id</code></td>
+                <td>Specific cash account (optional)</td>
+            </tr>
+        </table>
+
+        <!-- ── REPORT 7: BANK BOOK ── -->
+        <h2 id="report-bank-book">17.7 Bank Book</h2>
+
+        <div class="success-box">
+            <strong>Purpose</strong>
+            Shows all bank account transactions for a selected date range — same layout as Cash Book but filtered to bank
+            accounts.
+        </div>
+
+        <h3>How to Use</h3>
+        <ol class="step-list">
+            <li>Go to <code>/admin/reports/bank-book</code></li>
+            <li>Select date range and optionally a specific bank account</li>
+            <li>View debit/credit entries with running balance</li>
+            <li>Export via API: <code>GET /api/v1/reports/bank-book?date_from=...&amp;date_to=...</code></li>
+        </ol>
+
+        <div class="info-box">
+            <strong>Legacy Note</strong>
+            The old <code>/admin/reports/cash-flow</code> URL redirects to Cash Book. Cash Flow PDF export has been
+            removed.
+        </div>
+
+        <!-- ── REPORT 8: DEBTORS OUTSTANDING ── -->
+        <h2 id="report-debtors">17.8 Debtors Outstanding (AR Aging)</h2>
+
+        <div class="success-box">
+            <strong>Purpose</strong>
+            Shows all debtors (customers) with outstanding receivable balances. Helps track who owes you money.
+        </div>
+
+        <h3>Tables Used</h3>
+        <table>
+            <tr>
+                <th>Table</th>
+                <th>How It's Used</th>
+            </tr>
+            <tr>
+                <td><code>parties</code></td>
+                <td>Fetch all active debtors: <code>WHERE type = 'debtor' AND is_active = 1</code></td>
+            </tr>
+            <tr>
+                <td><code>ledgers</code></td>
+                <td>For each debtor, load ALL their ledger entries</td>
+            </tr>
+            <tr>
+                <td><code>vouchers</code></td>
+                <td>Via relationship on each ledger entry. Used to filter by <code>voucher_type</code> and
+                    <code>party_id</code></td>
+            </tr>
+        </table>
+
+        <h3>Generation Logic (Step by Step)</h3>
+        <ol class="step-list">
+            <li><code>ReportService::getDebtorsOutstanding()</code> is called</li>
+            <li>Fetches all active debtors</li>
+            <li>For each debtor, loads all ledger entries</li>
+            <li>Filters entries in-memory by voucher conditions:
+                <ul>
+                    <li><strong>Debits (money owed):</strong> voucher type = <code>income</code> or <code>receipt</code>
+                        AND voucher party matches</li>
+                    <li><strong>Credits (money received):</strong> voucher type = <code>payment</code> or
+                        <code>journal</code> AND voucher party matches</li>
+                </ul>
+            </li>
+            <li>Outstanding = Total Debit − Total Credit</li>
+            <li>Only parties with positive outstanding balance are shown</li>
+            <li>Displays total outstanding</li>
+        </ol>
+
+        <h3>What the Report Shows</h3>
+        <table>
+            <tr>
+                <th>Column</th>
+                <th>Description</th>
+            </tr>
+            <tr>
+                <td>Party Name</td>
+                <td>Debtor name</td>
+            </tr>
+            <tr>
+                <td>Mobile</td>
+                <td>Contact phone</td>
+            </tr>
+            <tr>
+                <td>Email</td>
+                <td>Contact email</td>
+            </tr>
+            <tr>
+                <td>Total Debit</td>
+                <td>Total amount billed</td>
+            </tr>
+            <tr>
+                <td>Total Credit</td>
+                <td>Total amount received</td>
+            </tr>
+            <tr>
+                <td><strong>Outstanding Balance</strong></td>
+                <td>Debit − Credit (amount still owed)</td>
+            </tr>
+            <tr>
+                <td><strong>Total Outstanding</strong></td>
+                <td>Sum of all outstanding balances</td>
+            </tr>
+        </table>
+
+        <h3>Export URLs</h3>
+        <pre><code>PDF:  /admin/export/debtors-outstanding/pdf
+Excel: /admin/export/debtors-outstanding/excel
+CSV:  /admin/export/debtors-outstanding/csv</code></pre>
+
+        <!-- ── REPORT 8: CREDITORS OUTSTANDING ── -->
+        <h2 id="report-creditors">17.9 Creditors Outstanding (AP Aging)</h2>
+
+        <div class="success-box">
+            <strong>Purpose</strong>
+            Shows all creditors (suppliers) with outstanding payable balances. Helps track who you owe money to.
+        </div>
+
+        <h3>Tables Used</h3>
+        <table>
+            <tr>
+                <th>Table</th>
+                <th>How It's Used</th>
+            </tr>
+            <tr>
+                <td><code>parties</code></td>
+                <td>Fetch all active creditors: <code>WHERE type = 'creditor' AND is_active = 1</code></td>
+            </tr>
+            <tr>
+                <td><code>ledgers</code></td>
+                <td>For each creditor, load ALL their ledger entries</td>
+            </tr>
+            <tr>
+                <td><code>vouchers</code></td>
+                <td>Via relationship on each ledger entry. Used to filter by <code>voucher_type</code> and
+                    <code>party_id</code></td>
+            </tr>
+        </table>
+
+        <h3>Generation Logic (Step by Step)</h3>
+        <ol class="step-list">
+            <li><code>ReportService::getCreditorsOutstanding()</code> is called</li>
+            <li>Fetches all active creditors</li>
+            <li>For each creditor, loads all ledger entries</li>
+            <li>Filters entries in-memory by voucher conditions:
+                <ul>
+                    <li><strong>Credits (money owed):</strong> voucher type = <code>expense</code> or
+                        <code>payment</code> AND voucher party matches</li>
+                    <li><strong>Debits (money paid):</strong> voucher type = <code>receipt</code> or
+                        <code>journal</code> AND voucher party matches</li>
+                </ul>
+            </li>
+            <li>Outstanding = Total Credit − Total Debit</li>
+            <li>Only parties with positive outstanding balance are shown</li>
+        </ol>
+
+        <h3>What the Report Shows</h3>
+        <table>
+            <tr>
+                <th>Column</th>
+                <th>Description</th>
+            </tr>
+            <tr>
+                <td>Party Name</td>
+                <td>Creditor name</td>
+            </tr>
+            <tr>
+                <td>Mobile</td>
+                <td>Contact phone</td>
+            </tr>
+            <tr>
+                <td>Email</td>
+                <td>Contact email</td>
+            </tr>
+            <tr>
+                <td>Total Debit</td>
+                <td>Total amount paid</td>
+            </tr>
+            <tr>
+                <td>Total Credit</td>
+                <td>Total amount billed</td>
+            </tr>
+            <tr>
+                <td><strong>Outstanding Balance</strong></td>
+                <td>Credit − Debit (amount still to pay)</td>
+            </tr>
+            <tr>
+                <td><strong>Total Outstanding</strong></td>
+                <td>Sum of all outstanding balances</td>
+            </tr>
+        </table>
+
+        <h3>Export URLs</h3>
+        <pre><code>PDF:  /admin/export/creditors-outstanding/pdf
+Excel: /admin/export/creditors-outstanding/excel
+CSV:  /admin/export/creditors-outstanding/csv</code></pre>
+
+        <!-- ═══════════════════════════ SECTION 18: EXPORTS ═══════════════════════════ -->
+        <h2 id="exports">18. Export System (PDF / Excel / CSV)</h2>
+
+        <p>Every report and voucher can be exported in three formats.</p>
+
+        <h3>Export Architecture</h3>
+        <table>
+            <tr>
+                <th>Format</th>
+                <th>Library</th>
+                <th>How It Works</th>
+            </tr>
+            <tr>
+                <td><strong>PDF</strong></td>
+                <td>Barryvdh DomPDF</td>
+                <td>Blade views in <code>resources/views/exports/</code> are rendered to HTML, then converted to PDF
+                </td>
+            </tr>
+            <tr>
+                <td><strong>Excel</strong></td>
+                <td>Maatwebsite Excel</td>
+                <td><code>GenericExport</code> class uses Maatwebsite to generate XLSX files</td>
+            </tr>
+            <tr>
+                <td><strong>CSV</strong></td>
+                <td><code>ExportService</code></td>
+                <td>Direct file streaming with CSV headers</td>
+            </tr>
+        </table>
+
+        <h3>Web Export Routes (All Require Permission: <code>reports.export</code>)</h3>
+
+        <h4>PDF Exports</h4>
+        <pre><code>GET /admin/export/profit-loss/pdf
+GET /admin/export/balance-sheet/pdf
+GET /admin/export/trial-balance/pdf
+GET /admin/export/ledger/pdf?account_id=X
+GET /admin/export/day-book/pdf?date=Y
+GET /admin/export/debtors-outstanding/pdf
+GET /admin/export/creditors-outstanding/pdf
+GET /admin/export/voucher/{id}/pdf
+GET /admin/sales-invoices/{id}/pdf</code></pre>
+
+        <h4>Excel &amp; CSV Exports (Generic)</h4>
+        <pre><code>GET /admin/export/{type}/excel?params...   (type: profit-loss, balance-sheet, trial-balance, day-book, ledger, debtors-outstanding, creditors-outstanding)
+GET /admin/export/{type}/csv?params...</code></pre>
+
+        <h3>API Export Routes</h3>
+        <pre><code>GET /api/v1/export/profit-loss/pdf
+GET /api/v1/export/balance-sheet/pdf
+GET /api/v1/export/trial-balance/pdf
+GET /api/v1/export/day-book/pdf?date=Y
+GET /api/v1/export/ledger/pdf?account_id=X
+GET /api/v1/export/debtors-outstanding/pdf
+GET /api/v1/export/creditors-outstanding/pdf
+GET /api/v1/export/voucher/{id}/pdf
+GET /api/v1/export/sales-invoice/{id}/pdf
+GET /api/v1/sales-invoices/{id}/pdf</code></pre>
+
+        <div class="tip-box">
+            <strong>PDF Export Views</strong>
+            Each report has a dedicated PDF template in <code>resources/views/exports/</code> (9 files). Voucher PDFs
+            use <code>exports/voucher.blade.php</code>. These views are designed for A4 printing with proper headers,
+            footers, and company branding.
+        </div>
+
+        <!-- ═══════════════════════════ SECTION 19: SETTINGS ═══════════════════════════ -->
+        <h2 id="settings">19. Settings &amp; Themes</h2>
+
+        <h3>Company Settings</h3>
+        <table>
+            <tr>
+                <th>Section</th>
+                <th>Fields</th>
+            </tr>
+            <tr>
+                <td>Company Info</td>
+                <td>Name, Address, City, State, Country, Postal Code</td>
+            </tr>
+            <tr>
+                <td>Tax Info</td>
+                <td>GST Number, PAN Number</td>
+            </tr>
+            <tr>
+                <td>Contact</td>
+                <td>Email, Phone, Website</td>
+            </tr>
+            <tr>
+                <td>Regional</td>
+                <td>Currency Symbol, Timezone, Date Format</td>
+            </tr>
+            <tr>
+                <td>Logo</td>
+                <td>Company logo upload</td>
+            </tr>
+        </table>
+
+        <h4>Database Table: <code>companies</code> (Complete Schema)</h4>
+        <p>Each business tenant is stored as a row in <code>companies</code>. Almost every business table carries a
+            <code>company_id</code> pointing here for multi-tenant data isolation.</p>
+        <table>
+            <tr>
+                <th>Column</th>
+                <th>Type</th>
+                <th>Description</th>
+            </tr>
+            <tr><td><code>id</code></td><td>BIGINT PK</td><td>Primary key</td></tr>
+            <tr><td><code>uuid</code></td><td>CHAR(36)</td><td>Unique identifier</td></tr>
+            <tr><td><code>name</code></td><td>VARCHAR(255)</td><td>Company name</td></tr>
+            <tr><td><code>slug</code></td><td>VARCHAR(255)</td><td>URL-friendly name (unique)</td></tr>
+            <tr><td><code>email</code></td><td>VARCHAR(255)</td><td>Company email</td></tr>
+            <tr><td><code>phone</code></td><td>VARCHAR(255)</td><td>Company phone</td></tr>
+            <tr><td><code>address</code></td><td>TEXT</td><td>Street address</td></tr>
+            <tr><td><code>city</code></td><td>VARCHAR(255)</td><td>City</td></tr>
+            <tr><td><code>state</code></td><td>VARCHAR(255)</td><td>State</td></tr>
+            <tr><td><code>country</code></td><td>VARCHAR(255)</td><td>Country</td></tr>
+            <tr><td><code>postal_code</code></td><td>VARCHAR(255)</td><td>Postal / ZIP code</td></tr>
+            <tr><td><code>website</code></td><td>VARCHAR(255)</td><td>Website URL</td></tr>
+            <tr><td><code>domain</code></td><td>VARCHAR(255)</td><td>Custom domain</td></tr>
+            <tr><td><code>gst_number</code></td><td>VARCHAR(255)</td><td>GST registration number</td></tr>
+            <tr><td><code>pan_number</code></td><td>VARCHAR(255)</td><td>PAN number</td></tr>
+            <tr><td><code>logo</code></td><td>VARCHAR(255)</td><td>Logo file path</td></tr>
+            <tr><td><code>favicon</code></td><td>VARCHAR(255)</td><td>Favicon file path</td></tr>
+            <tr><td><code>currency</code></td><td>VARCHAR(3)</td><td>Default currency (default: INR)</td></tr>
+            <tr><td><code>timezone</code></td><td>VARCHAR(255)</td><td>Default timezone (default: Asia/Kolkata)</td></tr>
+            <tr><td><code>financial_year_start</code></td><td>VARCHAR(5)</td><td>FY start MM-DD (default: 04-01)</td></tr>
+            <tr><td><code>financial_year_end</code></td><td>VARCHAR(5)</td><td>FY end MM-DD (default: 03-31)</td></tr>
+            <tr><td><code>is_active</code></td><td>BOOLEAN</td><td>Active status (default: true)</td></tr>
+            <tr><td><code>created_by</code></td><td>BIGINT FK</td><td>→ users.id</td></tr>
+            <tr><td><code>updated_by</code></td><td>BIGINT FK</td><td>→ users.id</td></tr>
+            <tr><td><code>deleted_by</code></td><td>VARCHAR(255)</td><td>Who soft-deleted</td></tr>
+            <tr><td><code>deleted_by_id</code></td><td>BIGINT FK</td><td>→ users.id</td></tr>
+            <tr><td><code>version</code></td><td>INT</td><td>Sync version (default: 1)</td></tr>
+            <tr><td><code>synced_at</code></td><td>TIMESTAMP</td><td>Last sync timestamp</td></tr>
+            <tr><td><code>created_at</code></td><td>TIMESTAMP</td><td>Record created</td></tr>
+            <tr><td><code>updated_at</code></td><td>TIMESTAMP</td><td>Last updated</td></tr>
+            <tr><td><code>deleted_at</code></td><td>TIMESTAMP</td><td>Soft delete</td></tr>
+        </table>
+
+        <h4>Database Table: <code>settings</code> (Complete Schema)</h4>
+        <p>Key-value settings scoped by company and group (e.g. invoice numbering, notification preferences).</p>
+        <table>
+            <tr>
+                <th>Column</th>
+                <th>Type</th>
+                <th>Description</th>
+            </tr>
+            <tr><td><code>id</code></td><td>BIGINT PK</td><td>Primary key</td></tr>
+            <tr><td><code>company_id</code></td><td>BIGINT FK</td><td>→ companies.id SET NULL</td></tr>
+            <tr><td><code>group</code></td><td>VARCHAR(255)</td><td>Setting group (default: general)</td></tr>
+            <tr><td><code>key</code></td><td>VARCHAR(255)</td><td>Setting key</td></tr>
+            <tr><td><code>value</code></td><td>TEXT</td><td>Setting value</td></tr>
+            <tr><td><code>description</code></td><td>TEXT</td><td>Description</td></tr>
+            <tr><td><code>created_by</code></td><td>BIGINT FK</td><td>→ users.id</td></tr>
+            <tr><td><code>updated_by</code></td><td>BIGINT FK</td><td>→ users.id</td></tr>
+            <tr><td><code>created_by_ip</code></td><td>VARCHAR(255)</td><td>Creator IP address</td></tr>
+            <tr><td><code>updated_by_ip</code></td><td>VARCHAR(255)</td><td>Updater IP address</td></tr>
+            <tr><td><code>created_at</code></td><td>TIMESTAMP</td><td>Record created</td></tr>
+            <tr><td><code>updated_at</code></td><td>TIMESTAMP</td><td>Last updated</td></tr>
+        </table>
+        <p><strong>Unique constraint:</strong> <code>(company_id, group, key)</code> — one value per key per group per company.</p>
+
+        <h3>Theme System</h3>
+        <p>Customizable via <code>/admin/settings</code> and SuperAdmin <code>/admin/themes</code>:</p>
+        <ul>
+            <li>Primary color, secondary color, accent color</li>
+            <li>Font family and size</li>
+            <li>Dark mode toggle</li>
+            <li>Border radius, sidebar width</li>
+            <li>Per-company or global themes</li>
+        </ul>
+
+        <h4>Database Table: <code>themes</code> (Complete Schema)</h4>
+        <table>
+            <tr>
+                <th>Column</th>
+                <th>Type</th>
+                <th>Description</th>
+            </tr>
+            <tr><td><code>id</code></td><td>BIGINT PK</td><td>Primary key</td></tr>
+            <tr><td><code>uuid</code></td><td>CHAR(36)</td><td>Unique record identifier</td></tr>
+            <tr><td><code>company_id</code></td><td>BIGINT FK</td><td>→ companies.id SET NULL (NULL = global theme)</td></tr>
+            <tr><td><code>name</code></td><td>VARCHAR(255)</td><td>Theme name (default: Default)</td></tr>
+            <tr><td><code>primary_color</code></td><td>VARCHAR(7)</td><td>Hex color (default: #6366f1)</td></tr>
+            <tr><td><code>secondary_color</code></td><td>VARCHAR(7)</td><td>Hex color (default: #8b5cf6)</td></tr>
+            <tr><td><code>accent_color</code></td><td>VARCHAR(7)</td><td>Hex color (default: #06b6d4)</td></tr>
+            <tr><td><code>sidebar_color</code></td><td>VARCHAR(7)</td><td>Hex color (default: #1e1b4b)</td></tr>
+            <tr><td><code>header_color</code></td><td>VARCHAR(7)</td><td>Hex color (default: #ffffff)</td></tr>
+            <tr><td><code>text_color</code></td><td>VARCHAR(7)</td><td>Hex color (default: #1f2937)</td></tr>
+            <tr><td><code>bg_color</code></td><td>VARCHAR(7)</td><td>Hex color (default: #f9fafb)</td></tr>
+            <tr><td><code>font_family</code></td><td>VARCHAR(255)</td><td>Font family (default: Inter)</td></tr>
+            <tr><td><code>logo_url</code></td><td>VARCHAR(255)</td><td>Logo URL</td></tr>
+            <tr><td><code>favicon_url</code></td><td>VARCHAR(255)</td><td>Favicon URL</td></tr>
+            <tr><td><code>login_bg_url</code></td><td>VARCHAR(255)</td><td>Login background URL</td></tr>
+            <tr><td><code>dark_mode</code></td><td>BOOLEAN</td><td>Dark mode toggle (default: false)</td></tr>
+            <tr><td><code>custom_css</code></td><td>JSON</td><td>Custom CSS overrides</td></tr>
+            <tr><td><code>is_active</code></td><td>BOOLEAN</td><td>Active status (default: true)</td></tr>
+            <tr><td><code>is_default</code></td><td>BOOLEAN</td><td>Default theme (default: false)</td></tr>
+            <tr><td><code>version</code></td><td>INT</td><td>Sync version (default: 1)</td></tr>
+            <tr><td><code>synced_at</code></td><td>TIMESTAMP</td><td>Last sync timestamp</td></tr>
+            <tr><td><code>created_by</code></td><td>BIGINT FK</td><td>→ users.id</td></tr>
+            <tr><td><code>updated_by</code></td><td>BIGINT FK</td><td>→ users.id</td></tr>
+            <tr><td><code>created_by_ip</code></td><td>VARCHAR(255)</td><td>Creator IP address</td></tr>
+            <tr><td><code>updated_by_ip</code></td><td>VARCHAR(255)</td><td>Updater IP address</td></tr>
+        </table>
+
+        <!-- ═══════════════════════════ SECTION 20: SUBSCRIPTIONS ═══════════════════════════ -->
+        <h2 id="subscriptions">20. Subscriptions &amp; Billing</h2>
+
+        <h3>Subscription Plans (SuperAdmin Managed)</h3>
+        <p>Plans are created at <code>/admin/subscription-plans</code> with these attributes:</p>
+        <table>
+            <tr>
+                <th>Attribute</th>
+                <th>Description</th>
+            </tr>
+            <tr>
+                <td>Name</td>
+                <td>Plan name (e.g., "Starter", "Professional", "Enterprise")</td>
+            </tr>
+            <tr>
+                <td>Price</td>
+                <td>Monthly/yearly price</td>
+            </tr>
+            <tr>
+                <td>Duration</td>
+                <td>Billing cycle: <code>monthly</code>, <code>yearly</code>, or <code>lifetime</code></td>
+            </tr>
+            <tr>
+                <td>Max Users</td>
+                <td>User limit</td>
+            </tr>
+            <tr>
+                <td>Max Companies</td>
+                <td>Company limit</td>
+            </tr>
+            <tr>
+                <td>Features</td>
+                <td>List of included features</td>
+            </tr>
+            <tr>
+                <td>Is Active</td>
+                <td>Enable/disable plan</td>
+            </tr>
+        </table>
+
+        <h3>Subscription Flow</h3>
+        <ol class="step-list">
+            <li>Company admin views plans at <code>/admin/subscriptions/plans</code> (web) or <code>GET /api/v1/subscriptions/plans</code> (mobile)</li>
+            <li>Selects a plan and billing cycle (<code>monthly</code>, <code>yearly</code>, or <code>lifetime</code>)</li>
+            <li><strong>Free / trial plans:</strong> subscription activates immediately (HTTP 201) — no payment step</li>
+            <li><strong>Paid plans:</strong> <code>POST /subscriptions/subscribe</code> returns <code>requires_payment: true</code> and a <code>checkout</code> object (<code>key_id</code>, <code>order_id</code>, <code>amount_paise</code>, etc.)</li>
+            <li>User completes Razorpay checkout (web popup or Razorpay mobile SDK)</li>
+            <li>Client calls <code>POST /subscriptions/verify-payment</code> with <code>razorpay_order_id</code>, <code>razorpay_payment_id</code>, <code>razorpay_signature</code></li>
+            <li>Alternatively, Razorpay webhook (<code>POST /webhooks/razorpay</code>) confirms payment server-side</li>
+            <li>Subscription is activated and invoice/payment records are created</li>
+        </ol>
+
+        <h3>Razorpay Integration</h3>
+        <p>Add these keys to <code>.env</code> (see <code>.env.example</code>):</p>
+        <pre><code>RAZORPAY_KEY_ID=rzp_test_xxxxx
+RAZORPAY_KEY_SECRET=your_secret
+RAZORPAY_WEBHOOK_SECRET=your_webhook_secret</code></pre>
+        <ul>
+            <li><strong>Web admin:</strong> Razorpay Checkout JS popup on the plans page; verify via <code>POST /admin/subscriptions/verify-payment</code></li>
+            <li><strong>Mobile API:</strong> open Razorpay SDK with <code>checkout</code> fields from subscribe/change-plan, then call <code>POST /api/v1/subscriptions/verify-payment</code></li>
+            <li>Razorpay Orders: <code>razorpay_orders</code> table</li>
+            <li>Razorpay Webhooks: <code>razorpay_webhooks</code> table (logs all webhook events)</li>
+            <li>Subscription Payments: <code>subscription_payments</code> table</li>
+            <li>Subscription Invoices: <code>subscription_invoices</code> table</li>
+        </ul>
+
+        <!-- ═══════════════════════════ SECTION 21: AUDIT LOGS ═══════════════════════════ -->
+        <h2 id="audit-logs">21. Audit Logs</h2>
+
+        <p>All CRUD operations are logged automatically.</p>
+
+        <h3>Table: <code>audit_logs</code></h3>
+        <table>
+            <tr>
+                <th>Column</th>
+                <th>Type</th>
+                <th>Description</th>
+            </tr>
+            <tr><td><code>id</code></td><td>BIGINT PK</td><td>Primary key</td></tr>
+            <tr><td><code>company_id</code></td><td>BIGINT FK</td><td>→ companies.id SET NULL</td></tr>
+            <tr><td><code>user_id</code></td><td>BIGINT FK</td><td>→ users.id SET NULL (who performed the action)</td></tr>
+            <tr><td><code>module</code></td><td>VARCHAR(255)</td><td>Module name (e.g. vouchers, invoices)</td></tr>
+            <tr><td><code>action</code></td><td>VARCHAR(255)</td><td><code>create</code>, <code>update</code>, <code>delete</code>, <code>login</code>, <code>logout</code></td></tr>
+            <tr><td><code>record_id</code></td><td>BIGINT</td><td>Affected record ID</td></tr>
+            <tr><td><code>old_values</code></td><td>JSON</td><td>Before state</td></tr>
+            <tr><td><code>new_values</code></td><td>JSON</td><td>After state</td></tr>
+            <tr><td><code>ip_address</code></td><td>VARCHAR(255)</td><td>User's IP</td></tr>
+            <tr><td><code>user_agent</code></td><td>VARCHAR(255)</td><td>Browser/device info</td></tr>
+            <tr><td><code>description</code></td><td>TEXT</td><td>Human-readable description</td></tr>
+            <tr><td><code>created_at</code></td><td>TIMESTAMP</td><td>Record created</td></tr>
+            <tr><td><code>updated_at</code></td><td>TIMESTAMP</td><td>Last updated</td></tr>
+        </table>
+
+        <p>View logs at <code>/admin/audit-logs</code>. Requires permission: <code>audit-logs.view</code>.</p>
+
+        <!-- ═══════════════════════════ SECTION 22: CMS ═══════════════════════════ -->
+        <h2 id="cms">22. CMS &amp; Public Website</h2>
+
+        <p>The public-facing website content is managed by SuperAdmin via CMS:</p>
+
+        <table>
+            <tr>
+                <th>Module</th>
+                <th>URL</th>
+                <th>Description</th>
+            </tr>
+            <tr>
+                <td>Pages</td>
+                <td><code>/admin/cms/pages</code></td>
+                <td>Edit Home, Features, Pricing, About, Contact, Privacy, Terms pages</td>
+            </tr>
+            <tr>
+                <td>FAQs</td>
+                <td><code>/admin/cms/faqs</code></td>
+                <td>Manage FAQ entries with categories and ordering</td>
+            </tr>
+            <tr>
+                <td>Testimonials</td>
+                <td><code>/admin/cms/testimonials</code></td>
+                <td>Customer testimonials with ratings</td>
+            </tr>
+            <tr>
+                <td>Contact</td>
+                <td><code>/admin/contacts</code></td>
+                <td>View and manage contact form submissions</td>
+            </tr>
+        </table>
+
+        <p>Public pages: <code>/</code>, <code>/features</code>, <code>/pricing</code>, <code>/faq</code>,
+            <code>/about</code>, <code>/contact</code>, <code>/privacy-policy</code>, <code>/terms</code>,
+            <code>/user-guide</code>.</p>
+
+        <!-- ═══════════════════════════ SECTION 24: SECURITY ═══════════════════════════ -->
+        <h2 id="security">24. Security Features</h2>
+
+        <table>
+            <tr>
+                <th>Feature</th>
+                <th>Description</th>
+            </tr>
+            <tr>
+                <td>Login History</td>
+                <td><code>login_history</code> table tracks all logins with IP, device, browser</td>
+            </tr>
+            <tr>
+                <td>OTP Verification</td>
+                <td><code>otp_verifications</code> table for email/SMS OTP (schema ready)</td>
+            </tr>
+            <tr>
+                <td>PIN Auth</td>
+                <td>Mobile PIN login via <code>/api/v1/pin/login</code>. PIN stored hashed in <code>users</code> table
+                </td>
+            </tr>
+            <tr>
+                <td>App Lock</td>
+                <td>Toggle via <code>/api/v1/security/app-lock</code></td>
+            </tr>
+            <tr>
+                <td>Biometric</td>
+                <td>Schema ready: <code>users.biometric_enabled</code></td>
+            </tr>
+            <tr>
+                <td>Device Management</td>
+                <td><code>user_devices</code> table tracks trusted devices</td>
+            </tr>
+            <tr>
+                <td>Rate Limiting</td>
+                <td>Laravel's built-in rate limiting on routes</td>
+            </tr>
+            <tr>
+                <td>CSRF Protection</td>
+                <td>All web forms include CSRF tokens</td>
+            </tr>
+            <tr>
+                <td>Password Hashing</td>
+                <td>Bcrypt with 12 rounds</td>
+            </tr>
+            <tr>
+                <td>Session Security</td>
+                <td>Database sessions, encrypted, 120 min lifetime</td>
+            </tr>
+        </table>
+
+        <!-- ═══════════════════════════ SECTION 25: API REFERENCE ═══════════════════════════ -->
+        <h2 id="api-reference">25. API Reference</h2>
+
+        <p>All API endpoints are under <code>/api/v1/</code> and use <strong>Bearer token</strong> authentication
+            (Sanctum).</p>
+
+        <h3>Authentication Endpoints</h3>
+        <table>
+            <tr>
+                <th>Method</th>
+                <th>Endpoint</th>
+                <th>Description</th>
+            </tr>
+            <tr>
+                <td>POST</td>
+                <td><code>/api/v1/login</code></td>
+                <td>Login with email/password → returns token. Optional body: <code>device_id</code>, <code>device_type</code>, <code>device_name</code>, <code>device_os</code>, <code>fcm_token</code>, <code>push_token</code></td>
+            </tr>
+            <tr>
+                <td>POST</td>
+                <td><code>/api/v1/register</code></td>
+                <td>Register new company + admin user</td>
+            </tr>
+            <tr>
+                <td>POST</td>
+                <td><code>/api/v1/logout</code></td>
+                <td>Revoke current token</td>
+            </tr>
+            <tr>
+                <td>GET</td>
+                <td><code>/api/v1/me</code></td>
+                <td>Get authenticated user profile</td>
+            </tr>
+            <tr>
+                <td>PUT</td>
+                <td><code>/api/v1/profile</code></td>
+                <td>Update profile</td>
+            </tr>
+            <tr>
+                <td>PUT</td>
+                <td><code>/api/v1/change-password</code></td>
+                <td>Change password</td>
+            </tr>
+        </table>
+
+        <h3>Security Endpoints</h3>
+        <table>
+            <tr>
+                <th>Method</th>
+                <th>Endpoint</th>
+                <th>Description</th>
+            </tr>
+            <tr>
+                <td>POST</td>
+                <td><code>/api/v1/pin/login</code></td>
+                <td>Login with PIN</td>
+            </tr>
+            <tr>
+                <td>POST</td>
+                <td><code>/api/v1/pin/set</code></td>
+                <td>Set PIN</td>
+            </tr>
+            <tr>
+                <td>POST</td>
+                <td><code>/api/v1/pin/verify</code></td>
+                <td>Verify PIN</td>
+            </tr>
+            <tr>
+                <td>PUT</td>
+                <td><code>/api/v1/security/app-lock</code></td>
+                <td>Toggle app lock</td>
+            </tr>
+            <tr>
+                <td>GET</td>
+                <td><code>/api/v1/security/settings</code></td>
+                <td>Get security settings</td>
+            </tr>
+            <tr>
+                <td>PUT</td>
+                <td><code>/api/v1/security/settings</code></td>
+                <td>Update security settings</td>
+            </tr>
+        </table>
+
+        <h3>Core API Endpoints (Web Parity)</h3>
+        <p>The mobile API supports the same CRUD operations as the web admin panel. Key modules:</p>
+        <table>
+            <tr>
+                <th>Module</th>
+                <th>Endpoints</th>
+            </tr>
+            <tr>
+                <td>Accounts</td>
+                <td><code>GET/POST /accounts</code>, <code>GET/PUT/DELETE /accounts/{id}</code>,
+                    <code>PATCH /accounts/{id}/status</code>, <code>GET /accounts/tree</code></td>
+            </tr>
+            <tr>
+                <td>Parties</td>
+                <td><code>GET/POST /parties</code>, <code>GET/PUT/DELETE /parties/{id}</code>,
+                    <code>PATCH /parties/{id}/status</code></td>
+            </tr>
+            <tr>
+                <td>Vouchers</td>
+                <td><code>GET/POST /vouchers</code>, <code>GET/PUT/DELETE /vouchers/{id}</code>,
+                    <code>PATCH /vouchers/{id}/post|cancel</code></td>
+            </tr>
+            <tr>
+                <td>Sales Invoices</td>
+                <td><code>GET/POST /sales-invoices</code>, <code>GET/PUT/DELETE /sales-invoices/{id}</code>,
+                    <code>POST /sales-invoices/{id}/payment</code>, <code>GET /sales-invoices/{id}/pdf</code>.
+                    Use <code>invoice_type=service</code> for service invoices.</td>
+            </tr>
+            <tr>
+                <td>Purchase Invoices</td>
+                <td><code>GET/POST /purchase-invoices</code>, <code>GET/PUT/DELETE /purchase-invoices/{id}</code>,
+                    <code>POST /purchase-invoices/{id}/payment</code></td>
+            </tr>
+            <tr>
+                <td>Items &amp; Categories</td>
+                <td><code>GET/POST/PUT/DELETE /items/{id}</code>, <code>GET/POST/PUT/DELETE
+                        /item-categories/{id}</code></td>
+            </tr>
+            <tr>
+                <td>Financial Years</td>
+                <td><code>GET/POST /financial-years</code>, <code>PATCH /financial-years/{id}/set-current|close</code>,
+                    <code>DELETE /financial-years/{id}</code></td>
+            </tr>
+            <tr>
+                <td>Reports</td>
+                <td><code>GET /reports/*</code> — day-book, cash-book, bank-book, ledger, trial-balance, profit-loss,
+                    balance-sheet, debtors-outstanding, creditors-outstanding</td>
+            </tr>
+            <tr>
+                <td>Settings</td>
+                <td><code>GET /settings</code>, <code>PUT /settings/company</code>,
+                    <code>PUT /settings/accounting</code></td>
+            </tr>
+            <tr>
+                <td>Subscriptions</td>
+                <td><code>GET /subscriptions/plans|current|invoices|payments</code>,
+                    <code>POST /subscriptions/subscribe|verify-payment|change-plan|cancel</code>.
+                    Paid plans return <code>checkout</code> object; call <code>verify-payment</code> after Razorpay success.</td>
+            </tr>
+            <tr>
+                <td>Offline Sync</td>
+                <td><code>POST /sync/upload</code> (queue offline changes),
+                    <code>POST /sync/run</code> (manual sync button),
+                    <code>GET /sync/download</code> (delta since timestamp),
+                    <code>GET /sync/bootstrap</code> (first install),
+                    <code>GET /sync/status</code></td>
+            </tr>
+            <tr>
+                <td>Notifications</td>
+                <td><code>GET /notifications</code>, <code>GET /notifications/unread-count</code>,
+                    <code>PATCH /notifications/{id}/read</code> (returns updated <code>unread_count</code>),
+                    <code>POST /notifications/read-all</code> (returns <code>updated</code> + <code>unread_count</code>)</td>
+            </tr>
+            <tr>
+                <td>Support Tickets</td>
+                <td><code>GET/POST /support-tickets</code>, <code>GET /support-tickets/{id}</code>,
+                    <code>POST /support-tickets/{id}/reply</code>,
+                    <code>PATCH /support-tickets/{id}/status</code> (SuperAdmin)</td>
+            </tr>
+            <tr>
+                <td>Devices</td>
+                <td><code>POST /devices/register</code> — register device on login for sync tracking and push tokens</td>
+            </tr>
+        </table>
+
+        <h3>Offline-First Mobile Flow</h3>
+        <ol>
+            <li><strong>First login:</strong> call <code>POST /login</code> with <code>device_id</code>, then <code>GET /sync/bootstrap</code> to cache master data locally (accounts, parties, items, categories, tax rates, bank accounts).</li>
+            <li><strong>Offline edits:</strong> save changes in local SQLite/storage with UUID + version; queue payloads for upload.</li>
+            <li><strong>Back online:</strong> call <code>POST /sync/upload</code> with queued entries (<code>auto_process: true</code> by default), then <code>GET /sync/download?since=...</code> for server-side changes.</li>
+            <li><strong>Manual sync button:</strong> call <code>POST /sync/run</code> anytime to process pending queue items and refresh status via <code>GET /sync/status</code>.</li>
+            <li><strong>Paid subscription:</strong> <code>POST /subscriptions/subscribe</code> → open Razorpay with returned <code>checkout</code> → <code>POST /subscriptions/verify-payment</code> on success.</li>
+        </ol>
+
+        <h3>Support &amp; Notifications (Web + Mobile)</h3>
+        <ul>
+            <li><strong>Tenant admin:</strong> Admin panel → <em>Help &amp; Support</em> → create ticket, chat in thread, get notified in header bell.</li>
+            <li><strong>SuperAdmin:</strong> Admin panel → <em>Support Inbox</em> → view all company tickets, reply, assign, change status; internal notes visible to staff only.</li>
+            <li><strong>Mobile:</strong> same ticket APIs; poll <code>GET /notifications/unread-count</code> for badge count; mark read returns updated count.</li>
+            <li><strong>Web header:</strong> notification bell loads feed via AJAX, polls unread count every 60 seconds, and updates badge dynamically.</li>
+        </ul>
+
+        <div class="info-box">
+            <strong>API Documentation</strong>
+            Full OpenAPI/Swagger documentation is available when the app is running at <code>/api/documentation</code>.
+            Generated using L5-Swagger with annotations in <code>app/Docs/</code>.
+        </div>
+
+        <!-- ═══════════════════════════ SECTION 26: DATABASE ═══════════════════════════ -->
+        <h2 id="database-tables">26. Database Tables (48 Active)</h2>
+
+        <div class="card-grid">
+            <div class="card">
+                <h4>Core System (6 tables)</h4>
+                <p><code>users</code>, <code>sessions</code>, <code>password_reset_tokens</code>, <code>cache</code>,
+                    <code>cache_locks</code>, <code>jobs</code>, <code>personal_access_tokens</code></p>
+            </div>
+            <div class="card">
+                <h4>Multi-Tenancy (2 tables)</h4>
+                <p><code>companies</code>, <code>user_devices</code></p>
+            </div>
+            <div class="card">
+                <h4>Roles &amp; Permissions (4 tables)</h4>
+                <p><code>permissions</code>, <code>roles</code>, <code>permission_role</code>, <code>role_user</code>
+                </p>
+            </div>
+            <div class="card">
+                <h4>Settings (2 tables)</h4>
+                <p><code>settings</code>, <code>themes</code></p>
+            </div>
+            <div class="card">
+                <h4>Accounting Core (12 tables)</h4>
+                <p><code>financial_years</code>, <code>accounts</code>, <code>parties</code>, <code>vouchers</code>,
+                    <code>voucher_lines</code>, <code>ledgers</code>, <code>journal_entries</code>,
+                    <code>ledger_party_histories</code>, <code>tax_rates</code>, <code>items</code>,
+                    <code>item_categories</code>, <code>bank_accounts</code></p>
+            </div>
+            <div class="card">
+                <h4>Invoicing (4 tables)</h4>
+                <p><code>sales_invoices</code>, <code>sales_invoice_lines</code>, <code>purchase_invoices</code>,
+                    <code>purchase_invoice_lines</code></p>
+            </div>
+            <div class="card">
+                <h4>Subscriptions (6 tables)</h4>
+                <p><code>subscription_plans</code>, <code>subscriptions</code>, <code>subscription_invoices</code>,
+                    <code>subscription_payments</code>, <code>razorpay_orders</code>, <code>razorpay_webhooks</code></p>
+            </div>
+            <div class="card">
+                <h4>Mobile &amp; Support (4 tables)</h4>
+                <p><code>notifications</code>, <code>sync_queue</code>, <code>support_tickets</code>,
+                    <code>support_ticket_messages</code></p>
+            </div>
+            <div class="card">
+                <h4>Website &amp; CMS (5 tables)</h4>
+                <p><code>website_pages</code>, <code>faqs</code>, <code>testimonials</code>,
+                    <code>pricing_displays</code>, <code>contact_submissions</code></p>
+            </div>
+            <div class="card">
+                <h4>Security &amp; Audit (3 tables)</h4>
+                <p><code>audit_logs</code>, <code>login_history</code>, <code>otp_verifications</code></p>
+            </div>
+            <div class="card">
+                <h4>Locations (3 tables)</h4>
+                <p><code>countries</code>, <code>states</code>, <code>cities</code> — for cascading dropdowns</p>
+            </div>
+        </div>
+
+        <p>Schema reference: <code>docs/DATABASE_SCHEMA.md</code></p>
+
+        <!-- ═══════════════════════════ SECTION 27: FILE STRUCTURE ═══════════════════════════ -->
+        <h2 id="file-structure">27. Key File Structure</h2>
+
+        <pre><code>Reco/
+├── app/
+│   ├── Http/
+│   │   ├── Controllers/
+│   │   │   ├── Admin/        (31 controllers)
+│   │   │   │   ├── AccountController.php
+│   │   │   │   ├── PartyController.php
+│   │   │   │   ├── VoucherController.php
+│   │   │   │   ├── ReportController.php
+│   │   │   │   ├── ExportController.php
+│   │   │   │   ├── SalesInvoiceController.php
+│   │   │   │   ├── PurchaseInvoiceController.php
+│   │   │   │   ├── DashboardController.php
+│   │   │   │   ├── SettingsController.php
+│   │   │   │   ├── SubscriptionController.php
+│   │   │   │   └── ... (21 more)
+│   │   │   ├── Api/           (18 API controllers)
+│   │   │   └── Auth/          (7 auth controllers)
+│   │   └── Middleware/        (4 middleware)
+│   ├── Models/                (44 models)
+│   ├── Services/              (23 services)
+│   │   ├── ReportService.php       ← ALL report logic
+│   │   ├── LedgerService.php        ← Ledger and trial balance
+│   │   ├── VoucherService.php       ← Voucher CRUD
+│   │   ├── ExportService.php        ← Export logic
+│   │   ├── DashboardService.php     ← Dashboard stats
+│   │   └── ... (18 more)
+│   ├── Repositories/          (3 repos)
+│   ├── Interfaces/            (3 interfaces)
+│   └── Exports/               (Excel export classes)
+├── database/
+│   ├── migrations/            (67 migration files)
+│   └── seeders/
+├── resources/views/
+│   ├── admin/
+│   │   └── reports/           (9 report views)
+│   └── exports/               (9 PDF export views)
+├── routes/
+│   ├── web.php                (566 lines)
+│   ├── api.php                (179 lines)
+│   └── console.php
+├── docs/
+│   └── DATABASE_SCHEMA.md     (complete schema docs)
+├── RECO_PROJECT_AUDIT.md      (2342-line full audit)
+└── composer.json
+</code></pre>
+
+        <!-- ── FOOTER ── -->
+        <hr style="margin: 48px 0 16px; border-color: var(--border);">
+        <p style="font-size: .85rem; color: var(--text-light); text-align: center;">
+            RECO User Guide v1.0 &bull; Generated July 2026 &bull;
+            Laravel 12 &bull; PHP 8.3+ &bull; MySQL 8.x &bull;
+            Accounting &amp; Receivables Management SaaS
+        </p>
+
+    </main>
+</body>
+
+</html>

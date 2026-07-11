@@ -20,17 +20,11 @@ class ReportController extends Controller
         $this->ledgerService = $ledgerService;
     }
 
-    /**
-     * Display reports index
-     */
     public function index()
     {
         return view('admin.reports.index');
     }
 
-    /**
-     * Get Profit & Loss report
-     */
     public function profitLoss(Request $request)
     {
         $companyId = auth()->user()->company_id;
@@ -49,9 +43,6 @@ class ReportController extends Controller
         return view('admin.reports.profit-loss', compact('report', 'financialYears', 'financialYearId'));
     }
 
-    /**
-     * Get Balance Sheet report
-     */
     public function balanceSheet(Request $request)
     {
         $companyId = auth()->user()->company_id;
@@ -70,9 +61,6 @@ class ReportController extends Controller
         return view('admin.reports.balance-sheet', compact('report', 'financialYears', 'financialYearId'));
     }
 
-    /**
-     * Get Trial Balance report
-     */
     public function trialBalance(Request $request)
     {
         $companyId = auth()->user()->company_id;
@@ -91,9 +79,6 @@ class ReportController extends Controller
         return view('admin.reports.trial-balance', compact('report', 'financialYears', 'financialYearId'));
     }
 
-    /**
-     * Get Day Book report
-     */
     public function dayBook(Request $request)
     {
         $companyId = auth()->user()->company_id;
@@ -104,9 +89,16 @@ class ReportController extends Controller
         return view('admin.reports.day-book', compact('report', 'date'));
     }
 
-    /**
-     * Get Ledger report
-     */
+    public function cashBook(Request $request)
+    {
+        return $this->renderCashBankBook($request, 'cash');
+    }
+
+    public function bankBook(Request $request)
+    {
+        return $this->renderCashBankBook($request, 'bank');
+    }
+
     public function ledger(Request $request)
     {
         $companyId = auth()->user()->company_id;
@@ -121,10 +113,10 @@ class ReportController extends Controller
 
         $report = null;
 
-        if ($accountId) {
+        if ($accountId && $accountId !== 'all') {
             $financialYearId = FinancialYear::getCurrent($companyId)?->id;
             $report = $this->ledgerService->getAccountLedger(
-                $accountId,
+                (int) $accountId,
                 $companyId,
                 $financialYearId,
                 $dateFrom,
@@ -135,30 +127,6 @@ class ReportController extends Controller
         return view('admin.reports.ledger', compact('report', 'accounts', 'accountId', 'dateFrom', 'dateTo'));
     }
 
-    /**
-     * Get Cash Flow report
-     */
-    public function cashFlow(Request $request)
-    {
-        $companyId = auth()->user()->company_id;
-        $financialYearId = $request->input('financial_year_id') ?? FinancialYear::getCurrent($companyId)?->id;
-
-        if (!$financialYearId) {
-            return view('admin.reports.cash-flow', [
-                'report' => null,
-                'financialYears' => FinancialYear::where('company_id', $companyId)->get(),
-            ]);
-        }
-
-        $report = $this->reportService->getCashFlow($companyId, $financialYearId);
-        $financialYears = FinancialYear::where('company_id', $companyId)->get();
-
-        return view('admin.reports.cash-flow', compact('report', 'financialYears', 'financialYearId'));
-    }
-
-    /**
-     * Get Debtors Outstanding report
-     */
     public function debtorsOutstanding()
     {
         $companyId = auth()->user()->company_id;
@@ -167,14 +135,41 @@ class ReportController extends Controller
         return view('admin.reports.debtors-outstanding', compact('report'));
     }
 
-    /**
-     * Get Creditors Outstanding report
-     */
     public function creditorsOutstanding()
     {
         $companyId = auth()->user()->company_id;
         $report = $this->reportService->getCreditorsOutstanding($companyId);
 
         return view('admin.reports.creditors-outstanding', compact('report'));
+    }
+
+    protected function renderCashBankBook(Request $request, string $mode)
+    {
+        $companyId = auth()->user()->company_id;
+        $accountId = $request->filled('account_id') ? (int) $request->input('account_id') : null;
+        $dateFrom = $request->input('date_from');
+        $dateTo = $request->input('date_to');
+        $financialYearId = $request->input('financial_year_id') ?? FinancialYear::getCurrent($companyId)?->id;
+
+        $book = $this->reportService->getCashBankBook(
+            $companyId,
+            $mode,
+            $accountId,
+            $dateFrom,
+            $dateTo,
+            $financialYearId
+        );
+
+        $financialYears = FinancialYear::where('company_id', $companyId)->get();
+
+        return view('admin.reports.cash-bank-book', [
+            'book' => $book,
+            'mode' => $mode,
+            'accountId' => $book['account']?->id,
+            'dateFrom' => $dateFrom,
+            'dateTo' => $dateTo,
+            'financialYearId' => $financialYearId,
+            'financialYears' => $financialYears,
+        ]);
     }
 }

@@ -11,6 +11,8 @@ class SyncQueue extends Model
 {
     use HasFactory, HasUuid;
 
+    protected $table = 'sync_queue';
+
     protected $fillable = [
         'uuid',
         'table_name',
@@ -37,8 +39,6 @@ class SyncQueue extends Model
         'processed_at' => 'datetime',
     ];
 
-    // ── Relationships ─────────────────────────────────────────
-
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
@@ -49,21 +49,9 @@ class SyncQueue extends Model
         return $this->belongsTo(Company::class);
     }
 
-    // ── Scopes ────────────────────────────────────────────────
-
     public function scopePending($query)
     {
         return $query->where('status', 'pending');
-    }
-
-    public function scopeProcessing($query)
-    {
-        return $query->where('status', 'processing');
-    }
-
-    public function scopeCompleted($query)
-    {
-        return $query->where('status', 'completed');
     }
 
     public function scopeFailed($query)
@@ -71,25 +59,9 @@ class SyncQueue extends Model
         return $query->where('status', 'failed');
     }
 
-    public function scopeForTable($query, string $tableName)
-    {
-        return $query->where('table_name', $tableName);
-    }
-
     public function scopeForDevice($query, string $deviceId)
     {
         return $query->where('device_id', $deviceId);
-    }
-
-    public function scopeForCompany($query, int $companyId)
-    {
-        return $query->where('company_id', $companyId);
-    }
-
-    public function scopeRetryable($query)
-    {
-        return $query->where('status', 'failed')
-            ->whereColumn('retry_count', '<', 'max_retries');
     }
 
     public function scopeOrdered($query)
@@ -97,16 +69,18 @@ class SyncQueue extends Model
         return $query->orderBy('created_at', 'asc');
     }
 
-    // ── Methods ───────────────────────────────────────────────
-
     public function markAsProcessing(): void
     {
         $this->update(['status' => 'processing']);
     }
 
-    public function markAsCompleted(): void
+    public function markAsCompleted(?int $serverVersion = null): void
     {
-        $this->update(['status' => 'completed', 'processed_at' => now()]);
+        $this->update([
+            'status' => 'completed',
+            'processed_at' => now(),
+            'server_version' => $serverVersion ?? $this->server_version,
+        ]);
     }
 
     public function markAsFailed(string $error): void
@@ -121,12 +95,5 @@ class SyncQueue extends Model
     public function isRetryable(): bool
     {
         return $this->status === 'failed' && $this->retry_count < $this->max_retries;
-    }
-
-    public function hasConflict(): bool
-    {
-        return $this->local_version !== null
-            && $this->server_version !== null
-            && $this->local_version !== $this->server_version;
     }
 }

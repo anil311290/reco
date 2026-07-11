@@ -2,6 +2,8 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\FormatsHumanReadableDates;
+
 use App\Traits\HasAuditFields;
 use App\Traits\HasUuid;
 use App\Traits\HasVersioning;
@@ -11,13 +13,15 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Voucher extends Model
 {
-    use HasFactory, HasAuditFields, HasUuid, HasVersioning, SoftDeletes;
+    use FormatsHumanReadableDates, HasFactory, HasAuditFields, HasUuid, HasVersioning, SoftDeletes;
 
     protected $fillable = [
         'uuid',
         'company_id',
         'financial_year_id',
         'party_id',
+        'sales_invoice_id',
+        'purchase_invoice_id',
         'voucher_number',
         'voucher_type',
         'voucher_date',

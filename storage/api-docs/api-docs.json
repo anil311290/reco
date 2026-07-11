@@ -20,7 +20,7 @@
             "description": "Local Development Server"
         },
         {
-            "url": "https://reco.aaochaletaxi.app/v1",
+            "url": "https://reco.aaochaletaxi.app/api/v1",
             "description": "Production Server"
         }
     ],
@@ -31,13 +31,11 @@
                     "Accounts"
                 ],
                 "summary": "Get all accounts",
-                "description": "Get list of all accounts with optional filters",
                 "operationId": "getAccounts",
                 "parameters": [
                     {
                         "name": "search",
                         "in": "query",
-                        "description": "Search by name or code",
                         "schema": {
                             "type": "string"
                         }
@@ -45,7 +43,6 @@
                     {
                         "name": "account_type",
                         "in": "query",
-                        "description": "Filter by account type",
                         "schema": {
                             "type": "string",
                             "enum": [
@@ -60,7 +57,6 @@
                     {
                         "name": "is_active",
                         "in": "query",
-                        "description": "Filter by status (1=active, 0=inactive)",
                         "schema": {
                             "type": "boolean"
                         }
@@ -72,19 +68,7 @@
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "properties": {
-                                        "success": {
-                                            "type": "boolean",
-                                            "example": true
-                                        },
-                                        "data": {
-                                            "type": "array",
-                                            "items": {
-                                                "$ref": "#/components/schemas/Account"
-                                            }
-                                        }
-                                    },
-                                    "type": "object"
+                                    "$ref": "#/components/schemas/SuccessResponse"
                                 }
                             }
                         }
@@ -105,6 +89,158 @@
                         "bearerAuth": []
                     }
                 ]
+            },
+            "post": {
+                "tags": [
+                    "Accounts"
+                ],
+                "summary": "Create account",
+                "operationId": "createAccount",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "account_name",
+                                    "account_type"
+                                ],
+                                "properties": {
+                                    "account_name": {
+                                        "type": "string"
+                                    },
+                                    "account_type": {
+                                        "type": "string",
+                                        "enum": [
+                                            "asset",
+                                            "liability",
+                                            "income",
+                                            "expense",
+                                            "equity"
+                                        ]
+                                    },
+                                    "transaction_mode": {
+                                        "type": "string",
+                                        "enum": [
+                                            "cash",
+                                            "bank",
+                                            "od"
+                                        ]
+                                    },
+                                    "opening_balance": {
+                                        "type": "number"
+                                    },
+                                    "balance_type": {
+                                        "type": "string",
+                                        "enum": [
+                                            "debit",
+                                            "credit"
+                                        ]
+                                    },
+                                    "is_active": {
+                                        "type": "boolean"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/SuccessResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/accounts/by-type": {
+            "get": {
+                "tags": [
+                    "Accounts"
+                ],
+                "summary": "Get accounts by type",
+                "operationId": "getAccountsByType",
+                "parameters": [
+                    {
+                        "name": "type",
+                        "in": "query",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "asset",
+                                "liability",
+                                "income",
+                                "expense",
+                                "equity"
+                            ]
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Success",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/SuccessResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/accounts/tree": {
+            "get": {
+                "tags": [
+                    "Accounts"
+                ],
+                "summary": "Get account tree",
+                "operationId": "getAccountTree",
+                "parameters": [
+                    {
+                        "name": "type",
+                        "in": "query",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Success",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/SuccessResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
             }
         },
         "/accounts/{id}": {
@@ -113,13 +249,11 @@
                     "Accounts"
                 ],
                 "summary": "Get account by ID",
-                "description": "Get single account details by ID",
                 "operationId": "getAccountById",
                 "parameters": [
                     {
                         "name": "id",
                         "in": "path",
-                        "description": "Account ID",
                         "required": true,
                         "schema": {
                             "type": "integer"
@@ -132,26 +266,7 @@
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "properties": {
-                                        "success": {
-                                            "type": "boolean",
-                                            "example": true
-                                        },
-                                        "data": {
-                                            "$ref": "#/components/schemas/Account"
-                                        }
-                                    },
-                                    "type": "object"
-                                }
-                            }
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/ErrorResponse"
+                                    "$ref": "#/components/schemas/SuccessResponse"
                                 }
                             }
                         }
@@ -172,87 +287,118 @@
                         "bearerAuth": []
                     }
                 ]
-            }
-        },
-        "/accounts/by-type": {
-            "get": {
+            },
+            "put": {
                 "tags": [
                     "Accounts"
                 ],
-                "summary": "Get accounts by type",
-                "description": "Get accounts filtered by type for dropdown selection",
-                "operationId": "getAccountsByType",
+                "summary": "Update account",
+                "operationId": "updateAccount",
                 "parameters": [
                     {
-                        "name": "type",
-                        "in": "query",
-                        "description": "Account type",
+                        "name": "id",
+                        "in": "path",
                         "required": true,
                         "schema": {
-                            "type": "string",
-                            "enum": [
-                                "asset",
-                                "liability",
-                                "income",
-                                "expense",
-                                "equity"
-                            ]
+                            "type": "integer"
                         }
                     }
                 ],
                 "responses": {
                     "200": {
-                        "description": "Success",
+                        "description": "Updated",
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "properties": {
-                                        "success": {
-                                            "type": "boolean",
-                                            "example": true
-                                        },
-                                        "data": {
-                                            "type": "array",
-                                            "items": {
-                                                "properties": {
-                                                    "id": {
-                                                        "type": "integer",
-                                                        "example": 1
-                                                    },
-                                                    "text": {
-                                                        "type": "string",
-                                                        "example": "AST0001 - Cash"
-                                                    },
-                                                    "type": {
-                                                        "type": "string",
-                                                        "example": "asset"
-                                                    }
-                                                },
-                                                "type": "object"
-                                            }
-                                        }
-                                    },
-                                    "type": "object"
+                                    "$ref": "#/components/schemas/SuccessResponse"
                                 }
                             }
                         }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            },
+            "delete": {
+                "tags": [
+                    "Accounts"
+                ],
+                "summary": "Delete account",
+                "operationId": "deleteAccount",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Deleted",
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "$ref": "#/components/schemas/ErrorResponse"
+                                    "$ref": "#/components/schemas/SuccessResponse"
                                 }
                             }
                         }
-                    },
-                    "422": {
-                        "description": "Validation error",
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/accounts/{id}/status": {
+            "patch": {
+                "tags": [
+                    "Accounts"
+                ],
+                "summary": "Change account status",
+                "operationId": "changeAccountStatus",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "status"
+                                ],
+                                "properties": {
+                                    "status": {
+                                        "type": "boolean"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Status updated",
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "$ref": "#/components/schemas/ErrorResponse"
+                                    "$ref": "#/components/schemas/SuccessResponse"
                                 }
                             }
                         }
@@ -297,10 +443,35 @@
                                         "example": "12345678",
                                         "minLength": 6
                                     },
-                                    "device_name": {
-                                        "description": "Device name for token identification",
+                                    "device_id": {
+                                        "description": "Unique device identifier for sync tracking",
                                         "type": "string",
-                                        "example": "iPhone 14 Pro"
+                                        "example": "android-abc123"
+                                    },
+                                    "device_type": {
+                                        "type": "string",
+                                        "example": "android",
+                                        "enum": [
+                                            "web",
+                                            "android",
+                                            "ios"
+                                        ]
+                                    },
+                                    "device_name": {
+                                        "type": "string",
+                                        "example": "Samsung Galaxy S24"
+                                    },
+                                    "device_os": {
+                                        "type": "string",
+                                        "example": "Android 14"
+                                    },
+                                    "fcm_token": {
+                                        "description": "Firebase push token",
+                                        "type": "string"
+                                    },
+                                    "push_token": {
+                                        "description": "Alternative push token",
+                                        "type": "string"
                                     }
                                 },
                                 "type": "object"
@@ -1360,16 +1531,60 @@
                 ]
             }
         },
-        "/export/types": {
-            "get": {
+        "/devices/register": {
+            "post": {
                 "tags": [
-                    "Export"
+                    "Devices"
                 ],
-                "summary": "Get export types",
-                "operationId": "getExportTypes",
+                "summary": "Register mobile device for sync and push",
+                "description": "Call after login or when FCM token refreshes. Same fields can be sent on POST /login.",
+                "operationId": "devicesRegister",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "device_id",
+                                    "device_type"
+                                ],
+                                "properties": {
+                                    "device_id": {
+                                        "type": "string",
+                                        "example": "android-abc123"
+                                    },
+                                    "device_type": {
+                                        "type": "string",
+                                        "example": "android",
+                                        "enum": [
+                                            "web",
+                                            "android",
+                                            "ios"
+                                        ]
+                                    },
+                                    "device_name": {
+                                        "type": "string",
+                                        "example": "Samsung Galaxy S24"
+                                    },
+                                    "device_os": {
+                                        "type": "string",
+                                        "example": "Android 14"
+                                    },
+                                    "fcm_token": {
+                                        "type": "string"
+                                    },
+                                    "push_token": {
+                                        "type": "string"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
                 "responses": {
                     "200": {
-                        "description": "Export types fetched",
+                        "description": "Device registered",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -1393,9 +1608,25 @@
                 ],
                 "summary": "Export profit and loss report as PDF",
                 "operationId": "exportProfitLossPdf",
+                "parameters": [
+                    {
+                        "name": "financial_year_id",
+                        "in": "query",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
                 "responses": {
                     "200": {
-                        "description": "PDF generated"
+                        "description": "PDF generated",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/SuccessResponse"
+                                }
+                            }
+                        }
                     }
                 },
                 "security": [
@@ -1412,9 +1643,97 @@
                 ],
                 "summary": "Export balance sheet report as PDF",
                 "operationId": "exportBalanceSheetPdf",
+                "parameters": [
+                    {
+                        "name": "financial_year_id",
+                        "in": "query",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
                 "responses": {
                     "200": {
-                        "description": "PDF generated"
+                        "description": "PDF generated",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/SuccessResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/export/trial-balance/pdf": {
+            "get": {
+                "tags": [
+                    "Export"
+                ],
+                "summary": "Export trial balance report as PDF",
+                "operationId": "exportTrialBalancePdf",
+                "parameters": [
+                    {
+                        "name": "financial_year_id",
+                        "in": "query",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "PDF generated",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/SuccessResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/export/day-book/pdf": {
+            "get": {
+                "tags": [
+                    "Export"
+                ],
+                "summary": "Export day book report as PDF",
+                "operationId": "exportDayBookPdf",
+                "parameters": [
+                    {
+                        "name": "date",
+                        "in": "query",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "date"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "PDF generated",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/SuccessResponse"
+                                }
+                            }
+                        }
                     }
                 },
                 "security": [
@@ -1435,7 +1754,7 @@
                     {
                         "name": "account_id",
                         "in": "query",
-                        "required": false,
+                        "required": true,
                         "schema": {
                             "type": "integer"
                         }
@@ -1443,7 +1762,66 @@
                 ],
                 "responses": {
                     "200": {
-                        "description": "PDF generated"
+                        "description": "PDF generated",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/SuccessResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/export/debtors-outstanding/pdf": {
+            "get": {
+                "tags": [
+                    "Export"
+                ],
+                "summary": "Export debtors outstanding report as PDF",
+                "operationId": "exportDebtorsOutstandingPdf",
+                "responses": {
+                    "200": {
+                        "description": "PDF generated",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/SuccessResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/export/creditors-outstanding/pdf": {
+            "get": {
+                "tags": [
+                    "Export"
+                ],
+                "summary": "Export creditors outstanding report as PDF",
+                "operationId": "exportCreditorsOutstandingPdf",
+                "responses": {
+                    "200": {
+                        "description": "PDF generated",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/SuccessResponse"
+                                }
+                            }
+                        }
                     }
                 },
                 "security": [
@@ -1472,47 +1850,7 @@
                 ],
                 "responses": {
                     "200": {
-                        "description": "PDF generated"
-                    },
-                    "404": {
-                        "description": "Not found",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/ErrorResponse"
-                                }
-                            }
-                        }
-                    }
-                },
-                "security": [
-                    {
-                        "bearerAuth": []
-                    }
-                ]
-            }
-        },
-        "/export/history": {
-            "get": {
-                "tags": [
-                    "Export"
-                ],
-                "summary": "Get export history",
-                "operationId": "getExportHistory",
-                "parameters": [
-                    {
-                        "name": "per_page",
-                        "in": "query",
-                        "required": false,
-                        "schema": {
-                            "type": "integer",
-                            "default": 15
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Export history fetched",
+                        "description": "PDF generated",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -1529,34 +1867,95 @@
                 ]
             }
         },
-        "/export/share": {
-            "post": {
+        "/export/sales-invoice/{id}/pdf": {
+            "get": {
                 "tags": [
                     "Export"
                 ],
-                "summary": "Share exported statement",
-                "operationId": "shareExportStatement",
+                "summary": "Export sales invoice as PDF",
+                "operationId": "exportSalesInvoicePdfByExportRoute",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "PDF generated",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/SuccessResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/financial-years": {
+            "get": {
+                "tags": [
+                    "Financial Years"
+                ],
+                "summary": "List financial years",
+                "operationId": "getFinancialYearsList",
+                "responses": {
+                    "200": {
+                        "description": "Success",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/SuccessResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            },
+            "post": {
+                "tags": [
+                    "Financial Years"
+                ],
+                "summary": "Create financial year",
+                "operationId": "createFinancialYear",
                 "requestBody": {
                     "required": true,
                     "content": {
                         "application/json": {
                             "schema": {
                                 "required": [
-                                    "type",
-                                    "recipient"
+                                    "name",
+                                    "start_date",
+                                    "end_date"
                                 ],
                                 "properties": {
-                                    "type": {
+                                    "name": {
                                         "type": "string",
-                                        "example": "ledger_pdf"
+                                        "example": "2025-26"
                                     },
-                                    "recipient": {
+                                    "start_date": {
                                         "type": "string",
-                                        "example": "client@example.com"
+                                        "format": "date"
                                     },
-                                    "message": {
+                                    "end_date": {
                                         "type": "string",
-                                        "example": "Please find attached statement"
+                                        "format": "date"
                                     }
                                 },
                                 "type": "object"
@@ -1565,8 +1964,8 @@
                     }
                 },
                 "responses": {
-                    "200": {
-                        "description": "Statement shared",
+                    "201": {
+                        "description": "Created",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -1574,13 +1973,371 @@
                                 }
                             }
                         }
-                    },
-                    "422": {
-                        "description": "Validation error",
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/financial-years/current": {
+            "get": {
+                "tags": [
+                    "Financial Years"
+                ],
+                "summary": "Get current financial year",
+                "operationId": "getFinancialYearCurrent",
+                "responses": {
+                    "200": {
+                        "description": "Success",
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "$ref": "#/components/schemas/ErrorResponse"
+                                    "$ref": "#/components/schemas/SuccessResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/financial-years/{id}/set-current": {
+            "patch": {
+                "tags": [
+                    "Financial Years"
+                ],
+                "summary": "Set financial year as current",
+                "operationId": "setFinancialYearCurrent",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Updated",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/SuccessResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/financial-years/{id}/close": {
+            "patch": {
+                "tags": [
+                    "Financial Years"
+                ],
+                "summary": "Close financial year",
+                "operationId": "closeFinancialYear",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Closed",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/SuccessResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/financial-years/{id}": {
+            "delete": {
+                "tags": [
+                    "Financial Years"
+                ],
+                "summary": "Delete financial year",
+                "operationId": "deleteFinancialYear",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Deleted",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/SuccessResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/item-categories": {
+            "get": {
+                "tags": [
+                    "Item Categories"
+                ],
+                "summary": "List item categories",
+                "operationId": "getItemCategories",
+                "responses": {
+                    "200": {
+                        "description": "Success",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/SuccessResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            },
+            "post": {
+                "tags": [
+                    "Item Categories"
+                ],
+                "summary": "Create item category",
+                "operationId": "createItemCategory",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "name"
+                                ],
+                                "properties": {
+                                    "name": {
+                                        "type": "string"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/SuccessResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/item-categories/dropdown": {
+            "get": {
+                "tags": [
+                    "Item Categories"
+                ],
+                "summary": "Get item categories for dropdown",
+                "operationId": "getItemCategoriesDropdown",
+                "responses": {
+                    "200": {
+                        "description": "Success",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/SuccessResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/item-categories/{id}": {
+            "get": {
+                "tags": [
+                    "Item Categories"
+                ],
+                "summary": "Get item category",
+                "operationId": "getItemCategory",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Success",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/SuccessResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            },
+            "put": {
+                "tags": [
+                    "Item Categories"
+                ],
+                "summary": "Update item category",
+                "operationId": "updateItemCategory",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Updated",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/SuccessResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            },
+            "delete": {
+                "tags": [
+                    "Item Categories"
+                ],
+                "summary": "Delete item category",
+                "operationId": "deleteItemCategory",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Deleted",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/SuccessResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/item-categories/{id}/status": {
+            "patch": {
+                "tags": [
+                    "Item Categories"
+                ],
+                "summary": "Toggle item category status",
+                "operationId": "toggleItemCategoryStatus",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Updated",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/SuccessResponse"
                                 }
                             }
                         }
@@ -2282,73 +3039,30 @@
                 }
             }
         },
-        "/parties": {
+        "/notifications": {
             "get": {
                 "tags": [
-                    "Parties"
+                    "Notifications"
                 ],
-                "summary": "Get all parties",
-                "description": "Get list of all parties (debtors & creditors) with optional filters",
-                "operationId": "getParties",
+                "summary": "List in-app notifications",
+                "operationId": "notificationsIndex",
                 "parameters": [
                     {
-                        "name": "search",
+                        "name": "limit",
                         "in": "query",
-                        "description": "Search by name, code, or mobile",
                         "schema": {
-                            "type": "string"
-                        }
-                    },
-                    {
-                        "name": "type",
-                        "in": "query",
-                        "description": "Filter by party type",
-                        "schema": {
-                            "type": "string",
-                            "enum": [
-                                "debtor",
-                                "creditor"
-                            ]
-                        }
-                    },
-                    {
-                        "name": "is_active",
-                        "in": "query",
-                        "description": "Filter by status (1=active, 0=inactive)",
-                        "schema": {
-                            "type": "boolean"
+                            "type": "integer",
+                            "example": 20
                         }
                     }
                 ],
                 "responses": {
                     "200": {
-                        "description": "Success",
+                        "description": "Notifications list",
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "properties": {
-                                        "success": {
-                                            "type": "boolean",
-                                            "example": true
-                                        },
-                                        "data": {
-                                            "type": "array",
-                                            "items": {
-                                                "$ref": "#/components/schemas/Party"
-                                            }
-                                        }
-                                    },
-                                    "type": "object"
-                                }
-                            }
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/ErrorResponse"
+                                    "$ref": "#/components/schemas/SuccessResponse"
                                 }
                             }
                         }
@@ -2361,22 +3075,165 @@
                 ]
             }
         },
-        "/parties/{id}": {
+        "/notifications/unread-count": {
             "get": {
                 "tags": [
-                    "Parties"
+                    "Notifications"
                 ],
-                "summary": "Get party by ID",
-                "description": "Get single party details by ID",
-                "operationId": "getPartyById",
+                "summary": "Unread notification count",
+                "operationId": "notificationsUnreadCount",
+                "responses": {
+                    "200": {
+                        "description": "Unread count",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/SuccessResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/notifications/{id}/read": {
+            "patch": {
+                "tags": [
+                    "Notifications"
+                ],
+                "summary": "Mark notification as read",
+                "operationId": "notificationsMarkRead",
                 "parameters": [
                     {
                         "name": "id",
                         "in": "path",
-                        "description": "Party ID",
                         "required": true,
                         "schema": {
                             "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Marked as read",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "message": {
+                                            "type": "string"
+                                        },
+                                        "data": {
+                                            "properties": {
+                                                "unread_count": {
+                                                    "type": "integer",
+                                                    "example": 3
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/notifications/read-all": {
+            "post": {
+                "tags": [
+                    "Notifications"
+                ],
+                "summary": "Mark all notifications as read",
+                "operationId": "notificationsMarkAllRead",
+                "responses": {
+                    "200": {
+                        "description": "All marked as read",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "message": {
+                                            "type": "string"
+                                        },
+                                        "data": {
+                                            "properties": {
+                                                "updated": {
+                                                    "type": "integer",
+                                                    "example": 5
+                                                },
+                                                "unread_count": {
+                                                    "type": "integer",
+                                                    "example": 0
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/parties": {
+            "get": {
+                "tags": [
+                    "Parties"
+                ],
+                "summary": "Get all parties",
+                "operationId": "getParties",
+                "parameters": [
+                    {
+                        "name": "search",
+                        "in": "query",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "type",
+                        "in": "query",
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "debtor",
+                                "creditor"
+                            ]
+                        }
+                    },
+                    {
+                        "name": "is_active",
+                        "in": "query",
+                        "schema": {
+                            "type": "boolean"
                         }
                     }
                 ],
@@ -2386,36 +3243,90 @@
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "properties": {
-                                        "success": {
-                                            "type": "boolean",
-                                            "example": true
-                                        },
-                                        "data": {
-                                            "$ref": "#/components/schemas/Party"
-                                        }
+                                    "$ref": "#/components/schemas/SuccessResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            },
+            "post": {
+                "tags": [
+                    "Parties"
+                ],
+                "summary": "Create party",
+                "operationId": "createParty",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "name",
+                                    "type",
+                                    "address",
+                                    "state_id",
+                                    "city_id",
+                                    "postal_code",
+                                    "opening_balance_type"
+                                ],
+                                "properties": {
+                                    "name": {
+                                        "type": "string"
                                     },
-                                    "type": "object"
-                                }
+                                    "type": {
+                                        "type": "string",
+                                        "enum": [
+                                            "debtor",
+                                            "creditor"
+                                        ]
+                                    },
+                                    "mobile": {
+                                        "type": "string"
+                                    },
+                                    "email": {
+                                        "type": "string"
+                                    },
+                                    "address": {
+                                        "type": "string"
+                                    },
+                                    "state_id": {
+                                        "type": "integer"
+                                    },
+                                    "city_id": {
+                                        "type": "integer"
+                                    },
+                                    "postal_code": {
+                                        "type": "string"
+                                    },
+                                    "opening_balance": {
+                                        "type": "number"
+                                    },
+                                    "opening_balance_type": {
+                                        "type": "string",
+                                        "enum": [
+                                            "debit",
+                                            "credit"
+                                        ]
+                                    }
+                                },
+                                "type": "object"
                             }
                         }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Created",
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "$ref": "#/components/schemas/ErrorResponse"
-                                }
-                            }
-                        }
-                    },
-                    "404": {
-                        "description": "Not found",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/ErrorResponse"
+                                    "$ref": "#/components/schemas/SuccessResponse"
                                 }
                             }
                         }
@@ -2434,13 +3345,11 @@
                     "Parties"
                 ],
                 "summary": "Get parties by type",
-                "description": "Get parties filtered by type for dropdown selection",
                 "operationId": "getPartiesByType",
                 "parameters": [
                     {
                         "name": "type",
                         "in": "query",
-                        "description": "Party type",
                         "required": true,
                         "schema": {
                             "type": "string",
@@ -2457,53 +3366,165 @@
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "properties": {
-                                        "success": {
-                                            "type": "boolean",
-                                            "example": true
-                                        },
-                                        "data": {
-                                            "type": "array",
-                                            "items": {
-                                                "properties": {
-                                                    "id": {
-                                                        "type": "integer",
-                                                        "example": 1
-                                                    },
-                                                    "text": {
-                                                        "type": "string",
-                                                        "example": "DEB0001 - ABC Company"
-                                                    },
-                                                    "type": {
-                                                        "type": "string",
-                                                        "example": "debtor"
-                                                    }
-                                                },
-                                                "type": "object"
-                                            }
-                                        }
-                                    },
-                                    "type": "object"
+                                    "$ref": "#/components/schemas/SuccessResponse"
                                 }
                             }
                         }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/parties/{id}": {
+            "get": {
+                "tags": [
+                    "Parties"
+                ],
+                "summary": "Get party by ID",
+                "operationId": "getPartyById",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Success",
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "$ref": "#/components/schemas/ErrorResponse"
+                                    "$ref": "#/components/schemas/SuccessResponse"
                                 }
                             }
                         }
-                    },
-                    "422": {
-                        "description": "Validation error",
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            },
+            "put": {
+                "tags": [
+                    "Parties"
+                ],
+                "summary": "Update party",
+                "operationId": "updateParty",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Updated",
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "$ref": "#/components/schemas/ErrorResponse"
+                                    "$ref": "#/components/schemas/SuccessResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            },
+            "delete": {
+                "tags": [
+                    "Parties"
+                ],
+                "summary": "Delete party",
+                "operationId": "deleteParty",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Deleted",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/SuccessResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/parties/{id}/status": {
+            "patch": {
+                "tags": [
+                    "Parties"
+                ],
+                "summary": "Change party status",
+                "operationId": "changePartyStatus",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "status"
+                                ],
+                                "properties": {
+                                    "status": {
+                                        "type": "boolean"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Status updated",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/SuccessResponse"
                                 }
                             }
                         }
@@ -2739,6 +3760,74 @@
                         "bearerAuth": []
                     }
                 ]
+            },
+            "put": {
+                "tags": [
+                    "Purchase Invoices"
+                ],
+                "summary": "Update purchase invoice",
+                "operationId": "updatePurchaseInvoice",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Updated",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/SuccessResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            },
+            "delete": {
+                "tags": [
+                    "Purchase Invoices"
+                ],
+                "summary": "Delete purchase invoice",
+                "operationId": "deletePurchaseInvoice",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Deleted",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/SuccessResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
             }
         },
         "/purchase-invoices/{id}/payment": {
@@ -2784,52 +3873,6 @@
                             "application/json": {
                                 "schema": {
                                     "$ref": "#/components/schemas/SuccessResponse"
-                                }
-                            }
-                        }
-                    }
-                },
-                "security": [
-                    {
-                        "bearerAuth": []
-                    }
-                ]
-            }
-        },
-        "/purchase-invoices/{id}/generate-voucher": {
-            "post": {
-                "tags": [
-                    "Purchase Invoices"
-                ],
-                "summary": "Generate voucher from purchase invoice",
-                "operationId": "generatePurchaseInvoiceVoucher",
-                "parameters": [
-                    {
-                        "name": "id",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "integer"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Voucher generated",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/SuccessResponse"
-                                }
-                            }
-                        }
-                    },
-                    "404": {
-                        "description": "Not found",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/ErrorResponse"
                                 }
                             }
                         }
@@ -3317,6 +4360,108 @@
                 ]
             }
         },
+        "/reports/cash-book": {
+            "get": {
+                "tags": [
+                    "Reports"
+                ],
+                "summary": "Get Cash Book report",
+                "operationId": "getCashBook",
+                "parameters": [
+                    {
+                        "name": "date_from",
+                        "in": "query",
+                        "schema": {
+                            "type": "string",
+                            "format": "date"
+                        }
+                    },
+                    {
+                        "name": "date_to",
+                        "in": "query",
+                        "schema": {
+                            "type": "string",
+                            "format": "date"
+                        }
+                    },
+                    {
+                        "name": "account_id",
+                        "in": "query",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Success",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/SuccessResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/reports/bank-book": {
+            "get": {
+                "tags": [
+                    "Reports"
+                ],
+                "summary": "Get Bank Book report",
+                "operationId": "getBankBook",
+                "parameters": [
+                    {
+                        "name": "date_from",
+                        "in": "query",
+                        "schema": {
+                            "type": "string",
+                            "format": "date"
+                        }
+                    },
+                    {
+                        "name": "date_to",
+                        "in": "query",
+                        "schema": {
+                            "type": "string",
+                            "format": "date"
+                        }
+                    },
+                    {
+                        "name": "account_id",
+                        "in": "query",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Success",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/SuccessResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
         "/reports/debtors-outstanding": {
             "get": {
                 "tags": [
@@ -3765,6 +4910,74 @@
                         "bearerAuth": []
                     }
                 ]
+            },
+            "put": {
+                "tags": [
+                    "Sales Invoices"
+                ],
+                "summary": "Update sales invoice",
+                "operationId": "updateSalesInvoice",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Updated",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/SuccessResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            },
+            "delete": {
+                "tags": [
+                    "Sales Invoices"
+                ],
+                "summary": "Delete sales invoice",
+                "operationId": "deleteSalesInvoice",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Deleted",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/SuccessResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
             }
         },
         "/sales-invoices/{id}/payment": {
@@ -3835,15 +5048,13 @@
                 ]
             }
         },
-        "/sales-invoices/{id}/generate-voucher": {
-            "post": {
+        "/sales-invoices/{id}/pdf": {
+            "get": {
                 "tags": [
-                    "Sales Invoices",
-                    "Item Sales Invoices",
-                    "Service Sales Invoices"
+                    "Sales Invoices"
                 ],
-                "summary": "Generate voucher from sales invoice",
-                "operationId": "generateSalesInvoiceVoucher",
+                "summary": "Export sales invoice PDF",
+                "operationId": "exportSalesInvoicePdf",
                 "parameters": [
                     {
                         "name": "id",
@@ -3856,21 +5067,11 @@
                 ],
                 "responses": {
                     "200": {
-                        "description": "Voucher generated",
+                        "description": "PDF generated",
                         "content": {
                             "application/json": {
                                 "schema": {
                                     "$ref": "#/components/schemas/SuccessResponse"
-                                }
-                            }
-                        }
-                    },
-                    "404": {
-                        "description": "Not found",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/ErrorResponse"
                                 }
                             }
                         }
@@ -4262,6 +5463,30 @@
                         "bearerAuth": []
                     }
                 ]
+            },
+            "put": {
+                "tags": [
+                    "Settings"
+                ],
+                "summary": "Update company settings",
+                "operationId": "updateCompanySettings",
+                "responses": {
+                    "200": {
+                        "description": "Updated",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/SuccessResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
             }
         },
         "/settings/theme": {
@@ -4326,6 +5551,32 @@
                 "responses": {
                     "200": {
                         "description": "Current financial year fetched",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/SuccessResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/settings/accounting": {
+            "put": {
+                "tags": [
+                    "Settings"
+                ],
+                "summary": "Update accounting settings",
+                "operationId": "updateAccountingSettings",
+                "responses": {
+                    "200": {
+                        "description": "Updated",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -4409,7 +5660,7 @@
                 "tags": [
                     "Subscriptions"
                 ],
-                "summary": "Subscribe to a plan",
+                "summary": "Subscribe to a plan (free trial or Razorpay checkout)",
                 "operationId": "subscribe",
                 "requestBody": {
                     "required": true,
@@ -4422,7 +5673,6 @@
                                 ],
                                 "properties": {
                                     "plan_id": {
-                                        "description": "Plan ID",
                                         "type": "integer",
                                         "example": 2
                                     },
@@ -4431,7 +5681,8 @@
                                         "example": "monthly",
                                         "enum": [
                                             "monthly",
-                                            "yearly"
+                                            "yearly",
+                                            "lifetime"
                                         ]
                                     }
                                 },
@@ -4441,8 +5692,69 @@
                     }
                 },
                 "responses": {
+                    "200": {
+                        "description": "Free plan activated or checkout required",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "message": {
+                                            "type": "string"
+                                        },
+                                        "data": {
+                                            "properties": {
+                                                "requires_payment": {
+                                                    "type": "boolean",
+                                                    "example": true
+                                                },
+                                                "checkout": {
+                                                    "properties": {
+                                                        "key_id": {
+                                                            "type": "string",
+                                                            "example": "rzp_test_xxxxx"
+                                                        },
+                                                        "order_id": {
+                                                            "type": "string",
+                                                            "example": "order_xxxxx"
+                                                        },
+                                                        "amount_paise": {
+                                                            "type": "integer",
+                                                            "example": 49900
+                                                        },
+                                                        "currency": {
+                                                            "type": "string",
+                                                            "example": "INR"
+                                                        },
+                                                        "description": {
+                                                            "type": "string"
+                                                        },
+                                                        "plan_name": {
+                                                            "type": "string"
+                                                        },
+                                                        "user_name": {
+                                                            "type": "string"
+                                                        },
+                                                        "user_email": {
+                                                            "type": "string"
+                                                        }
+                                                    },
+                                                    "type": "object"
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
                     "201": {
-                        "description": "Subscribed",
+                        "description": "Free subscription created",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -4469,12 +5781,77 @@
                 ]
             }
         },
+        "/subscriptions/verify-payment": {
+            "post": {
+                "tags": [
+                    "Subscriptions"
+                ],
+                "summary": "Verify Razorpay payment and activate subscription",
+                "operationId": "verifySubscriptionPayment",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "razorpay_order_id",
+                                    "razorpay_payment_id",
+                                    "razorpay_signature"
+                                ],
+                                "properties": {
+                                    "razorpay_order_id": {
+                                        "type": "string",
+                                        "example": "order_xxxxx"
+                                    },
+                                    "razorpay_payment_id": {
+                                        "type": "string",
+                                        "example": "pay_xxxxx"
+                                    },
+                                    "razorpay_signature": {
+                                        "type": "string",
+                                        "example": "signature_hex"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Payment verified, subscription activated",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/SuccessResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Invalid signature or order",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
         "/subscriptions/change-plan": {
             "post": {
                 "tags": [
                     "Subscriptions"
                 ],
-                "summary": "Change subscription plan",
+                "summary": "Change subscription plan (may require Razorpay checkout)",
                 "operationId": "changePlan",
                 "requestBody": {
                     "required": true,
@@ -4493,7 +5870,8 @@
                                         "type": "string",
                                         "enum": [
                                             "monthly",
-                                            "yearly"
+                                            "yearly",
+                                            "lifetime"
                                         ]
                                     }
                                 },
@@ -4504,7 +5882,7 @@
                 },
                 "responses": {
                     "200": {
-                        "description": "Plan changed",
+                        "description": "Plan changed or checkout required",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -4531,6 +5909,583 @@
                 "responses": {
                     "200": {
                         "description": "Cancelled",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/SuccessResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/subscriptions/invoices": {
+            "get": {
+                "tags": [
+                    "Subscriptions"
+                ],
+                "summary": "List subscription invoices",
+                "operationId": "getSubscriptionInvoices",
+                "parameters": [
+                    {
+                        "name": "per_page",
+                        "in": "query",
+                        "schema": {
+                            "type": "integer",
+                            "example": 15
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Paginated invoices",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/SuccessResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/subscriptions/payments": {
+            "get": {
+                "tags": [
+                    "Subscriptions"
+                ],
+                "summary": "List subscription payments",
+                "operationId": "getSubscriptionPayments",
+                "parameters": [
+                    {
+                        "name": "per_page",
+                        "in": "query",
+                        "schema": {
+                            "type": "integer",
+                            "example": 15
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Paginated payments",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/SuccessResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/support-tickets": {
+            "get": {
+                "tags": [
+                    "Support"
+                ],
+                "summary": "List support tickets",
+                "operationId": "supportTicketsIndex",
+                "parameters": [
+                    {
+                        "name": "status",
+                        "in": "query",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "company_id",
+                        "in": "query",
+                        "description": "SuperAdmin only",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Ticket list",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/SuccessResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            },
+            "post": {
+                "tags": [
+                    "Support"
+                ],
+                "summary": "Create support ticket",
+                "operationId": "supportTicketsStore",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "subject",
+                                    "message"
+                                ],
+                                "properties": {
+                                    "subject": {
+                                        "type": "string"
+                                    },
+                                    "message": {
+                                        "type": "string"
+                                    },
+                                    "category": {
+                                        "type": "string",
+                                        "enum": [
+                                            "general",
+                                            "billing",
+                                            "technical",
+                                            "feature",
+                                            "other"
+                                        ]
+                                    },
+                                    "priority": {
+                                        "type": "string",
+                                        "enum": [
+                                            "low",
+                                            "normal",
+                                            "high",
+                                            "urgent"
+                                        ]
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Ticket created",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/SuccessResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/support-tickets/{id}": {
+            "get": {
+                "tags": [
+                    "Support"
+                ],
+                "summary": "Get ticket with messages",
+                "operationId": "supportTicketsShow",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Ticket detail",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/SuccessResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/support-tickets/{id}/reply": {
+            "post": {
+                "tags": [
+                    "Support"
+                ],
+                "summary": "Reply to ticket (chat message)",
+                "operationId": "supportTicketsReply",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "message"
+                                ],
+                                "properties": {
+                                    "message": {
+                                        "type": "string"
+                                    },
+                                    "is_internal": {
+                                        "description": "SuperAdmin only",
+                                        "type": "boolean"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Message sent",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/SuccessResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/support-tickets/{id}/status": {
+            "patch": {
+                "tags": [
+                    "Support"
+                ],
+                "summary": "Update ticket status (SuperAdmin)",
+                "operationId": "supportTicketsUpdateStatus",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "status"
+                                ],
+                                "properties": {
+                                    "status": {
+                                        "type": "string",
+                                        "enum": [
+                                            "open",
+                                            "in_progress",
+                                            "waiting_on_customer",
+                                            "resolved",
+                                            "closed"
+                                        ]
+                                    },
+                                    "assigned_to": {
+                                        "type": "integer"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Status updated",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/SuccessResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/sync/upload": {
+            "post": {
+                "tags": [
+                    "Sync"
+                ],
+                "summary": "Upload offline changes (batch queue)",
+                "operationId": "syncUpload",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "entries"
+                                ],
+                                "properties": {
+                                    "device_id": {
+                                        "type": "string",
+                                        "example": "android-abc123"
+                                    },
+                                    "auto_process": {
+                                        "type": "boolean",
+                                        "example": true
+                                    },
+                                    "entries": {
+                                        "type": "array",
+                                        "items": {
+                                            "required": [
+                                                "table_name",
+                                                "record_uuid",
+                                                "operation"
+                                            ],
+                                            "properties": {
+                                                "table_name": {
+                                                    "type": "string",
+                                                    "example": "accounts"
+                                                },
+                                                "record_uuid": {
+                                                    "type": "string",
+                                                    "format": "uuid"
+                                                },
+                                                "operation": {
+                                                    "type": "string",
+                                                    "enum": [
+                                                        "create",
+                                                        "update",
+                                                        "delete"
+                                                    ]
+                                                },
+                                                "payload": {
+                                                    "type": "object"
+                                                },
+                                                "local_version": {
+                                                    "type": "integer",
+                                                    "example": 1
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Upload queued/processed",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/SuccessResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/sync/run": {
+            "post": {
+                "tags": [
+                    "Sync"
+                ],
+                "summary": "Manual sync — process pending queue",
+                "operationId": "syncRun",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "properties": {
+                                    "device_id": {
+                                        "type": "string",
+                                        "example": "android-abc123"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Manual sync completed",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/SuccessResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/sync/download": {
+            "get": {
+                "tags": [
+                    "Sync"
+                ],
+                "summary": "Download server changes since timestamp",
+                "operationId": "syncDownload",
+                "parameters": [
+                    {
+                        "name": "since",
+                        "in": "query",
+                        "schema": {
+                            "type": "string",
+                            "format": "date-time"
+                        }
+                    },
+                    {
+                        "name": "page",
+                        "in": "query",
+                        "schema": {
+                            "type": "integer",
+                            "example": 1
+                        }
+                    },
+                    {
+                        "name": "per_page",
+                        "in": "query",
+                        "schema": {
+                            "type": "integer",
+                            "example": 100
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Delta download",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/SuccessResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/sync/bootstrap": {
+            "get": {
+                "tags": [
+                    "Sync"
+                ],
+                "summary": "Initial full data load for offline app",
+                "operationId": "syncBootstrap",
+                "responses": {
+                    "200": {
+                        "description": "Bootstrap payload",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/SuccessResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/sync/status": {
+            "get": {
+                "tags": [
+                    "Sync"
+                ],
+                "summary": "Sync queue status and syncable tables",
+                "operationId": "syncStatus",
+                "parameters": [
+                    {
+                        "name": "device_id",
+                        "in": "query",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Sync status",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -5398,6 +7353,74 @@
                         "bearerAuth": []
                     }
                 ]
+            },
+            "put": {
+                "tags": [
+                    "Vouchers"
+                ],
+                "summary": "Update voucher",
+                "operationId": "updateVoucher",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Updated",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/SuccessResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            },
+            "delete": {
+                "tags": [
+                    "Vouchers"
+                ],
+                "summary": "Delete voucher",
+                "operationId": "deleteVoucher",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Deleted",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/SuccessResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
             }
         },
         "/vouchers/{id}/post": {
@@ -5520,88 +7543,6 @@
                     },
                     "404": {
                         "description": "Not found",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/ErrorResponse"
-                                }
-                            }
-                        }
-                    }
-                },
-                "security": [
-                    {
-                        "bearerAuth": []
-                    }
-                ]
-            }
-        },
-        "/vouchers/statistics": {
-            "get": {
-                "tags": [
-                    "Vouchers"
-                ],
-                "summary": "Get voucher statistics",
-                "description": "Get voucher statistics for dashboard",
-                "operationId": "getVoucherStatistics",
-                "parameters": [
-                    {
-                        "name": "financial_year_id",
-                        "in": "query",
-                        "description": "Financial year ID",
-                        "schema": {
-                            "type": "integer"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Success",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "properties": {
-                                        "success": {
-                                            "type": "boolean",
-                                            "example": true
-                                        },
-                                        "data": {
-                                            "properties": {
-                                                "income": {
-                                                    "type": "number",
-                                                    "example": 150000
-                                                },
-                                                "expense": {
-                                                    "type": "number",
-                                                    "example": 80000
-                                                },
-                                                "receipt": {
-                                                    "type": "number",
-                                                    "example": 120000
-                                                },
-                                                "payment": {
-                                                    "type": "number",
-                                                    "example": 95000
-                                                },
-                                                "profit": {
-                                                    "type": "number",
-                                                    "example": 70000
-                                                },
-                                                "cash_balance": {
-                                                    "type": "number",
-                                                    "example": 25000
-                                                }
-                                            },
-                                            "type": "object"
-                                        }
-                                    },
-                                    "type": "object"
-                                }
-                            }
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -6177,6 +8118,30 @@
         {
             "name": "Locations",
             "description": "API Endpoints for Country/State/City Lists"
+        },
+        {
+            "name": "Sync",
+            "description": "Offline-first sync: upload queue, manual sync, download delta, bootstrap"
+        },
+        {
+            "name": "Notifications",
+            "description": "In-app notifications for mobile and web"
+        },
+        {
+            "name": "Support",
+            "description": "Support ticketing and chat between tenant admin and SuperAdmin"
+        },
+        {
+            "name": "Devices",
+            "description": "Mobile device registration for sync tracking and push tokens"
+        },
+        {
+            "name": "Financial Years",
+            "description": "Financial Years"
+        },
+        {
+            "name": "Item Categories",
+            "description": "Item Categories"
         }
     ]
 }

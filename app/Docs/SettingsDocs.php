@@ -50,6 +50,24 @@ use OpenApi\Annotations as OA;
  *     security={{"bearerAuth":{}}},
  *     @OA\Response(response=200, description="Current financial year fetched", @OA\JsonContent(ref="#/components/schemas/SuccessResponse"))
  * )
+ *
+ * @OA\Put(
+ *     path="/settings/company",
+ *     tags={"Settings"},
+ *     summary="Update company settings",
+ *     operationId="updateCompanySettings",
+ *     security={{"bearerAuth":{}}},
+ *     @OA\Response(response=200, description="Updated", @OA\JsonContent(ref="#/components/schemas/SuccessResponse"))
+ * )
+ *
+ * @OA\Put(
+ *     path="/settings/accounting",
+ *     tags={"Settings"},
+ *     summary="Update accounting settings",
+ *     operationId="updateAccountingSettings",
+ *     security={{"bearerAuth":{}}},
+ *     @OA\Response(response=200, description="Updated", @OA\JsonContent(ref="#/components/schemas/SuccessResponse"))
+ * )
  */
 class SettingsDocs
 {

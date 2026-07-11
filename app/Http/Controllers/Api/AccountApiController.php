@@ -3,7 +3,9 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Admin\AccountRequest;
 use App\Http\Resources\AccountResource;
+use App\Models\Account;
 use App\Services\AccountService;
 use App\Helpers\ResponseHelper;
 use Illuminate\Http\JsonResponse;
@@ -18,13 +20,13 @@ class AccountApiController extends Controller
         $this->accountService = $accountService;
     }
 
-    /**
-     * Get all accounts
-     */
     public function index(Request $request): JsonResponse
     {
+        $companyId = $request->user()->company_id;
+        $this->accountService->ensureDefaultLedgersAndCleanupDuplicates($companyId);
+
         $filters = $request->only(['search', 'account_type', 'is_active']);
-        $filters['company_id'] = $request->user()->company_id;
+        $filters['company_id'] = $companyId;
 
         $accounts = $this->accountService->getAll($filters);
 
@@ -33,9 +35,6 @@ class AccountApiController extends Controller
         );
     }
 
-    /**
-     * Get account by ID
-     */
     public function show(int $id): JsonResponse
     {
         $account = $this->accountService->getById($id);
@@ -49,9 +48,98 @@ class AccountApiController extends Controller
         );
     }
 
-    /**
-     * Get accounts by type
-     */
+    public function store(AccountRequest $request): JsonResponse
+    {
+        try {
+            $data = $request->validated();
+            $data['company_id'] = $request->user()->company_id;
+
+            $account = $this->accountService->create($data);
+
+            return ResponseHelper::success(
+                new AccountResource($account),
+                'Account created successfully',
+                201
+            );
+        } catch (\Exception $e) {
+            return ResponseHelper::error($e->getMessage());
+        }
+    }
+
+    public function update(AccountRequest $request, int $id): JsonResponse
+    {
+        try {
+            $account = $this->accountService->getById($id);
+
+            if (!$account || $account->company_id !== $request->user()->company_id) {
+                return ResponseHelper::notFound('Account not found');
+            }
+
+            $updated = $this->accountService->update($id, $request->validated());
+
+            if (!$updated) {
+                return ResponseHelper::notFound('Account not found');
+            }
+
+            return ResponseHelper::success(
+                new AccountResource($this->accountService->getById($id)),
+                'Account updated successfully'
+            );
+        } catch (\Exception $e) {
+            return ResponseHelper::error($e->getMessage());
+        }
+    }
+
+    public function destroy(int $id): JsonResponse
+    {
+        try {
+            $account = $this->accountService->getById($id);
+
+            if (!$account || $account->company_id !== request()->user()->company_id) {
+                return ResponseHelper::notFound('Account not found');
+            }
+
+            $deleted = $this->accountService->delete($id);
+
+            if (!$deleted) {
+                return ResponseHelper::notFound('Account not found');
+            }
+
+            return ResponseHelper::success(null, 'Account deleted successfully');
+        } catch (\Exception $e) {
+            return ResponseHelper::error($e->getMessage());
+        }
+    }
+
+    public function changeStatus(Request $request, int $id): JsonResponse
+    {
+        $request->validate([
+            'status' => 'required|boolean',
+        ]);
+
+        try {
+            $account = $this->accountService->getById($id);
+
+            if (!$account || $account->company_id !== $request->user()->company_id) {
+                return ResponseHelper::notFound('Account not found');
+            }
+
+            $updated = $this->accountService->update($id, [
+                'is_active' => $request->status,
+            ]);
+
+            if (!$updated) {
+                return ResponseHelper::notFound('Account not found');
+            }
+
+            $statusText = $request->status ? 'activated' : 'deactivated';
+
+            return ResponseHelper::success(null, "Account {$statusText} successfully");
+        } catch (\Exception $e) {
+            return ResponseHelper::error($e->getMessage());
+        }
+    }
+
     public function getByType(Request $request): JsonResponse
     {
         $request->validate([
@@ -60,7 +148,21 @@ class AccountApiController extends Controller
 
         $companyId = $request->user()->company_id;
         $accounts = $this->accountService->getForDropdown($companyId, $request->type);
+        $nextAccountCode = Account::generateCode($request->type, $companyId);
 
-        return ResponseHelper::success($accounts);
+        return ResponseHelper::success([
+            'accounts' => $accounts,
+            'next_account_code' => $nextAccountCode,
+        ]);
+    }
+
+    public function tree(Request $request): JsonResponse
+    {
+        $companyId = $request->user()->company_id;
+        $type = $request->input('type');
+
+        return ResponseHelper::success(
+            $this->accountService->getTree($companyId, $type)
+        );
     }
 }

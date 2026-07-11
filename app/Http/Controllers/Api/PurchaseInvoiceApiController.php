@@ -117,9 +117,55 @@ class PurchaseInvoiceApiController extends Controller
     }
 
     /**
-     * Generate voucher from purchase invoice.
+     * Update purchase invoice.
      */
-    public function generateVoucher(int $id): JsonResponse
+    public function update(Request $request, int $id): JsonResponse
+    {
+        $invoice = $this->purchaseInvoiceService->getById($id);
+
+        if (!$invoice || $invoice->company_id !== $request->user()->company_id) {
+            return ResponseHelper::notFound('Invoice not found');
+        }
+
+        $validated = $request->validate([
+            'party_id' => 'required|exists:parties,id',
+            'supplier_invoice_number' => 'nullable|string|max:100',
+            'invoice_date' => 'required|date',
+            'due_date' => 'required|date|after_or_equal:invoice_date',
+            'notes' => 'nullable|string',
+            'discount_percentage' => 'nullable|numeric|min:0|max:100',
+            'lines' => 'required|array|min:1',
+            'lines.*.item_id' => 'nullable|exists:items,id',
+            'lines.*.account_id' => 'nullable|exists:accounts,id',
+            'lines.*.tax_rate_id' => 'nullable|exists:tax_rates,id',
+            'lines.*.description' => 'nullable|string',
+            'lines.*.quantity' => 'required|numeric|min:0.001',
+            'lines.*.unit_price' => 'required|numeric|min:0',
+            'lines.*.discount_percentage' => 'nullable|numeric|min:0|max:100',
+        ]);
+
+        try {
+            $data = [
+                'party_id' => $validated['party_id'],
+                'supplier_invoice_number' => $validated['supplier_invoice_number'] ?? null,
+                'invoice_date' => $validated['invoice_date'],
+                'due_date' => $validated['due_date'],
+                'notes' => $validated['notes'] ?? null,
+                'discount_percentage' => $validated['discount_percentage'] ?? 0,
+            ];
+
+            $invoice = $this->purchaseInvoiceService->updateWithLines($id, $data, $validated['lines']);
+
+            return ResponseHelper::success(new PurchaseInvoiceResource($invoice), 'Invoice updated successfully');
+        } catch (\Exception $e) {
+            return ResponseHelper::error($e->getMessage());
+        }
+    }
+
+    /**
+     * Delete purchase invoice.
+     */
+    public function destroy(int $id): JsonResponse
     {
         $invoice = $this->purchaseInvoiceService->getById($id);
 
@@ -127,19 +173,12 @@ class PurchaseInvoiceApiController extends Controller
             return ResponseHelper::notFound('Invoice not found');
         }
 
-        if ($invoice->status === 'cancelled') {
-            return ResponseHelper::error('Cannot generate voucher for cancelled invoice', 400);
+        try {
+            $this->purchaseInvoiceService->delete($id);
+
+            return ResponseHelper::success(null, 'Invoice deleted successfully');
+        } catch (\Exception $e) {
+            return ResponseHelper::error($e->getMessage());
         }
-
-        $voucher = $this->purchaseInvoiceService->generateVoucher($invoice);
-
-        if (!$voucher) {
-            return ResponseHelper::error('Cannot generate voucher - missing required accounts', 400);
-        }
-
-        return ResponseHelper::success([
-            'invoice' => new PurchaseInvoiceResource($invoice->fresh()),
-            'voucher' => new \App\Http\Resources\VoucherResource($voucher),
-        ], 'Voucher generated successfully');
     }
 }

@@ -2,6 +2,8 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\FormatsHumanReadableDates;
+
 use App\Traits\HasAuditFields;
 use App\Traits\HasUuid;
 use App\Traits\HasVersioning;
@@ -11,7 +13,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Party extends Model
 {
-    use HasFactory, HasAuditFields, HasUuid, HasVersioning, SoftDeletes;
+    use FormatsHumanReadableDates, HasFactory, HasAuditFields, HasUuid, HasVersioning, SoftDeletes;
 
     protected $fillable = [
         'uuid',
@@ -20,6 +22,7 @@ class Party extends Model
         'party_code',
         'name',
         'type',
+        'account_id',
         'mobile',
         'email',
         'address',
@@ -139,6 +142,14 @@ class Party extends Model
     public function financialYear()
     {
         return $this->belongsTo(FinancialYear::class);
+    }
+
+    /**
+     * Get linked account for party-level AR/AP posting.
+     */
+    public function account()
+    {
+        return $this->belongsTo(Account::class);
     }
 
     /**

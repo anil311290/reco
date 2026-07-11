@@ -251,6 +251,62 @@ function changeStatus(url, currentStatus, itemName, successCallback = null) {
     });
 }
 
+function formatDateIst(value) {
+    if (value === null || value === undefined || value === '') {
+        return '-';
+    }
+
+    if (typeof value === 'string' && /[A-Za-z]{3}/.test(value) && !value.includes('T')) {
+        return value;
+    }
+
+    const parsed = new Date(value);
+    if (Number.isNaN(parsed.getTime())) {
+        return String(value);
+    }
+
+    return parsed.toLocaleDateString('en-IN', {
+        timeZone: 'Asia/Kolkata',
+        day: '2-digit',
+        month: 'short',
+        year: 'numeric'
+    });
+}
+
+function formatDateTimeIst(value) {
+    if (value === null || value === undefined || value === '') {
+        return '-';
+    }
+
+    if (typeof value === 'string' && /[A-Za-z]{3}/.test(value) && !value.includes('T')) {
+        return value;
+    }
+
+    const parsed = new Date(value);
+    if (Number.isNaN(parsed.getTime())) {
+        return String(value);
+    }
+
+    return parsed.toLocaleString('en-IN', {
+        timeZone: 'Asia/Kolkata',
+        day: '2-digit',
+        month: 'short',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: true
+    });
+}
+
+function istDateColumn(dataKey, options = {}) {
+    return $.extend({
+        data: dataKey,
+        render: function(data) {
+            return formatDateIst(data);
+        }
+    }, options);
+}
+
 function datatableExportableColumn(columnIdx, data, node) {
     if (!node) {
         return true;
@@ -355,6 +411,9 @@ function buildPdfButtonConfig(overrides = {}) {
 
 window.datatableExportableColumn = datatableExportableColumn;
 window.buildPdfButtonConfig = buildPdfButtonConfig;
+window.formatDateIst = formatDateIst;
+window.formatDateTimeIst = formatDateTimeIst;
+window.istDateColumn = istDateColumn;
 
 function loadDatatable(tableId, url, columns, additionalOptions = {}) {
     const tableSelector = `#${tableId}`;
@@ -585,6 +644,169 @@ function enforceResponsiveTables(scope = document) {
         });
 }
 
+function getPartyQuickAddModal() {
+    return $('#partyQuickAddModal');
+}
+
+function resetPartyQuickAddModal() {
+    const modal = getPartyQuickAddModal();
+
+    if (!modal.length) {
+        return;
+    }
+
+    const form = modal.find('#partyQuickAddForm');
+    if (form.length) {
+        form[0].reset();
+    }
+
+    modal.find('[name="party_target"]').val('');
+    modal.find('[name="type"]').val('debtor');
+    modal.find('[name="opening_balance_type"]').val('debit');
+    modal.find('[name="state_id"]').html('<option value="">Loading states...</option>').prop('disabled', true);
+    modal.find('[name="city_id"]').html('<option value="">Select City</option>').prop('disabled', true);
+    clearValidationErrors('#partyQuickAddForm');
+}
+
+function populateQuickAddSelect(select, items, placeholder, selectedId = null) {
+    select.empty().append(`<option value="">${placeholder}</option>`);
+
+    items.forEach(function(item) {
+        const option = $('<option></option>')
+            .val(item.id)
+            .text(item.name);
+
+        if (selectedId && String(selectedId) === String(item.id)) {
+            option.prop('selected', true);
+        }
+
+        select.append(option);
+    });
+}
+
+function loadQuickAddStates(countryId, selectedStateId = null) {
+    const modal = getPartyQuickAddModal();
+    const stateSelect = modal.find('[name="state_id"]');
+    const citySelect = modal.find('[name="city_id"]');
+
+    stateSelect.prop('disabled', true).html('<option value="">Loading states...</option>');
+    citySelect.prop('disabled', true).html('<option value="">Select City</option>');
+
+    $.getJSON('/api/v1/states')
+        .done(function(response) {
+            const states = Array.isArray(response) ? response : (response && Array.isArray(response.data) ? response.data : []);
+            populateQuickAddSelect(stateSelect, states, 'Select State', selectedStateId);
+            stateSelect.prop('disabled', false);
+
+            if (selectedStateId) {
+                stateSelect.trigger('change');
+            }
+        })
+        .fail(function() {
+            stateSelect.html('<option value="">Failed to load states</option>');
+        });
+}
+
+function loadQuickAddCities(stateId, selectedCityId = null) {
+    const modal = getPartyQuickAddModal();
+    const citySelect = modal.find('[name="city_id"]');
+
+    citySelect.prop('disabled', true).html('<option value="">Loading cities...</option>');
+
+    if (!stateId) {
+        citySelect.html('<option value="">Select City</option>');
+        return;
+    }
+
+    $.getJSON(`/api/v1/states/${stateId}/cities`)
+        .done(function(response) {
+            const cities = Array.isArray(response) ? response : (response && Array.isArray(response.data) ? response.data : []);
+            populateQuickAddSelect(citySelect, cities, 'Select City', selectedCityId);
+            citySelect.prop('disabled', false);
+        })
+        .fail(function() {
+            citySelect.html('<option value="">Failed to load cities</option>');
+        });
+}
+
+function openPartyQuickAddModal(trigger) {
+    const button = $(trigger);
+    const modal = getPartyQuickAddModal();
+
+    if (!modal.length) {
+        return;
+    }
+
+    const partyType = button.data('partyQuickAddType') || 'debtor';
+    const targetSelector = button.data('partyQuickAddTarget') || '';
+    const titleLabel = partyType === 'creditor' ? 'Supplier' : 'Customer';
+
+    modal.find('[name="party_target"]').val(targetSelector);
+    modal.find('[name="type"]').val(partyType);
+    modal.find('[name="opening_balance_type"]').val(partyType === 'creditor' ? 'credit' : 'debit');
+    modal.find('.party-quick-add-title').text(`Quick Add ${titleLabel}`);
+    modal.find('.party-quick-add-submit').text(`Create ${titleLabel}`);
+
+    resetPartyQuickAddModal();
+    modal.find('[name="type"]').val(partyType);
+    modal.find('[name="opening_balance_type"]').val(partyType === 'creditor' ? 'credit' : 'debit');
+    modal.find('[name="party_target"]').val(targetSelector);
+
+    loadQuickAddStates();
+
+    const instance = bootstrap.Modal.getOrCreateInstance(modal[0]);
+    instance.show();
+}
+
+function initPartyQuickAdd() {
+    const modal = getPartyQuickAddModal();
+
+    if (!modal.length) {
+        return;
+    }
+
+    const storeUrl = modal.data('store-url');
+    if (!storeUrl) {
+        return;
+    }
+
+    modal.off('change.partyQuickAdd', '[name="state_id"]');
+    modal.on('change.partyQuickAdd', '[name="state_id"]', function() {
+        loadQuickAddCities($(this).val());
+    });
+
+    modal.off('hidden.bs.modal.partyQuickAdd').on('hidden.bs.modal.partyQuickAdd', function() {
+        resetPartyQuickAddModal();
+    });
+
+    $(document).off('click.partyQuickAdd', '.quick-add-party-btn');
+    $(document).on('click.partyQuickAdd', '.quick-add-party-btn', function() {
+        openPartyQuickAddModal(this);
+    });
+
+    ajaxFormSubmit('#partyQuickAddForm', storeUrl, 'POST', function(response) {
+        const modalInstance = bootstrap.Modal.getInstance(modal[0]);
+        const party = response.data || {};
+        const targetSelector = modal.find('[name="party_target"]').val();
+        const target = targetSelector ? $(targetSelector).first() : $();
+
+        if (target.length) {
+            const optionText = party.party_code && party.name ? `${party.party_code} - ${party.name}` : (party.name || 'New Party');
+            const optionExists = target.find(`option[value="${party.id}"]`).length > 0;
+
+            if (!optionExists) {
+                target.append(new Option(optionText, party.id, true, true));
+            }
+
+            target.val(party.id).trigger('change');
+        }
+
+        if (modalInstance) {
+            modalInstance.hide();
+        }
+    });
+}
+
 $(document).ready(function() {
     const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
     tooltipTriggerList.map(function(tooltipTriggerEl) {
@@ -601,5 +823,6 @@ $(document).ready(function() {
     }, 5000);
 
     initAjaxForms();
+    initPartyQuickAdd();
     enforceResponsiveTables();
 });

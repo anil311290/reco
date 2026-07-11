@@ -72,15 +72,24 @@ use OpenApi\Annotations as OA;
  *     @OA\Response(response=200, description="Payment recorded", @OA\JsonContent(ref="#/components/schemas/SuccessResponse"))
  * )
  *
- * @OA\Post(
- *     path="/purchase-invoices/{id}/generate-voucher",
+ * @OA\Put(
+ *     path="/purchase-invoices/{id}",
  *     tags={"Purchase Invoices"},
- *     summary="Generate voucher from purchase invoice",
- *     operationId="generatePurchaseInvoiceVoucher",
+ *     summary="Update purchase invoice",
+ *     operationId="updatePurchaseInvoice",
  *     security={{"bearerAuth":{}}},
  *     @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")),
- *     @OA\Response(response=200, description="Voucher generated", @OA\JsonContent(ref="#/components/schemas/SuccessResponse")),
- *     @OA\Response(response=404, description="Not found", @OA\JsonContent(ref="#/components/schemas/ErrorResponse"))
+ *     @OA\Response(response=200, description="Updated", @OA\JsonContent(ref="#/components/schemas/SuccessResponse"))
+ * )
+ *
+ * @OA\Delete(
+ *     path="/purchase-invoices/{id}",
+ *     tags={"Purchase Invoices"},
+ *     summary="Delete purchase invoice",
+ *     operationId="deletePurchaseInvoice",
+ *     security={{"bearerAuth":{}}},
+ *     @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")),
+ *     @OA\Response(response=200, description="Deleted", @OA\JsonContent(ref="#/components/schemas/SuccessResponse"))
  * )
  */
 class PurchaseInvoiceDocs

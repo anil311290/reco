@@ -18,6 +18,7 @@
     <div class="card-body">
         <form id="itemForm">
             @method('PUT')
+            <input type="hidden" name="type" value="{{ $item->type ?? 'goods' }}">
             <div class="row g-3">
                 <div class="col-md-4">
                     <label for="item_code" class="form-label">Item Code <span class="text-danger">*</span></label>

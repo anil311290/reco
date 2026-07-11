@@ -1450,7 +1450,7 @@ User creates Adjustment Voucher:
 ## 6.4 ReportService
 - **Responsibility:** Financial report generation (P&L, Balance Sheet, Trial Balance, Day Book, Outstanding reports)
 - **Dependencies:** LedgerService
-- **Methods:** getProfitLoss(), getBalanceSheet(), getTrialBalance(), getDayBook(), getDebtorsOutstanding(), getCreditorsOutstanding(), getCashFlow()
+- **Methods:** getProfitLoss(), getBalanceSheet(), getTrialBalance(), getDayBook(), getCashBankBook(), getDebtorsOutstanding(), getCreditorsOutstanding()
 - **Called By:** ReportController, ReportApiController, DashboardService, ExportService
 - **Calls To:** LedgerService
 
@@ -1666,8 +1666,10 @@ User creates Adjustment Voucher:
 | /api/v1/sales-invoices/{id} | GET | Yes | Get invoice detail with lines |
 | /api/v1/sales-invoices | POST | Yes | Create new sales invoice |
 | /api/v1/sales-invoices/{id}/payment | POST | Yes | Record payment against invoice |
-| /api/v1/sales-invoices/{id}/generate-voucher | POST | Yes | Generate accounting voucher |
+| /api/v1/sales-invoices/{id}/pdf | GET | Yes | Export invoice PDF |
 | /api/v1/sales-invoices/overdue | GET | Yes | List overdue invoices |
+| /api/v1/sales-invoices/{id} | PUT | Yes | Update sales invoice |
+| /api/v1/sales-invoices/{id} | DELETE | Yes | Delete sales invoice |
 
 ## 8.9 Purchase Invoice APIs
 | Endpoint | Method | Auth | Description |
@@ -1676,7 +1678,8 @@ User creates Adjustment Voucher:
 | /api/v1/purchase-invoices/{id} | GET | Yes | Get invoice detail |
 | /api/v1/purchase-invoices | POST | Yes | Create new purchase invoice |
 | /api/v1/purchase-invoices/{id}/payment | POST | Yes | Record payment |
-| /api/v1/purchase-invoices/{id}/generate-voucher | POST | Yes | Generate accounting voucher |
+| /api/v1/purchase-invoices/{id} | PUT | Yes | Update purchase invoice |
+| /api/v1/purchase-invoices/{id} | DELETE | Yes | Delete purchase invoice |
 
 ## 8.10 Voucher APIs
 | Endpoint | Method | Auth | Description |
@@ -1686,7 +1689,8 @@ User creates Adjustment Voucher:
 | /api/v1/vouchers | POST | Yes | Create new voucher |
 | /api/v1/vouchers/{id}/post | PATCH | Yes | Post voucher (create ledgers) |
 | /api/v1/vouchers/{id}/cancel | PATCH | Yes | Cancel voucher |
-| /api/v1/vouchers/statistics | GET | Yes | Get voucher statistics |
+| /api/v1/vouchers/{id} | PUT | Yes | Update draft voucher |
+| /api/v1/vouchers/{id} | DELETE | Yes | Delete draft voucher |
 
 ## 8.11 Ledger APIs
 | Endpoint | Method | Auth | Description |
@@ -1702,6 +1706,8 @@ User creates Adjustment Voucher:
 | /api/v1/reports/balance-sheet | GET | Yes | Balance Sheet |
 | /api/v1/reports/trial-balance | GET | Yes | Trial Balance |
 | /api/v1/reports/day-book | GET | Yes | Day Book (voucher list for date) |
+| /api/v1/reports/cash-book | GET | Yes | Cash Book report |
+| /api/v1/reports/bank-book | GET | Yes | Bank Book report |
 | /api/v1/reports/ledger | GET | Yes | Account ledger report |
 | /api/v1/reports/debtors-outstanding | GET | Yes | AR outstanding report |
 | /api/v1/reports/creditors-outstanding | GET | Yes | AP outstanding report |
@@ -1727,13 +1733,15 @@ User creates Adjustment Voucher:
 ## 8.15 Export APIs
 | Endpoint | Method | Auth | Description |
 |----------|--------|------|-------------|
-| /api/v1/export/types | GET | Yes | Available export types |
 | /api/v1/export/profit-loss/pdf | GET | Yes | P&L PDF export |
 | /api/v1/export/balance-sheet/pdf | GET | Yes | Balance Sheet PDF |
+| /api/v1/export/trial-balance/pdf | GET | Yes | Trial Balance PDF |
+| /api/v1/export/day-book/pdf | GET | Yes | Day Book PDF |
 | /api/v1/export/ledger/pdf | GET | Yes | Ledger PDF |
+| /api/v1/export/debtors-outstanding/pdf | GET | Yes | Debtors outstanding PDF |
+| /api/v1/export/creditors-outstanding/pdf | GET | Yes | Creditors outstanding PDF |
 | /api/v1/export/voucher/{id}/pdf | GET | Yes | Voucher PDF |
-| /api/v1/export/history | GET | Yes | Export history |
-| /api/v1/export/share | POST | Yes | Share statement via email |
+| /api/v1/export/sales-invoice/{id}/pdf | GET | Yes | Sales invoice PDF |
 
 ## 8.16 Subscription APIs
 | Endpoint | Method | Auth | Description |
@@ -2036,16 +2044,10 @@ Net Profit = Total Income - Total Expenses
 ```
 **Implementation:** ReportService::getProfitLoss()
 
-## 13.3 Cash Flow
-**Source Tables:** accounts, ledgers
-**Formula:**
-```
-Opening Cash = sum(bank/cash account opening balances)
-Cash Inflows = sum(debit entries WHERE account_type IN ('bank', 'cash'))
-Cash Outflows = sum(credit entries WHERE account_type IN ('bank', 'cash'))
-Closing Cash = Opening + Inflows - Outflows
-```
-**Implementation:** ReportService::getCashFlow()
+## 13.3 Cash Book & Bank Book
+**Source Tables:** accounts, ledgers, journal_entries
+**Implementation:** ReportService::getCashBankBook($companyId, 'cash'|'bank', ...)
+Cash Flow report was removed; legacy URLs redirect to Cash Book.
 
 ## 13.4 Trial Balance
 **Source Tables:** accounts, ledgers
@@ -2106,7 +2108,7 @@ For each creditor party:
 
 ## 14.1 Complete Folder Tree
 ```
-offline-first/
+Reco/
   |-- app/
   |   |-- Console/
   |   |   +-- Kernel.php

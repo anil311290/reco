@@ -84,7 +84,7 @@
             $features = [
                 ['icon' => 'bi-receipt', 'title' => 'Invoice Management', 'desc' => 'Create professional sales and purchase invoices with GST support.', 'color' => 'primary'],
                 ['icon' => 'bi-journal-text', 'title' => 'Voucher System', 'desc' => 'Record income, expense, receipt, payment, and journal vouchers.', 'color' => 'info'],
-                ['icon' => 'bi-graph-up', 'title' => 'Financial Reports', 'desc' => 'Generate Balance Sheet, P&L, Trial Balance, and Cash Flow reports.', 'color' => 'success'],
+                ['icon' => 'bi-graph-up', 'title' => 'Financial Reports', 'desc' => 'Generate Balance Sheet, P&L, Trial Balance, Cash Book, and Bank Book reports.', 'color' => 'success'],
                 ['icon' => 'bi-people', 'title' => 'Party Management', 'desc' => 'Track debtors and creditors with outstanding aging reports.', 'color' => 'warning'],
                 ['icon' => 'bi-bank', 'title' => 'Bank Accounts', 'desc' => 'Manage multiple bank accounts with reconciliation.', 'color' => 'primary'],
                 ['icon' => 'bi-cloud-arrow-down', 'title' => 'Offline-First', 'desc' => 'Work without internet. Sync when connected.', 'color' => 'info'],

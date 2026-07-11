@@ -143,8 +143,8 @@ $(document).ready(function() {
                         <tr>
                             <td>${index + 1}</td>
                             <td><strong>${fy.name}</strong></td>
-                            <td>${moment(fy.start_date).format('DD/MM/YYYY')}</td>
-                            <td>${moment(fy.end_date).format('DD/MM/YYYY')}</td>
+                            <td>${formatDateIst(fy.start_date)}</td>
+                            <td>${formatDateIst(fy.end_date)}</td>
                             <td>${statusBadge}</td>
                             <td>${currentBadge}</td>
                             <td>

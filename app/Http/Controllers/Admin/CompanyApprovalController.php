@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Company;
 use App\Models\User;
+use App\Helpers\DateHelper;
 use App\Helpers\ResponseHelper;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -33,7 +34,7 @@ class CompanyApprovalController extends Controller
                     return optional($company->users->first())->email ?? 'N/A';
                 })
                 ->editColumn('created_at', function (Company $company) {
-                    return optional($company->created_at)?->format('d/m/Y h:i A') ?? '-';
+                    return DateHelper::formatDateTime($company->created_at);
                 })
                 ->addColumn('actions', function (Company $company) {
                     $approveUrl = route('admin.companies.approve', $company->id);

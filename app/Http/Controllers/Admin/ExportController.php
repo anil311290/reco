@@ -57,25 +57,6 @@ class ExportController extends Controller
     }
 
     /**
-     * Export Cash Flow to PDF
-     */
-    public function cashFlowPdf(Request $request): Response|RedirectResponse
-    {
-        $companyId = $this->getCompanyId($request);
-        $financialYearId = $request->input('financial_year_id') ?? FinancialYear::getCurrent($companyId)?->id;
-
-        if (!$financialYearId) {
-            return back()->with('error', 'No active financial year found');
-        }
-
-        $pdf = $this->exportService->exportCashFlowPdf($companyId, $financialYearId);
-
-        return response($pdf)
-            ->header('Content-Type', 'application/pdf')
-            ->header('Content-Disposition', 'attachment; filename="cash-flow-report.pdf"');
-    }
-
-    /**
      * Export Trial Balance to PDF
      */
     public function trialBalancePdf(Request $request): Response|RedirectResponse

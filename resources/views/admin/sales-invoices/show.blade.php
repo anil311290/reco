@@ -16,7 +16,7 @@
             <i class="bi bi-cash me-1"></i>Record Payment
         </button>
         @endif
-        <a href="{{ route('admin.export.voucher.pdf', $invoice->id) }}" class="btn btn-outline-danger" target="_blank">
+        <a href="{{ route('admin.sales-invoices.pdf', $invoice->id) }}" class="btn btn-outline-danger" target="_blank">
             <i class="bi bi-file-pdf me-1"></i>PDF
         </a>
     </div>

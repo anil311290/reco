@@ -104,6 +104,26 @@ use OpenApi\Annotations as OA;
  *     name="Locations",
  *     description="API Endpoints for Country/State/City Lists"
  * )
+ *
+ * @OA\Tag(
+ *     name="Sync",
+ *     description="Offline-first sync: upload queue, manual sync, download delta, bootstrap"
+ * )
+ *
+ * @OA\Tag(
+ *     name="Notifications",
+ *     description="In-app notifications for mobile and web"
+ * )
+ *
+ * @OA\Tag(
+ *     name="Support",
+ *     description="Support ticketing and chat between tenant admin and SuperAdmin"
+ * )
+ *
+ * @OA\Tag(
+ *     name="Devices",
+ *     description="Mobile device registration for sync tracking and push tokens"
+ * )
  */
 class ApiTags
 {

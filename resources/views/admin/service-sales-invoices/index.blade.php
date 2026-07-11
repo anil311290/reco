@@ -38,7 +38,7 @@
 $(document).ready(function() {
     loadDatatable('serviceInvoicesTable', '{{ route("admin.service-sales-invoices.index") }}', [
         { data: 'invoice_number' },
-        { data: 'invoice_date' },
+        istDateColumn('invoice_date'),
         { data: 'party', render: function(data) { return data ? data.name : '-'; } },
         { data: 'total', render: function(d) { return '₹' + parseFloat(d || 0).toFixed(2); } },
         { data: 'status', render: function(data) {

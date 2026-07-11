@@ -2,11 +2,13 @@
 
 namespace App\Services;
 
+use App\Models\Account;
 use App\Models\FinancialYear;
 use App\Models\Party;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 
 class PartyService
 {
@@ -22,7 +24,7 @@ class PartyService
      */
     public function getAll(array $filters = []): Collection
     {
-        $query = Party::with(['company']);
+        $query = Party::with(['company', 'account']);
 
         if (isset($filters['company_id'])) {
             $query->where('company_id', $filters['company_id']);
@@ -52,7 +54,7 @@ class PartyService
      */
     public function getPaginated(array $filters = [], int $perPage = 15): LengthAwarePaginator
     {
-        $query = Party::with(['company']);
+        $query = Party::with(['company', 'account']);
 
         if (isset($filters['company_id'])) {
             $query->where('company_id', $filters['company_id']);
@@ -77,7 +79,7 @@ class PartyService
      */
     public function getById(int $id): ?Party
     {
-        return Party::with(['company', 'vouchers'])->find($id);
+        return Party::with(['company', 'account', 'vouchers'])->find($id);
     }
 
     /**
@@ -115,6 +117,9 @@ class PartyService
         try {
             DB::beginTransaction();
 
+            $linkedAccount = $this->createLinkedAccount($data);
+            $data['account_id'] = $linkedAccount->id;
+
             $party = Party::create($data);
 
             if (!empty($party->opening_balance) && (float) $party->opening_balance > 0) {
@@ -145,6 +150,8 @@ class PartyService
 
         try {
             DB::beginTransaction();
+
+            $this->syncLinkedAccount($party, $data);
 
             $updated = $party->update($data);
 
@@ -178,7 +185,9 @@ class PartyService
             return false;
         }
 
-        // TODO: Check if party has vouchers
+        if ($party->account_id) {
+            Account::where('id', $party->account_id)->update(['is_active' => false]);
+        }
 
         return $party->delete();
     }
@@ -204,6 +213,40 @@ class PartyService
                     'type' => $party->type,
                 ];
             })
+            ->toArray();
+    }
+
+    /**
+     * Get party-linked account options (AR/AP) for account-driven voucher forms.
+     */
+    public function getLinkedAccountDropdown(int $companyId, ?string $type = null): array
+    {
+        $query = Party::query()
+            ->where('company_id', $companyId)
+            ->where('is_active', true)
+            ->whereNotNull('account_id')
+            ->with('account');
+
+        if ($type) {
+            $query->where('type', $type);
+        }
+
+        return $query->orderBy('name')
+            ->get()
+            ->map(function (Party $party) {
+                if (!$party->account) {
+                    return null;
+                }
+
+                return [
+                    'id' => $party->account->id,
+                    'party_id' => $party->id,
+                    'type' => $party->type,
+                    'text' => "{$party->party_code} - {$party->name}",
+                ];
+            })
+            ->filter()
+            ->values()
             ->toArray();
     }
 
@@ -239,5 +282,62 @@ class PartyService
                 $query->where('status', 'posted');
             }], 'total_credit')
             ->get();
+    }
+
+    protected function createLinkedAccount(array $partyData): Account
+    {
+        $accountType = ($partyData['type'] ?? 'debtor') === 'creditor' ? 'liability' : 'asset';
+        $balanceType = ($partyData['type'] ?? 'debtor') === 'creditor' ? 'credit' : 'debit';
+
+        return Account::create([
+            'uuid' => (string) Str::uuid(),
+            'company_id' => $partyData['company_id'],
+            'financial_year_id' => $partyData['financial_year_id'] ?? null,
+            'account_code' => Account::generateCode($accountType, $partyData['company_id']),
+            'account_name' => trim(($partyData['name'] ?? 'Party') . ' [' . ($partyData['party_code'] ?? 'PRTY') . ']'),
+            'account_type' => $accountType,
+            'entry_source' => 'system',
+            'opening_balance' => (float) ($partyData['opening_balance'] ?? 0),
+            'balance_type' => $balanceType,
+            'opening_date' => $partyData['opening_date'] ?? now()->toDateString(),
+            'remarks' => $partyData['remarks'] ?? 'Auto-linked account for party',
+            'is_active' => (bool) ($partyData['is_active'] ?? true),
+            'is_system' => false,
+            'created_by' => $partyData['created_by'] ?? null,
+            'updated_by' => $partyData['updated_by'] ?? null,
+            'created_by_ip' => $partyData['created_by_ip'] ?? request()->ip(),
+            'updated_by_ip' => $partyData['updated_by_ip'] ?? request()->ip(),
+        ]);
+    }
+
+    protected function syncLinkedAccount(Party $party, array $partyData): void
+    {
+        $account = $party->account_id ? Account::find($party->account_id) : null;
+
+        if (!$account) {
+            $account = $this->createLinkedAccount([
+                ...$party->toArray(),
+                ...$partyData,
+                'company_id' => $party->company_id,
+                'party_code' => $party->party_code,
+            ]);
+            $partyData['account_id'] = $account->id;
+            $party->account_id = $account->id;
+        }
+
+        $targetType = ($partyData['type'] ?? $party->type) === 'creditor' ? 'liability' : 'asset';
+        $targetBalanceType = ($partyData['type'] ?? $party->type) === 'creditor' ? 'credit' : 'debit';
+
+        $account->update([
+            'account_name' => trim(($partyData['name'] ?? $party->name) . ' [' . ($party->party_code ?? 'PRTY') . ']'),
+            'account_type' => $targetType,
+            'balance_type' => $targetBalanceType,
+            'opening_balance' => (float) ($partyData['opening_balance'] ?? $party->opening_balance ?? 0),
+            'opening_date' => $partyData['opening_date'] ?? $party->opening_date ?? now()->toDateString(),
+            'remarks' => $partyData['remarks'] ?? $party->remarks,
+            'is_active' => (bool) ($partyData['is_active'] ?? $party->is_active),
+            'updated_by' => $partyData['updated_by'] ?? null,
+            'updated_by_ip' => $partyData['updated_by_ip'] ?? request()->ip(),
+        ]);
     }
 }

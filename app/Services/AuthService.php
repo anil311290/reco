@@ -19,10 +19,12 @@ use Illuminate\Support\Facades\Log;
 class AuthService
 {
     protected UserRepositoryInterface $userRepository;
+    protected AccountService $accountService;
 
-    public function __construct(UserRepositoryInterface $userRepository)
+    public function __construct(UserRepositoryInterface $userRepository, AccountService $accountService)
     {
         $this->userRepository = $userRepository;
+        $this->accountService = $accountService;
     }
 
     /**
@@ -126,6 +128,13 @@ class AuthService
                     'end_date' => $endDate->format('Y-m-d'),
                     'is_current' => true,
                 ]);
+
+                $this->accountService->ensureDefaultLedgersAndCleanupDuplicates(
+                    $company->id,
+                    null,
+                    $user->id ?? null,
+                    request()->ip()
+                );
             }
         });
 
@@ -138,6 +147,10 @@ class AuthService
             } catch (\Exception $e) {
                 Log::error('Failed to send admin notification: ' . $e->getMessage());
             }
+        }
+
+        if (!$user) {
+            throw new \RuntimeException('Registration failed: user was not created.');
         }
 
         return $user;
