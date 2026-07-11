@@ -5,11 +5,16 @@ namespace Database\Seeders;
 use App\Models\Company;
 use App\Models\Permission;
 use App\Models\Role;
+use App\Services\CompanyRoleService;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Str;
 
 class RoleSeeder extends Seeder
 {
+    public function __construct(protected CompanyRoleService $companyRoleService)
+    {
+    }
+
     public function run(): void
     {
         $allPermissions = Permission::all();
@@ -27,68 +32,12 @@ class RoleSeeder extends Seeder
         );
         $superAdminRole->syncPermissions($allPermissions->pluck('id')->toArray());
 
-        $company = Company::first();
-        if (!$company) {
+        if (Company::count() === 0) {
             return;
         }
 
-        // Admin Role
-        $adminRole = Role::firstOrCreate(
-            ['slug' => 'admin'],
-            [
-                'uuid' => (string) Str::uuid(),
-                'company_id' => $company->id,
-                'name' => 'Administrator',
-                'description' => 'Full access',
-                'is_default' => false,
-                'is_active' => true,
-            ]
-        );
-        $adminRole->syncPermissions($allPermissions->pluck('id')->toArray());
-
-        // Manager Role
-        $managerRole = Role::firstOrCreate(
-            ['slug' => 'manager'],
-            [
-                'uuid' => (string) Str::uuid(),
-                'company_id' => $company->id,
-                'name' => 'Manager',
-                'description' => 'Most modules except settings',
-                'is_default' => false,
-                'is_active' => true,
-            ]
-        );
-        $managerPermissions = $allPermissions->filter(fn($p) => !in_array($p->module, ['Settings', 'Users', 'Roles']));
-        $managerRole->syncPermissions($managerPermissions->pluck('id')->toArray());
-
-        // Accountant Role
-        $accountantRole = Role::firstOrCreate(
-            ['slug' => 'accountant'],
-            [
-                'uuid' => (string) Str::uuid(),
-                'company_id' => $company->id,
-                'name' => 'Accountant',
-                'description' => 'Accounting modules and reports',
-                'is_default' => true,
-                'is_active' => true,
-            ]
-        );
-        $accountantPermissions = $allPermissions->filter(fn($p) => in_array($p->module, ['Dashboard', 'Accounts', 'Parties', 'Vouchers', 'Reports', 'Tax Rates']));
-        $accountantRole->syncPermissions($accountantPermissions->pluck('id')->toArray());
-
-        // Viewer Role
-        $viewerRole = Role::firstOrCreate(
-            ['slug' => 'viewer'],
-            [
-                'uuid' => (string) Str::uuid(),
-                'company_id' => $company->id,
-                'name' => 'Viewer',
-                'description' => 'Read-only access',
-                'is_default' => false,
-                'is_active' => true,
-            ]
-        );
-        $viewerPermissions = $allPermissions->filter(fn($p) => str_contains($p->slug, '.view') || str_contains($p->slug, 'reports.export'));
-        $viewerRole->syncPermissions($viewerPermissions->pluck('id')->toArray());
+        Company::query()->each(function (Company $company) {
+            $this->companyRoleService->provisionDefaultRoles($company);
+        });
     }
 }

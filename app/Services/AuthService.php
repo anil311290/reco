@@ -8,6 +8,8 @@ use App\Models\Company;
 use App\Models\Subscription;
 use App\Models\FinancialYear;
 use App\Models\SubscriptionPlan;
+use App\Services\AccountService;
+use App\Services\CompanyRoleService;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
@@ -20,11 +22,16 @@ class AuthService
 {
     protected UserRepositoryInterface $userRepository;
     protected AccountService $accountService;
+    protected CompanyRoleService $companyRoleService;
 
-    public function __construct(UserRepositoryInterface $userRepository, AccountService $accountService)
-    {
+    public function __construct(
+        UserRepositoryInterface $userRepository,
+        AccountService $accountService,
+        CompanyRoleService $companyRoleService
+    ) {
         $this->userRepository = $userRepository;
         $this->accountService = $accountService;
+        $this->companyRoleService = $companyRoleService;
     }
 
     /**
@@ -65,6 +72,7 @@ class AuthService
     {
         $data['password'] = Hash::make($data['password']);
         $data['status'] = 'pending'; // Requires admin approval
+        $data['role'] = 'admin'; // Company owner / tenant administrator
 
         $user = null;
         $company = null;
@@ -83,10 +91,16 @@ class AuthService
                 ]);
 
                 $data['company_id'] = $company->id;
+
+                $this->companyRoleService->provisionDefaultRoles($company);
             }
 
             // Create user
             $user = $this->userRepository->create($data);
+
+            if ($company && $user) {
+                $this->companyRoleService->assignCompanyOwner($user);
+            }
 
             // Create initial subscription (trial by default)
             if ($company) {

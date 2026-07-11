@@ -7,6 +7,7 @@ use App\Models\Company;
 use App\Models\User;
 use App\Helpers\DateHelper;
 use App\Helpers\ResponseHelper;
+use App\Services\CompanyRoleService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -15,6 +16,10 @@ use Yajra\DataTables\Facades\DataTables;
 
 class CompanyApprovalController extends Controller
 {
+    public function __construct(protected CompanyRoleService $companyRoleService)
+    {
+    }
+
     /**
      * Get pending companies for approval
      */
@@ -60,11 +65,18 @@ class CompanyApprovalController extends Controller
         $company = Company::with('users')->findOrFail($id);
         
         DB::transaction(function () use ($company) {
+            $this->companyRoleService->provisionDefaultRoles($company);
+
             // Activate company
             $company->update(['is_active' => true]);
-            
+
             // Activate all users of this company
             User::where('company_id', $company->id)->update(['status' => 'active']);
+
+            $owner = $company->users()->orderBy('id')->first();
+            if ($owner) {
+                $this->companyRoleService->assignCompanyOwner($owner);
+            }
             
             // Send approval email
             Mail::to($company->users->pluck('email')->filter()->all())->queue(

@@ -5,6 +5,7 @@ namespace Database\Seeders;
 use App\Models\Company;
 use App\Models\Role;
 use App\Models\User;
+use App\Services\CompanyRoleService;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
 
@@ -63,13 +64,30 @@ class DatabaseSeeder extends Seeder
             'updated_by' => $admin->id,
         ]);
 
-        User::firstOrCreate(
+        User::updateOrCreate(
             ['email' => 'admin@gmail.com'],
+            [
+                'name' => 'Company Owner',
+                'password' => Hash::make('123456'),
+                'company_id' => $company->id,
+                'phone' => '+91 9876543211',
+                'role' => 'admin',
+                'status' => 'active',
+                'email_verified_at' => now(),
+                'created_by' => $admin->id,
+                'updated_by' => $admin->id,
+                'created_by_ip' => '127.0.0.1',
+                'updated_by_ip' => '127.0.0.1',
+            ]
+        );
+
+        User::updateOrCreate(
+            ['email' => 'manager@gmail.com'],
             [
                 'name' => 'Manager User',
                 'password' => Hash::make('12345678'),
                 'company_id' => $company->id,
-                'phone' => '+91 9876543211',
+                'phone' => '+91 9876543212',
                 'role' => 'manager',
                 'status' => 'active',
                 'email_verified_at' => now(),
@@ -86,7 +104,7 @@ class DatabaseSeeder extends Seeder
                 'name' => 'Accountant User',
                 'password' => Hash::make('12345678'),
                 'company_id' => $company->id,
-                'phone' => '+91 9876543212',
+                'phone' => '+91 9876543213',
                 'role' => 'accountant',
                 'status' => 'active',
                 'email_verified_at' => now(),
@@ -111,7 +129,8 @@ class DatabaseSeeder extends Seeder
 
         $roleAssignments = [
             'superadmin@reco.app' => ['superadmin', 'admin'],
-            'admin@gmail.com' => ['manager'],
+            'admin@gmail.com' => ['admin'],
+            'manager@gmail.com' => ['manager'],
             'accountant@gmail.com' => ['accountant'],
         ];
 
@@ -122,11 +141,23 @@ class DatabaseSeeder extends Seeder
                 continue;
             }
 
-            $roleIds = Role::whereIn('slug', $roleSlugs)->pluck('id')->all();
+            $roleIds = Role::query()
+                ->whereIn('slug', $roleSlugs)
+                ->where(function ($query) use ($user) {
+                    $query->where('company_id', $user->company_id)
+                        ->orWhereNull('company_id');
+                })
+                ->pluck('id')
+                ->all();
 
             if (!empty($roleIds)) {
                 $user->roles()->syncWithoutDetaching($roleIds);
             }
+        }
+
+        $companyRoleService = app(CompanyRoleService::class);
+        if ($owner = User::where('email', 'admin@gmail.com')->first()) {
+            $companyRoleService->assignCompanyOwner($owner);
         }
     }
 }

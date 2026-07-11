@@ -8,7 +8,7 @@
         <h4 class="mb-0">Tax Master</h4>
     </div>
     <div class="col-md-6 text-md-end">
-        @permission('settings.create')
+        @permission('tax-rates.create')
         <button type="button" class="btn btn-primary" id="addTaxRateBtn">
             <i class="bi bi-plus-circle me-2"></i>Add Tax Rate
         </button>
@@ -198,7 +198,7 @@ $(document).ready(function() {
             searchable: false,
             render: function(data) {
                 let actions = `<div class="btn-group btn-group-sm">`;
-                @permission('settings.update')
+                @permission('tax-rates.edit')
                 actions += `<button class="btn btn-outline-primary edit-btn"
                     data-id="${data.id}"
                     data-tax_name="${data.tax_name}"
@@ -210,7 +210,7 @@ $(document).ready(function() {
                     data-notes="${(data.notes || '').replace(/"/g, '&quot;')}"
                     title="Edit"><i class="bi bi-pencil"></i></button>`;
                 @endpermission
-                @permission('settings.delete')
+                @permission('tax-rates.delete')
                 actions += `<button class="btn btn-outline-danger delete-btn" data-id="${data.id}" title="Delete">
                     <i class="bi bi-trash"></i>
                 </button>`;
