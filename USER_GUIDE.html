@@ -428,7 +428,6 @@
             <a href="#service-sales-invoices" class="nav-sub">Service Sales Invoices</a>
             <a href="#items">Items &amp; Inventory</a>
             <a href="#item-categories" class="nav-sub">Item Categories</a>
-            <a href="#bank-accounts">Bank Accounts</a>
             <a href="#tax-rates">Tax Rates</a>
             <a href="#locations" class="nav-sub">Locations &amp; Dropdowns</a>
 
@@ -454,6 +453,8 @@
             <a href="#cms">CMS &amp; Website</a>
 
             <div class="nav-section">Advanced</div>
+            <a href="#mobile-offline">Offline Sync (Mobile)</a>
+            <a href="#support-notifications">Support &amp; Notifications</a>
             <a href="#security">Security Features</a>
             <a href="#api-reference">API Reference</a>
 
@@ -471,7 +472,7 @@
             <h1>RECO – Complete User Guide</h1>
             <p>Accounting &amp; Receivables Management SaaS Platform</p>
             <div class="badges">
-                <span class="badge">Laravel 12</span>
+                <span class="badge">Laravel 13</span>
                 <span class="badge">PHP 8.3+</span>
                 <span class="badge">MySQL 8.x</span>
                 <span class="badge">Bootstrap 5</span>
@@ -525,13 +526,35 @@
             <div class="card">
                 <div class="card-icon" style="background:#F0F9FF;">🔐</div>
                 <h4>Role-Based Access</h4>
-                <p>5 roles (SuperAdmin, Admin, Manager, Accountant, Viewer) with 26 granular permissions</p>
+                <p>5 roles (SuperAdmin, Admin, Manager, Accountant, Viewer) with 38 granular permissions</p>
             </div>
             <div class="card">
                 <div class="card-icon" style="background:#FAF5FF;">💳</div>
                 <h4>SaaS Billing</h4>
                 <p>Subscription plans, Razorpay payments, invoice generation, plan management</p>
             </div>
+        </div>
+
+        <h3>Active Admin Panel Modules</h3>
+        <p>These modules appear in the live admin sidebar for tenant users (company admin, manager, accountant):</p>
+        <table>
+            <tr><th>Menu</th><th>URL</th><th>Notes</th></tr>
+            <tr><td>Dashboard</td><td><code>/admin/dashboard</code></td><td>Company financial overview</td></tr>
+            <tr><td>Masters → Ledgers</td><td><code>/admin/accounts</code></td><td>Chart of accounts (includes Cash &amp; Bank ledgers)</td></tr>
+            <tr><td>Masters → AR/AP</td><td><code>/admin/parties</code></td><td>Debtors &amp; creditors</td></tr>
+            <tr><td>Masters → Items</td><td><code>/admin/items</code></td><td>Inventory &amp; service items</td></tr>
+            <tr><td>Masters → Item Categories</td><td><code>/admin/item-categories</code></td><td>Item grouping</td></tr>
+            <tr><td>Masters → Tax Rates</td><td><code>/admin/tax-rates</code></td><td>GST/TDS tax master (full CRUD for company admin)</td></tr>
+            <tr><td>Vouchers</td><td><code>/admin/vouchers</code></td><td>Payments, receipts, journals, invoices</td></tr>
+            <tr><td>Reports</td><td><code>/admin/reports</code></td><td>9 financial reports</td></tr>
+            <tr><td>Financial Years</td><td><code>/admin/financial-years</code></td><td>FY management</td></tr>
+            <tr><td>Settings</td><td><code>/admin/settings</code></td><td>Company &amp; accounting settings</td></tr>
+            <tr><td>Subscriptions</td><td><code>/admin/subscriptions/plans</code></td><td>Plan selection &amp; Razorpay checkout</td></tr>
+            <tr><td>Help &amp; Support</td><td><code>/admin/support-tickets</code></td><td>Ticket chat with SuperAdmin</td></tr>
+            <tr><td>Notifications</td><td>Header bell + <code>/admin/notifications</code></td><td>In-app alerts</td></tr>
+        </table>
+        <div class="info-box">
+            <strong>Not in admin menu:</strong> There is no separate <em>Bank Accounts</em> module in the UI. Cash and bank balances are managed through <strong>Ledgers</strong> (asset accounts) and payment/receipt vouchers.
         </div>
 
         <!-- ═══════════════════════════ SECTION 2: TECH STACK ═══════════════════════════ -->
@@ -546,7 +569,7 @@
             <tr>
                 <td>Backend Framework</td>
                 <td>Laravel</td>
-                <td>12.x</td>
+                <td>13.x</td>
             </tr>
             <tr>
                 <td>Language</td>
@@ -715,11 +738,11 @@
             </tr>
             <tr>
                 <td><code>app/Http/Controllers/Admin/</code></td>
-                <td>Web admin panel controllers (31 files)</td>
+                <td>Web admin panel controllers (30 files)</td>
             </tr>
             <tr>
                 <td><code>app/Http/Controllers/Api/</code></td>
-                <td>REST API controllers for mobile (22 files)</td>
+                <td>REST API controllers for mobile (26 files)</td>
             </tr>
             <tr>
                 <td><code>app/Http/Controllers/Auth/</code></td>
@@ -731,7 +754,7 @@
             </tr>
             <tr>
                 <td><code>app/Services/</code></td>
-                <td>Business logic layer (23 services)</td>
+                <td>Business logic layer (29 services)</td>
             </tr>
             <tr>
                 <td><code>app/Repositories/</code></td>
@@ -755,7 +778,7 @@
             </tr>
             <tr>
                 <td><code>database/migrations/</code></td>
-                <td>67 migration files for schema</td>
+                <td>Migration files in <code>database/migrations/</code></td>
             </tr>
             <tr>
                 <td><code>resources/views/admin/</code></td>
@@ -767,11 +790,11 @@
             </tr>
             <tr>
                 <td><code>routes/web.php</code></td>
-                <td>Web routes (566 lines)</td>
+                <td>Web routes</td>
             </tr>
             <tr>
                 <td><code>routes/api.php</code></td>
-                <td>API routes (179 lines)</td>
+                <td>API routes (<code>/api/v1/*</code>)</td>
             </tr>
             <tr>
                 <td><code>docs/</code></td>
@@ -815,7 +838,7 @@
             </tr>
         </table>
 
-        <h3>Permission List (26 Total)</h3>
+        <h3>Permission List (38 Total)</h3>
         <table>
             <tr>
                 <th>Module</th>
@@ -826,34 +849,36 @@
                 <td><code>dashboard.view</code></td>
             </tr>
             <tr>
+                <td>Users</td>
+                <td><code>users.view</code>, <code>users.create</code>, <code>users.edit</code>, <code>users.delete</code>, <code>users.manage-roles</code></td>
+            </tr>
+            <tr>
                 <td>Roles</td>
-                <td><code>roles.view</code>, <code>roles.create</code>, <code>roles.edit</code>,
-                    <code>roles.delete</code></td>
+                <td><code>roles.view</code>, <code>roles.create</code>, <code>roles.edit</code>, <code>roles.delete</code></td>
             </tr>
             <tr>
                 <td>Settings</td>
-                <td><code>settings.view</code>, <code>settings.edit</code></td>
+                <td><code>settings.view</code>, <code>settings.edit</code>, <code>settings.create</code>, <code>settings.update</code>, <code>settings.delete</code></td>
             </tr>
             <tr>
                 <td>Financial Years</td>
-                <td><code>financial-years.view</code>, <code>financial-years.create</code>,
-                    <code>financial-years.edit</code>, <code>financial-years.delete</code>,
-                    <code>financial-years.close</code></td>
+                <td><code>financial-years.view</code>, <code>financial-years.create</code>, <code>financial-years.close</code></td>
             </tr>
             <tr>
-                <td>Accounts</td>
-                <td><code>accounts.view</code>, <code>accounts.create</code>, <code>accounts.edit</code>,
-                    <code>accounts.delete</code>, <code>accounts.export</code></td>
+                <td>Accounts (Ledgers)</td>
+                <td><code>accounts.view</code>, <code>accounts.create</code>, <code>accounts.edit</code>, <code>accounts.delete</code></td>
             </tr>
             <tr>
                 <td>Parties</td>
-                <td><code>parties.view</code>, <code>parties.create</code>, <code>parties.edit</code>,
-                    <code>parties.delete</code></td>
+                <td><code>parties.view</code>, <code>parties.create</code>, <code>parties.edit</code>, <code>parties.delete</code></td>
+            </tr>
+            <tr>
+                <td>Tax Rates</td>
+                <td><code>tax-rates.view</code>, <code>tax-rates.create</code>, <code>tax-rates.edit</code>, <code>tax-rates.delete</code></td>
             </tr>
             <tr>
                 <td>Vouchers</td>
-                <td><code>vouchers.view</code>, <code>vouchers.create</code>, <code>vouchers.edit</code>,
-                    <code>vouchers.delete</code>, <code>vouchers.approve</code></td>
+                <td><code>vouchers.view</code>, <code>vouchers.create</code>, <code>vouchers.edit</code>, <code>vouchers.delete</code>, <code>vouchers.approve</code></td>
             </tr>
             <tr>
                 <td>Reports</td>
@@ -864,6 +889,7 @@
                 <td><code>audit-logs.view</code></td>
             </tr>
         </table>
+        <p><strong>Company admin (Administrator role)</strong> gets all permissions including full Tax Rates CRUD. Items and invoices use <code>accounts.*</code> and <code>vouchers.*</code> permissions respectively.</p>
 
         <h3>Database Table: <code>users</code> (Complete Schema)</h3>
         <table>
@@ -885,7 +911,7 @@
             <tr><td><code>app_lock_enabled</code></td><td>BOOLEAN</td><td>App lock enabled</td></tr>
             <tr><td><code>biometric_enabled</code></td><td>BOOLEAN</td><td>Biometric auth enabled</td></tr>
             <tr><td><code>role</code></td><td>ENUM</td><td><code>admin</code>, <code>manager</code>, <code>accountant</code>, <code>viewer</code></td></tr>
-            <tr><td><code>status</code></td><td>ENUM</td><td><code>active</code>, <code>inactive</code>, <code>suspended</code></td></tr>
+            <tr><td><code>status</code></td><td>ENUM</td><td><code>active</code>, <code>inactive</code>, <code>suspended</code>, <code>pending</code></td></tr>
             <tr><td><code>email_verified_at</code></td><td>TIMESTAMP</td><td>Email verification timestamp</td></tr>
             <tr><td><code>last_login_at</code></td><td>TIMESTAMP</td><td>Last login timestamp</td></tr>
             <tr><td><code>last_login_ip</code></td><td>VARCHAR(45)</td><td>Last login IP</td></tr>
@@ -1079,10 +1105,12 @@ Authorization: Bearer 1|abc123...</code></pre>
 
         <h3>Demo Credentials</h3>
         <div class="success-box">
-            <strong>Default SuperAdmin Account</strong>
-            Email: <code>superadmin@reco.app</code><br>
-            Password: <code>12345678</code><br>
-            Use this account to access the platform after running database seeders.
+            <strong>Platform SuperAdmin</strong><br>
+            Email: <code>superadmin@reco.app</code> · Password: <code>12345678</code><br><br>
+            <strong>Tenant Company Owner (full company access)</strong><br>
+            Email: <code>admin@gmail.com</code> · Password: <code>12345678</code><br><br>
+            <strong>Manager / Accountant (demo)</strong><br>
+            Email: <code>manager@gmail.com</code> or <code>accountant@gmail.com</code> · Password: <code>12345678</code>
         </div>
 
         <!-- ═══════════════════════════ SECTION 7: DASHBOARD ═══════════════════════════ -->
@@ -1280,8 +1308,7 @@ Authorization: Bearer 1|abc123...</code></pre>
         <!-- ═══════════════════════════ SECTION 9: ACCOUNTS ═══════════════════════════ -->
         <h2 id="accounts">9. Accounts (Chart of Accounts)</h2>
 
-        <p>The chart of accounts is a hierarchical tree of all financial accounts. It's the foundation of the
-            double-entry system.</p>
+        <p>The chart of accounts is a hierarchical tree of all financial accounts — including <strong>Cash</strong> and <strong>Bank</strong> ledgers. There is no separate Bank Accounts menu; use Ledgers plus payment/receipt vouchers.</p>
 
         <h3>Database Table: <code>accounts</code></h3>
         <table>
@@ -1357,9 +1384,14 @@ Authorization: Bearer 1|abc123...</code></pre>
                 <td>Additional notes</td>
             </tr>
             <tr>
-                <td><code>is_bank_account</code></td>
-                <td>BOOLEAN</td>
-                <td>Linked to bank account (default: false)</td>
+                <td><code>entry_source</code></td>
+                <td>ENUM</td>
+                <td>How the account was created (manual, party, system, etc.)</td>
+            </tr>
+            <tr>
+                <td><code>transaction_mode</code></td>
+                <td>ENUM</td>
+                <td>Cash/bank mode for payment vouchers (<code>cash</code>, <code>bank</code>, etc.)</td>
             </tr>
             <tr>
                 <td><code>sort_order</code></td>
@@ -2242,50 +2274,8 @@ Authorization: Bearer 1|abc123...</code></pre>
             <li>Low stock alerts: <code>/admin/items/low-stock</code> shows items below reorder level</li>
         </ul>
 
-        <!-- ═══════════════════════════ SECTION 15: BANK ACCOUNTS ═══════════════════════════ -->
-        <h2 id="bank-accounts">15. Bank Accounts</h2>
-
-        <p>Manage company bank accounts for payments and receipts.</p>
-
-        <h3>Table: <code>bank_accounts</code></h3>
-
-        <table>
-            <tr>
-                <th>Column</th>
-                <th>Type</th>
-                <th>Description</th>
-            </tr>
-            <tr><td><code>id</code></td><td>BIGINT PK</td><td>Primary key</td></tr>
-            <tr><td><code>uuid</code></td><td>CHAR(36)</td><td>Unique record identifier</td></tr>
-            <tr><td><code>company_id</code></td><td>BIGINT FK</td><td>→ companies.id CASCADE</td></tr>
-            <tr><td><code>account_id</code></td><td>BIGINT FK</td><td>→ accounts.id SET NULL (linked ledger account)</td></tr>
-            <tr><td><code>bank_name</code></td><td>VARCHAR(255)</td><td>Name of bank</td></tr>
-            <tr><td><code>branch_name</code></td><td>VARCHAR(255)</td><td>Bank branch</td></tr>
-            <tr><td><code>account_number</code></td><td>VARCHAR(255)</td><td>Bank account number</td></tr>
-            <tr><td><code>ifsc_code</code></td><td>VARCHAR(255)</td><td>IFSC code (Indian banks)</td></tr>
-            <tr><td><code>account_holder_name</code></td><td>VARCHAR(255)</td><td>Account holder name</td></tr>
-            <tr><td><code>account_type</code></td><td>ENUM</td><td><code>savings</code>, <code>current</code>, <code>fixed_deposit</code>, <code>cc_od</code></td></tr>
-            <tr><td><code>opening_balance</code></td><td>DECIMAL(15,2)</td><td>Initial balance</td></tr>
-            <tr><td><code>opening_date</code></td><td>DATE</td><td>Opening balance date</td></tr>
-            <tr><td><code>upi_id</code></td><td>VARCHAR(255)</td><td>UPI ID</td></tr>
-            <tr><td><code>is_default</code></td><td>BOOLEAN</td><td>Default for payments</td></tr>
-            <tr><td><code>is_active</code></td><td>BOOLEAN</td><td>Active status</td></tr>
-            <tr><td><code>remarks</code></td><td>TEXT</td><td>Notes</td></tr>
-            <tr><td><code>version</code></td><td>INT</td><td>Sync version (default: 1)</td></tr>
-            <tr><td><code>synced_at</code></td><td>TIMESTAMP</td><td>Last sync timestamp</td></tr>
-            <tr><td><code>created_by</code></td><td>BIGINT FK</td><td>→ users.id</td></tr>
-            <tr><td><code>updated_by</code></td><td>BIGINT FK</td><td>→ users.id</td></tr>
-            <tr><td><code>deleted_by</code></td><td>VARCHAR(255)</td><td>Who soft-deleted</td></tr>
-            <tr><td><code>deleted_by_id</code></td><td>BIGINT FK</td><td>→ users.id</td></tr>
-            <tr><td><code>created_at</code></td><td>TIMESTAMP</td><td>Record created</td></tr>
-            <tr><td><code>updated_at</code></td><td>TIMESTAMP</td><td>Last updated</td></tr>
-            <tr><td><code>deleted_at</code></td><td>TIMESTAMP</td><td>Soft delete</td></tr>
-        </table>
-
-        <p>Managed at <code>/admin/bank-accounts</code>.</p>
-
         <!-- ═══════════════════════════ SECTION 16: TAX RATES ═══════════════════════════ -->
-        <h2 id="tax-rates">16. Tax Rates</h2>
+        <h2 id="tax-rates">15. Tax Rates</h2>
 
         <h3>Table: <code>tax_rates</code></h3>
 
@@ -2295,24 +2285,16 @@ Authorization: Bearer 1|abc123...</code></pre>
                 <th>Type</th>
                 <th>Description</th>
             </tr>
-            <tr><td><code>id</code></td><td>BIGINT PK</td><td>Primary key</td></tr>
-            <tr><td><code>uuid</code></td><td>CHAR(36)</td><td>Unique record identifier</td></tr>
-            <tr><td><code>company_id</code></td><td>BIGINT FK</td><td>→ companies.id CASCADE</td></tr>
-            <tr><td><code>type</code></td><td>ENUM</td><td><code>gst</code>, <code>igst</code>, <code>cgst_sgst</code>, <code>vat</code>, <code>exempt</code></td></tr>
-            <tr><td><code>cgst_rate</code></td><td>DECIMAL(5,2)</td><td>CGST percentage</td></tr>
-            <tr><td><code>sgst_rate</code></td><td>DECIMAL(5,2)</td><td>SGST percentage</td></tr>
-            <tr><td><code>igst_rate</code></td><td>DECIMAL(5,2)</td><td>IGST percentage</td></tr>
-            <tr><td><code>is_inclusive</code></td><td>BOOLEAN</td><td>Tax-inclusive pricing</td></tr>
-            <tr><td><code>is_active</code></td><td>BOOLEAN</td><td>Active status</td></tr>
-            <tr><td><code>version</code></td><td>INT</td><td>Sync version (default: 1)</td></tr>
-            <tr><td><code>synced_at</code></td><td>TIMESTAMP</td><td>Last sync timestamp</td></tr>
-            <tr><td><code>created_by</code></td><td>BIGINT FK</td><td>→ users.id</td></tr>
-            <tr><td><code>updated_by</code></td><td>BIGINT FK</td><td>→ users.id</td></tr>
-            <tr><td><code>created_by_ip</code></td><td>VARCHAR(255)</td><td>Creator IP address</td></tr>
-            <tr><td><code>updated_by_ip</code></td><td>VARCHAR(255)</td><td>Updater IP address</td></tr>
+            <tr><td><code>tax_code</code></td><td>VARCHAR</td><td>Short code (e.g. GST18)</td></tr>
+            <tr><td><code>tax_name</code></td><td>VARCHAR</td><td>Display name (e.g. GST 18%)</td></tr>
+            <tr><td><code>tax_rate</code></td><td>DECIMAL(5,2)</td><td>Percentage rate</td></tr>
+            <tr><td><code>tax_type</code></td><td>ENUM</td><td><code>addition</code> or <code>deduction</code></td></tr>
+            <tr><td><code>tax_category</code></td><td>VARCHAR</td><td>GST, CGST, SGST, IGST, TDS, TCS, CESS, OTHER</td></tr>
+            <tr><td><code>status</code></td><td>ENUM</td><td><code>active</code> or <code>inactive</code></td></tr>
+            <tr><td><code>notes</code></td><td>TEXT</td><td>Optional notes</td></tr>
         </table>
 
-        <p>Managed at <code>/admin/tax-rates</code>. Tax rates are applied to invoice lines automatically.</p>
+        <p>Managed at <code>/admin/tax-rates</code>. Company admin has full CRUD. Applied to invoice and item lines automatically.</p>
 
         <!-- ═══════════════════════════ SECTION 17: SERVICE SALES INVOICES ═══════════════════════════ -->
         <h2 id="service-sales-invoices">16a. Service Sales Invoices</h2>
@@ -3088,14 +3070,13 @@ CSV:  /admin/export/ledger/csv?account_id=5&date_from=2025-04-01&date_to=2025-06
 
         <div class="success-box">
             <strong>Purpose</strong>
-            Shows all bank account transactions for a selected date range — same layout as Cash Book but filtered to bank
-            accounts.
+            Shows all bank ledger transactions for a selected date range — same layout as Cash Book but filtered to bank-type accounts in the chart of accounts (not a separate Bank Accounts module).
         </div>
 
         <h3>How to Use</h3>
         <ol class="step-list">
             <li>Go to <code>/admin/reports/bank-book</code></li>
-            <li>Select date range and optionally a specific bank account</li>
+            <li>Select date range and optionally a specific bank ledger account</li>
             <li>View debit/credit entries with running balance</li>
             <li>Export via API: <code>GET /api/v1/reports/bank-book?date_from=...&amp;date_to=...</code></li>
         </ol>
@@ -3793,6 +3774,11 @@ RAZORPAY_WEBHOOK_SECRET=your_webhook_secret</code></pre>
                         /item-categories/{id}</code></td>
             </tr>
             <tr>
+                <td>Tax Rates</td>
+                <td><code>GET/POST /tax-rates</code>, <code>GET/PUT/DELETE /tax-rates/{id}</code>,
+                    <code>PATCH /tax-rates/{id}/status</code></td>
+            </tr>
+            <tr>
                 <td>Financial Years</td>
                 <td><code>GET/POST /financial-years</code>, <code>PATCH /financial-years/{id}/set-current|close</code>,
                     <code>DELETE /financial-years/{id}</code></td>
@@ -3839,16 +3825,16 @@ RAZORPAY_WEBHOOK_SECRET=your_webhook_secret</code></pre>
             </tr>
         </table>
 
-        <h3>Offline-First Mobile Flow</h3>
+        <h3 id="mobile-offline">Offline-First Mobile Flow</h3>
         <ol>
-            <li><strong>First login:</strong> call <code>POST /login</code> with <code>device_id</code>, then <code>GET /sync/bootstrap</code> to cache master data locally (accounts, parties, items, categories, tax rates, bank accounts).</li>
+            <li><strong>First login:</strong> call <code>POST /login</code> with <code>device_id</code>, then <code>GET /sync/bootstrap</code> to cache master data locally (accounts, parties, items, categories, tax rates).</li>
             <li><strong>Offline edits:</strong> save changes in local SQLite/storage with UUID + version; queue payloads for upload.</li>
             <li><strong>Back online:</strong> call <code>POST /sync/upload</code> with queued entries (<code>auto_process: true</code> by default), then <code>GET /sync/download?since=...</code> for server-side changes.</li>
             <li><strong>Manual sync button:</strong> call <code>POST /sync/run</code> anytime to process pending queue items and refresh status via <code>GET /sync/status</code>.</li>
             <li><strong>Paid subscription:</strong> <code>POST /subscriptions/subscribe</code> → open Razorpay with returned <code>checkout</code> → <code>POST /subscriptions/verify-payment</code> on success.</li>
         </ol>
 
-        <h3>Support &amp; Notifications (Web + Mobile)</h3>
+        <h3 id="support-notifications">Support &amp; Notifications (Web + Mobile)</h3>
         <ul>
             <li><strong>Tenant admin:</strong> Admin panel → <em>Help &amp; Support</em> → create ticket, chat in thread, get notified in header bell.</li>
             <li><strong>SuperAdmin:</strong> Admin panel → <em>Support Inbox</em> → view all company tickets, reply, assign, change status; internal notes visible to staff only.</li>
@@ -3863,7 +3849,8 @@ RAZORPAY_WEBHOOK_SECRET=your_webhook_secret</code></pre>
         </div>
 
         <!-- ═══════════════════════════ SECTION 26: DATABASE ═══════════════════════════ -->
-        <h2 id="database-tables">26. Database Tables (48 Active)</h2>
+        <h2 id="database-tables">26. Database Tables (Production)</h2>
+        <p>Active tables used by the live application. See <code>docs/DATABASE_SCHEMA.md</code> for a concise reference.</p>
 
         <div class="card-grid">
             <div class="card">
@@ -3885,11 +3872,11 @@ RAZORPAY_WEBHOOK_SECRET=your_webhook_secret</code></pre>
                 <p><code>settings</code>, <code>themes</code></p>
             </div>
             <div class="card">
-                <h4>Accounting Core (12 tables)</h4>
+                <h4>Accounting Core (11 tables)</h4>
                 <p><code>financial_years</code>, <code>accounts</code>, <code>parties</code>, <code>vouchers</code>,
                     <code>voucher_lines</code>, <code>ledgers</code>, <code>journal_entries</code>,
                     <code>ledger_party_histories</code>, <code>tax_rates</code>, <code>items</code>,
-                    <code>item_categories</code>, <code>bank_accounts</code></p>
+                    <code>item_categories</code></p>
             </div>
             <div class="card">
                 <h4>Invoicing (4 tables)</h4>
@@ -3928,56 +3915,30 @@ RAZORPAY_WEBHOOK_SECRET=your_webhook_secret</code></pre>
 
         <pre><code>Reco/
 ├── app/
-│   ├── Http/
-│   │   ├── Controllers/
-│   │   │   ├── Admin/        (31 controllers)
-│   │   │   │   ├── AccountController.php
-│   │   │   │   ├── PartyController.php
-│   │   │   │   ├── VoucherController.php
-│   │   │   │   ├── ReportController.php
-│   │   │   │   ├── ExportController.php
-│   │   │   │   ├── SalesInvoiceController.php
-│   │   │   │   ├── PurchaseInvoiceController.php
-│   │   │   │   ├── DashboardController.php
-│   │   │   │   ├── SettingsController.php
-│   │   │   │   ├── SubscriptionController.php
-│   │   │   │   └── ... (21 more)
-│   │   │   ├── Api/           (18 API controllers)
-│   │   │   └── Auth/          (7 auth controllers)
-│   │   └── Middleware/        (4 middleware)
-│   ├── Models/                (44 models)
-│   ├── Services/              (23 services)
-│   │   ├── ReportService.php       ← ALL report logic
-│   │   ├── LedgerService.php        ← Ledger and trial balance
-│   │   ├── VoucherService.php       ← Voucher CRUD
-│   │   ├── ExportService.php        ← Export logic
-│   │   ├── DashboardService.php     ← Dashboard stats
-│   │   └── ... (18 more)
-│   ├── Repositories/          (3 repos)
-│   ├── Interfaces/            (3 interfaces)
-│   └── Exports/               (Excel export classes)
-├── database/
-│   ├── migrations/            (67 migration files)
-│   └── seeders/
-├── resources/views/
-│   ├── admin/
-│   │   └── reports/           (9 report views)
-│   └── exports/               (9 PDF export views)
-├── routes/
-│   ├── web.php                (566 lines)
-│   ├── api.php                (179 lines)
-│   └── console.php
-├── docs/
-│   └── DATABASE_SCHEMA.md     (complete schema docs)
-├── RECO_PROJECT_AUDIT.md      (2342-line full audit)
-└── composer.json
+│   ├── Http/Controllers/
+│   │   ├── Admin/           (web admin panel)
+│   │   ├── Api/             (mobile REST API)
+│   │   └── Auth/
+│   ├── Models/
+│   ├── Services/            (ReportService, VoucherService, SyncService, etc.)
+│   ├── Docs/                (OpenAPI/Swagger annotations)
+│   └── Exports/
+├── database/migrations/
+├── database/seeders/
+├── resources/views/admin/
+├── resources/views/exports/
+├── routes/web.php
+├── routes/api.php
+├── docs/DATABASE_SCHEMA.md
+├── USER_GUIDE.html          (this guide — served at /user-guide)
+└── storage/api-docs/        (generated Swagger JSON)
 </code></pre>
 
         <!-- ── FOOTER ── -->
         <hr style="margin: 48px 0 16px; border-color: var(--border);">
         <p style="font-size: .85rem; color: var(--text-light); text-align: center;">
             RECO User Guide v1.0 &bull; Generated July 2026 &bull;
-            Laravel 12 &bull; PHP 8.3+ &bull; MySQL 8.x &bull;
+            Laravel 13 &bull; PHP 8.3+ &bull; MySQL 8.x &bull;
             Accounting &amp; Receivables Management SaaS
         </p>
 

@@ -22,7 +22,6 @@ Active tables used by the live application.
 | `tax_rates` | GST and other tax rates |
 | `items` | Inventory and service items |
 | `item_categories` | Item grouping |
-| `bank_accounts` | Company bank account details |
 
 ## Invoicing
 | Table | Purpose |
