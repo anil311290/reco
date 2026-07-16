@@ -70,15 +70,36 @@ class SalesInvoiceApiController extends Controller
             'delivery_terms' => 'nullable|string|max:100',
             'invoice_type' => 'nullable|in:item,service',
             'discount_percentage' => 'nullable|numeric|min:0|max:100',
-            'lines' => 'required|array|min:1',
+            'lines' => 'required_without:service_lines|array|min:1',
             'lines.*.item_id' => 'nullable|exists:items,id',
             'lines.*.account_id' => 'nullable|exists:accounts,id',
             'lines.*.tax_rate_id' => 'nullable|exists:tax_rates,id',
             'lines.*.description' => 'nullable|string',
-            'lines.*.quantity' => 'required|numeric|min:0.001',
-            'lines.*.unit_price' => 'required|numeric|min:0',
+            'lines.*.quantity' => 'required_with:lines|numeric|min:0.001',
+            'lines.*.unit_price' => 'required_with:lines|numeric|min:0',
             'lines.*.discount_percentage' => 'nullable|numeric|min:0|max:100',
+            'service_lines' => 'required_without:lines|array|min:1',
+            'service_lines.*.account_id' => 'nullable|exists:accounts,id',
+            'service_lines.*.tax_rate_id' => 'nullable|exists:tax_rates,id',
+            'service_lines.*.description' => 'nullable|string',
+            'service_lines.*.amount' => 'required_with:service_lines|numeric|min:0',
         ]);
+
+        $invoiceType = $validated['invoice_type'] ?? 'item';
+        $itemLines = $validated['lines'] ?? [];
+        $serviceLines = $validated['service_lines'] ?? [];
+
+        if ($invoiceType === 'service' && empty($serviceLines) && !empty($itemLines)) {
+            $serviceLines = array_map(static function (array $line) {
+                return [
+                    'account_id' => $line['account_id'] ?? null,
+                    'tax_rate_id' => $line['tax_rate_id'] ?? null,
+                    'description' => $line['description'] ?? null,
+                    'amount' => (float) ($line['quantity'] ?? 1) * (float) ($line['unit_price'] ?? 0),
+                ];
+            }, $itemLines);
+            $itemLines = [];
+        }
 
         $companyId = $request->user()->company_id;
         $fyId = $request->user()->company->currentFinancialYear?->id;
@@ -88,8 +109,8 @@ class SalesInvoiceApiController extends Controller
             'company_id' => $companyId,
             'financial_year_id' => $fyId,
             'party_id' => $validated['party_id'],
-            'invoice_type' => $validated['invoice_type'] ?? 'item',
-            'invoice_number' => $this->salesInvoiceService->generateInvoiceNumber($companyId, $fyId, $validated['invoice_type'] ?? 'item'),
+            'invoice_type' => $invoiceType,
+            'invoice_number' => $this->salesInvoiceService->generateInvoiceNumber($companyId, $fyId, $invoiceType),
             'invoice_date' => $validated['invoice_date'],
             'due_date' => $validated['due_date'],
             'reference_number' => $validated['reference_number'] ?? null,
@@ -100,8 +121,7 @@ class SalesInvoiceApiController extends Controller
             'status' => 'draft',
         ];
 
-        $lines = $validated['lines'] ?? [];
-        $invoice = $this->salesInvoiceService->create($data, $lines);
+        $invoice = $this->salesInvoiceService->create($data, $itemLines, $serviceLines);
         $voucher = $this->salesInvoiceService->generateVoucher($invoice);
 
         if (!$voucher) {
@@ -124,11 +144,25 @@ class SalesInvoiceApiController extends Controller
 
         $validated = $request->validate([
             'amount' => 'required|numeric|min:0.01',
+            'payment_mode' => 'required|in:cash,bank,od',
+            'cash_bank_account_id' => 'required|exists:accounts,id',
+            'payment_date' => 'nullable|date',
         ]);
 
-        $invoice = $this->salesInvoiceService->recordPayment($id, $validated['amount']);
+        try {
+            $invoice = $this->salesInvoiceService->recordPayment($id, [
+                'amount' => $validated['amount'],
+                'payment_mode' => $validated['payment_mode'],
+                'cash_bank_account_id' => $validated['cash_bank_account_id'],
+                'payment_date' => $validated['payment_date'] ?? now()->toDateString(),
+                'created_by' => $request->user()->id,
+                'created_by_ip' => $request->ip(),
+            ]);
+        } catch (\Exception $e) {
+            return ResponseHelper::error($e->getMessage());
+        }
 
-        return ResponseHelper::success(new SalesInvoiceResource($invoice->fresh()), 'Payment recorded');
+        return ResponseHelper::success(new SalesInvoiceResource($invoice->fresh()), 'Payment recorded and receipt voucher posted');
     }
 
     /**
@@ -149,19 +183,19 @@ class SalesInvoiceApiController extends Controller
             'reference_number' => 'nullable|string|max:100',
             'notes' => 'nullable|string',
             'discount_percentage' => 'nullable|numeric|min:0|max:100',
-            'lines' => 'required|array|min:1',
+            'lines' => 'required_without:service_lines|array|min:1',
             'lines.*.item_id' => 'nullable|exists:items,id',
             'lines.*.account_id' => 'nullable|exists:accounts,id',
             'lines.*.tax_rate_id' => 'nullable|exists:tax_rates,id',
             'lines.*.description' => 'nullable|string',
-            'lines.*.quantity' => 'required|numeric|min:0.001',
-            'lines.*.unit_price' => 'required|numeric|min:0',
+            'lines.*.quantity' => 'required_with:lines|numeric|min:0.001',
+            'lines.*.unit_price' => 'required_with:lines|numeric|min:0',
             'lines.*.discount_percentage' => 'nullable|numeric|min:0|max:100',
-            'service_lines' => 'nullable|array',
+            'service_lines' => 'required_without:lines|array|min:1',
             'service_lines.*.account_id' => 'nullable|exists:accounts,id',
             'service_lines.*.tax_rate_id' => 'nullable|exists:tax_rates,id',
             'service_lines.*.description' => 'nullable|string',
-            'service_lines.*.amount' => 'nullable|numeric|min:0',
+            'service_lines.*.amount' => 'required_with:service_lines|numeric|min:0',
         ]);
 
         try {
@@ -172,12 +206,14 @@ class SalesInvoiceApiController extends Controller
                 'reference_number' => $validated['reference_number'] ?? null,
                 'notes' => $validated['notes'] ?? null,
                 'discount_percentage' => $validated['discount_percentage'] ?? 0,
+                'updated_by' => $request->user()->id,
+                'updated_by_ip' => $request->ip(),
             ];
 
             $invoice = $this->salesInvoiceService->updateWithLines(
                 $id,
                 $data,
-                $validated['lines'],
+                $validated['lines'] ?? [],
                 $validated['service_lines'] ?? []
             );
 
@@ -244,5 +280,68 @@ class SalesInvoiceApiController extends Controller
         $invoices = $this->salesInvoiceService->getOverdue($companyId);
 
         return ResponseHelper::success(SalesInvoiceResource::collection($invoices));
+    }
+
+    public function indexService(Request $request): JsonResponse
+    {
+        $request->merge(['invoice_type' => 'service']);
+
+        return $this->index($request);
+    }
+
+    public function storeService(Request $request): JsonResponse
+    {
+        $request->merge(['invoice_type' => 'service']);
+
+        return $this->store($request);
+    }
+
+    public function showService(int $id): JsonResponse
+    {
+        return $this->showTypedService($id);
+    }
+
+    public function updateService(Request $request, int $id): JsonResponse
+    {
+        $invoice = $this->salesInvoiceService->getById($id);
+
+        if (!$invoice || $invoice->company_id !== $request->user()->company_id || $invoice->invoice_type !== 'service') {
+            return ResponseHelper::notFound('Service invoice not found');
+        }
+
+        return $this->update($request, $id);
+    }
+
+    public function destroyService(int $id): JsonResponse
+    {
+        $invoice = $this->salesInvoiceService->getById($id);
+
+        if (!$invoice || $invoice->company_id !== request()->user()->company_id || $invoice->invoice_type !== 'service') {
+            return ResponseHelper::notFound('Service invoice not found');
+        }
+
+        return $this->destroy($id);
+    }
+
+    public function paymentService(Request $request, int $id): JsonResponse
+    {
+        $invoice = $this->salesInvoiceService->getById($id);
+
+        if (!$invoice || $invoice->company_id !== $request->user()->company_id || $invoice->invoice_type !== 'service') {
+            return ResponseHelper::notFound('Service invoice not found');
+        }
+
+        return $this->payment($request, $id);
+    }
+
+    protected function showTypedService(int $id): JsonResponse
+    {
+        $invoice = $this->salesInvoiceService->getById($id);
+
+        if (!$invoice || $invoice->company_id !== request()->user()->company_id || $invoice->invoice_type !== 'service') {
+            return ResponseHelper::notFound('Service invoice not found');
+        }
+
+        return ResponseHelper::success(new SalesInvoiceResource($invoice));
     }
 }

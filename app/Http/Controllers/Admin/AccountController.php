@@ -113,11 +113,13 @@ class AccountController extends Controller
         $account = $this->accountService->getById($id);
         $parentAccounts = $this->accountService->getForDropdown($companyId);
 
-        if (!$account) {
+        if (!$account || $account->company_id !== $companyId) {
             return ResponseHelper::notFound('Account not found');
         }
 
-        return view('admin.accounts.edit', compact('account', 'parentAccounts'));
+        $isInUse = $this->accountService->isAccountInUse($account->id);
+
+        return view('admin.accounts.edit', compact('account', 'parentAccounts', 'isInUse'));
     }
 
     /**
@@ -126,6 +128,11 @@ class AccountController extends Controller
     public function update(AccountRequest $request, int $id): JsonResponse
     {
         try {
+            $account = $this->accountService->getById($id);
+            if (!$account || $account->company_id !== $request->user()->company_id) {
+                return ResponseHelper::notFound('Account not found');
+            }
+
             $data = $request->validated();
 
             $updated = $this->accountService->update($id, $data);
@@ -146,6 +153,11 @@ class AccountController extends Controller
     public function destroy(int $id): JsonResponse
     {
         try {
+            $account = $this->accountService->getById($id);
+            if (!$account || $account->company_id !== request()->user()->company_id) {
+                return ResponseHelper::notFound('Account not found');
+            }
+
             $deleted = $this->accountService->delete($id);
 
             if (!$deleted) {
@@ -168,6 +180,11 @@ class AccountController extends Controller
         ]);
 
         try {
+            $account = $this->accountService->getById($id);
+            if (!$account || $account->company_id !== $request->user()->company_id) {
+                return ResponseHelper::notFound('Account not found');
+            }
+
             $updated = $this->accountService->update($id, [
                 'is_active' => $request->status,
             ]);

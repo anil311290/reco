@@ -149,6 +149,8 @@ class VoucherTest extends TestCase
     {
         $voucher = Voucher::factory()->create([
             'company_id' => $this->company->id,
+            'financial_year_id' => $this->financialYear->id,
+            'voucher_date' => now()->toDateString(),
             'status' => 'posted',
         ]);
 

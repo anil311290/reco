@@ -9,7 +9,7 @@ use OpenApi\Annotations as OA;
  *     path="/vouchers",
  *     tags={"Vouchers"},
  *     summary="Get all vouchers",
- *     description="Get paginated list of vouchers with optional filters",
+ *     description="Get paginated list of vouchers with optional filters. For payment, receipt, and adjustment modules use the dedicated /payments, /receipts, and /adjustments endpoints (same data, clearer Swagger grouping).",
  *     operationId="getVouchers",
  *     security={{"bearerAuth":{}}},
  *     @OA\Parameter(name="search", in="query", description="Search by voucher number or narration", @OA\Schema(type="string")),
@@ -59,7 +59,7 @@ use OpenApi\Annotations as OA;
  *     path="/vouchers",
  *     tags={"Vouchers"},
  *     summary="Create new voucher",
- *     description="Create a new voucher with line items",
+ *     description="Prefer dedicated /payments, /receipts, /adjustments endpoints for those types (Tally-style rows). For payment/receipt this endpoint also accepts payment_mode + cash_bank_account_id + payment_rows. For journal/adjustment accept adjustment_rows. Raw balanced lines still work for income/expense.",
  *     operationId="createVoucher",
  *     security={{"bearerAuth":{}}},
  *     @OA\RequestBody(

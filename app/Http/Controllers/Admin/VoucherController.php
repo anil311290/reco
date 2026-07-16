@@ -58,7 +58,9 @@ class VoucherController extends Controller
         }
 
         $companyId = Auth::user()->company_id;
-        $accounts = $this->accountService->getForDropdown($companyId);
+        $accounts = in_array($type, ['journal', 'adjustment'], true)
+            ? $this->accountService->getAdjustmentParticularsOptions($companyId)
+            : $this->accountService->getForDropdown($companyId);
         $parties = $this->partyService->getForDropdown($companyId);
 
         return view('admin.vouchers.index', compact('type', 'accounts', 'parties'));
@@ -83,7 +85,9 @@ class VoucherController extends Controller
 
         $companyId = Auth::user()->company_id;
         $financialYearId = Auth::user()->company->currentFinancialYear?->id;
-        $accounts = $this->accountService->getForDropdown($companyId);
+        $accounts = in_array($type, ['journal', 'adjustment'], true)
+            ? $this->accountService->getAdjustmentParticularsOptions($companyId)
+            : $this->accountService->getForDropdown($companyId);
         $parties = $this->partyService->getForDropdown($companyId);
         $cashBankAccounts = in_array($type, ['payment', 'receipt'], true)
             ? $this->accountService->getCashBankAccountsForMode($companyId, null, $financialYearId)
@@ -128,7 +132,7 @@ class VoucherController extends Controller
     {
         $voucher = $this->voucherService->getById($id);
 
-        if (!$voucher) {
+        if (!$voucher || $voucher->company_id !== Auth::user()->company_id) {
             return ResponseHelper::notFound('Voucher not found');
         }
 
@@ -142,13 +146,15 @@ class VoucherController extends Controller
     {
         $voucher = $this->voucherService->getById($id);
 
-        if (!$voucher) {
+        if (!$voucher || $voucher->company_id !== Auth::user()->company_id) {
             return ResponseHelper::notFound('Voucher not found');
         }
 
         $companyId = Auth::user()->company_id;
         $financialYearId = Auth::user()->company->currentFinancialYear?->id;
-        $accounts = $this->accountService->getForDropdown($companyId);
+        $accounts = in_array($voucher->voucher_type, ['journal', 'adjustment'], true)
+            ? $this->accountService->getAdjustmentParticularsOptions($companyId)
+            : $this->accountService->getForDropdown($companyId);
         $parties = $this->partyService->getForDropdown($companyId);
         $cashBankAccounts = in_array($voucher->voucher_type, ['payment', 'receipt'], true)
             ? $this->accountService->getCashBankAccountsForMode($companyId, null, $financialYearId)
@@ -172,6 +178,11 @@ class VoucherController extends Controller
     public function update(VoucherRequest $request, int $id): JsonResponse
     {
         try {
+            $voucher = $this->voucherService->getById($id);
+            if (!$voucher || $voucher->company_id !== Auth::user()->company_id) {
+                return ResponseHelper::notFound('Voucher not found');
+            }
+
             $data = $request->validated();
             $data['updated_by'] = Auth::id();
             $data['updated_by_ip'] = request()->ip();
@@ -194,6 +205,11 @@ class VoucherController extends Controller
     public function destroy(int $id): JsonResponse
     {
         try {
+            $voucher = $this->voucherService->getById($id);
+            if (!$voucher || $voucher->company_id !== Auth::user()->company_id) {
+                return ResponseHelper::notFound('Voucher not found');
+            }
+
             $deleted = $this->voucherService->delete($id);
 
             if (!$deleted) {
@@ -212,6 +228,11 @@ class VoucherController extends Controller
     public function post(int $id): JsonResponse
     {
         try {
+            $voucher = $this->voucherService->getById($id);
+            if (!$voucher || $voucher->company_id !== Auth::user()->company_id) {
+                return ResponseHelper::notFound('Voucher not found');
+            }
+
             $posted = $this->voucherService->post($id);
 
             if (!$posted) {
@@ -230,6 +251,11 @@ class VoucherController extends Controller
     public function cancel(int $id): JsonResponse
     {
         try {
+            $voucher = $this->voucherService->getById($id);
+            if (!$voucher || $voucher->company_id !== Auth::user()->company_id) {
+                return ResponseHelper::notFound('Voucher not found');
+            }
+
             $cancelled = $this->voucherService->cancel($id);
 
             if (!$cancelled) {

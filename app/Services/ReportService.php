@@ -26,7 +26,6 @@ class ReportService
     {
         $incomeAccounts = Account::where('company_id', $companyId)
             ->where('account_type', 'income')
-            ->where('is_active', true)
             ->orderBy('account_code')
             ->get();
 
@@ -48,7 +47,6 @@ class ReportService
 
         $expenseAccounts = Account::where('company_id', $companyId)
             ->where('account_type', 'expense')
-            ->where('is_active', true)
             ->orderBy('account_code')
             ->get();
 
@@ -147,14 +145,19 @@ class ReportService
     /**
      * Day Book — posted vouchers for a date with line particulars (Tally style).
      */
-    public function getDayBook(int $companyId, string $date): array
+    public function getDayBook(int $companyId, string $date, ?int $financialYearId = null): array
     {
-        $vouchers = Voucher::where('company_id', $companyId)
+        $query = Voucher::where('company_id', $companyId)
             ->whereDate('voucher_date', $date)
             ->where('status', 'posted')
-            ->with(['party', 'lines.account'])
-            ->orderBy('voucher_number')
-            ->get();
+            ->with(['party', 'lines.account', 'salesInvoice', 'purchaseInvoice'])
+            ->orderBy('voucher_number');
+
+        if ($financialYearId) {
+            $query->where('financial_year_id', $financialYearId);
+        }
+
+        $vouchers = $query->get();
 
         $rows = [];
         $totalDebit = 0;
@@ -169,10 +172,16 @@ class ReportService
 
                 $rows[] = [
                     'voucher' => $voucher,
+                    'voucher_id' => $voucher->id,
                     'voucher_number' => $voucher->voucher_number,
                     'voucher_type' => $voucher->voucher_type,
+                    'account_id' => $line->account_id,
                     'account_name' => $line->account?->account_name ?? '-',
+                    'party_id' => $voucher->party_id,
                     'party_name' => $voucher->party?->name,
+                    'sales_invoice_id' => $voucher->sales_invoice_id,
+                    'sales_invoice_type' => $voucher->salesInvoice?->invoice_type,
+                    'purchase_invoice_id' => $voucher->purchase_invoice_id,
                     'narration' => $line->description ?: $voucher->narration,
                     'debit' => $debit,
                     'credit' => $credit,
@@ -205,7 +214,6 @@ class ReportService
 
         $accountsQuery = Account::where('company_id', $companyId)
             ->whereIn('transaction_mode', $modes)
-            ->where('is_active', true)
             ->orderBy('account_code');
 
         $accounts = $accountsQuery->get();
@@ -258,7 +266,6 @@ class ReportService
 
         $debtors = Party::where('company_id', $companyId)
             ->where('type', 'debtor')
-            ->where('is_active', true)
             ->whereNotNull('account_id')
             ->orderBy('name')
             ->get();
@@ -309,7 +316,6 @@ class ReportService
 
         $creditors = Party::where('company_id', $companyId)
             ->where('type', 'creditor')
-            ->where('is_active', true)
             ->whereNotNull('account_id')
             ->orderBy('name')
             ->get();
@@ -355,7 +361,6 @@ class ReportService
     {
         return Account::where('company_id', $companyId)
             ->where('account_type', $type)
-            ->where('is_active', true)
             ->orderBy('account_code')
             ->get();
     }

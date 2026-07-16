@@ -58,9 +58,9 @@
 
                         <div class="row g-3 mb-4 d-none" id="transaction_mode_row">
                             <div class="col-md-6">
-                                <label for="transaction_mode" class="form-label fw-semibold">Transaction Mode <span class="text-danger">*</span></label>
+                                <label for="transaction_mode" class="form-label fw-semibold">Transaction Mode</label>
                                 <select class="form-select form-select-lg" id="transaction_mode" name="transaction_mode">
-                                    <option value="">Select Mode</option>
+                                    <option value="">General Asset (not Cash/Bank)</option>
                                     <option value="cash" {{ old('transaction_mode') === 'cash' ? 'selected' : '' }}>Cash</option>
                                     <option value="bank" {{ old('transaction_mode') === 'bank' ? 'selected' : '' }}>Bank</option>
                                     <option value="od" {{ old('transaction_mode') === 'od' ? 'selected' : '' }}>OD</option>
@@ -69,7 +69,7 @@
                             <div class="col-md-6 d-flex align-items-end">
                                 <div class="alert account-form-help mb-0 w-100">
                                     <i class="bi bi-lightbulb me-1"></i>
-                                    Asset accounts must have a transaction mode.
+                                    Select a mode only for Cash, Bank, or OD ledgers.
                                 </div>
                             </div>
                         </div>
@@ -131,7 +131,7 @@
                     <div class="account-stat mb-3">
                         <p class="account-stat-label">Asset accounts</p>
                         <p class="account-stat-value">Cash / Bank / OD</p>
-                        <div class="small text-muted">Transaction mode becomes mandatory for assets.</div>
+                        <div class="small text-muted">Use a transaction mode only for liquid asset ledgers.</div>
                     </div>
                     <div class="account-stat">
                         <p class="account-stat-label">Ledger impact</p>
@@ -198,8 +198,6 @@ $(document).ready(function() {
     function syncTransactionModeState() {
         const isAsset = $('#account_type').val() === 'asset';
         $('#transaction_mode_row').toggleClass('d-none', !isAsset);
-        $('#transaction_mode').prop('required', isAsset);
-
         if (!isAsset) {
             $('#transaction_mode').val('');
         }

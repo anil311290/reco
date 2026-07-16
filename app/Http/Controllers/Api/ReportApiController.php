@@ -83,7 +83,10 @@ class ReportApiController extends Controller
         ]);
 
         $companyId = $request->user()->company_id;
-        $report = $this->reportService->getDayBook($companyId, $request->date);
+        $financialYearId = $request->filled('financial_year_id')
+            ? (int) $request->financial_year_id
+            : \App\Models\FinancialYear::getCurrent($companyId)?->id;
+        $report = $this->reportService->getDayBook($companyId, $request->date, $financialYearId);
 
         return ResponseHelper::success($report);
     }

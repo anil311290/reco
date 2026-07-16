@@ -89,8 +89,11 @@ use OpenApi\Annotations as OA;
  *     security={{"bearerAuth":{}}},
  *     @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")),
  *     @OA\RequestBody(required=true, @OA\JsonContent(
- *         required={"amount"},
- *         @OA\Property(property="amount", type="number", format="float", example=500.00)
+ *         required={"amount","payment_mode","cash_bank_account_id"},
+ *         @OA\Property(property="amount", type="number", format="float", example=500.00),
+ *         @OA\Property(property="payment_mode", type="string", enum={"cash","bank","od"}, example="bank"),
+ *         @OA\Property(property="cash_bank_account_id", type="integer", example=12, description="Received In cash/bank/OD account"),
+ *         @OA\Property(property="payment_date", type="string", format="date", example="2026-07-16")
  *     )),
  *     @OA\Response(response=200, description="Payment recorded", @OA\JsonContent(ref="#/components/schemas/SuccessResponse")),
  *     @OA\Response(response=404, description="Not found", @OA\JsonContent(ref="#/components/schemas/ErrorResponse"))
@@ -124,6 +127,88 @@ use OpenApi\Annotations as OA;
  *     security={{"bearerAuth":{}}},
  *     @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")),
  *     @OA\Response(response=200, description="PDF generated", @OA\JsonContent(ref="#/components/schemas/SuccessResponse"))
+ * )
+ *
+ * @OA\Get(
+ *     path="/service-sales-invoices",
+ *     tags={"Service Sales Invoices"},
+ *     summary="List service sales invoices",
+ *     description="Alias of GET /sales-invoices?invoice_type=service",
+ *     operationId="getServiceSalesInvoices",
+ *     security={{"bearerAuth":{}}},
+ *     @OA\Parameter(name="search", in="query", @OA\Schema(type="string")),
+ *     @OA\Parameter(name="status", in="query", @OA\Schema(type="string")),
+ *     @OA\Parameter(name="per_page", in="query", @OA\Schema(type="integer", default=15)),
+ *     @OA\Response(response=200, description="Success", @OA\JsonContent(ref="#/components/schemas/SuccessResponse"))
+ * )
+ *
+ * @OA\Post(
+ *     path="/service-sales-invoices",
+ *     tags={"Service Sales Invoices"},
+ *     summary="Create service sales invoice",
+ *     description="Forces invoice_type=service. Send service_lines (same as web).",
+ *     operationId="createServiceSalesInvoice",
+ *     security={{"bearerAuth":{}}},
+ *     @OA\RequestBody(required=true, @OA\JsonContent(
+ *         required={"party_id","invoice_date","due_date","service_lines"},
+ *         @OA\Property(property="party_id", type="integer"),
+ *         @OA\Property(property="invoice_date", type="string", format="date"),
+ *         @OA\Property(property="due_date", type="string", format="date"),
+ *         @OA\Property(property="service_lines", type="array", @OA\Items(
+ *             @OA\Property(property="account_id", type="integer"),
+ *             @OA\Property(property="tax_rate_id", type="integer"),
+ *             @OA\Property(property="description", type="string"),
+ *             @OA\Property(property="amount", type="number")
+ *         ))
+ *     )),
+ *     @OA\Response(response=201, description="Created", @OA\JsonContent(ref="#/components/schemas/SuccessResponse"))
+ * )
+ *
+ * @OA\Get(
+ *     path="/service-sales-invoices/{id}",
+ *     tags={"Service Sales Invoices"},
+ *     summary="Get service sales invoice",
+ *     operationId="getServiceSalesInvoiceById",
+ *     security={{"bearerAuth":{}}},
+ *     @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")),
+ *     @OA\Response(response=200, description="Success", @OA\JsonContent(ref="#/components/schemas/SuccessResponse"))
+ * )
+ *
+ * @OA\Put(
+ *     path="/service-sales-invoices/{id}",
+ *     tags={"Service Sales Invoices"},
+ *     summary="Update service sales invoice",
+ *     operationId="updateServiceSalesInvoice",
+ *     security={{"bearerAuth":{}}},
+ *     @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")),
+ *     @OA\Response(response=200, description="Updated", @OA\JsonContent(ref="#/components/schemas/SuccessResponse"))
+ * )
+ *
+ * @OA\Delete(
+ *     path="/service-sales-invoices/{id}",
+ *     tags={"Service Sales Invoices"},
+ *     summary="Delete service sales invoice",
+ *     operationId="deleteServiceSalesInvoice",
+ *     security={{"bearerAuth":{}}},
+ *     @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")),
+ *     @OA\Response(response=200, description="Deleted", @OA\JsonContent(ref="#/components/schemas/SuccessResponse"))
+ * )
+ *
+ * @OA\Post(
+ *     path="/service-sales-invoices/{id}/payment",
+ *     tags={"Service Sales Invoices"},
+ *     summary="Record payment against service sales invoice",
+ *     operationId="recordServiceSalesInvoicePayment",
+ *     security={{"bearerAuth":{}}},
+ *     @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")),
+ *     @OA\RequestBody(required=true, @OA\JsonContent(
+ *         required={"amount","payment_mode","cash_bank_account_id"},
+ *         @OA\Property(property="amount", type="number", format="float"),
+ *         @OA\Property(property="payment_mode", type="string", enum={"cash","bank","od"}),
+ *         @OA\Property(property="cash_bank_account_id", type="integer"),
+ *         @OA\Property(property="payment_date", type="string", format="date")
+ *     )),
+ *     @OA\Response(response=200, description="Payment recorded", @OA\JsonContent(ref="#/components/schemas/SuccessResponse"))
  * )
  */
 class SalesInvoiceDocs

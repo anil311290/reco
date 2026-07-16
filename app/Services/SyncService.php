@@ -3,7 +3,6 @@
 namespace App\Services;
 
 use App\Models\Account;
-use App\Models\BankAccount;
 use App\Models\Item;
 use App\Models\ItemCategory;
 use App\Models\Party;
@@ -23,7 +22,6 @@ class SyncService
         'items' => Item::class,
         'item_categories' => ItemCategory::class,
         'tax_rates' => TaxRate::class,
-        'bank_accounts' => BankAccount::class,
     ];
 
     public function queueUpload(array $entries, int $userId, int $companyId, ?string $deviceId = null): array

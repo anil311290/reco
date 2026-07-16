@@ -23,18 +23,28 @@
 
     <div class="report-filter-card">
         <form method="GET" action="{{ route('admin.reports.day-book') }}" class="row g-3 align-items-end">
-            <div class="col-lg-4 col-md-7">
+            <div class="col-lg-3 col-md-6">
                 <label class="form-label">Date</label>
                 <input type="date" name="date" class="form-control" value="{{ $date }}">
             </div>
-            <div class="col-lg-3 col-md-5 report-filter-actions">
-                <button type="submit" class="btn btn-primary px-4">
+            <div class="col-lg-3 col-md-6">
+                <label class="form-label">Financial Year</label>
+                <select name="financial_year_id" class="form-select">
+                    @foreach($financialYears ?? [] as $fy)
+                        <option value="{{ $fy->id }}" {{ (string) ($financialYearId ?? '') === (string) $fy->id ? 'selected' : '' }}>
+                            {{ $fy->name }}{{ $fy->is_current ? ' (Current)' : '' }}{{ $fy->is_closed ? ' (Closed)' : '' }}
+                        </option>
+                    @endforeach
+                </select>
+            </div>
+            <div class="col-lg-auto col-md-12 report-filter-actions">
+                <button type="submit" class="btn btn-primary">
                     <i class="bi bi-funnel me-1"></i>Filter
                 </button>
-                <a href="{{ route('admin.export.excel', ['type' => 'day-book', 'date' => $date]) }}" class="btn btn-outline-success report-btn-export">
+                <a href="{{ route('admin.export.excel', ['type' => 'day-book', 'date' => $date, 'financial_year_id' => $financialYearId ?? '']) }}" class="btn btn-outline-success report-btn-export">
                     <i class="bi bi-file-earmark-spreadsheet"></i>Excel
                 </a>
-                <a href="{{ route('admin.export.day-book.pdf', ['date' => $date]) }}" class="btn btn-outline-danger report-btn-export">
+                <a href="{{ route('admin.export.day-book.pdf', ['date' => $date, 'financial_year_id' => $financialYearId ?? '']) }}" class="btn btn-outline-danger report-btn-export">
                     <i class="bi bi-file-earmark-pdf"></i>PDF
                 </a>
             </div>
@@ -84,10 +94,38 @@
                 <tbody>
                     @forelse($report['rows'] as $row)
                     <tr>
-                        <td class="fw-semibold">{{ $row['voucher_number'] }}</td>
+                        <td class="fw-semibold">
+                            @if(!empty($row['voucher_id']))
+                                <a href="{{ route('admin.vouchers.show', $row['voucher_id']) }}" class="report-detail-link" title="View voucher">
+                                    {{ $row['voucher_number'] }}
+                                </a>
+                            @else
+                                {{ $row['voucher_number'] }}
+                            @endif
+                        </td>
                         <td><span class="report-pill report-pill--info">{{ ucfirst($row['voucher_type']) }}</span></td>
-                        <td>{{ $row['account_name'] }}</td>
-                        <td class="text-muted small">{{ Str::limit($row['narration'] ?? ($row['party_name'] ?? '-'), 60) }}</td>
+                        <td>
+                            @if(!empty($row['account_id']))
+                                <a href="{{ route('admin.reports.ledger', ['account_id' => $row['account_id']]) }}" class="report-detail-link" title="View ledger">
+                                    {{ $row['account_name'] }}
+                                </a>
+                            @else
+                                {{ $row['account_name'] }}
+                            @endif
+                        </td>
+                        <td class="text-muted small">
+                            @if(!empty($row['sales_invoice_id']))
+                                @php
+                                    $salesInvoiceRoute = ($row['sales_invoice_type'] ?? 'item') === 'service'
+                                        ? 'admin.service-sales-invoices.show'
+                                        : 'admin.sales-invoices.show';
+                                @endphp
+                                <a href="{{ route($salesInvoiceRoute, $row['sales_invoice_id']) }}" class="report-detail-link me-1" title="View sales invoice">Invoice</a>
+                            @elseif(!empty($row['purchase_invoice_id']))
+                                <a href="{{ route('admin.purchase-invoices.show', $row['purchase_invoice_id']) }}" class="report-detail-link me-1" title="View purchase invoice">Invoice</a>
+                            @endif
+                            {{ Str::limit($row['narration'] ?? ($row['party_name'] ?? '-'), 60) }}
+                        </td>
                         <td class="text-end fw-semibold">{{ $row['debit'] > 0 ? '₹' . number_format($row['debit'], 2) : '-' }}</td>
                         <td class="text-end fw-semibold">{{ $row['credit'] > 0 ? '₹' . number_format($row['credit'], 2) : '-' }}</td>
                     </tr>

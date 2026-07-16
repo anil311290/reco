@@ -124,6 +124,12 @@ class ServiceSalesInvoiceController extends Controller
             ];
 
             $invoice = $this->salesInvoiceService->create($data, [], $validated['service_lines']);
+
+            $voucher = $this->salesInvoiceService->generateVoucher($invoice);
+            if (!$voucher) {
+                throw new \RuntimeException('Service sales invoice created but accounting posting failed. Please check account mappings.');
+            }
+
             return ResponseHelper::success($invoice, 'Service sales invoice created successfully');
         } catch (\Exception $e) {
             return ResponseHelper::error($e->getMessage());
@@ -136,12 +142,49 @@ class ServiceSalesInvoiceController extends Controller
     public function show(int $id)
     {
         $invoice = $this->salesInvoiceService->getById($id);
-        
-        if (!$invoice) {
+
+        if (!$invoice || $invoice->invoice_type !== 'service') {
             abort(404, 'Invoice not found');
         }
 
-        return view('admin.service-sales-invoices.show', compact('invoice'));
+        $companyId = auth()->user()->company_id;
+        $financialYearId = auth()->user()->company->currentFinancialYear?->id;
+        $cashBankAccounts = $this->accountService->getCashBankAccountsForMode($companyId, null, $financialYearId);
+
+        return view('admin.service-sales-invoices.show', compact('invoice', 'cashBankAccounts'));
+    }
+
+    /**
+     * Record payment against service sales invoice.
+     */
+    public function payment(Request $request, int $id): JsonResponse
+    {
+        $invoice = $this->salesInvoiceService->getById($id);
+        if (!$invoice || $invoice->company_id !== auth()->user()->company_id || $invoice->invoice_type !== 'service') {
+            return ResponseHelper::notFound('Invoice not found');
+        }
+
+        $validated = $request->validate([
+            'amount' => 'required|numeric|min:0.01',
+            'payment_mode' => 'required|in:cash,bank,od',
+            'cash_bank_account_id' => 'required|exists:accounts,id',
+            'payment_date' => 'nullable|date',
+        ]);
+
+        try {
+            $invoice = $this->salesInvoiceService->recordPayment($id, [
+                'amount' => $validated['amount'],
+                'payment_mode' => $validated['payment_mode'],
+                'cash_bank_account_id' => $validated['cash_bank_account_id'],
+                'payment_date' => $validated['payment_date'] ?? now()->toDateString(),
+                'created_by' => auth()->id(),
+                'created_by_ip' => $request->ip(),
+            ]);
+
+            return ResponseHelper::success($invoice, 'Payment recorded and receipt voucher posted');
+        } catch (\Exception $e) {
+            return ResponseHelper::error($e->getMessage());
+        }
     }
 
     /**
@@ -200,6 +243,7 @@ class ServiceSalesInvoiceController extends Controller
                 'payment_terms'    => $validated['payment_terms'] ?? null,
                 'delivery_terms'   => $validated['delivery_terms'] ?? null,
                 'updated_by'       => auth()->id(),
+                'updated_by_ip'    => $request->ip(),
             ];
             $invoice = $this->salesInvoiceService->updateWithLines($id, $data, [], $validated['service_lines']);
             return ResponseHelper::success($invoice, 'Service sales invoice updated successfully');

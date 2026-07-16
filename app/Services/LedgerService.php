@@ -41,10 +41,21 @@ class LedgerService
         try {
             DB::beginTransaction();
 
+            $previousEntries = Ledger::where('voucher_id', $voucher->id)
+                ->get(['company_id', 'account_id']);
+
             // Delete existing ledger entries for this voucher
             $this->ledgerRepository->deleteByVoucher($voucher->id);
 
+            $touchedAccountIds = $previousEntries->pluck('account_id');
+            $partyByAccount = Party::where('company_id', $voucher->company_id)
+                ->whereIn('account_id', $voucher->lines->pluck('account_id'))
+                ->pluck('id', 'account_id');
+
             foreach ($voucher->lines as $line) {
+                $touchedAccountIds->push($line->account_id);
+                $linePartyId = $partyByAccount[$line->account_id] ?? $voucher->party_id;
+
                 $this->createEntry(
                     $voucher->company_id,
                     $voucher->financial_year_id,
@@ -53,12 +64,20 @@ class LedgerService
                     $voucher->voucher_date->format('Y-m-d'),
                     'voucher',
                     $voucher->id,
-                    $voucher->party_id,
+                    $linePartyId,
                     $line->description ?? $voucher->narration,
                     $line->debit,
                     $line->credit,
                     $voucher->created_by,
                     $voucher->created_by_ip
+                );
+            }
+
+            foreach ($touchedAccountIds->unique() as $accountId) {
+                $this->recalculateBalances(
+                    (int) $accountId,
+                    $voucher->company_id,
+                    $voucher->financial_year_id ? (int) $voucher->financial_year_id : null
                 );
             }
 
@@ -87,20 +106,42 @@ class LedgerService
         ?int $createdBy = null,
         ?string $createdByIp = null
     ): Ledger {
-        // Calculate running balance
-        $lastEntry = $this->ledgerRepository->getLastEntry($companyId, $accountId);
+        // Calculate running balance within the financial year when provided.
+        $lastEntry = $this->ledgerRepository->getLastEntry($companyId, $accountId, $financialYearId);
 
-        // Get account to determine balance calculation and opening balance
         $account = $this->accountRepository->find($accountId);
-        
-        if ($lastEntry) {
-            $previousBalance = $lastEntry->running_balance;
-        } else {
-            // Use account opening balance if no previous ledger entry
-            $previousBalance = $account->opening_balance ?? 0;
-        }
-
         $isDebitNormal = in_array($account->account_type, ['asset', 'expense'], true);
+
+        if ($lastEntry) {
+            $magnitude = (float) $lastEntry->running_balance;
+            if ($isDebitNormal) {
+                $previousBalance = $lastEntry->balance_type === 'debit' ? $magnitude : -$magnitude;
+            } else {
+                $previousBalance = $lastEntry->balance_type === 'credit' ? $magnitude : -$magnitude;
+            }
+        } else {
+            // First entry in FY: use master opening only when no posted opening rows exist yet.
+            $previousBalance = $financialYearId
+                ? 0.0
+                : (float) ($account->opening_balance ?? 0);
+
+            if ($financialYearId && round((float) ($account->opening_balance ?? 0), 2) > 0) {
+                $hasOpeningRows = Ledger::query()
+                    ->where('company_id', $companyId)
+                    ->where('account_id', $accountId)
+                    ->where('financial_year_id', $financialYearId)
+                    ->whereIn('reference_type', [
+                        'account_opening_balance',
+                        'party_opening_balance',
+                        'fy_opening_balance',
+                    ])
+                    ->exists();
+
+                if (!$hasOpeningRows) {
+                    $previousBalance = (float) $account->opening_balance;
+                }
+            }
+        }
 
         // Calculate new balance on account-normal scale
         if ($isDebitNormal) {
@@ -152,9 +193,19 @@ class LedgerService
      */
     public function deleteEntriesByReference(string $referenceType, int $referenceId): void
     {
+        $entries = Ledger::where('reference_type', $referenceType)
+            ->where('reference_id', $referenceId)
+            ->get(['company_id', 'account_id']);
+
         Ledger::where('reference_type', $referenceType)
             ->where('reference_id', $referenceId)
             ->delete();
+
+        foreach ($entries->groupBy('company_id') as $companyId => $companyEntries) {
+            foreach ($companyEntries->pluck('account_id')->unique() as $accountId) {
+                $this->recalculateBalances((int) $accountId, (int) $companyId);
+            }
+        }
     }
 
     /**
@@ -168,14 +219,15 @@ class LedgerService
             return;
         }
 
-        $partyAccountCode = $party->type === 'debtor' ? Account::CODE_AR : Account::CODE_AP;
-        $partyAccount = $this->ensureSystemAccount(
-            $partyAccountCode,
-            $party->company_id,
-            $party->financial_year_id,
-            $party->created_by,
-            $party->created_by_ip
-        );
+        $partyAccount = $party->account_id
+            ? Account::where('company_id', $party->company_id)->find($party->account_id)
+            : null;
+
+        if (!$partyAccount) {
+            throw new \RuntimeException(
+                "Party {$party->name} has no linked ledger account for its opening balance."
+            );
+        }
 
         $openingBalanceAccount = $this->ensureSystemAccount(
             Account::CODE_SUSPENSE,
@@ -235,11 +287,89 @@ class LedgerService
             $party->created_by_ip
         );
 
-        $this->recalculateBalances($partyAccount->id, $party->company_id);
-        $this->recalculateBalances($openingBalanceAccount->id, $party->company_id);
+        $this->recalculateBalances($partyAccount->id, $party->company_id, $party->financial_year_id);
+        $this->recalculateBalances($openingBalanceAccount->id, $party->company_id, $party->financial_year_id);
     }
 
-    protected function ensureSystemAccount(
+    /**
+     * Post a balanced opening for a ledger account (account ↔ suspense).
+     * Keeps Trial Balance balanced when opening_balance is set.
+     */
+    public function createAccountOpeningBalanceEntries(Account $account): void
+    {
+        $openingBalance = round((float) ($account->opening_balance ?? 0), 2);
+        if ($openingBalance <= 0) {
+            return;
+        }
+
+        $existing = Ledger::query()
+            ->where('company_id', $account->company_id)
+            ->where('account_id', $account->id)
+            ->where('reference_type', 'account_opening_balance')
+            ->where('reference_id', $account->id)
+            ->exists();
+
+        if ($existing) {
+            return;
+        }
+
+        $suspense = $this->ensureSystemAccount(
+            Account::CODE_SUSPENSE,
+            $account->company_id,
+            $account->financial_year_id,
+            $account->created_by,
+            $account->created_by_ip
+        );
+
+        $balanceType = $account->balance_type
+            ?: (in_array($account->account_type, ['asset', 'expense'], true) ? 'debit' : 'credit');
+
+        $accountDebit = $balanceType === 'debit' ? $openingBalance : 0;
+        $accountCredit = $balanceType === 'credit' ? $openingBalance : 0;
+        $offsetDebit = $balanceType === 'credit' ? $openingBalance : 0;
+        $offsetCredit = $balanceType === 'debit' ? $openingBalance : 0;
+
+        $description = "Opening balance for {$account->account_name}";
+        $transactionDate = $account->opening_date?->format('Y-m-d') ?? now()->format('Y-m-d');
+        $referenceType = 'account_opening_balance';
+
+        $this->createEntry(
+            $account->company_id,
+            $account->financial_year_id,
+            $account->id,
+            null,
+            $transactionDate,
+            $referenceType,
+            $account->id,
+            null,
+            $description,
+            $accountDebit,
+            $accountCredit,
+            $account->created_by,
+            $account->created_by_ip
+        );
+
+        $this->createEntry(
+            $account->company_id,
+            $account->financial_year_id,
+            $suspense->id,
+            null,
+            $transactionDate,
+            $referenceType,
+            $account->id,
+            null,
+            $description,
+            $offsetDebit,
+            $offsetCredit,
+            $account->created_by,
+            $account->created_by_ip
+        );
+
+        $this->recalculateBalances($account->id, $account->company_id, $account->financial_year_id);
+        $this->recalculateBalances($suspense->id, $account->company_id, $account->financial_year_id);
+    }
+
+    public function ensureSystemAccount(
         string $accountCode,
         int $companyId,
         ?int $financialYearId,
@@ -257,7 +387,7 @@ class LedgerService
                 'account_name' => 'Opening Balance Difference',
                 'account_type' => 'asset',
                 'balance_type' => 'debit',
-                'remarks' => 'System suspense account for party opening balances.',
+                'remarks' => 'System suspense account for opening balance differences.',
             ],
             Account::CODE_AR => [
                 'account_name' => 'Accounts Receivable',
@@ -271,27 +401,41 @@ class LedgerService
                 'balance_type' => 'credit',
                 'remarks' => 'System account for vendor payables.',
             ],
+            Account::CODE_AR_INCOME => [
+                'account_name' => 'Sales Revenue (AR)',
+                'account_type' => 'income',
+                'balance_type' => 'credit',
+                'remarks' => 'Reserved default income account for AR transactions.',
+            ],
+            Account::CODE_AP_EXPENSE => [
+                'account_name' => 'Purchases (AP)',
+                'account_type' => 'expense',
+                'balance_type' => 'debit',
+                'remarks' => 'Reserved default expense account for AP transactions.',
+            ],
         ];
 
-        if (!isset($defaults[$accountCode])) {
-            throw new \InvalidArgumentException("Unsupported system account code: {$accountCode}");
+        $meta = $defaults[$accountCode] ?? null;
+        if (!$meta) {
+            throw new \RuntimeException("Unknown system account code: {$accountCode}");
         }
 
-        return Account::create(array_merge($defaults[$accountCode], [
-            'uuid' => Str::uuid()->toString(),
+        return Account::create([
+            'uuid' => (string) Str::uuid(),
             'company_id' => $companyId,
             'financial_year_id' => $financialYearId,
             'account_code' => $accountCode,
+            'account_name' => $meta['account_name'],
+            'account_type' => $meta['account_type'],
+            'entry_source' => 'system',
             'opening_balance' => 0,
-            'opening_date' => now(),
+            'balance_type' => $meta['balance_type'],
+            'remarks' => $meta['remarks'],
             'is_active' => true,
             'is_system' => true,
             'created_by' => $createdBy,
-            'updated_by' => $createdBy,
             'created_by_ip' => $createdByIp,
-            'updated_by_ip' => $createdByIp,
-            'version' => 1,
-        ]));
+        ]);
     }
 
     /**
@@ -443,7 +587,11 @@ class LedgerService
      */
     public function getTrialBalance(int $companyId, int $financialYearId): array
     {
-        $accounts = $this->accountRepository->getActiveByCompany($companyId);
+        // Inactive ledgers must remain visible when they carry historical
+        // balances; deactivation only prevents new postings.
+        $accounts = Account::where('company_id', $companyId)
+            ->orderBy('account_code')
+            ->get();
 
         $trialBalance = [];
         $totalDebit = 0;
@@ -538,17 +686,40 @@ class LedgerService
     /**
      * Recalculate running balances for an account
      */
-    public function recalculateBalances(int $accountId, int $companyId): void
+    public function recalculateBalances(int $accountId, int $companyId, ?int $financialYearId = null): void
     {
-        $entries = Ledger::where('company_id', $companyId)
-            ->where('account_id', $accountId)
-            ->orderBy('transaction_date', 'asc')
+        $query = Ledger::where('company_id', $companyId)
+            ->where('account_id', $accountId);
+
+        if ($financialYearId) {
+            $query->where('financial_year_id', $financialYearId);
+        }
+
+        $entries = $query->orderBy('transaction_date', 'asc')
             ->orderBy('id', 'asc')
             ->get();
 
         $account = $this->accountRepository->find($accountId);
         $isDebitNormal = in_array($account->account_type, ['asset', 'expense'], true);
-        $runningBalance = (float) ($account->opening_balance ?? 0);
+
+        $hasPostedOpening = $entries->contains(function ($entry) {
+            return in_array($entry->reference_type, [
+                'account_opening_balance',
+                'party_opening_balance',
+                'fy_opening_balance',
+            ], true);
+        });
+
+        if ($financialYearId) {
+            $runningBalance = $hasPostedOpening
+                ? 0.0
+                : (float) ($account->opening_balance ?? 0);
+        } else {
+            $runningBalance = $hasPostedOpening
+                ? 0.0
+                : (float) ($account->opening_balance ?? 0);
+        }
+
         $balanceType = $runningBalance >= 0
             ? ($isDebitNormal ? 'debit' : 'credit')
             : ($isDebitNormal ? 'credit' : 'debit');

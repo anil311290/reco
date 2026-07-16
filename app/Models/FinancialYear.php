@@ -88,6 +88,7 @@ class FinancialYear extends Model
     {
         return static::where('company_id', $companyId)
             ->where('is_current', true)
+            ->where('is_closed', false)
             ->first();
     }
 

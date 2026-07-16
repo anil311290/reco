@@ -97,7 +97,8 @@ class VoucherLedgerIntegrationTest extends TestCase
             $voucherRepository,
             $voucherLineRepository,
             $ledgerService,
-            $journalEntryService
+            $journalEntryService,
+            $this->app->make(\App\Services\PeriodLockService::class)
         );
 
         // Post the voucher
@@ -165,7 +166,8 @@ class VoucherLedgerIntegrationTest extends TestCase
             $voucherRepository,
             $voucherLineRepository,
             $ledgerService,
-            $journalEntryService
+            $journalEntryService,
+            $this->app->make(\App\Services\PeriodLockService::class)
         );
 
         // Post the voucher

@@ -24,11 +24,13 @@ class JournalEntryService
 
         DB::transaction(function () use ($voucher, $resolvedSourceType, $moduleName, $sourceId, $partyByAccountId) {
             // Clear previous rows for this voucher (covers module renames / re-posts)
-            JournalEntry::where('company_id', $voucher->company_id)
+            JournalEntry::withTrashed()
+                ->where('company_id', $voucher->company_id)
                 ->where('voucher_id', $voucher->id)
-                ->delete();
+                ->forceDelete();
 
-            JournalEntry::where('company_id', $voucher->company_id)
+            JournalEntry::withTrashed()
+                ->where('company_id', $voucher->company_id)
                 ->where('module', $moduleName)
                 ->where('source_type', $resolvedSourceType)
                 ->where('source_id', $sourceId)
@@ -36,7 +38,7 @@ class JournalEntryService
                     $query->whereNull('voucher_id')
                         ->orWhere('voucher_id', $voucher->id);
                 })
-                ->delete();
+                ->forceDelete();
 
             foreach ($voucher->lines as $index => $line) {
                 JournalEntry::create([

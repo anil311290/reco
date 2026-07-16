@@ -165,4 +165,55 @@ class AccountApiController extends Controller
             $this->accountService->getTree($companyId, $type)
         );
     }
+
+    /**
+     * Cash / Bank / OD accounts for payment, receipt, and invoice settlement forms.
+     */
+    public function cashBank(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'mode' => 'nullable|in:cash,bank,od',
+            'financial_year_id' => 'nullable|integer|exists:financial_years,id',
+        ]);
+
+        $companyId = $request->user()->company_id;
+        $financialYearId = isset($validated['financial_year_id'])
+            ? (int) $validated['financial_year_id']
+            : $request->user()->company->currentFinancialYear?->id;
+
+        return ResponseHelper::success(
+            $this->accountService->getCashBankAccountsForMode(
+                $companyId,
+                $validated['mode'] ?? null,
+                $financialYearId
+            )
+        );
+    }
+
+    /**
+     * Particulars options for payment/receipt lines (parties mapped to accounts).
+     */
+    public function paymentParticulars(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'type' => 'required|in:payment,receipt',
+        ]);
+
+        return ResponseHelper::success(
+            $this->accountService->getPaymentParticularsOptions(
+                $request->user()->company_id,
+                $validated['type']
+            )
+        );
+    }
+
+    /**
+     * Particulars options for adjustment/journal vouchers.
+     */
+    public function adjustmentParticulars(Request $request): JsonResponse
+    {
+        return ResponseHelper::success(
+            $this->accountService->getAdjustmentParticularsOptions($request->user()->company_id)
+        );
+    }
 }

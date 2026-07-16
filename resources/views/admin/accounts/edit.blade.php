@@ -42,11 +42,12 @@
                         <div class="row g-3 mb-4">
                             <div class="col-md-8">
                                 <label for="account_name" class="form-label fw-semibold">Account Name <span class="text-danger">*</span></label>
-                                <input type="text" class="form-control form-control-lg" id="account_name" name="account_name" value="{{ old('account_name', $account->account_name) }}" required readonly>
+                                <input type="text" class="form-control form-control-lg" id="account_name" name="account_name" value="{{ old('account_name', $account->account_name) }}" required>
+                                <div class="form-text">Renaming is safe; posted transactions remain linked by ledger ID.</div>
                             </div>
                             <div class="col-md-4">
                                 <label for="account_type" class="form-label fw-semibold">Account Type <span class="text-danger">*</span></label>
-                                <select class="form-select form-select-lg" id="account_type" name="account_type" required {{ $account->is_system ? 'disabled' : '' }}>
+                                <select class="form-select form-select-lg" id="account_type" name="account_type" required {{ ($account->is_system || $isInUse) ? 'disabled' : '' }}>
                                     <option value="">Select Type</option>
                                     <option value="asset" {{ old('account_type', $account->account_type) === 'asset' ? 'selected' : '' }}>Asset</option>
                                     <option value="liability" {{ old('account_type', $account->account_type) === 'liability' ? 'selected' : '' }}>Liability</option>
@@ -54,7 +55,7 @@
                                     <option value="expense" {{ old('account_type', $account->account_type) === 'expense' ? 'selected' : '' }}>Expense</option>
                                     <option value="equity" {{ old('account_type', $account->account_type) === 'equity' ? 'selected' : '' }}>Equity</option>
                                 </select>
-                                @if($account->is_system)
+                                @if($account->is_system || $isInUse)
                                     <input type="hidden" name="account_type" value="{{ $account->account_type }}">
                                 @endif
                             </div>
@@ -62,18 +63,21 @@
 
                         <div class="row g-3 mb-4 {{ old('account_type', $account->account_type) === 'asset' ? '' : 'd-none' }}" id="transaction_mode_row">
                             <div class="col-md-6">
-                                <label for="transaction_mode" class="form-label fw-semibold">Transaction Mode <span class="text-danger">*</span></label>
-                                <select class="form-select form-select-lg" id="transaction_mode" name="transaction_mode" {{ old('account_type', $account->account_type) === 'asset' ? 'required' : '' }}>
-                                    <option value="">Select Mode</option>
+                                <label for="transaction_mode" class="form-label fw-semibold">Transaction Mode</label>
+                                <select class="form-select form-select-lg" id="transaction_mode" name="transaction_mode" {{ $isInUse ? 'disabled' : '' }}>
+                                    <option value="">General Asset (not Cash/Bank)</option>
                                     <option value="cash" {{ old('transaction_mode', $account->transaction_mode) === 'cash' ? 'selected' : '' }}>Cash</option>
                                     <option value="bank" {{ old('transaction_mode', $account->transaction_mode) === 'bank' ? 'selected' : '' }}>Bank</option>
                                     <option value="od" {{ old('transaction_mode', $account->transaction_mode) === 'od' ? 'selected' : '' }}>OD</option>
                                 </select>
+                                @if($isInUse && $account->transaction_mode)
+                                    <input type="hidden" name="transaction_mode" value="{{ $account->transaction_mode }}">
+                                @endif
                             </div>
                             <div class="col-md-6 d-flex align-items-end">
                                 <div class="alert account-form-help mb-0 w-100">
                                     <i class="bi bi-lightbulb me-1"></i>
-                                    Asset accounts must have a transaction mode.
+                                    Select a mode only for Cash, Bank, or OD ledgers.
                                 </div>
                             </div>
                         </div>
@@ -83,21 +87,24 @@
                                 <label for="opening_balance" class="form-label fw-semibold mb-1">Opening Balance</label>
                                 <div class="input-group">
                                     <span class="input-group-text">₹</span>
-                                    <input type="number" class="form-control" id="opening_balance" name="opening_balance" value="{{ old('opening_balance', $account->opening_balance) }}" step="0.01" min="0">
+                                    <input type="number" class="form-control" id="opening_balance" name="opening_balance" value="{{ old('opening_balance', $account->opening_balance) }}" step="0.01" min="0" {{ $isInUse ? 'readonly' : '' }}>
                                 </div>
                             </div>
 
                             <div class="col-md-4">
                                 <label for="balance_type" class="form-label fw-semibold mb-1">Balance Type</label>
-                                <select class="form-select" id="balance_type" name="balance_type">
+                                <select class="form-select" id="balance_type" name="balance_type" {{ $isInUse ? 'disabled' : '' }}>
                                     <option value="debit" {{ old('balance_type', $account->balance_type ?? 'debit') === 'debit' ? 'selected' : '' }}>Debit</option>
                                     <option value="credit" {{ old('balance_type', $account->balance_type ?? 'debit') === 'credit' ? 'selected' : '' }}>Credit</option>
                                 </select>
+                                @if($isInUse)
+                                    <input type="hidden" name="balance_type" value="{{ $account->balance_type }}">
+                                @endif
                             </div>
 
                             <div class="col-md-4">
                                 <label for="opening_date" class="form-label fw-semibold mb-1">Opening Date</label>
-                                <input type="date" class="form-control" id="opening_date" name="opening_date" value="{{ old('opening_date', $account->opening_date?->format('Y-m-d')) }}">
+                                <input type="date" class="form-control" id="opening_date" name="opening_date" value="{{ old('opening_date', $account->opening_date?->format('Y-m-d')) }}" {{ $isInUse ? 'readonly' : '' }}>
                             </div>
                         </div>
 
@@ -124,6 +131,12 @@
                             <div class="alert alert-info mt-4 mb-0">
                                 <i class="bi bi-info-circle me-2"></i>
                                 This is a system account. Some fields cannot be modified.
+                            </div>
+                        @endif
+                        @if($isInUse)
+                            <div class="alert alert-warning mt-4 mb-0">
+                                <i class="bi bi-shield-lock me-2"></i>
+                                Transactions are posted to this ledger. You may rename it, update remarks, or change its active status; classification and opening-balance fields are locked to preserve historical reports.
                             </div>
                         @endif
                     </form>
@@ -209,8 +222,6 @@ $(document).ready(function() {
     function syncTransactionModeState() {
         const isAsset = $('#account_type').val() === 'asset';
         $('#transaction_mode_row').toggleClass('d-none', !isAsset);
-        $('#transaction_mode').prop('required', isAsset);
-
         if (!isAsset) {
             $('#transaction_mode').val('');
         }

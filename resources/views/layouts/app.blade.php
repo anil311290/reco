@@ -333,7 +333,7 @@
                 <!-- Masters -->
                 @anyrole('admin', 'manager', 'accountant')
                 <li class="nav-item">
-                    <a class="nav-link has-submenu {{ request()->is('admin/accounts*') || request()->is('admin/parties*') || request()->is('admin/items*') || request()->is('admin/item-categories*') || request()->is('admin/tax-rates*') || request()->is('admin/bank-accounts*') ? 'active' : '' }}" href="#mastersSubmenu" data-bs-toggle="collapse">
+                    <a class="nav-link has-submenu {{ request()->is('admin/accounts*') || request()->is('admin/parties*') || request()->is('admin/items*') || request()->is('admin/item-categories*') || request()->is('admin/tax-rates*') ? 'active' : '' }}" href="#mastersSubmenu" data-bs-toggle="collapse">
                         <i class="bi bi-database"></i>
                         <span>Masters</span>
                         <i class="bi bi-chevron-down ms-auto"></i>

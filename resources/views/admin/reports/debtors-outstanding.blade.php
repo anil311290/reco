@@ -61,13 +61,21 @@
                     @forelse($report['debtors'] as $index => $item)
                     <tr>
                         <td>{{ $index + 1 }}</td>
-                        <td class="fw-semibold">{{ $item['party']->name }}</td>
+                        <td class="fw-semibold">
+                            @permission('parties.edit')
+                                <a href="{{ route('admin.parties.edit', $item['party']->id) }}" class="report-detail-link" title="View party">
+                                    {{ $item['party']->name }}
+                                </a>
+                            @else
+                                {{ $item['party']->name }}
+                            @endpermission
+                        </td>
                         <td>{{ $item['party']->mobile ?? '-' }}</td>
                         <td>{{ $item['party']->email ?? '-' }}</td>
                         <td class="text-end fw-bold text-danger">₹{{ number_format($item['balance'], 2) }}</td>
                         <td class="text-center">
                             @if(!empty($item['account_id']))
-                                <a href="{{ route('admin.reports.ledger', ['account_id' => $item['account_id']]) }}" class="btn btn-sm btn-outline-primary">View</a>
+                                <a href="{{ route('admin.reports.ledger', ['account_id' => $item['account_id']]) }}" class="btn btn-sm btn-outline-primary" title="View ledger">Ledger</a>
                             @else
                                 -
                             @endif

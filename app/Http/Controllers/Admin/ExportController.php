@@ -145,7 +145,11 @@ class ExportController extends Controller
         $companyId = $this->getCompanyId($request);
         $date = $request->input('date', date('Y-m-d'));
 
-        $pdf = $this->exportService->exportDayBookPdf($companyId, $date);
+        $pdf = $this->exportService->exportDayBookPdf(
+            $companyId,
+            $date,
+            $request->filled('financial_year_id') ? (int) $request->input('financial_year_id') : null
+        );
 
         return response($pdf)
             ->header('Content-Type', 'application/pdf')

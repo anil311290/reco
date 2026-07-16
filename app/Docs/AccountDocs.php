@@ -97,6 +97,38 @@ use OpenApi\Annotations as OA;
  *     @OA\RequestBody(required=true, @OA\JsonContent(required={"status"}, @OA\Property(property="status", type="boolean"))),
  *     @OA\Response(response=200, description="Status updated", @OA\JsonContent(ref="#/components/schemas/SuccessResponse"))
  * )
+ *
+ * @OA\Get(
+ *     path="/accounts/cash-bank",
+ *     tags={"Accounts"},
+ *     summary="Cash / Bank / OD accounts for payments and receipts",
+ *     description="Dropdown helper matching web Paid From / Received In. Includes available_balance (null for OD).",
+ *     operationId="getCashBankAccounts",
+ *     security={{"bearerAuth":{}}},
+ *     @OA\Parameter(name="mode", in="query", description="Filter by transaction mode", @OA\Schema(type="string", enum={"cash","bank","od"})),
+ *     @OA\Parameter(name="financial_year_id", in="query", @OA\Schema(type="integer")),
+ *     @OA\Response(response=200, description="Success", @OA\JsonContent(ref="#/components/schemas/SuccessResponse"))
+ * )
+ *
+ * @OA\Get(
+ *     path="/accounts/payment-particulars",
+ *     tags={"Accounts"},
+ *     summary="Particulars for payment/receipt lines",
+ *     description="Party ledgers only. type=payment returns creditors; type=receipt returns debtors.",
+ *     operationId="getPaymentParticulars",
+ *     security={{"bearerAuth":{}}},
+ *     @OA\Parameter(name="type", in="query", required=true, @OA\Schema(type="string", enum={"payment","receipt"})),
+ *     @OA\Response(response=200, description="Success", @OA\JsonContent(ref="#/components/schemas/SuccessResponse"))
+ * )
+ *
+ * @OA\Get(
+ *     path="/accounts/adjustment-particulars",
+ *     tags={"Accounts"},
+ *     summary="Particulars for adjustment/journal vouchers",
+ *     operationId="getAdjustmentParticulars",
+ *     security={{"bearerAuth":{}}},
+ *     @OA\Response(response=200, description="Success", @OA\JsonContent(ref="#/components/schemas/SuccessResponse"))
+ * )
  */
 class AccountDocs
 {

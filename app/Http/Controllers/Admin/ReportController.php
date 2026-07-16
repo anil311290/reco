@@ -83,10 +83,16 @@ class ReportController extends Controller
     {
         $companyId = auth()->user()->company_id;
         $date = $request->input('date', date('Y-m-d'));
+        $financialYearId = $request->filled('financial_year_id')
+            ? (int) $request->input('financial_year_id')
+            : FinancialYear::getCurrent($companyId)?->id;
 
-        $report = $this->reportService->getDayBook($companyId, $date);
+        $report = $this->reportService->getDayBook($companyId, $date, $financialYearId);
+        $financialYears = FinancialYear::where('company_id', $companyId)
+            ->orderByDesc('start_date')
+            ->get();
 
-        return view('admin.reports.day-book', compact('report', 'date'));
+        return view('admin.reports.day-book', compact('report', 'date', 'financialYearId', 'financialYears'));
     }
 
     public function cashBook(Request $request)

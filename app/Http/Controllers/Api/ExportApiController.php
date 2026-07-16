@@ -85,7 +85,11 @@ class ExportApiController extends Controller
         $companyId = $request->user()->company_id;
 
         try {
-            $pdf = $this->exportService->exportDayBookPdf($companyId, $request->date);
+            $pdf = $this->exportService->exportDayBookPdf(
+                $companyId,
+                $request->date,
+                $request->filled('financial_year_id') ? (int) $request->financial_year_id : null
+            );
 
             return $this->storePdfResponse($pdf, 'day-book-' . $request->date . '.pdf');
         } catch (\Exception $e) {

@@ -67,6 +67,37 @@ use OpenApi\Annotations as OA;
  *     @OA\Response(response=200, description="Updated", @OA\JsonContent(ref="#/components/schemas/SuccessResponse")),
  *     @OA\Response(response=404, description="Not found", @OA\JsonContent(ref="#/components/schemas/ErrorResponse"))
  * )
+ *
+ * @OA\Delete(
+ *     path="/tax-rates/{id}",
+ *     tags={"Tax Rates"},
+ *     summary="Delete tax rate",
+ *     operationId="deleteTaxRate",
+ *     security={{"bearerAuth":{}}},
+ *     @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")),
+ *     @OA\Response(response=200, description="Deleted", @OA\JsonContent(ref="#/components/schemas/SuccessResponse")),
+ *     @OA\Response(response=404, description="Not found", @OA\JsonContent(ref="#/components/schemas/ErrorResponse"))
+ * )
+ *
+ * @OA\Get(
+ *     path="/tax-rates/dropdown",
+ *     tags={"Tax Rates"},
+ *     summary="Tax rates dropdown list",
+ *     operationId="getTaxRatesDropdown",
+ *     security={{"bearerAuth":{}}},
+ *     @OA\Response(response=200, description="Success", @OA\JsonContent(ref="#/components/schemas/SuccessResponse"))
+ * )
+ *
+ * @OA\Patch(
+ *     path="/tax-rates/{id}/status",
+ *     tags={"Tax Rates"},
+ *     summary="Toggle tax rate status",
+ *     operationId="toggleTaxRateStatus",
+ *     security={{"bearerAuth":{}}},
+ *     @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")),
+ *     @OA\RequestBody(@OA\JsonContent(@OA\Property(property="status", type="string", enum={"active","inactive"}))),
+ *     @OA\Response(response=200, description="Status updated", @OA\JsonContent(ref="#/components/schemas/SuccessResponse"))
+ * )
  */
 class TaxRateDocs
 {

@@ -68,6 +68,16 @@ class Voucher extends Model
         return $this->belongsTo(Party::class);
     }
 
+    public function salesInvoice()
+    {
+        return $this->belongsTo(SalesInvoice::class);
+    }
+
+    public function purchaseInvoice()
+    {
+        return $this->belongsTo(PurchaseInvoice::class);
+    }
+
     /**
      * Get the voucher lines.
      */
@@ -153,7 +163,6 @@ class Voucher extends Model
         };
 
         $lastVoucher = static::where('company_id', $companyId)
-            ->where('financial_year_id', $financialYearId)
             ->where('voucher_number', 'like', "{$prefix}%")
             ->orderBy('voucher_number', 'desc')
             ->first();

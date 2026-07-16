@@ -57,6 +57,7 @@ class Ledger extends Model
         'company_id',
         'financial_year_id',
         'account_id',
+        'party_id',
         'voucher_id',
         'transaction_date',
         'reference_type',
@@ -109,6 +110,11 @@ class Ledger extends Model
     public function voucher()
     {
         return $this->belongsTo(Voucher::class);
+    }
+
+    public function party()
+    {
+        return $this->belongsTo(Party::class);
     }
 
     /**

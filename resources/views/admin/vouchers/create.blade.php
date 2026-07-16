@@ -79,11 +79,15 @@
                 <div id="paymentReceiptRows" class="mb-3">
                     <div class="payment-receipt-row row g-2 mb-2" data-index="0">
                         <div class="col-md-8">
-                            <label class="form-label">Particulars (Account / Party) <span class="text-danger">*</span></label>
+                            <label class="form-label">Particulars (Party) <span class="text-danger">*</span></label>
                             <select class="form-select pr-particular" name="payment_rows[0][account_id]" required>
                                 <option value="">Select Particulars</option>
-                                @foreach(($particularsOptions ?? []) as $option)
-                                    <option value="{{ $option['id'] }}">{{ $option['text'] }}</option>
+                                @foreach(collect($particularsOptions ?? [])->groupBy('group') as $group => $options)
+                                    <optgroup label="{{ $group }}">
+                                    @foreach($options as $option)
+                                        <option value="{{ $option['id'] }}">{{ $option['text'] }}</option>
+                                    @endforeach
+                                    </optgroup>
                                 @endforeach
                             </select>
                         </div>
@@ -104,40 +108,71 @@
                     </button>
                     <small class="text-muted ms-2 d-block mt-2">
                         @if($type === 'payment')
-                            Payment (Tally style): Dr Particulars (Party/Expense), Cr Cash/Bank — auto-posted to ledger &amp; journal.
+                            Payment (Tally style): Dr Party, Cr Cash/Bank — auto-posted to ledger &amp; journal.
                         @else
-                            Receipt (Tally style): Dr Cash/Bank, Cr Particulars (Party/Income) — auto-posted to ledger &amp; journal.
+                            Receipt (Tally style): Dr Cash/Bank, Cr Party — auto-posted to ledger &amp; journal.
                         @endif
                     </small>
                 </div>
             @elseif($isAdjustment)
                 <div id="adjustmentRows" class="mb-3">
                     <div class="adjustment-row row g-2 mb-2" data-index="0">
-                        <div class="col-md-3">
-                            <label class="form-label">Creditor Account <span class="text-danger">*</span></label>
-                            <select class="form-select adjustment-creditor" name="adjustment_rows[0][creditor_account_id]" required>
-                                <option value="">Select Creditor Account</option>
-                                @foreach($accounts as $account)
-                                    <option value="{{ $account['id'] }}">{{ $account['text'] }}</option>
+                        <div class="col-md-5">
+                            <label class="form-label">Particulars (Party / Ledger) <span class="text-danger">*</span></label>
+                            <select class="form-select adjustment-particular" name="adjustment_rows[0][account_id]" required>
+                                <option value="">Select Party / Ledger</option>
+                                @foreach(collect($accounts)->groupBy(fn ($option) => $option['group'] ?? 'Ledger Accounts') as $group => $options)
+                                    <optgroup label="{{ $group }}">
+                                    @foreach($options as $account)
+                                        <option value="{{ $account['id'] }}">{{ $account['text'] }}</option>
+                                    @endforeach
+                                    </optgroup>
                                 @endforeach
                             </select>
                         </div>
                         <div class="col-md-2">
-                            <label class="form-label">Credit Amount <span class="text-danger">*</span></label>
-                            <input type="number" class="form-control adjustment-credit-amount" name="adjustment_rows[0][credit_amount]" value="" step="0.01" min="0" placeholder="0.00" required>
+                            <label class="form-label">Dr / Cr <span class="text-danger">*</span></label>
+                            <select class="form-select adjustment-entry-type" name="adjustment_rows[0][entry_type]" required>
+                                <option value="">Select</option>
+                                <option value="debit" selected>Debit</option>
+                                <option value="credit">Credit</option>
+                            </select>
                         </div>
                         <div class="col-md-3">
-                            <label class="form-label">Debitor Account <span class="text-danger">*</span></label>
-                            <select class="form-select adjustment-debitor" name="adjustment_rows[0][debitor_account_id]" required>
-                                <option value="">Select Debitor Account</option>
-                                @foreach($accounts as $account)
-                                    <option value="{{ $account['id'] }}">{{ $account['text'] }}</option>
+                            <label class="form-label">Amount <span class="text-danger">*</span></label>
+                            <input type="number" class="form-control adjustment-amount" name="adjustment_rows[0][amount]" value="" step="0.01" min="0.01" placeholder="0.00" required>
+                        </div>
+                        <div class="col-md-2 d-flex align-items-end">
+                            <button type="button" class="btn btn-outline-danger remove-adjustment-row" style="display:none;">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="adjustment-row row g-2 mb-2" data-index="1">
+                        <div class="col-md-5">
+                            <label class="form-label">Particulars (Party / Ledger) <span class="text-danger">*</span></label>
+                            <select class="form-select adjustment-particular" name="adjustment_rows[1][account_id]" required>
+                                <option value="">Select Party / Ledger</option>
+                                @foreach(collect($accounts)->groupBy(fn ($option) => $option['group'] ?? 'Ledger Accounts') as $group => $options)
+                                    <optgroup label="{{ $group }}">
+                                    @foreach($options as $account)
+                                        <option value="{{ $account['id'] }}">{{ $account['text'] }}</option>
+                                    @endforeach
+                                    </optgroup>
                                 @endforeach
                             </select>
                         </div>
                         <div class="col-md-2">
-                            <label class="form-label">Debit Amount <span class="text-danger">*</span></label>
-                            <input type="number" class="form-control adjustment-debit-amount" name="adjustment_rows[0][debit_amount]" value="" step="0.01" min="0" placeholder="0.00" required>
+                            <label class="form-label">Dr / Cr <span class="text-danger">*</span></label>
+                            <select class="form-select adjustment-entry-type" name="adjustment_rows[1][entry_type]" required>
+                                <option value="">Select</option>
+                                <option value="debit">Debit</option>
+                                <option value="credit" selected>Credit</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Amount <span class="text-danger">*</span></label>
+                            <input type="number" class="form-control adjustment-amount" name="adjustment_rows[1][amount]" value="" step="0.01" min="0.01" placeholder="0.00" required>
                         </div>
                         <div class="col-md-2 d-flex align-items-end">
                             <button type="button" class="btn btn-outline-danger remove-adjustment-row" style="display:none;">
@@ -148,9 +183,11 @@
                 </div>
                 <div class="mb-3">
                     <button type="button" id="addAdjustmentRow" class="btn btn-outline-primary">
-                        <i class="bi bi-plus-circle me-2"></i>Add Row
+                        <i class="bi bi-plus-circle me-2"></i>Add Line
                     </button>
-                    <small class="text-muted ms-2">Select Creditor and Debitor accounts. Credit and Debit amounts must be equal.</small>
+                    <small class="text-muted ms-2 d-block mt-2">
+                        Journal (Tally style): add debit and credit lines. Total Debit must equal Total Credit — auto-posted to ledger &amp; journal.
+                    </small>
                 </div>
             @else
                 <div id="voucherLines">
@@ -244,7 +281,7 @@ $(document).ready(function() {
     const accounts = @json($accounts);
     let lineIndex = 1;
     let paymentReceiptRowIndex = 1;
-    let adjustmentRowIndex = 1;
+    let adjustmentRowIndex = 2;
 
     function cashBankOptionsHtml(selectedMode = '', selectedValue = '') {
         let html = '<option value="">Select Cash / Bank</option>';
@@ -260,18 +297,38 @@ $(document).ready(function() {
 
     function particularsOptionsHtml(selectedValue = '') {
         let html = '<option value="">Select Particulars</option>';
+        const groups = {};
         particularsOptions.forEach((option) => {
-            const selected = String(selectedValue) === String(option.id) ? 'selected' : '';
-            html += `<option value="${option.id}" ${selected}>${option.text}</option>`;
+            const group = option.group || 'Ledger Accounts';
+            groups[group] = groups[group] || [];
+            groups[group].push(option);
+        });
+        Object.entries(groups).forEach(([group, options]) => {
+            html += `<optgroup label="${group}">`;
+            options.forEach((option) => {
+                const selected = String(selectedValue) === String(option.id) ? 'selected' : '';
+                html += `<option value="${option.id}" ${selected}>${option.text}</option>`;
+            });
+            html += '</optgroup>';
         });
         return html;
     }
 
     function accountOptionsHtml(selectedValue = '') {
         let html = '<option value="">Select Account</option>';
+        const groups = {};
         accounts.forEach((account) => {
-            const selected = String(selectedValue) === String(account.id) ? 'selected' : '';
-            html += `<option value="${account.id}" ${selected}>${account.text}</option>`;
+            const group = account.group || 'Ledger Accounts';
+            groups[group] = groups[group] || [];
+            groups[group].push(account);
+        });
+        Object.entries(groups).forEach(([group, options]) => {
+            html += `<optgroup label="${group}">`;
+            options.forEach((account) => {
+                const selected = String(selectedValue) === String(account.id) ? 'selected' : '';
+                html += `<option value="${account.id}" ${selected}>${account.text}</option>`;
+            });
+            html += '</optgroup>';
         });
         return html;
     }
@@ -291,8 +348,13 @@ $(document).ready(function() {
 
         if (isAdjustment) {
             $('.adjustment-row').each(function() {
-                totalDebit += parseFloat($(this).find('.adjustment-debit-amount').val()) || 0;
-                totalCredit += parseFloat($(this).find('.adjustment-credit-amount').val()) || 0;
+                const entryType = $(this).find('.adjustment-entry-type').val();
+                const amount = parseFloat($(this).find('.adjustment-amount').val()) || 0;
+                if (entryType === 'debit') {
+                    totalDebit += amount;
+                } else if (entryType === 'credit') {
+                    totalCredit += amount;
+                }
             });
         } else {
             $('.line-debit').each(function() {
@@ -476,53 +538,30 @@ $(document).ready(function() {
         refreshParticularsAvailability();
     } else if (isAdjustment) {
         function updateAdjustmentRemoveButtons() {
-            if ($('.adjustment-row').length <= 1) {
+            if ($('.adjustment-row').length <= 2) {
                 $('.remove-adjustment-row').hide();
             } else {
                 $('.remove-adjustment-row').show();
             }
         }
 
-        function freezeAdjustmentAccounts(row) {
-            const creditorSelect = row.find('.adjustment-creditor');
-            const debitorSelect = row.find('.adjustment-debitor');
-            const creditorValue = creditorSelect.val();
-            const debitorValue = debitorSelect.val();
-
-            debitorSelect.find('option').prop('disabled', false);
-            creditorSelect.find('option').prop('disabled', false);
-
-            if (creditorValue) {
-                debitorSelect.find(`option[value="${creditorValue}"]`).prop('disabled', true);
-            }
-            if (debitorValue) {
-                creditorSelect.find(`option[value="${debitorValue}"]`).prop('disabled', true);
-            }
-
-            if (creditorValue && creditorValue === debitorValue) {
-                toastr.error('Creditor and Debitor accounts cannot be the same.');
-                debitorSelect.val('');
-            }
-        }
-
-        $('#addAdjustmentRow').on('click', function() {
-            const row = $(`
-                <div class="adjustment-row row g-2 mb-2" data-index="${adjustmentRowIndex}">
-                    <div class="col-md-3">
-                        <select class="form-select adjustment-creditor" name="adjustment_rows[${adjustmentRowIndex}][creditor_account_id]" required>
-                            ${accountOptionsHtml()}
+        function buildAdjustmentRow(index, selectedAccountId = '', selectedEntryType = '', selectedAmount = '') {
+            return $(`
+                <div class="adjustment-row row g-2 mb-2" data-index="${index}">
+                    <div class="col-md-5">
+                        <select class="form-select adjustment-particular" name="adjustment_rows[${index}][account_id]" required>
+                            ${accountOptionsHtml(selectedAccountId)}
                         </select>
                     </div>
                     <div class="col-md-2">
-                        <input type="number" class="form-control adjustment-credit-amount" name="adjustment_rows[${adjustmentRowIndex}][credit_amount]" value="" step="0.01" min="0" placeholder="0.00" required>
-                    </div>
-                    <div class="col-md-3">
-                        <select class="form-select adjustment-debitor" name="adjustment_rows[${adjustmentRowIndex}][debitor_account_id]" required>
-                            ${accountOptionsHtml()}
+                        <select class="form-select adjustment-entry-type" name="adjustment_rows[${index}][entry_type]" required>
+                            <option value="">Select</option>
+                            <option value="debit" ${selectedEntryType === 'debit' ? 'selected' : ''}>Debit</option>
+                            <option value="credit" ${selectedEntryType === 'credit' ? 'selected' : ''}>Credit</option>
                         </select>
                     </div>
-                    <div class="col-md-2">
-                        <input type="number" class="form-control adjustment-debit-amount" name="adjustment_rows[${adjustmentRowIndex}][debit_amount]" value="" step="0.01" min="0" placeholder="0.00" required>
+                    <div class="col-md-3">
+                        <input type="number" class="form-control adjustment-amount" name="adjustment_rows[${index}][amount]" value="${selectedAmount}" step="0.01" min="0.01" placeholder="0.00" required>
                     </div>
                     <div class="col-md-2 d-flex align-items-end">
                         <button type="button" class="btn btn-outline-danger remove-adjustment-row">
@@ -531,43 +570,27 @@ $(document).ready(function() {
                     </div>
                 </div>
             `);
+        }
 
+        $('#addAdjustmentRow').on('click', function() {
+            const row = buildAdjustmentRow(adjustmentRowIndex);
             $('#adjustmentRows').append(row);
             adjustmentRowIndex++;
             updateAdjustmentRemoveButtons();
         });
 
-        $(document).on('change', '.adjustment-creditor, .adjustment-debitor', function() {
-            freezeAdjustmentAccounts($(this).closest('.adjustment-row'));
-        });
-
         $(document).on('click', '.remove-adjustment-row', function() {
+            if ($('.adjustment-row').length <= 2) {
+                toastr.error('At least two journal lines are required.');
+                return;
+            }
             $(this).closest('.adjustment-row').remove();
             updateAdjustmentRemoveButtons();
             calculateTotals();
         });
 
-        $(document).on('input', '.adjustment-row .adjustment-debit-amount', function() {
-            const row = $(this).closest('.adjustment-row');
-            const debit = parseFloat($(this).val()) || 0;
-            if (debit > 0) {
-                row.find('.adjustment-credit-amount').val(debit);
-            }
-            calculateTotals();
-        });
+        $(document).on('input change', '.adjustment-entry-type, .adjustment-amount', calculateTotals);
 
-        $(document).on('input', '.adjustment-row .adjustment-credit-amount', function() {
-            const row = $(this).closest('.adjustment-row');
-            const credit = parseFloat($(this).val()) || 0;
-            if (credit > 0) {
-                row.find('.adjustment-debit-amount').val(credit);
-            }
-            calculateTotals();
-        });
-
-        $('.adjustment-row').each(function() {
-            freezeAdjustmentAccounts($(this));
-        });
         updateAdjustmentRemoveButtons();
     } else {
         $('#addLine').on('click', function() {
@@ -624,9 +647,7 @@ $(document).ready(function() {
         updateRemoveButtons();
     }
 
-    ajaxFormSubmit('voucherForm', '{{ route("admin.vouchers.store") }}', 'POST', function(response) {
-        window.location.href = '{{ route("admin.vouchers.index") }}';
-    });
+    ajaxFormSubmit('voucherForm', '{{ route("admin.vouchers.store") }}', 'POST', '{{ route("admin.vouchers.type", $type) }}');
 
     calculateTotals();
 });

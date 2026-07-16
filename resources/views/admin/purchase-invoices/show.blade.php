@@ -137,9 +137,29 @@
                         <label class="form-label">Balance Due: <strong class="text-danger">₹{{ number_format($invoice->balance_due, 2) }}</strong></label>
                     </div>
                     <div class="mb-3">
+                        <label class="form-label">Payment Date <span class="text-danger">*</span></label>
+                        <input type="date" class="form-control" name="payment_date" value="{{ date('Y-m-d') }}" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Payment Mode <span class="text-danger">*</span></label>
+                        <select class="form-select" id="payment_mode" name="payment_mode" required>
+                            <option value="">Select Mode</option>
+                            <option value="cash">Cash</option>
+                            <option value="bank">Bank</option>
+                            <option value="od">OD</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Paid From <span class="text-danger">*</span></label>
+                        <select class="form-select" id="cash_bank_account_id" name="cash_bank_account_id" required>
+                            <option value="">Select Cash / Bank</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
                         <label class="form-label">Payment Amount <span class="text-danger">*</span></label>
                         <input type="number" class="form-control" name="amount" step="0.01" min="0.01" max="{{ $invoice->balance_due }}" value="{{ $invoice->balance_due }}" required>
                     </div>
+                    <small class="text-muted">Posts a Payment voucher (Dr Party, Cr Cash/Bank) linked to this invoice.</small>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
@@ -154,6 +174,22 @@
 
 @section('scripts')
 <script>
+const cashBankAccounts = @json($cashBankAccounts ?? []);
+
+function refreshCashBankDropdown() {
+    const mode = $('#payment_mode').val();
+    let html = '<option value="">Select Cash / Bank</option>';
+    cashBankAccounts.forEach((option) => {
+        if (mode && option.transaction_mode !== mode) {
+            return;
+        }
+        html += `<option value="${option.id}">${option.text}</option>`;
+    });
+    $('#cash_bank_account_id').html(html);
+}
+
+$('#payment_mode').on('change', refreshCashBankDropdown);
+
 $('#paymentForm').on('submit', function(e) {
     e.preventDefault();
     $.ajax({

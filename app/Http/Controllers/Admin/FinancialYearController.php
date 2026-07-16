@@ -5,11 +5,15 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\FinancialYear;
 use App\Helpers\ResponseHelper;
+use App\Services\FinancialYearService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 class FinancialYearController extends Controller
 {
+    public function __construct(protected FinancialYearService $financialYearService)
+    {
+    }
     /**
      * Display financial years list
      */
@@ -86,7 +90,7 @@ class FinancialYearController extends Controller
                 return ResponseHelper::error('Cannot set a closed financial year as current');
             }
 
-            $financialYear->setAsCurrent();
+            $this->financialYearService->setAsCurrent($financialYear);
 
             return ResponseHelper::success(null, 'Financial year set as current successfully');
         } catch (\Exception $e) {

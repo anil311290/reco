@@ -5,11 +5,15 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\FinancialYear;
 use App\Helpers\ResponseHelper;
+use App\Services\FinancialYearService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 class FinancialYearApiController extends Controller
 {
+    public function __construct(protected FinancialYearService $financialYearService)
+    {
+    }
     public function index(Request $request): JsonResponse
     {
         $companyId = $request->user()->company_id;
@@ -82,7 +86,7 @@ class FinancialYearApiController extends Controller
                 return ResponseHelper::error('Cannot set a closed financial year as current');
             }
 
-            $financialYear->setAsCurrent();
+            $this->financialYearService->setAsCurrent($financialYear);
 
             return ResponseHelper::success($financialYear->fresh(), 'Financial year set as current successfully');
         } catch (\Exception $e) {

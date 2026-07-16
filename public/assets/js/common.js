@@ -108,14 +108,16 @@ function ajaxFormSubmit(formId, url, method, successCallback, errorCallback = nu
             suppressGlobalErrorHandler: true,
             success: function(response) {
                 if (response.success) {
-                    toastr.success(response.message || 'Operation successful!');
-
-                    if (typeof successCallback === 'function') {
-                        successCallback(response);
-                    } else if (typeof successCallback === 'string' && successCallback.length > 0) {
-                        setTimeout(function() {
-                            window.location.href = successCallback;
-                        }, 800);
+                    if (typeof successCallback === 'string' && successCallback.length > 0) {
+                        try {
+                            sessionStorage.setItem('reco_flash_success', response.message || 'Operation successful!');
+                        } catch (e) {}
+                        window.location.href = successCallback;
+                    } else {
+                        toastr.success(response.message || 'Operation successful!');
+                        if (typeof successCallback === 'function') {
+                            successCallback(response);
+                        }
                     }
                 } else {
                     toastr.error(response.message || 'Something went wrong!');
@@ -808,6 +810,19 @@ function initPartyQuickAdd() {
 }
 
 $(document).ready(function() {
+    try {
+        const flashSuccess = sessionStorage.getItem('reco_flash_success');
+        if (flashSuccess) {
+            sessionStorage.removeItem('reco_flash_success');
+            toastr.success(flashSuccess);
+        }
+        const flashError = sessionStorage.getItem('reco_flash_error');
+        if (flashError) {
+            sessionStorage.removeItem('reco_flash_error');
+            toastr.error(flashError);
+        }
+    } catch (e) {}
+
     const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
     tooltipTriggerList.map(function(tooltipTriggerEl) {
         return new bootstrap.Tooltip(tooltipTriggerEl);

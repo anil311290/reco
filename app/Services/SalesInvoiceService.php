@@ -5,9 +5,6 @@ namespace App\Services;
 use App\Models\SalesInvoice;
 use App\Models\SalesInvoiceLine;
 use App\Models\Voucher;
-use App\Models\VoucherLine;
-use App\Models\Account;
-use App\Models\Setting;
 use App\Models\TaxRate;
 use App\Interfaces\SalesInvoiceRepositoryInterface;
 use App\Interfaces\AccountRepositoryInterface;
@@ -15,7 +12,6 @@ use App\Services\SettingsService;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Str;
 
 class SalesInvoiceService
 {
@@ -23,17 +19,23 @@ class SalesInvoiceService
     protected SalesInvoiceRepositoryInterface $salesInvoiceRepository;
     protected AccountRepositoryInterface $accountRepository;
     protected SettingsService $settingsService;
+    protected InvoiceAccountingService $invoiceAccountingService;
+    protected PeriodLockService $periodLockService;
 
     public function __construct(
         VoucherService $voucherService,
         SalesInvoiceRepositoryInterface $salesInvoiceRepository,
         AccountRepositoryInterface $accountRepository,
-        SettingsService $settingsService
+        SettingsService $settingsService,
+        InvoiceAccountingService $invoiceAccountingService,
+        PeriodLockService $periodLockService
     ) {
         $this->voucherService = $voucherService;
         $this->salesInvoiceRepository = $salesInvoiceRepository;
         $this->accountRepository = $accountRepository;
         $this->settingsService = $settingsService;
+        $this->invoiceAccountingService = $invoiceAccountingService;
+        $this->periodLockService = $periodLockService;
     }
 
     /**
@@ -114,6 +116,12 @@ class SalesInvoiceService
                 throw new \Exception('Company ID is required');
             }
 
+            $this->periodLockService->assertWritable(
+                (int) $companyId,
+                $data['invoice_date'],
+                isset($data['financial_year_id']) ? (int) $data['financial_year_id'] : null
+            );
+
             $invoice = $this->salesInvoiceRepository->create($data);
 
             foreach ($lines as $index => $line) {
@@ -143,6 +151,7 @@ class SalesInvoiceService
                     $line['tax_amount'] = $taxRate->calculateTax((float) $afterDiscount);
                 }
 
+                $line['discount_amount'] = $discount;
                 $line['total'] = $afterDiscount + ($line['tax_amount'] ?? 0);
                 SalesInvoiceLine::create($line);
             }
@@ -185,74 +194,18 @@ class SalesInvoiceService
     public function generateVoucher(SalesInvoice $invoice, ?int $accountId = null): ?Voucher
     {
         return DB::transaction(function () use ($invoice, $accountId) {
-            // Resolve posting heads. Taxable value posts to Sales Revenue head, tax posts to Tax Ledger head.
-            $salesAccount = $this->resolveSalesIncomeAccount($invoice, $accountId);
-            $debtorAccount = $this->resolveDebtorAccount($invoice);
+            $existing = Voucher::query()
+                ->where('sales_invoice_id', $invoice->id)
+                ->where('voucher_type', 'income')
+                ->where('status', 'posted')
+                ->first();
 
-            if (!$salesAccount || !$debtorAccount) {
-                return null;
+            if ($existing) {
+                return $existing->load(['party', 'lines.account']);
             }
 
-            $invoice->loadMissing('lines.taxRate');
+            $lines = $this->invoiceAccountingService->buildSalesVoucherLines($invoice, $accountId);
 
-            $lines = [];
-            $baseAmount = 0;
-            $taxPostingLines = [];
-
-            foreach ($invoice->lines as $line) {
-                $lineBaseAmount = (float) $line->total - (float) $line->tax_amount;
-                $baseAmount += $lineBaseAmount;
-
-                if (!$line->taxRate || (float) $line->tax_amount === 0.0) {
-                    continue;
-                }
-
-                $ledgerId = $this->resolveTaxLedgerId(
-                    $line->taxRate,
-                    $invoice->company_id,
-                    'sales',
-                    $invoice->financial_year_id,
-                    $invoice->created_by,
-                    $invoice->created_by_ip
-                );
-
-                if (!$ledgerId) {
-                    throw new \Exception("Tax ledger account not configured for tax rate: {$line->taxRate->name}. Please configure tax posting accounts in settings.");
-                }
-
-                if (!isset($taxPostingLines[$ledgerId])) {
-                    $taxPostingLines[$ledgerId] = 0.0;
-                }
-
-                $taxPostingLines[$ledgerId] += (float) $line->tax_amount;
-            }
-
-            // Credit sales account for base invoice amount.
-            $lines[] = [
-                'account_id' => $salesAccount->id,
-                'debit' => 0,
-                'credit' => round($baseAmount, 2),
-                'description' => "Sales from Invoice #{$invoice->invoice_number}",
-            ];
-
-            foreach ($taxPostingLines as $ledgerId => $taxAmount) {
-                $lines[] = [
-                    'account_id' => $ledgerId,
-                    'debit' => $taxAmount < 0 ? round(abs($taxAmount), 2) : 0,
-                    'credit' => $taxAmount > 0 ? round($taxAmount, 2) : 0,
-                    'description' => "Tax for Sales Invoice #{$invoice->invoice_number}",
-                ];
-            }
-
-            // Debit debtor account for total amount
-            $lines[] = [
-                'account_id' => $debtorAccount->id,
-                'debit' => round((float) $invoice->total, 2),
-                'credit' => 0,
-                'description' => "Receivable from Invoice #{$invoice->invoice_number}",
-            ];
-
-            // Call VoucherService to create voucher and ledger entries
             $voucher = $this->voucherService->createFromSalesInvoice([
                 'company_id' => $invoice->company_id,
                 'financial_year_id' => $invoice->financial_year_id,
@@ -261,6 +214,7 @@ class SalesInvoiceService
                 'narration' => "Sales Invoice #{$invoice->invoice_number}",
                 'total' => $invoice->total,
                 'sales_invoice_id' => $invoice->id,
+                'created_by' => $invoice->created_by,
             ], $lines);
 
             $invoice->update(['status' => 'sent']);
@@ -284,6 +238,22 @@ class SalesInvoiceService
     {
         return DB::transaction(function () use ($id, $data, $lines, $serviceLines) {
             $invoice = $this->salesInvoiceRepository->find($id);
+
+            if (!$invoice) {
+                throw new \RuntimeException('Sales invoice not found.');
+            }
+
+            if (in_array($invoice->status, ['paid', 'partial', 'cancelled'], true)) {
+                throw new \RuntimeException('Paid, partially paid, or cancelled invoices cannot be altered.');
+            }
+
+            $invoiceDate = $data['invoice_date'] ?? $invoice->invoice_date;
+            $this->periodLockService->assertWritable(
+                (int) $invoice->company_id,
+                $invoiceDate,
+                $invoice->financial_year_id ? (int) $invoice->financial_year_id : null
+            );
+
             $invoice->update($data);
 
             // Delete existing lines and recreate
@@ -303,6 +273,7 @@ class SalesInvoiceService
                     $line['tax_amount'] = $taxRate ? $taxRate->calculateTax((float) $afterDiscount) : 0;
                 }
 
+                $line['discount_amount'] = $discount;
                 $line['total'] = $afterDiscount + ($line['tax_amount'] ?? 0);
                 SalesInvoiceLine::create($line);
             }
@@ -333,18 +304,132 @@ class SalesInvoiceService
             }
 
             $invoice->calculateTotals();
-            return $invoice->load('lines');
+            $invoice->refresh()->load(['lines.item', 'lines.taxRate', 'lines.account', 'party']);
+
+            $postedVoucher = $invoice->vouchers()->where('status', 'posted')->first();
+            if ($postedVoucher) {
+                $voucherLines = $this->invoiceAccountingService->buildSalesVoucherLines($invoice);
+                $this->voucherService->syncInvoiceVoucher(
+                    $postedVoucher,
+                    [
+                        'party_id' => $invoice->party_id,
+                        'voucher_date' => $invoice->invoice_date,
+                        'narration' => "Sales Invoice #{$invoice->invoice_number}",
+                        'total' => $invoice->total,
+                        'updated_by' => $invoice->updated_by,
+                        'updated_by_ip' => $invoice->updated_by_ip,
+                    ],
+                    $voucherLines,
+                    'sales_invoice',
+                    'sales'
+                );
+            }
+
+            return $invoice;
         });
     }
 
     /**
-     * Record a payment against an invoice.
+     * Record a payment against an invoice and post a Receipt voucher (bill-wise).
+     *
+     * @param  array{amount:float,cash_bank_account_id:int,payment_mode:string,payment_date?:string}  $paymentData
      */
-    public function recordPayment(int $invoiceId, float $amount): SalesInvoice
+    public function recordPayment(int $invoiceId, array $paymentData): SalesInvoice
     {
-        $invoice = $this->salesInvoiceRepository->find($invoiceId);
-        $invoice->recordPayment($amount);
-        return $invoice;
+        return DB::transaction(function () use ($invoiceId, $paymentData) {
+            $invoice = SalesInvoice::query()
+                ->whereKey($invoiceId)
+                ->lockForUpdate()
+                ->with(['party.account'])
+                ->first();
+
+            if (!$invoice) {
+                throw new \RuntimeException('Sales invoice not found.');
+            }
+
+            if ($invoice->status === 'cancelled') {
+                throw new \RuntimeException('Cancelled invoices cannot receive payments.');
+            }
+
+            if ((float) $invoice->balance_due <= 0 || $invoice->status === 'paid') {
+                throw new \RuntimeException('This invoice is already fully paid.');
+            }
+
+            $hasPostedSalesVoucher = Voucher::query()
+                ->where('sales_invoice_id', $invoice->id)
+                ->where('voucher_type', 'income')
+                ->where('status', 'posted')
+                ->exists();
+
+            if (!$hasPostedSalesVoucher) {
+                throw new \RuntimeException('Post the sales invoice to accounts before recording payment.');
+            }
+
+            $amount = round((float) ($paymentData['amount'] ?? 0), 2);
+            if ($amount <= 0) {
+                throw new \RuntimeException('Payment amount must be greater than zero.');
+            }
+            if ($amount > round((float) $invoice->balance_due, 2) + 0.009) {
+                throw new \RuntimeException('Payment amount cannot exceed balance due.');
+            }
+
+            $paymentDate = $paymentData['payment_date'] ?? now()->toDateString();
+            $settlementFy = $this->periodLockService->assertWritable(
+                (int) $invoice->company_id,
+                $paymentDate
+            );
+
+            $cashBankAccountId = (int) ($paymentData['cash_bank_account_id'] ?? 0);
+            $paymentMode = $paymentData['payment_mode'] ?? null;
+            $cashBank = \App\Models\Account::query()
+                ->where('company_id', $invoice->company_id)
+                ->where('id', $cashBankAccountId)
+                ->where('is_active', true)
+                ->first();
+
+            if (!$cashBank || !in_array($cashBank->transaction_mode, ['cash', 'bank', 'od'], true)) {
+                throw new \RuntimeException('Select a valid Cash / Bank / OD account.');
+            }
+            if ($paymentMode && $cashBank->transaction_mode !== $paymentMode) {
+                throw new \RuntimeException('Selected account must match the payment mode.');
+            }
+
+            $partyAccountId = $invoice->party?->account_id;
+            if (!$partyAccountId) {
+                throw new \RuntimeException('Party ledger is missing. Link an account to the party first.');
+            }
+
+            $this->voucherService->create([
+                'uuid' => (string) \Illuminate\Support\Str::uuid(),
+                'company_id' => $invoice->company_id,
+                'financial_year_id' => $settlementFy->id,
+                'party_id' => $invoice->party_id,
+                'voucher_type' => 'receipt',
+                'voucher_date' => $paymentDate,
+                'narration' => "Receipt against Sales Invoice #{$invoice->invoice_number}",
+                'sales_invoice_id' => $invoice->id,
+                'created_by' => $paymentData['created_by'] ?? auth()->id(),
+                'created_by_ip' => $paymentData['created_by_ip'] ?? request()->ip(),
+                'lines' => [
+                    [
+                        'account_id' => $cashBank->id,
+                        'debit' => $amount,
+                        'credit' => 0,
+                        'description' => "Received for Invoice #{$invoice->invoice_number}",
+                    ],
+                    [
+                        'account_id' => (int) $partyAccountId,
+                        'debit' => 0,
+                        'credit' => $amount,
+                        'description' => "Receipt against Invoice #{$invoice->invoice_number}",
+                    ],
+                ],
+            ]);
+
+            $invoice->recordPayment($amount);
+
+            return $invoice->fresh(['party', 'financialYear', 'lines.item', 'lines.taxRate', 'lines.account']);
+        });
     }
 
     /**
@@ -356,8 +441,10 @@ class SalesInvoiceService
         if (!$invoice) {
             return false;
         }
-        if (in_array($invoice->status, ['paid', 'partial'])) {
-            return false;
+        if ($invoice->vouchers()->exists() || in_array($invoice->status, ['sent', 'paid', 'partial', 'cancelled'], true)) {
+            throw new \RuntimeException(
+                'A posted sales invoice cannot be deleted because accounting entries exist. Cancel/reverse it instead.'
+            );
         }
         return $this->salesInvoiceRepository->delete($id);
     }
@@ -371,16 +458,16 @@ class SalesInvoiceService
     }
 
     /**
-     * Generate next invoice number.
+     * Generate next invoice number (company-wide sequence; not reset per FY).
      */
     public function generateInvoiceNumber(int $companyId, int $financialYearId, string $invoiceType = 'item'): string
     {
         $prefix = $invoiceType === 'service' ? 'SRV' : 'INV';
 
         $lastInvoice = SalesInvoice::where('company_id', $companyId)
-            ->where('financial_year_id', $financialYearId)
             ->where('invoice_type', $invoiceType)
-            ->orderBy('id', 'desc')
+            ->where('invoice_number', 'like', $prefix . '-%')
+            ->orderBy('invoice_number', 'desc')
             ->first();
 
         $nextNumber = $lastInvoice
@@ -388,229 +475,5 @@ class SalesInvoiceService
             : 1;
 
         return $prefix . '-' . str_pad($nextNumber, 6, '0', STR_PAD_LEFT);
-    }
-
-    protected function resolveTaxLedgerId(
-        TaxRate $taxRate,
-        int $companyId,
-        string $context,
-        ?int $financialYearId = null,
-        ?int $createdBy = null,
-        ?string $createdByIp = null
-    ): ?int
-    {
-        $key = match ($taxRate->tax_category) {
-            'GST', 'CGST', 'SGST', 'IGST' => $context === 'sales' ? 'sales_tax_ledger_id' : 'purchase_tax_ledger_id',
-            'TDS' => 'tds_ledger_id',
-            'TCS' => 'tcs_ledger_id',
-            'CESS' => 'cess_ledger_id',
-            default => $context === 'sales' ? 'sales_tax_ledger_id' : 'purchase_tax_ledger_id',
-        };
-
-        $ledgerId = $this->settingsService->get($key, null, $companyId);
-
-        if ($ledgerId) {
-            $account = Account::where('company_id', $companyId)->where('id', (int) $ledgerId)->first();
-            if ($account) {
-                return (int) $ledgerId;
-            }
-        }
-
-        $defaultTaxAccount = $this->ensureTaxPostingAccount(
-            $companyId,
-            $financialYearId,
-            $createdBy,
-            $createdByIp,
-            $context
-        );
-
-        Setting::setValue($key, (string) $defaultTaxAccount->id, $companyId, 'accounting');
-
-        return (int) $defaultTaxAccount->id;
-    }
-
-    protected function resolveSalesIncomeAccount(SalesInvoice $invoice, ?int $accountId = null): ?Account
-    {
-        if ($accountId) {
-            $explicit = Account::where('company_id', $invoice->company_id)
-                ->where('account_type', 'income')
-                ->where('id', $accountId)
-                ->first();
-
-            if ($explicit) {
-                return $explicit;
-            }
-        }
-
-        $byCode = $this->accountRepository->findByCode(
-            Account::CODE_AR_INCOME,
-            $invoice->company_id,
-            $invoice->financial_year_id
-        );
-
-        if ($byCode) {
-            return $byCode;
-        }
-
-        $fallback = $this->accountRepository->getByType('income', $invoice->company_id)
-            ->firstWhere('is_system', true)
-            ?? $this->accountRepository->getByType('income', $invoice->company_id)->first();
-
-        if ($fallback) {
-            return $fallback;
-        }
-
-        return $this->upsertSystemAccountByCode(
-            Account::CODE_AR_INCOME,
-            $invoice->company_id,
-            $invoice->financial_year_id,
-            'Sales Revenue (AR)',
-            'income',
-            'credit',
-            $invoice->created_by,
-            $invoice->created_by_ip,
-            'System income account for taxable sales posting.'
-        );
-    }
-
-    protected function resolveDebtorAccount(SalesInvoice $invoice): ?Account
-    {
-        $byCode = $this->accountRepository->findByCode(
-            Account::CODE_AR,
-            $invoice->company_id,
-            $invoice->financial_year_id
-        );
-
-        if ($byCode) {
-            return $byCode;
-        }
-
-        $assetFallback = $this->accountRepository->getByType('asset', $invoice->company_id)
-            ->firstWhere('is_system', true)
-            ?? $this->accountRepository->getByType('asset', $invoice->company_id)->first();
-
-        if ($assetFallback) {
-            return $assetFallback;
-        }
-
-        return $this->upsertSystemAccountByCode(
-            Account::CODE_AR,
-            $invoice->company_id,
-            $invoice->financial_year_id,
-            'Accounts Receivable',
-            'asset',
-            'debit',
-            $invoice->created_by,
-            $invoice->created_by_ip,
-            'System AR account for sales posting.'
-        );
-    }
-
-    protected function ensureTaxPostingAccount(
-        int $companyId,
-        ?int $financialYearId,
-        ?int $createdBy,
-        ?string $createdByIp,
-        string $context
-    ): Account {
-        $defaultName = $context === 'sales' ? 'Output Tax Payable' : 'Input Tax Credit';
-
-        $existing = Account::withTrashed()
-            ->where('company_id', $companyId)
-            ->where('account_type', 'liability')
-            ->where('account_name', $defaultName)
-            ->first();
-
-        if ($existing) {
-            if ($existing->trashed()) {
-                $existing->restore();
-            }
-
-            $existing->update([
-                'is_active' => true,
-                'entry_source' => 'system',
-                'updated_by' => $createdBy,
-                'updated_by_ip' => $createdByIp,
-            ]);
-
-            return $existing;
-        }
-
-        return Account::create([
-            'uuid' => (string) Str::uuid(),
-            'company_id' => $companyId,
-            'financial_year_id' => $financialYearId,
-            'account_code' => Account::generateCode('liability', $companyId),
-            'account_name' => $defaultName,
-            'account_type' => 'liability',
-            'entry_source' => 'system',
-            'opening_balance' => 0,
-            'balance_type' => 'credit',
-            'opening_date' => now()->toDateString(),
-            'remarks' => 'System tax posting account.',
-            'is_active' => true,
-            'is_system' => false,
-            'created_by' => $createdBy,
-            'updated_by' => $createdBy,
-            'created_by_ip' => $createdByIp,
-            'updated_by_ip' => $createdByIp,
-        ]);
-    }
-
-    protected function upsertSystemAccountByCode(
-        string $code,
-        int $companyId,
-        ?int $financialYearId,
-        string $name,
-        string $type,
-        string $balanceType,
-        ?int $createdBy,
-        ?string $createdByIp,
-        string $remarks
-    ): Account {
-        $existing = Account::withTrashed()
-            ->where('company_id', $companyId)
-            ->where('account_code', $code)
-            ->first();
-
-        if ($existing) {
-            if ($existing->trashed()) {
-                $existing->restore();
-            }
-
-            $existing->update([
-                'financial_year_id' => $existing->financial_year_id ?: $financialYearId,
-                'account_name' => $name,
-                'account_type' => $type,
-                'entry_source' => 'system',
-                'balance_type' => $balanceType,
-                'remarks' => $remarks,
-                'is_active' => true,
-                'updated_by' => $createdBy,
-                'updated_by_ip' => $createdByIp,
-            ]);
-
-            return $existing;
-        }
-
-        return Account::create([
-            'uuid' => (string) Str::uuid(),
-            'company_id' => $companyId,
-            'financial_year_id' => $financialYearId,
-            'account_code' => $code,
-            'account_name' => $name,
-            'account_type' => $type,
-            'entry_source' => 'system',
-            'opening_balance' => 0,
-            'balance_type' => $balanceType,
-            'opening_date' => now()->toDateString(),
-            'remarks' => $remarks,
-            'is_active' => true,
-            'is_system' => true,
-            'created_by' => $createdBy,
-            'updated_by' => $createdBy,
-            'created_by_ip' => $createdByIp,
-            'updated_by_ip' => $createdByIp,
-        ]);
     }
 }

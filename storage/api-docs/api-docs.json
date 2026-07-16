@@ -2,7 +2,7 @@
     "openapi": "3.0.0",
     "info": {
         "title": "Reco API",
-        "description": "Reco - Offline-First Accounting SaaS Platform API Documentation",
+        "description": "Reco offline-first accounting SaaS API under /api/v1. Payment/receipt/adjustment APIs match web Tally forms (payment_mode + cash_bank_account_id + payment_rows / adjustment_rows). Helpers: GET /accounts/cash-bank, /accounts/payment-particulars, /accounts/adjustment-particulars. Service sales: /service-sales-invoices (or sales-invoices with invoice_type=service). Invoice settlement requires amount + payment_mode + cash_bank_account_id. PATCH /financial-years/{id}/set-current carries forward opening balances. Period lock applies when FY is closed or date is outside FY. Web-only: roles, CMS, audit logs, Excel/CSV export.",
         "contact": {
             "name": "Reco Support",
             "url": "https://reco.app/support",
@@ -16,8 +16,12 @@
     },
     "servers": [
         {
+            "url": "http://127.0.0.1:8002/api/v1",
+            "description": "Local Development Server (XAMPP)"
+        },
+        {
             "url": "http://127.0.0.1:8000/api/v1",
-            "description": "Local Development Server"
+            "description": "Local Development Server (artisan serve)"
         },
         {
             "url": "https://reco.aaochaletaxi.app/api/v1",
@@ -399,6 +403,542 @@
                             "application/json": {
                                 "schema": {
                                     "$ref": "#/components/schemas/SuccessResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/accounts/cash-bank": {
+            "get": {
+                "tags": [
+                    "Accounts"
+                ],
+                "summary": "Cash / Bank / OD accounts for payments and receipts",
+                "description": "Dropdown helper matching web Paid From / Received In. Includes available_balance (null for OD).",
+                "operationId": "getCashBankAccounts",
+                "parameters": [
+                    {
+                        "name": "mode",
+                        "in": "query",
+                        "description": "Filter by transaction mode",
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "cash",
+                                "bank",
+                                "od"
+                            ]
+                        }
+                    },
+                    {
+                        "name": "financial_year_id",
+                        "in": "query",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Success",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/SuccessResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/accounts/payment-particulars": {
+            "get": {
+                "tags": [
+                    "Accounts"
+                ],
+                "summary": "Particulars for payment/receipt lines",
+                "description": "Party ledgers only. type=payment returns creditors; type=receipt returns debtors.",
+                "operationId": "getPaymentParticulars",
+                "parameters": [
+                    {
+                        "name": "type",
+                        "in": "query",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "payment",
+                                "receipt"
+                            ]
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Success",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/SuccessResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/accounts/adjustment-particulars": {
+            "get": {
+                "tags": [
+                    "Accounts"
+                ],
+                "summary": "Particulars for adjustment/journal vouchers",
+                "operationId": "getAdjustmentParticulars",
+                "responses": {
+                    "200": {
+                        "description": "Success",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/SuccessResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/adjustments": {
+            "get": {
+                "tags": [
+                    "Adjustments"
+                ],
+                "summary": "List adjustment vouchers",
+                "operationId": "getAdjustments",
+                "parameters": [
+                    {
+                        "name": "search",
+                        "in": "query",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "status",
+                        "in": "query",
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "draft",
+                                "posted",
+                                "cancelled"
+                            ]
+                        }
+                    },
+                    {
+                        "name": "date_from",
+                        "in": "query",
+                        "schema": {
+                            "type": "string",
+                            "format": "date"
+                        }
+                    },
+                    {
+                        "name": "date_to",
+                        "in": "query",
+                        "schema": {
+                            "type": "string",
+                            "format": "date"
+                        }
+                    },
+                    {
+                        "name": "per_page",
+                        "in": "query",
+                        "schema": {
+                            "type": "integer",
+                            "default": 15
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Success",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/SuccessResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            },
+            "post": {
+                "tags": [
+                    "Adjustments"
+                ],
+                "summary": "Create adjustment voucher",
+                "description": "Tally journal style (same as web). At least two lines with debit and credit that balance. voucher_type is forced to journal.",
+                "operationId": "createAdjustment",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "voucher_date",
+                                    "adjustment_rows"
+                                ],
+                                "properties": {
+                                    "voucher_date": {
+                                        "type": "string",
+                                        "format": "date",
+                                        "example": "2026-07-16"
+                                    },
+                                    "narration": {
+                                        "type": "string",
+                                        "example": "Opening balance adjustment"
+                                    },
+                                    "remarks": {
+                                        "type": "string"
+                                    },
+                                    "adjustment_rows": {
+                                        "type": "array",
+                                        "items": {
+                                            "required": [
+                                                "account_id",
+                                                "entry_type",
+                                                "amount"
+                                            ],
+                                            "properties": {
+                                                "account_id": {
+                                                    "type": "integer",
+                                                    "example": 12
+                                                },
+                                                "entry_type": {
+                                                    "type": "string",
+                                                    "example": "debit",
+                                                    "enum": [
+                                                        "debit",
+                                                        "credit"
+                                                    ]
+                                                },
+                                                "amount": {
+                                                    "type": "number",
+                                                    "format": "float",
+                                                    "example": 2500
+                                                },
+                                                "description": {
+                                                    "type": "string",
+                                                    "example": "Debit adjustment"
+                                                }
+                                            },
+                                            "type": "object"
+                                        },
+                                        "minItems": 2
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/SuccessResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/adjustments/{id}": {
+            "get": {
+                "tags": [
+                    "Adjustments"
+                ],
+                "summary": "Get adjustment voucher",
+                "operationId": "getAdjustmentById",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Success",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "data": {
+                                            "$ref": "#/components/schemas/Voucher"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not found",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            },
+            "put": {
+                "tags": [
+                    "Adjustments"
+                ],
+                "summary": "Update adjustment voucher",
+                "description": "Same body shape as create.",
+                "operationId": "updateAdjustment",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "voucher_date",
+                                    "adjustment_rows"
+                                ],
+                                "properties": {
+                                    "voucher_date": {
+                                        "type": "string",
+                                        "format": "date"
+                                    },
+                                    "narration": {
+                                        "type": "string"
+                                    },
+                                    "remarks": {
+                                        "type": "string"
+                                    },
+                                    "adjustment_rows": {
+                                        "type": "array",
+                                        "items": {
+                                            "properties": {
+                                                "account_id": {
+                                                    "type": "integer"
+                                                },
+                                                "entry_type": {
+                                                    "type": "string",
+                                                    "enum": [
+                                                        "debit",
+                                                        "credit"
+                                                    ]
+                                                },
+                                                "amount": {
+                                                    "type": "number"
+                                                },
+                                                "description": {
+                                                    "type": "string"
+                                                }
+                                            },
+                                            "type": "object"
+                                        },
+                                        "minItems": 2
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Updated",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/SuccessResponse"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not found",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            },
+            "delete": {
+                "tags": [
+                    "Adjustments"
+                ],
+                "summary": "Delete adjustment voucher",
+                "operationId": "deleteAdjustment",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Deleted",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/SuccessResponse"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not found",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/adjustments/{id}/cancel": {
+            "patch": {
+                "tags": [
+                    "Adjustments"
+                ],
+                "summary": "Cancel adjustment voucher",
+                "operationId": "cancelAdjustment",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Cancelled",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/SuccessResponse"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not found",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
                                 }
                             }
                         }
@@ -894,271 +1434,6 @@
                             "application/json": {
                                 "schema": {
                                     "$ref": "#/components/schemas/ErrorResponse"
-                                }
-                            }
-                        }
-                    }
-                },
-                "security": [
-                    {
-                        "bearerAuth": []
-                    }
-                ]
-            }
-        },
-        "/bank-accounts": {
-            "get": {
-                "tags": [
-                    "Bank Accounts"
-                ],
-                "summary": "List bank accounts",
-                "operationId": "getBankAccounts",
-                "responses": {
-                    "200": {
-                        "description": "Success",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/SuccessResponse"
-                                }
-                            }
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/ErrorResponse"
-                                }
-                            }
-                        }
-                    }
-                },
-                "security": [
-                    {
-                        "bearerAuth": []
-                    }
-                ]
-            },
-            "post": {
-                "tags": [
-                    "Bank Accounts"
-                ],
-                "summary": "Create bank account",
-                "operationId": "createBankAccount",
-                "requestBody": {
-                    "required": true,
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "required": [
-                                    "bank_name",
-                                    "account_number",
-                                    "account_type"
-                                ],
-                                "properties": {
-                                    "bank_name": {
-                                        "type": "string",
-                                        "example": "State Bank of India"
-                                    },
-                                    "branch_name": {
-                                        "type": "string",
-                                        "example": "Main Branch"
-                                    },
-                                    "account_number": {
-                                        "type": "string",
-                                        "example": "1234567890"
-                                    },
-                                    "ifsc_code": {
-                                        "type": "string",
-                                        "example": "SBIN0001234"
-                                    },
-                                    "account_holder_name": {
-                                        "type": "string",
-                                        "example": "Reco Pvt Ltd"
-                                    },
-                                    "account_type": {
-                                        "type": "string",
-                                        "enum": [
-                                            "savings",
-                                            "current",
-                                            "fixed_deposit",
-                                            "cc_od"
-                                        ]
-                                    },
-                                    "opening_balance": {
-                                        "type": "number",
-                                        "format": "float",
-                                        "example": 50000
-                                    },
-                                    "upi_id": {
-                                        "type": "string",
-                                        "example": "company@upi"
-                                    },
-                                    "is_default": {
-                                        "type": "boolean",
-                                        "example": false
-                                    }
-                                },
-                                "type": "object"
-                            }
-                        }
-                    }
-                },
-                "responses": {
-                    "201": {
-                        "description": "Created",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/SuccessResponse"
-                                }
-                            }
-                        }
-                    },
-                    "422": {
-                        "description": "Validation error",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/ErrorResponse"
-                                }
-                            }
-                        }
-                    }
-                },
-                "security": [
-                    {
-                        "bearerAuth": []
-                    }
-                ]
-            }
-        },
-        "/bank-accounts/{id}": {
-            "get": {
-                "tags": [
-                    "Bank Accounts"
-                ],
-                "summary": "Get bank account by ID",
-                "operationId": "getBankAccount",
-                "parameters": [
-                    {
-                        "name": "id",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "integer"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Success",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/SuccessResponse"
-                                }
-                            }
-                        }
-                    },
-                    "404": {
-                        "description": "Not found",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/ErrorResponse"
-                                }
-                            }
-                        }
-                    }
-                },
-                "security": [
-                    {
-                        "bearerAuth": []
-                    }
-                ]
-            },
-            "put": {
-                "tags": [
-                    "Bank Accounts"
-                ],
-                "summary": "Update bank account",
-                "operationId": "updateBankAccount",
-                "parameters": [
-                    {
-                        "name": "id",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "integer"
-                        }
-                    }
-                ],
-                "requestBody": {
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "properties": {
-                                    "bank_name": {
-                                        "type": "string"
-                                    },
-                                    "account_number": {
-                                        "type": "string"
-                                    },
-                                    "is_default": {
-                                        "type": "boolean"
-                                    }
-                                },
-                                "type": "object"
-                            }
-                        }
-                    }
-                },
-                "responses": {
-                    "200": {
-                        "description": "Updated",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/SuccessResponse"
-                                }
-                            }
-                        }
-                    }
-                },
-                "security": [
-                    {
-                        "bearerAuth": []
-                    }
-                ]
-            }
-        },
-        "/bank-accounts/{id}/default": {
-            "patch": {
-                "tags": [
-                    "Bank Accounts"
-                ],
-                "summary": "Set as default bank account",
-                "operationId": "setDefaultBankAccount",
-                "parameters": [
-                    {
-                        "name": "id",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "integer"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Default set",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/SuccessResponse"
                                 }
                             }
                         }
@@ -2014,6 +2289,7 @@
                     "Financial Years"
                 ],
                 "summary": "Set financial year as current",
+                "description": "Marks this FY as current and carries forward closing ledger balances into the new FY as opening journal entries (same as web).",
                 "operationId": "setFinancialYearCurrent",
                 "parameters": [
                     {
@@ -2656,6 +2932,112 @@
                             "application/json": {
                                 "schema": {
                                     "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            },
+            "delete": {
+                "tags": [
+                    "Items"
+                ],
+                "summary": "Delete item",
+                "operationId": "deleteItem",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Deleted",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/SuccessResponse"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not found",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/items/dropdown": {
+            "get": {
+                "tags": [
+                    "Items"
+                ],
+                "summary": "Items dropdown list",
+                "operationId": "getItemsDropdown",
+                "responses": {
+                    "200": {
+                        "description": "Success",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/SuccessResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/items/{id}/status": {
+            "patch": {
+                "tags": [
+                    "Items"
+                ],
+                "summary": "Toggle item active status",
+                "operationId": "toggleItemStatus",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Status updated",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/SuccessResponse"
                                 }
                             }
                         }
@@ -3537,6 +3919,444 @@
                 ]
             }
         },
+        "/payments": {
+            "get": {
+                "tags": [
+                    "Payments"
+                ],
+                "summary": "List payment vouchers",
+                "operationId": "getPayments",
+                "parameters": [
+                    {
+                        "name": "search",
+                        "in": "query",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "status",
+                        "in": "query",
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "draft",
+                                "posted",
+                                "cancelled"
+                            ]
+                        }
+                    },
+                    {
+                        "name": "date_from",
+                        "in": "query",
+                        "schema": {
+                            "type": "string",
+                            "format": "date"
+                        }
+                    },
+                    {
+                        "name": "date_to",
+                        "in": "query",
+                        "schema": {
+                            "type": "string",
+                            "format": "date"
+                        }
+                    },
+                    {
+                        "name": "per_page",
+                        "in": "query",
+                        "schema": {
+                            "type": "integer",
+                            "default": 15
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Success",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/SuccessResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            },
+            "post": {
+                "tags": [
+                    "Payments"
+                ],
+                "summary": "Create payment voucher",
+                "description": "Tally-style payment (same as web). Debit particulars (creditors), credit Cash/Bank/OD. Use GET /accounts/cash-bank and GET /accounts/payment-particulars?type=payment for form options.",
+                "operationId": "createPayment",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "voucher_date",
+                                    "payment_mode",
+                                    "cash_bank_account_id",
+                                    "payment_rows"
+                                ],
+                                "properties": {
+                                    "voucher_date": {
+                                        "type": "string",
+                                        "format": "date",
+                                        "example": "2026-07-16"
+                                    },
+                                    "payment_mode": {
+                                        "type": "string",
+                                        "example": "cash",
+                                        "enum": [
+                                            "cash",
+                                            "bank",
+                                            "od"
+                                        ]
+                                    },
+                                    "cash_bank_account_id": {
+                                        "description": "Paid From account (must match payment_mode)",
+                                        "type": "integer",
+                                        "example": 12
+                                    },
+                                    "party_id": {
+                                        "description": "Optional; auto-resolved from party particulars",
+                                        "type": "integer",
+                                        "nullable": true
+                                    },
+                                    "narration": {
+                                        "type": "string",
+                                        "example": "Supplier payment"
+                                    },
+                                    "remarks": {
+                                        "type": "string"
+                                    },
+                                    "payment_rows": {
+                                        "type": "array",
+                                        "items": {
+                                            "required": [
+                                                "account_id",
+                                                "amount"
+                                            ],
+                                            "properties": {
+                                                "account_id": {
+                                                    "description": "Particulars account (party ledger)",
+                                                    "type": "integer",
+                                                    "example": 45
+                                                },
+                                                "amount": {
+                                                    "type": "number",
+                                                    "format": "float",
+                                                    "example": 1000
+                                                },
+                                                "description": {
+                                                    "type": "string",
+                                                    "example": "Bill settlement"
+                                                }
+                                            },
+                                            "type": "object"
+                                        },
+                                        "minItems": 1
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/SuccessResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/payments/{id}": {
+            "get": {
+                "tags": [
+                    "Payments"
+                ],
+                "summary": "Get payment voucher",
+                "operationId": "getPaymentById",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Success",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "data": {
+                                            "$ref": "#/components/schemas/Voucher"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not found",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            },
+            "put": {
+                "tags": [
+                    "Payments"
+                ],
+                "summary": "Update payment voucher",
+                "description": "Same body shape as create.",
+                "operationId": "updatePayment",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "voucher_date",
+                                    "payment_mode",
+                                    "cash_bank_account_id",
+                                    "payment_rows"
+                                ],
+                                "properties": {
+                                    "voucher_date": {
+                                        "type": "string",
+                                        "format": "date"
+                                    },
+                                    "payment_mode": {
+                                        "type": "string",
+                                        "enum": [
+                                            "cash",
+                                            "bank",
+                                            "od"
+                                        ]
+                                    },
+                                    "cash_bank_account_id": {
+                                        "type": "integer"
+                                    },
+                                    "narration": {
+                                        "type": "string"
+                                    },
+                                    "remarks": {
+                                        "type": "string"
+                                    },
+                                    "payment_rows": {
+                                        "type": "array",
+                                        "items": {
+                                            "properties": {
+                                                "account_id": {
+                                                    "type": "integer"
+                                                },
+                                                "amount": {
+                                                    "type": "number"
+                                                },
+                                                "description": {
+                                                    "type": "string"
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Updated",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/SuccessResponse"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not found",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            },
+            "delete": {
+                "tags": [
+                    "Payments"
+                ],
+                "summary": "Delete payment voucher",
+                "operationId": "deletePayment",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Deleted",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/SuccessResponse"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not found",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/payments/{id}/cancel": {
+            "patch": {
+                "tags": [
+                    "Payments"
+                ],
+                "summary": "Cancel payment voucher",
+                "operationId": "cancelPayment",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Cancelled",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/SuccessResponse"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not found",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
         "/purchase-invoices": {
             "get": {
                 "tags": [
@@ -3853,12 +4673,34 @@
                         "application/json": {
                             "schema": {
                                 "required": [
-                                    "amount"
+                                    "amount",
+                                    "payment_mode",
+                                    "cash_bank_account_id"
                                 ],
                                 "properties": {
                                     "amount": {
                                         "type": "number",
-                                        "format": "float"
+                                        "format": "float",
+                                        "example": 500
+                                    },
+                                    "payment_mode": {
+                                        "type": "string",
+                                        "example": "cash",
+                                        "enum": [
+                                            "cash",
+                                            "bank",
+                                            "od"
+                                        ]
+                                    },
+                                    "cash_bank_account_id": {
+                                        "description": "Paid From cash/bank/OD account",
+                                        "type": "integer",
+                                        "example": 12
+                                    },
+                                    "payment_date": {
+                                        "type": "string",
+                                        "format": "date",
+                                        "example": "2026-07-16"
                                     }
                                 },
                                 "type": "object"
@@ -3873,6 +4715,443 @@
                             "application/json": {
                                 "schema": {
                                     "$ref": "#/components/schemas/SuccessResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/receipts": {
+            "get": {
+                "tags": [
+                    "Receipts"
+                ],
+                "summary": "List receipt vouchers",
+                "operationId": "getReceipts",
+                "parameters": [
+                    {
+                        "name": "search",
+                        "in": "query",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "status",
+                        "in": "query",
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "draft",
+                                "posted",
+                                "cancelled"
+                            ]
+                        }
+                    },
+                    {
+                        "name": "date_from",
+                        "in": "query",
+                        "schema": {
+                            "type": "string",
+                            "format": "date"
+                        }
+                    },
+                    {
+                        "name": "date_to",
+                        "in": "query",
+                        "schema": {
+                            "type": "string",
+                            "format": "date"
+                        }
+                    },
+                    {
+                        "name": "per_page",
+                        "in": "query",
+                        "schema": {
+                            "type": "integer",
+                            "default": 15
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Success",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/SuccessResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            },
+            "post": {
+                "tags": [
+                    "Receipts"
+                ],
+                "summary": "Create receipt voucher",
+                "description": "Tally-style receipt (same as web). Debit Cash/Bank/OD, credit particulars (debtors). Use GET /accounts/cash-bank and GET /accounts/payment-particulars?type=receipt for form options.",
+                "operationId": "createReceipt",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "voucher_date",
+                                    "payment_mode",
+                                    "cash_bank_account_id",
+                                    "payment_rows"
+                                ],
+                                "properties": {
+                                    "voucher_date": {
+                                        "type": "string",
+                                        "format": "date",
+                                        "example": "2026-07-16"
+                                    },
+                                    "payment_mode": {
+                                        "type": "string",
+                                        "example": "bank",
+                                        "enum": [
+                                            "cash",
+                                            "bank",
+                                            "od"
+                                        ]
+                                    },
+                                    "cash_bank_account_id": {
+                                        "description": "Received In account (must match payment_mode)",
+                                        "type": "integer",
+                                        "example": 12
+                                    },
+                                    "party_id": {
+                                        "type": "integer",
+                                        "nullable": true
+                                    },
+                                    "narration": {
+                                        "type": "string",
+                                        "example": "Customer receipt"
+                                    },
+                                    "remarks": {
+                                        "type": "string"
+                                    },
+                                    "payment_rows": {
+                                        "type": "array",
+                                        "items": {
+                                            "required": [
+                                                "account_id",
+                                                "amount"
+                                            ],
+                                            "properties": {
+                                                "account_id": {
+                                                    "description": "Particulars account (party ledger)",
+                                                    "type": "integer",
+                                                    "example": 45
+                                                },
+                                                "amount": {
+                                                    "type": "number",
+                                                    "format": "float",
+                                                    "example": 2500
+                                                },
+                                                "description": {
+                                                    "type": "string",
+                                                    "example": "Against invoice"
+                                                }
+                                            },
+                                            "type": "object"
+                                        },
+                                        "minItems": 1
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/SuccessResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/receipts/{id}": {
+            "get": {
+                "tags": [
+                    "Receipts"
+                ],
+                "summary": "Get receipt voucher",
+                "operationId": "getReceiptById",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Success",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "data": {
+                                            "$ref": "#/components/schemas/Voucher"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not found",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            },
+            "put": {
+                "tags": [
+                    "Receipts"
+                ],
+                "summary": "Update receipt voucher",
+                "description": "Same body shape as create.",
+                "operationId": "updateReceipt",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "voucher_date",
+                                    "payment_mode",
+                                    "cash_bank_account_id",
+                                    "payment_rows"
+                                ],
+                                "properties": {
+                                    "voucher_date": {
+                                        "type": "string",
+                                        "format": "date"
+                                    },
+                                    "payment_mode": {
+                                        "type": "string",
+                                        "enum": [
+                                            "cash",
+                                            "bank",
+                                            "od"
+                                        ]
+                                    },
+                                    "cash_bank_account_id": {
+                                        "type": "integer"
+                                    },
+                                    "narration": {
+                                        "type": "string"
+                                    },
+                                    "remarks": {
+                                        "type": "string"
+                                    },
+                                    "payment_rows": {
+                                        "type": "array",
+                                        "items": {
+                                            "properties": {
+                                                "account_id": {
+                                                    "type": "integer"
+                                                },
+                                                "amount": {
+                                                    "type": "number"
+                                                },
+                                                "description": {
+                                                    "type": "string"
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Updated",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/SuccessResponse"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not found",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            },
+            "delete": {
+                "tags": [
+                    "Receipts"
+                ],
+                "summary": "Delete receipt voucher",
+                "operationId": "deleteReceipt",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Deleted",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/SuccessResponse"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not found",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/receipts/{id}/cancel": {
+            "patch": {
+                "tags": [
+                    "Receipts"
+                ],
+                "summary": "Cancel receipt voucher",
+                "operationId": "cancelReceipt",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Cancelled",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/SuccessResponse"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not found",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
                                 }
                             }
                         }
@@ -4182,6 +5461,14 @@
                             "type": "string",
                             "format": "date"
                         }
+                    },
+                    {
+                        "name": "financial_year_id",
+                        "in": "query",
+                        "description": "Financial year ID (default: current)",
+                        "schema": {
+                            "type": "integer"
+                        }
                     }
                 ],
                 "responses": {
@@ -4390,6 +5677,14 @@
                         "schema": {
                             "type": "integer"
                         }
+                    },
+                    {
+                        "name": "financial_year_id",
+                        "in": "query",
+                        "description": "Financial year ID (default: current)",
+                        "schema": {
+                            "type": "integer"
+                        }
                     }
                 ],
                 "responses": {
@@ -4438,6 +5733,14 @@
                     {
                         "name": "account_id",
                         "in": "query",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "financial_year_id",
+                        "in": "query",
+                        "description": "Financial year ID (default: current)",
                         "schema": {
                             "type": "integer"
                         }
@@ -5005,13 +6308,34 @@
                         "application/json": {
                             "schema": {
                                 "required": [
-                                    "amount"
+                                    "amount",
+                                    "payment_mode",
+                                    "cash_bank_account_id"
                                 ],
                                 "properties": {
                                     "amount": {
                                         "type": "number",
                                         "format": "float",
                                         "example": 500
+                                    },
+                                    "payment_mode": {
+                                        "type": "string",
+                                        "example": "bank",
+                                        "enum": [
+                                            "cash",
+                                            "bank",
+                                            "od"
+                                        ]
+                                    },
+                                    "cash_bank_account_id": {
+                                        "description": "Received In cash/bank/OD account",
+                                        "type": "integer",
+                                        "example": 12
+                                    },
+                                    "payment_date": {
+                                        "type": "string",
+                                        "format": "date",
+                                        "example": "2026-07-16"
                                     }
                                 },
                                 "type": "object"
@@ -5068,6 +6392,307 @@
                 "responses": {
                     "200": {
                         "description": "PDF generated",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/SuccessResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/service-sales-invoices": {
+            "get": {
+                "tags": [
+                    "Service Sales Invoices"
+                ],
+                "summary": "List service sales invoices",
+                "description": "Alias of GET /sales-invoices?invoice_type=service",
+                "operationId": "getServiceSalesInvoices",
+                "parameters": [
+                    {
+                        "name": "search",
+                        "in": "query",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "status",
+                        "in": "query",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "per_page",
+                        "in": "query",
+                        "schema": {
+                            "type": "integer",
+                            "default": 15
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Success",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/SuccessResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            },
+            "post": {
+                "tags": [
+                    "Service Sales Invoices"
+                ],
+                "summary": "Create service sales invoice",
+                "description": "Forces invoice_type=service. Send service_lines (same as web).",
+                "operationId": "createServiceSalesInvoice",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "party_id",
+                                    "invoice_date",
+                                    "due_date",
+                                    "service_lines"
+                                ],
+                                "properties": {
+                                    "party_id": {
+                                        "type": "integer"
+                                    },
+                                    "invoice_date": {
+                                        "type": "string",
+                                        "format": "date"
+                                    },
+                                    "due_date": {
+                                        "type": "string",
+                                        "format": "date"
+                                    },
+                                    "service_lines": {
+                                        "type": "array",
+                                        "items": {
+                                            "properties": {
+                                                "account_id": {
+                                                    "type": "integer"
+                                                },
+                                                "tax_rate_id": {
+                                                    "type": "integer"
+                                                },
+                                                "description": {
+                                                    "type": "string"
+                                                },
+                                                "amount": {
+                                                    "type": "number"
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/SuccessResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/service-sales-invoices/{id}": {
+            "get": {
+                "tags": [
+                    "Service Sales Invoices"
+                ],
+                "summary": "Get service sales invoice",
+                "operationId": "getServiceSalesInvoiceById",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Success",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/SuccessResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            },
+            "put": {
+                "tags": [
+                    "Service Sales Invoices"
+                ],
+                "summary": "Update service sales invoice",
+                "operationId": "updateServiceSalesInvoice",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Updated",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/SuccessResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            },
+            "delete": {
+                "tags": [
+                    "Service Sales Invoices"
+                ],
+                "summary": "Delete service sales invoice",
+                "operationId": "deleteServiceSalesInvoice",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Deleted",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/SuccessResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/service-sales-invoices/{id}/payment": {
+            "post": {
+                "tags": [
+                    "Service Sales Invoices"
+                ],
+                "summary": "Record payment against service sales invoice",
+                "operationId": "recordServiceSalesInvoicePayment",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "amount",
+                                    "payment_mode",
+                                    "cash_bank_account_id"
+                                ],
+                                "properties": {
+                                    "amount": {
+                                        "type": "number",
+                                        "format": "float"
+                                    },
+                                    "payment_mode": {
+                                        "type": "string",
+                                        "enum": [
+                                            "cash",
+                                            "bank",
+                                            "od"
+                                        ]
+                                    },
+                                    "cash_bank_account_id": {
+                                        "type": "integer"
+                                    },
+                                    "payment_date": {
+                                        "type": "string",
+                                        "format": "date"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Payment recorded",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -6814,6 +8439,130 @@
                         "bearerAuth": []
                     }
                 ]
+            },
+            "delete": {
+                "tags": [
+                    "Tax Rates"
+                ],
+                "summary": "Delete tax rate",
+                "operationId": "deleteTaxRate",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Deleted",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/SuccessResponse"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not found",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/tax-rates/dropdown": {
+            "get": {
+                "tags": [
+                    "Tax Rates"
+                ],
+                "summary": "Tax rates dropdown list",
+                "operationId": "getTaxRatesDropdown",
+                "responses": {
+                    "200": {
+                        "description": "Success",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/SuccessResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/tax-rates/{id}/status": {
+            "patch": {
+                "tags": [
+                    "Tax Rates"
+                ],
+                "summary": "Toggle tax rate status",
+                "operationId": "toggleTaxRateStatus",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "properties": {
+                                    "status": {
+                                        "type": "string",
+                                        "enum": [
+                                            "active",
+                                            "inactive"
+                                        ]
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Status updated",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/SuccessResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
             }
         },
         "/themes/current": {
@@ -7014,7 +8763,7 @@
                     "Vouchers"
                 ],
                 "summary": "Get all vouchers",
-                "description": "Get paginated list of vouchers with optional filters",
+                "description": "Get paginated list of vouchers with optional filters. For payment, receipt, and adjustment modules use the dedicated /payments, /receipts, and /adjustments endpoints (same data, clearer Swagger grouping).",
                 "operationId": "getVouchers",
                 "parameters": [
                     {
@@ -7147,7 +8896,7 @@
                     "Vouchers"
                 ],
                 "summary": "Create new voucher",
-                "description": "Create a new voucher with line items",
+                "description": "Prefer dedicated /payments, /receipts, /adjustments endpoints for those types (Tally-style rows). For payment/receipt this endpoint also accepts payment_mode + cash_bank_account_id + payment_rows. For journal/adjustment accept adjustment_rows. Raw balanced lines still work for income/expense.",
                 "operationId": "createVoucher",
                 "requestBody": {
                     "description": "Voucher data",
@@ -8040,6 +9789,10 @@
     },
     "tags": [
         {
+            "name": "Adjustments",
+            "description": "Journal / adjustment vouchers"
+        },
+        {
             "name": "Authentication",
             "description": "API Endpoints for User Authentication"
         },
@@ -8057,7 +9810,15 @@
         },
         {
             "name": "Vouchers",
-            "description": "API Endpoints for Voucher Management"
+            "description": "Generic voucher API (all types). Prefer /payments, /receipts, /adjustments for those modules."
+        },
+        {
+            "name": "Payments",
+            "description": "Payment vouchers (money out). Same Tally-style payload as web admin: payment_mode + cash_bank_account_id + payment_rows. Server builds balanced ledger lines and auto-posts."
+        },
+        {
+            "name": "Receipts",
+            "description": "Receipt vouchers (money in). Same Tally-style payload as web admin: payment_mode + cash_bank_account_id + payment_rows. Server builds balanced ledger lines and auto-posts."
         },
         {
             "name": "Reports",
@@ -8088,10 +9849,6 @@
             "description": "API Endpoints for Purchase Invoice (AP) Management"
         },
         {
-            "name": "Bank Accounts",
-            "description": "API Endpoints for Bank Account Management"
-        },
-        {
             "name": "Subscriptions",
             "description": "API Endpoints for Subscription & Billing Management"
         },
@@ -8109,7 +9866,7 @@
         },
         {
             "name": "Export",
-            "description": "API Endpoints for Report Export (PDF/Excel/CSV)"
+            "description": "API Endpoints for Report Export (PDF)"
         },
         {
             "name": "Ledgers",

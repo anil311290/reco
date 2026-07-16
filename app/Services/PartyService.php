@@ -13,10 +13,12 @@ use Illuminate\Support\Str;
 class PartyService
 {
     protected LedgerService $ledgerService;
+    protected AccountService $accountService;
 
-    public function __construct(LedgerService $ledgerService)
+    public function __construct(LedgerService $ledgerService, AccountService $accountService)
     {
         $this->ledgerService = $ledgerService;
+        $this->accountService = $accountService;
     }
 
     /**
@@ -148,6 +150,17 @@ class PartyService
 
         $oldOpeningBalance = $party->opening_balance;
 
+        if ($party->account_id && $this->accountService->isAccountTransactionallyUsed($party->account_id)) {
+            // Party name/contact details may change. Reclassifying Debtor ↔
+            // Creditor or changing opening values would rewrite old books.
+            unset(
+                $data['type'],
+                $data['opening_balance'],
+                $data['opening_balance_type'],
+                $data['opening_date']
+            );
+        }
+
         try {
             DB::beginTransaction();
 
@@ -186,6 +199,13 @@ class PartyService
         }
 
         if ($party->account_id) {
+            if ($this->accountService->isAccountTransactionallyUsed($party->account_id)) {
+                throw new \Exception(
+                    'This party cannot be deleted because accounting transactions are linked to it. '
+                    . 'Mark the party inactive instead.'
+                );
+            }
+
             Account::where('id', $party->account_id)->update(['is_active' => false]);
         }
 

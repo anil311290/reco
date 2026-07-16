@@ -133,9 +133,16 @@ class PurchaseInvoiceController extends Controller
                 'delivery_terms' => $validated['delivery_terms'] ?? null,
                 'discount_percentage' => $validated['discount_percentage'] ?? 0,
                 'status' => 'draft',
+                'created_by' => auth()->id(),
             ];
 
             $invoice = $this->purchaseInvoiceService->create($data, $validated['lines'], $validated['service_lines'] ?? []);
+
+            $voucher = $this->purchaseInvoiceService->generateVoucher($invoice);
+            if (!$voucher) {
+                throw new \RuntimeException('Purchase invoice created but accounting posting failed. Please check account mappings.');
+            }
+
             return ResponseHelper::success($invoice, 'Purchase invoice created successfully');
         } catch (\Exception $e) {
             return ResponseHelper::error($e->getMessage());
@@ -148,7 +155,11 @@ class PurchaseInvoiceController extends Controller
     public function show(int $id)
     {
         $invoice = $this->purchaseInvoiceService->getById($id);
-        return view('admin.purchase-invoices.show', compact('invoice'));
+        $companyId = auth()->user()->company_id;
+        $financialYearId = auth()->user()->company->currentFinancialYear?->id;
+        $cashBankAccounts = $this->accountService->getCashBankAccountsForMode($companyId, null, $financialYearId);
+
+        return view('admin.purchase-invoices.show', compact('invoice', 'cashBankAccounts'));
     }
 
     /**
@@ -205,6 +216,8 @@ class PurchaseInvoiceController extends Controller
                 'payment_terms' => $validated['payment_terms'] ?? null,
                 'delivery_terms' => $validated['delivery_terms'] ?? null,
                 'discount_percentage' => $validated['discount_percentage'] ?? 0,
+                'updated_by' => auth()->id(),
+                'updated_by_ip' => $request->ip(),
             ];
 
             $invoice = $this->purchaseInvoiceService->updateWithLines($id, $data, $validated['lines'], $validated['service_lines'] ?? []);
@@ -221,11 +234,21 @@ class PurchaseInvoiceController extends Controller
     {
         $validated = $request->validate([
             'amount' => 'required|numeric|min:0.01',
+            'payment_mode' => 'required|in:cash,bank,od',
+            'cash_bank_account_id' => 'required|exists:accounts,id',
+            'payment_date' => 'nullable|date',
         ]);
 
         try {
-            $invoice = $this->purchaseInvoiceService->recordPayment($id, $validated['amount']);
-            return ResponseHelper::success($invoice, 'Payment recorded successfully');
+            $invoice = $this->purchaseInvoiceService->recordPayment($id, [
+                'amount' => $validated['amount'],
+                'payment_mode' => $validated['payment_mode'],
+                'cash_bank_account_id' => $validated['cash_bank_account_id'],
+                'payment_date' => $validated['payment_date'] ?? now()->toDateString(),
+                'created_by' => auth()->id(),
+                'created_by_ip' => $request->ip(),
+            ]);
+            return ResponseHelper::success($invoice, 'Payment recorded and payment voucher posted');
         } catch (\Exception $e) {
             return ResponseHelper::error($e->getMessage());
         }

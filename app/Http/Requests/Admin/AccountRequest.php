@@ -23,8 +23,6 @@ class AccountRequest extends BaseFormRequest
     public function rules(): array
     {
         $accountId = $this->route('account') ?? $this->route('id');
-        $isAsset = $this->input('account_type') === 'asset';
-
         return [
             'account_name' => [
                 'required',
@@ -42,7 +40,6 @@ class AccountRequest extends BaseFormRequest
             ],
             'account_type' => ['required', Rule::in(['asset', 'liability', 'income', 'expense', 'equity'])],
             'transaction_mode' => [
-                Rule::requiredIf($isAsset),
                 Rule::in(['cash', 'bank', 'od']),
                 'nullable',
             ],
@@ -64,7 +61,6 @@ class AccountRequest extends BaseFormRequest
             'account_type.required' => 'Account type is required',
             'account_type.in' => 'Invalid account type',
             'account_name.unique' => 'An account with this name already exists for this type',
-            'transaction_mode.required' => 'Transaction mode is required for asset accounts',
             'transaction_mode.in' => 'Transaction mode must be Cash, Bank, or OD',
         ];
     }

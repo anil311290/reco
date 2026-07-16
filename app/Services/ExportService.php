@@ -139,9 +139,10 @@ class ExportService
     /**
      * Export Day Book to PDF
      */
-    public function exportDayBookPdf(int $companyId, string $date): string
+    public function exportDayBookPdf(int $companyId, string $date, ?int $financialYearId = null): string
     {
-        $report = $this->reportService->getDayBook($companyId, $date);
+        $financialYearId = $financialYearId ?? \App\Models\FinancialYear::getCurrent($companyId)?->id;
+        $report = $this->reportService->getDayBook($companyId, $date, $financialYearId);
 
         $pdf = Pdf::loadView('exports.day-book', compact('report', 'date'));
 
@@ -292,7 +293,14 @@ class ExportService
                 break;
 
             case 'day-book':
-                $dayBook = $this->reportService->getDayBook($companyId, $filters['date'] ?? date('Y-m-d'));
+                $fyId = isset($filters['financial_year_id'])
+                    ? (int) $filters['financial_year_id']
+                    : \App\Models\FinancialYear::getCurrent($companyId)?->id;
+                $dayBook = $this->reportService->getDayBook(
+                    $companyId,
+                    $filters['date'] ?? date('Y-m-d'),
+                    $fyId
+                );
                 $data = collect($dayBook['rows'])->map(function ($row) {
                     return [
                         'voucher_number' => $row['voucher_number'],
@@ -453,7 +461,14 @@ class ExportService
                 break;
 
             case 'day-book':
-                $dayBook = $this->reportService->getDayBook($companyId, $filters['date'] ?? date('Y-m-d'));
+                $fyId = isset($filters['financial_year_id'])
+                    ? (int) $filters['financial_year_id']
+                    : \App\Models\FinancialYear::getCurrent($companyId)?->id;
+                $dayBook = $this->reportService->getDayBook(
+                    $companyId,
+                    $filters['date'] ?? date('Y-m-d'),
+                    $fyId
+                );
                 $data = collect($dayBook['rows'])->map(function ($row) {
                     return [
                         'voucher_number' => $row['voucher_number'],

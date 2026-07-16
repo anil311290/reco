@@ -9,7 +9,7 @@ interface LedgerRepositoryInterface extends RepositoryInterface
 {
     public function deleteByVoucher(int $voucherId): void;
 
-    public function getLastEntry(int $companyId, int $accountId): ?Ledger;
+    public function getLastEntry(int $companyId, int $accountId, ?int $financialYearId = null): ?Ledger;
 
     public function getEntries(array $criteria = [], array $relations = []): Collection;
 }

@@ -194,7 +194,6 @@ class PartyTest extends TestCase
 
     public function test_create_party_with_opening_balance_creates_ledger_entries(): void
     {
-        $arAccount = Account::where('account_code', Account::CODE_AR)->first();
         $openingBalanceAccount = Account::where('account_code', Account::CODE_SUSPENSE)->first();
 
         $partyData = [
@@ -217,7 +216,7 @@ class PartyTest extends TestCase
 
         $this->assertCount(2, $ledgerEntries);
 
-        $partyEntry = $ledgerEntries->firstWhere('account_id', $arAccount->id);
+        $partyEntry = $ledgerEntries->firstWhere('account_id', $party->account_id);
         $this->assertNotNull($partyEntry);
         $this->assertEquals(1250.00, (float) $partyEntry->debit);
         $this->assertEquals(0.00, (float) $partyEntry->credit);

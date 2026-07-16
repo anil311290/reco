@@ -19,7 +19,6 @@ use App\Http\Controllers\Admin\ItemCategoryController;
 use App\Http\Controllers\Admin\SalesInvoiceController;
 use App\Http\Controllers\Admin\PurchaseInvoiceController;
 use App\Http\Controllers\Admin\ServiceSalesInvoiceController;
-use App\Http\Controllers\Admin\BankAccountController;
 use App\Http\Controllers\Admin\SubscriptionController;
 use App\Http\Controllers\Admin\SubscriptionPlanController;
 use App\Http\Controllers\Admin\CompanyApprovalController;
@@ -459,25 +458,10 @@ Route::prefix('admin')->name('admin.')->group(function () {
             Route::get('service-sales-invoices/create', [ServiceSalesInvoiceController::class, 'create'])->name('service-sales-invoices.create');
             Route::post('service-sales-invoices', [ServiceSalesInvoiceController::class, 'store'])->name('service-sales-invoices.store');
             Route::get('service-sales-invoices/{id}', [ServiceSalesInvoiceController::class, 'show'])->name('service-sales-invoices.show');
+            Route::post('service-sales-invoices/{id}/payment', [ServiceSalesInvoiceController::class, 'payment'])->name('service-sales-invoices.payment');
             Route::get('service-sales-invoices/{id}/edit', [ServiceSalesInvoiceController::class, 'edit'])->name('service-sales-invoices.edit');
             Route::put('service-sales-invoices/{id}', [ServiceSalesInvoiceController::class, 'update'])->name('service-sales-invoices.update');
             Route::delete('service-sales-invoices/{id}', [ServiceSalesInvoiceController::class, 'destroy'])->name('service-sales-invoices.destroy');
-        });
-
-        /*
-        |--------------------------------------------------------------------------
-        | Bank Account Routes
-        |--------------------------------------------------------------------------
-        */
-        Route::middleware(CheckPermission::class . ':accounts.view')->group(function () {
-            Route::get('bank-accounts', [BankAccountController::class, 'index'])->name('bank-accounts.index');
-            Route::get('bank-accounts/create', [BankAccountController::class, 'create'])->name('bank-accounts.create');
-            Route::post('bank-accounts', [BankAccountController::class, 'store'])->name('bank-accounts.store');
-            Route::get('bank-accounts/{id}/edit', [BankAccountController::class, 'edit'])->name('bank-accounts.edit');
-            Route::put('bank-accounts/{id}', [BankAccountController::class, 'update'])->name('bank-accounts.update');
-            Route::delete('bank-accounts/{id}', [BankAccountController::class, 'destroy'])->name('bank-accounts.destroy');
-            Route::patch('bank-accounts/{id}/default', [BankAccountController::class, 'setDefault'])->name('bank-accounts.default');
-            Route::get('bank-accounts/dropdown', [BankAccountController::class, 'dropdown'])->name('bank-accounts.dropdown');
         });
 
         /*

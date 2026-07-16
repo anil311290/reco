@@ -5,6 +5,7 @@ namespace Tests\Unit;
 use App\Models\Account;
 use App\Models\Company;
 use App\Models\FinancialYear;
+use App\Models\Ledger;
 use App\Models\User;
 use App\Services\AccountService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -85,13 +86,13 @@ class AccountTest extends TestCase
         ]);
 
         $updated = $this->accountService->update($account->id, [
-            'account_name' => 'Should Stay Immutable',
+            'account_name' => 'Renamed Cash Ledger',
             'remarks' => 'Updated remarks',
         ]);
 
         $this->assertTrue($updated);
         $fresh = $account->fresh();
-        $this->assertEquals('Cash', $fresh->account_name);
+        $this->assertEquals('Renamed Cash Ledger', $fresh->account_name);
         $this->assertEquals('Updated remarks', $fresh->remarks);
     }
 
@@ -126,6 +127,43 @@ class AccountTest extends TestCase
             'company_id' => $this->company->id,
             'is_system' => true,
         ]);
+
+        $this->expectException(\Exception::class);
+        $this->accountService->delete($account->id);
+    }
+
+    public function test_cannot_delete_manual_account_with_posted_transactions_but_can_rename_it(): void
+    {
+        $account = Account::factory()->create([
+            'company_id' => $this->company->id,
+            'financial_year_id' => $this->financialYear->id,
+            'account_name' => 'Manual Expense',
+            'account_type' => 'expense',
+            'entry_source' => 'manual',
+            'is_system' => false,
+        ]);
+
+        Ledger::factory()->create([
+            'company_id' => $this->company->id,
+            'financial_year_id' => $this->financialYear->id,
+            'account_id' => $account->id,
+            'voucher_id' => null,
+            'reference_type' => 'manual_test',
+            'reference_id' => $account->id,
+            'debit' => 100,
+            'credit' => 0,
+        ]);
+
+        $this->accountService->update($account->id, [
+            'account_name' => 'Renamed Manual Expense',
+            'account_type' => 'asset',
+            'opening_balance' => 999,
+        ]);
+
+        $fresh = $account->fresh();
+        $this->assertSame('Renamed Manual Expense', $fresh->account_name);
+        $this->assertSame('expense', $fresh->account_type);
+        $this->assertNotEquals(999.0, (float) $fresh->opening_balance);
 
         $this->expectException(\Exception::class);
         $this->accountService->delete($account->id);

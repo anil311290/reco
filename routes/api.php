@@ -16,7 +16,6 @@ use App\Http\Controllers\Api\ItemApiController;
 use App\Http\Controllers\Api\ItemCategoryApiController;
 use App\Http\Controllers\Api\SalesInvoiceApiController;
 use App\Http\Controllers\Api\PurchaseInvoiceApiController;
-use App\Http\Controllers\Api\BankAccountApiController;
 use App\Http\Controllers\Api\SubscriptionApiController;
 use App\Http\Controllers\Api\ThemeApiController;
 use App\Http\Controllers\Api\TaxRateApiController;
@@ -77,6 +76,9 @@ Route::prefix('v1')->middleware('auth:sanctum')->group(function () {
     Route::post('/accounts', [AccountApiController::class, 'store']);
     Route::get('/accounts/by-type', [AccountApiController::class, 'getByType']);
     Route::get('/accounts/tree', [AccountApiController::class, 'tree']);
+    Route::get('/accounts/cash-bank', [AccountApiController::class, 'cashBank']);
+    Route::get('/accounts/payment-particulars', [AccountApiController::class, 'paymentParticulars']);
+    Route::get('/accounts/adjustment-particulars', [AccountApiController::class, 'adjustmentParticulars']);
     Route::get('/accounts/{id}', [AccountApiController::class, 'show']);
     Route::put('/accounts/{id}', [AccountApiController::class, 'update']);
     Route::delete('/accounts/{id}', [AccountApiController::class, 'destroy']);
@@ -99,6 +101,30 @@ Route::prefix('v1')->middleware('auth:sanctum')->group(function () {
     Route::delete('/vouchers/{id}', [VoucherApiController::class, 'destroy']);
     Route::patch('/vouchers/{id}/post', [VoucherApiController::class, 'post']);
     Route::patch('/vouchers/{id}/cancel', [VoucherApiController::class, 'cancel']);
+
+    // Payment vouchers (money out — mirrors admin Payments module)
+    Route::get('/payments', [VoucherApiController::class, 'indexPayments']);
+    Route::post('/payments', [VoucherApiController::class, 'storePayment']);
+    Route::get('/payments/{id}', [VoucherApiController::class, 'showPayment']);
+    Route::put('/payments/{id}', [VoucherApiController::class, 'updatePayment']);
+    Route::delete('/payments/{id}', [VoucherApiController::class, 'destroyPayment']);
+    Route::patch('/payments/{id}/cancel', [VoucherApiController::class, 'cancelPayment']);
+
+    // Receipt vouchers (money in — mirrors admin Receipts module)
+    Route::get('/receipts', [VoucherApiController::class, 'indexReceipts']);
+    Route::post('/receipts', [VoucherApiController::class, 'storeReceipt']);
+    Route::get('/receipts/{id}', [VoucherApiController::class, 'showReceipt']);
+    Route::put('/receipts/{id}', [VoucherApiController::class, 'updateReceipt']);
+    Route::delete('/receipts/{id}', [VoucherApiController::class, 'destroyReceipt']);
+    Route::patch('/receipts/{id}/cancel', [VoucherApiController::class, 'cancelReceipt']);
+
+    // Adjustment vouchers (journal entries — mirrors admin Adjustments module)
+    Route::get('/adjustments', [VoucherApiController::class, 'indexAdjustments']);
+    Route::post('/adjustments', [VoucherApiController::class, 'storeAdjustment']);
+    Route::get('/adjustments/{id}', [VoucherApiController::class, 'showAdjustment']);
+    Route::put('/adjustments/{id}', [VoucherApiController::class, 'updateAdjustment']);
+    Route::delete('/adjustments/{id}', [VoucherApiController::class, 'destroyAdjustment']);
+    Route::patch('/adjustments/{id}/cancel', [VoucherApiController::class, 'cancelAdjustment']);
 
     // Ledgers
     Route::get('/ledgers', [LedgerApiController::class, 'index']);
@@ -185,6 +211,14 @@ Route::prefix('v1')->middleware('auth:sanctum')->group(function () {
     Route::post('/sales-invoices/{id}/payment', [SalesInvoiceApiController::class, 'payment']);
     Route::get('/sales-invoices/{id}/pdf', [SalesInvoiceApiController::class, 'exportPdf']);
 
+    // Service sales invoices (same resource as sales with invoice_type=service)
+    Route::get('/service-sales-invoices', [SalesInvoiceApiController::class, 'indexService']);
+    Route::post('/service-sales-invoices', [SalesInvoiceApiController::class, 'storeService']);
+    Route::get('/service-sales-invoices/{id}', [SalesInvoiceApiController::class, 'showService']);
+    Route::put('/service-sales-invoices/{id}', [SalesInvoiceApiController::class, 'updateService']);
+    Route::delete('/service-sales-invoices/{id}', [SalesInvoiceApiController::class, 'destroyService']);
+    Route::post('/service-sales-invoices/{id}/payment', [SalesInvoiceApiController::class, 'paymentService']);
+
     // Purchase invoices
     Route::get('/purchase-invoices', [PurchaseInvoiceApiController::class, 'index']);
     Route::post('/purchase-invoices', [PurchaseInvoiceApiController::class, 'store']);
@@ -192,15 +226,6 @@ Route::prefix('v1')->middleware('auth:sanctum')->group(function () {
     Route::put('/purchase-invoices/{id}', [PurchaseInvoiceApiController::class, 'update']);
     Route::delete('/purchase-invoices/{id}', [PurchaseInvoiceApiController::class, 'destroy']);
     Route::post('/purchase-invoices/{id}/payment', [PurchaseInvoiceApiController::class, 'payment']);
-
-    // Bank accounts
-    Route::get('/bank-accounts', [BankAccountApiController::class, 'index']);
-    Route::post('/bank-accounts', [BankAccountApiController::class, 'store']);
-    Route::get('/bank-accounts/dropdown', [BankAccountApiController::class, 'dropdown']);
-    Route::get('/bank-accounts/{id}', [BankAccountApiController::class, 'show']);
-    Route::put('/bank-accounts/{id}', [BankAccountApiController::class, 'update']);
-    Route::delete('/bank-accounts/{id}', [BankAccountApiController::class, 'destroy']);
-    Route::patch('/bank-accounts/{id}/default', [BankAccountApiController::class, 'setDefault']);
 
     // Subscriptions
     Route::get('/subscriptions/plans', [SubscriptionApiController::class, 'plans']);

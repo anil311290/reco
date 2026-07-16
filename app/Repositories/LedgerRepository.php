@@ -18,11 +18,16 @@ class LedgerRepository extends BaseRepository implements LedgerRepositoryInterfa
         $this->model->where('voucher_id', $voucherId)->delete();
     }
 
-    public function getLastEntry(int $companyId, int $accountId): ?Ledger
+    public function getLastEntry(int $companyId, int $accountId, ?int $financialYearId = null): ?Ledger
     {
-        return $this->model->where('company_id', $companyId)
-            ->where('account_id', $accountId)
-            ->orderBy('transaction_date', 'desc')
+        $query = $this->model->where('company_id', $companyId)
+            ->where('account_id', $accountId);
+
+        if ($financialYearId) {
+            $query->where('financial_year_id', $financialYearId);
+        }
+
+        return $query->orderBy('transaction_date', 'desc')
             ->orderBy('id', 'desc')
             ->first();
     }

@@ -35,8 +35,8 @@
                     @endforeach
                 </select>
             </div>
-            <div class="col-lg-3 col-md-5 report-filter-actions">
-                <button type="submit" class="btn btn-primary px-4">
+            <div class="col-lg-auto col-md-12 report-filter-actions">
+                <button type="submit" class="btn btn-primary">
                     <i class="bi bi-funnel me-1"></i>Filter
                 </button>
                 @if(!empty($financialYearId))
@@ -102,8 +102,16 @@
                     <tbody>
                         @forelse($report['accounts'] as $item)
                         <tr>
-                            <td>{{ $item['account']->account_code }}</td>
-                            <td>{{ $item['account']->account_name }}</td>
+                            <td>
+                                <a href="{{ route('admin.reports.ledger', ['account_id' => $item['account']->id]) }}" class="report-detail-link" title="View ledger">
+                                    {{ $item['account']->account_code }}
+                                </a>
+                            </td>
+                            <td>
+                                <a href="{{ route('admin.reports.ledger', ['account_id' => $item['account']->id]) }}" class="report-detail-link" title="View ledger">
+                                    {{ $item['account']->account_name }}
+                                </a>
+                            </td>
                             <td><span class="report-pill report-pill--info">{{ ucfirst($item['account']->account_type) }}</span></td>
                             <td class="text-end fw-semibold">{{ $item['debit'] > 0 ? '₹' . number_format($item['debit'], 2) : '-' }}</td>
                             <td class="text-end fw-semibold">{{ $item['credit'] > 0 ? '₹' . number_format($item['credit'], 2) : '-' }}</td>

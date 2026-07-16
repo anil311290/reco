@@ -64,14 +64,19 @@ class PurchaseInvoiceApiController extends Controller
             'due_date' => 'required|date|after_or_equal:invoice_date',
             'notes' => 'nullable|string',
             'discount_percentage' => 'nullable|numeric|min:0|max:100',
-            'lines' => 'required|array|min:1',
+            'lines' => 'required_without:service_lines|array|min:1',
             'lines.*.item_id' => 'nullable|exists:items,id',
             'lines.*.account_id' => 'nullable|exists:accounts,id',
             'lines.*.tax_rate_id' => 'nullable|exists:tax_rates,id',
             'lines.*.description' => 'nullable|string',
-            'lines.*.quantity' => 'required|numeric|min:0.001',
-            'lines.*.unit_price' => 'required|numeric|min:0',
+            'lines.*.quantity' => 'required_with:lines|numeric|min:0.001',
+            'lines.*.unit_price' => 'required_with:lines|numeric|min:0',
             'lines.*.discount_percentage' => 'nullable|numeric|min:0|max:100',
+            'service_lines' => 'required_without:lines|array|min:1',
+            'service_lines.*.account_id' => 'nullable|exists:accounts,id',
+            'service_lines.*.tax_rate_id' => 'nullable|exists:tax_rates,id',
+            'service_lines.*.description' => 'nullable|string',
+            'service_lines.*.amount' => 'required_with:service_lines|numeric|min:0',
         ]);
 
         $companyId = $request->user()->company_id;
@@ -91,7 +96,16 @@ class PurchaseInvoiceApiController extends Controller
             'status' => 'draft',
         ];
 
-        $invoice = $this->purchaseInvoiceService->create($data, $validated['lines']);
+        $invoice = $this->purchaseInvoiceService->create(
+            $data,
+            $validated['lines'] ?? [],
+            $validated['service_lines'] ?? []
+        );
+
+        $voucher = $this->purchaseInvoiceService->generateVoucher($invoice);
+        if (!$voucher) {
+            return ResponseHelper::error('Invoice created but accounting posting failed. Please configure required accounts.', 400);
+        }
 
         return ResponseHelper::success(new PurchaseInvoiceResource($invoice), 'Invoice created', 201);
     }
@@ -109,11 +123,25 @@ class PurchaseInvoiceApiController extends Controller
 
         $validated = $request->validate([
             'amount' => 'required|numeric|min:0.01',
+            'payment_mode' => 'required|in:cash,bank,od',
+            'cash_bank_account_id' => 'required|exists:accounts,id',
+            'payment_date' => 'nullable|date',
         ]);
 
-        $invoice = $this->purchaseInvoiceService->recordPayment($id, $validated['amount']);
+        try {
+            $invoice = $this->purchaseInvoiceService->recordPayment($id, [
+                'amount' => $validated['amount'],
+                'payment_mode' => $validated['payment_mode'],
+                'cash_bank_account_id' => $validated['cash_bank_account_id'],
+                'payment_date' => $validated['payment_date'] ?? now()->toDateString(),
+                'created_by' => $request->user()->id,
+                'created_by_ip' => $request->ip(),
+            ]);
+        } catch (\Exception $e) {
+            return ResponseHelper::error($e->getMessage());
+        }
 
-        return ResponseHelper::success(new PurchaseInvoiceResource($invoice->fresh()), 'Payment recorded');
+        return ResponseHelper::success(new PurchaseInvoiceResource($invoice->fresh()), 'Payment recorded and payment voucher posted');
     }
 
     /**
@@ -134,14 +162,19 @@ class PurchaseInvoiceApiController extends Controller
             'due_date' => 'required|date|after_or_equal:invoice_date',
             'notes' => 'nullable|string',
             'discount_percentage' => 'nullable|numeric|min:0|max:100',
-            'lines' => 'required|array|min:1',
+            'lines' => 'required_without:service_lines|array|min:1',
             'lines.*.item_id' => 'nullable|exists:items,id',
             'lines.*.account_id' => 'nullable|exists:accounts,id',
             'lines.*.tax_rate_id' => 'nullable|exists:tax_rates,id',
             'lines.*.description' => 'nullable|string',
-            'lines.*.quantity' => 'required|numeric|min:0.001',
-            'lines.*.unit_price' => 'required|numeric|min:0',
+            'lines.*.quantity' => 'required_with:lines|numeric|min:0.001',
+            'lines.*.unit_price' => 'required_with:lines|numeric|min:0',
             'lines.*.discount_percentage' => 'nullable|numeric|min:0|max:100',
+            'service_lines' => 'required_without:lines|array|min:1',
+            'service_lines.*.account_id' => 'nullable|exists:accounts,id',
+            'service_lines.*.tax_rate_id' => 'nullable|exists:tax_rates,id',
+            'service_lines.*.description' => 'nullable|string',
+            'service_lines.*.amount' => 'required_with:service_lines|numeric|min:0',
         ]);
 
         try {
@@ -152,9 +185,16 @@ class PurchaseInvoiceApiController extends Controller
                 'due_date' => $validated['due_date'],
                 'notes' => $validated['notes'] ?? null,
                 'discount_percentage' => $validated['discount_percentage'] ?? 0,
+                'updated_by' => $request->user()->id,
+                'updated_by_ip' => $request->ip(),
             ];
 
-            $invoice = $this->purchaseInvoiceService->updateWithLines($id, $data, $validated['lines']);
+            $invoice = $this->purchaseInvoiceService->updateWithLines(
+                $id,
+                $data,
+                $validated['lines'] ?? [],
+                $validated['service_lines'] ?? []
+            );
 
             return ResponseHelper::success(new PurchaseInvoiceResource($invoice), 'Invoice updated successfully');
         } catch (\Exception $e) {

@@ -17,12 +17,15 @@ class FinancialYearFactory extends Factory
      */
     public function definition(): array
     {
-        $year = fake()->year();
-        
+        // Indian FY (Apr–Mar) covering "today" so period-lock tests stay valid.
+        $startYear = (int) now()->format('n') >= 4
+            ? (int) now()->format('Y')
+            : (int) now()->format('Y') - 1;
+
         return [
-            'name' => $year . '-' . ($year + 1),
-            'start_date' => $year . '-04-01',
-            'end_date' => ($year + 1) . '-03-31',
+            'name' => $startYear . '-' . ($startYear + 1),
+            'start_date' => $startYear . '-04-01',
+            'end_date' => ($startYear + 1) . '-03-31',
             'is_current' => false,
             'is_closed' => false,
         ];

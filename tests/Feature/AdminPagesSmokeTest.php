@@ -50,7 +50,6 @@ class AdminPagesSmokeTest extends TestCase
             '/admin/purchase-invoices',
             '/admin/purchase-invoices/create',
             '/admin/service-sales-invoices',
-            '/admin/bank-accounts',
             '/admin/financial-years',
             '/admin/settings',
             '/admin/reports',

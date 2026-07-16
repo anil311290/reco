@@ -157,7 +157,11 @@ class SalesInvoiceController extends Controller
     public function show(int $id)
     {
         $invoice = $this->salesInvoiceService->getById($id);
-        return view('admin.sales-invoices.show', compact('invoice'));
+        $companyId = auth()->user()->company_id;
+        $financialYearId = auth()->user()->company->currentFinancialYear?->id;
+        $cashBankAccounts = $this->accountService->getCashBankAccountsForMode($companyId, null, $financialYearId);
+
+        return view('admin.sales-invoices.show', compact('invoice', 'cashBankAccounts'));
     }
 
     /**
@@ -228,6 +232,8 @@ class SalesInvoiceController extends Controller
                 'reference_number' => $validated['reference_number'] ?? null,
                 'notes' => $validated['notes'] ?? null,
                 'discount_percentage' => $validated['discount_percentage'] ?? 0,
+                'updated_by' => auth()->id(),
+                'updated_by_ip' => $request->ip(),
             ];
 
             $invoice = $this->salesInvoiceService->updateWithLines($id, $data, $validated['lines'], $validated['service_lines'] ?? []);
@@ -244,11 +250,21 @@ class SalesInvoiceController extends Controller
     {
         $validated = $request->validate([
             'amount' => 'required|numeric|min:0.01',
+            'payment_mode' => 'required|in:cash,bank,od',
+            'cash_bank_account_id' => 'required|exists:accounts,id',
+            'payment_date' => 'nullable|date',
         ]);
 
         try {
-            $invoice = $this->salesInvoiceService->recordPayment($id, $validated['amount']);
-            return ResponseHelper::success($invoice, 'Payment recorded successfully');
+            $invoice = $this->salesInvoiceService->recordPayment($id, [
+                'amount' => $validated['amount'],
+                'payment_mode' => $validated['payment_mode'],
+                'cash_bank_account_id' => $validated['cash_bank_account_id'],
+                'payment_date' => $validated['payment_date'] ?? now()->toDateString(),
+                'created_by' => auth()->id(),
+                'created_by_ip' => $request->ip(),
+            ]);
+            return ResponseHelper::success($invoice, 'Payment recorded and receipt voucher posted');
         } catch (\Exception $e) {
             return ResponseHelper::error($e->getMessage());
         }

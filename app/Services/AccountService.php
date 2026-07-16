@@ -133,7 +133,13 @@ class AccountService
                         $data['financial_year_id'] = $financialYear?->id;
                     }
 
-                    return Account::create($data);
+                    $account = Account::create($data);
+
+                    if (round((float) ($account->opening_balance ?? 0), 2) > 0) {
+                        app(LedgerService::class)->createAccountOpeningBalanceEntries($account);
+                    }
+
+                    return $account->fresh();
                 });
             } catch (QueryException $e) {
                 if ($attempt < $maxAttempts && $this->isDuplicateAccountCodeException($e)) {
@@ -170,8 +176,19 @@ class AccountService
             return false;
         }
 
-        // Account name must remain immutable from edit flow.
-        unset($data['account_name']);
+        $isInUse = $this->isAccountInUse($account->id);
+
+        // Renaming a ledger is safe: transactions reference its immutable ID.
+        // Reclassifying a ledger after posting would rewrite historical reports.
+        if ($isInUse) {
+            unset(
+                $data['account_type'],
+                $data['transaction_mode'],
+                $data['opening_balance'],
+                $data['balance_type'],
+                $data['opening_date']
+            );
+        }
 
         if (($data['account_type'] ?? $account->account_type) !== 'asset') {
             $data['transaction_mode'] = null;
@@ -206,7 +223,12 @@ class AccountService
             throw new \Exception('Cannot delete account with sub-accounts.');
         }
 
-        // TODO: Check if account has transactions
+        if ($this->isAccountInUse($account->id)) {
+            throw new \Exception(
+                'This ledger cannot be deleted because transactions or master records are linked to it. '
+                . 'You may rename it or mark it inactive instead.'
+            );
+        }
 
         return $account->delete();
     }
@@ -310,29 +332,12 @@ class AccountService
     }
 
     /**
-     * Particulars for payment/receipt lines: parties + non-cash/bank ledgers.
-     * Payment = creditors / expense-ish; Receipt = debtors / income-ish + all non cash accounts.
+     * Particulars for payment/receipt lines: parties only.
+     * Cash/Bank/OD are selected separately in Paid From / Received In.
+     * Payment → creditors; Receipt → debtors.
      */
     public function getPaymentParticularsOptions(int $companyId, ?string $voucherType = null): array
     {
-        $options = collect();
-
-        // Ledger accounts excluding cash/bank/od (those go in header)
-        $accountQuery = Account::where('company_id', $companyId)
-            ->where('is_active', true)
-            ->where(function ($q) {
-                $q->whereNull('transaction_mode')
-                    ->orWhereNotIn('transaction_mode', ['cash', 'bank', 'od']);
-            });
-
-        $accountQuery->orderBy('account_code')->get()->each(function (Account $account) use ($options) {
-            $options->put('a-' . $account->id, [
-                'id' => $account->id,
-                'text' => "A | {$account->account_code} - {$account->account_name}",
-                'kind' => 'account',
-            ]);
-        });
-
         $partyQuery = Party::query()
             ->where('company_id', $companyId)
             ->where('is_active', true)
@@ -346,19 +351,78 @@ class AccountService
             $partyQuery->where('type', 'creditor');
         }
 
-        $partyQuery->get()->each(function (Party $party) use ($options) {
-            if (!$party->account) {
-                return;
+        return $partyQuery->get()
+            ->filter(fn (Party $party) => $party->account && $party->account->is_active)
+            ->map(fn (Party $party) => [
+                'id' => $party->account->id,
+                'party_id' => $party->id,
+                'text' => "{$party->party_code} - {$party->name}",
+                'kind' => 'party',
+                'group' => 'Parties',
+                'sort_order' => 10,
+            ])
+            ->values()
+            ->toArray();
+    }
+
+    /**
+     * All ledgers for journal/adjustment vouchers, with party-linked ledgers
+     * displayed by party name rather than their internal account name.
+     */
+    public function getAdjustmentParticularsOptions(int $companyId): array
+    {
+        $options = collect();
+
+        $parties = Party::query()
+            ->where('company_id', $companyId)
+            ->where('is_active', true)
+            ->whereNotNull('account_id')
+            ->with('account')
+            ->orderBy('name')
+            ->get();
+
+        foreach ($parties as $party) {
+            if (!$party->account || !$party->account->is_active) {
+                continue;
             }
 
-            $options->put('p-' . $party->account->id, [
+            $options->push([
                 'id' => $party->account->id,
-                'text' => "P | {$party->party_code} - {$party->name}",
+                'party_id' => $party->id,
+                'text' => "{$party->party_code} - {$party->name}",
                 'kind' => 'party',
+                'group' => 'Parties',
+                'sort_order' => 10,
             ]);
-        });
+        }
 
-        return $options->values()->sortBy('text')->values()->toArray();
+        $partyAccountIds = $options->pluck('id')->all();
+
+        Account::query()
+            ->where('company_id', $companyId)
+            ->where('is_active', true)
+            ->when($partyAccountIds !== [], fn ($query) => $query->whereNotIn('id', $partyAccountIds))
+            ->orderBy('account_code')
+            ->get()
+            ->each(function (Account $account) use ($options) {
+                $options->push([
+                    'id' => $account->id,
+                    'party_id' => null,
+                    'text' => "{$account->account_code} - {$account->account_name}",
+                    'kind' => 'account',
+                    'group' => 'Ledger Accounts',
+                    'sort_order' => 20,
+                ]);
+            });
+
+        return $options
+            ->sortBy(fn (array $option) => sprintf(
+                '%02d|%s',
+                $option['sort_order'],
+                mb_strtolower($option['text'])
+            ))
+            ->values()
+            ->toArray();
     }
 
     /**
@@ -495,13 +559,9 @@ class AccountService
         return $removed;
     }
 
-    protected function isAccountInUse(int $accountId): bool
+    public function isAccountInUse(int $accountId): bool
     {
-        if (DB::table('ledgers')->where('account_id', $accountId)->exists()) {
-            return true;
-        }
-
-        if (DB::table('voucher_lines')->where('account_id', $accountId)->exists()) {
+        if ($this->isAccountTransactionallyUsed($accountId)) {
             return true;
         }
 
@@ -513,11 +573,45 @@ class AccountService
             return true;
         }
 
-        if (DB::table('bank_accounts')->where('account_id', $accountId)->exists()) {
+        if (DB::table('items')->where('income_account_id', $accountId)->orWhere('expense_account_id', $accountId)->exists()) {
             return true;
         }
 
-        if (DB::table('items')->where('income_account_id', $accountId)->orWhere('expense_account_id', $accountId)->exists()) {
+        if (DB::table('parties')->where('account_id', $accountId)->exists()) {
+            return true;
+        }
+
+        if (DB::table('accounts')->where('parent_id', $accountId)->exists()) {
+            return true;
+        }
+
+        if (DB::table('settings')
+            ->whereIn('key', [
+                'sales_tax_ledger_id',
+                'purchase_tax_ledger_id',
+                'tds_ledger_id',
+                'tcs_ledger_id',
+                'cess_ledger_id',
+            ])
+            ->where('value', (string) $accountId)
+            ->exists()) {
+            return true;
+        }
+
+        return false;
+    }
+
+    public function isAccountTransactionallyUsed(int $accountId): bool
+    {
+        if (DB::table('ledgers')->where('account_id', $accountId)->exists()) {
+            return true;
+        }
+
+        if (DB::table('voucher_lines')->where('account_id', $accountId)->exists()) {
+            return true;
+        }
+
+        if (DB::table('journal_entries')->where('account_id', $accountId)->exists()) {
             return true;
         }
 

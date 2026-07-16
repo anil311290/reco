@@ -27,7 +27,22 @@ use OpenApi\Annotations as OA;
  *
  * @OA\Tag(
  *     name="Vouchers",
- *     description="API Endpoints for Voucher Management"
+ *     description="Generic voucher API (all types). Prefer /payments, /receipts, /adjustments for those modules."
+ * )
+ *
+ * @OA\Tag(
+ *     name="Payments",
+ *     description="Payment vouchers (money out)"
+ * )
+ *
+ * @OA\Tag(
+ *     name="Receipts",
+ *     description="Receipt vouchers (money in)"
+ * )
+ *
+ * @OA\Tag(
+ *     name="Adjustments",
+ *     description="Journal / adjustment vouchers"
  * )
  *
  * @OA\Tag(
@@ -66,11 +81,6 @@ use OpenApi\Annotations as OA;
  * )
  *
  * @OA\Tag(
- *     name="Bank Accounts",
- *     description="API Endpoints for Bank Account Management"
- * )
- *
- * @OA\Tag(
  *     name="Subscriptions",
  *     description="API Endpoints for Subscription & Billing Management"
  * )
@@ -92,7 +102,7 @@ use OpenApi\Annotations as OA;
  *
  * @OA\Tag(
  *     name="Export",
- *     description="API Endpoints for Report Export (PDF/Excel/CSV)"
+ *     description="API Endpoints for Report Export (PDF)"
  * )
  *
  * @OA\Tag(

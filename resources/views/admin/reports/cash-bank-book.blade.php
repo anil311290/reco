@@ -52,8 +52,8 @@
                 <label class="form-label">To</label>
                 <input type="date" name="date_to" class="form-control" value="{{ $dateTo }}">
             </div>
-            <div class="col-lg-4 report-filter-actions">
-                <button type="submit" class="btn btn-primary px-4" @if(($book['accounts'] ?? collect())->isEmpty()) disabled @endif>
+            <div class="col-lg-auto report-filter-actions">
+                <button type="submit" class="btn btn-primary" @if(($book['accounts'] ?? collect())->isEmpty()) disabled @endif>
                     <i class="bi bi-funnel me-1"></i>Filter
                 </button>
                 @if(!empty($accountId) && $report)
@@ -136,7 +136,15 @@
                         @forelse($report['entries'] as $entry)
                         <tr>
                             <td>@istDate($entry->transaction_date)</td>
-                            <td class="fw-semibold">{{ $entry->voucher->voucher_number ?? '-' }}</td>
+                            <td class="fw-semibold">
+                                @if($entry->voucher)
+                                    <a href="{{ route('admin.vouchers.show', $entry->voucher->id) }}" class="report-detail-link" title="View voucher">
+                                        {{ $entry->voucher->voucher_number }}
+                                    </a>
+                                @else
+                                    -
+                                @endif
+                            </td>
                             <td>{{ $entry->description ?: ($entry->voucher->narration ?? '-') }}</td>
                             <td class="text-end">{{ $entry->debit > 0 ? '₹' . number_format($entry->debit, 2) : '-' }}</td>
                             <td class="text-end">{{ $entry->credit > 0 ? '₹' . number_format($entry->credit, 2) : '-' }}</td>

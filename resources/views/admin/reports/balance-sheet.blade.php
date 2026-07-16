@@ -35,8 +35,8 @@
                     @endforeach
                 </select>
             </div>
-            <div class="col-lg-3 col-md-5 report-filter-actions">
-                <button type="submit" class="btn btn-primary px-4">
+            <div class="col-lg-auto col-md-12 report-filter-actions">
+                <button type="submit" class="btn btn-primary">
                     <i class="bi bi-funnel me-1"></i>Filter
                 </button>
                 @if(!empty($financialYearId))
@@ -95,7 +95,11 @@
                         <tbody>
                             @forelse($report['assets']['accounts'] as $item)
                             <tr>
-                                <td>{{ $item['account']->account_name }}</td>
+                                <td>
+                                    <a href="{{ route('admin.reports.ledger', ['account_id' => $item['account']->id]) }}" class="report-detail-link" title="View ledger">
+                                        {{ $item['account']->account_name }}
+                                    </a>
+                                </td>
                                 <td class="text-end fw-semibold">₹{{ number_format($item['amount'], 2) }}</td>
                             </tr>
                             @empty
@@ -125,7 +129,11 @@
                         <tbody>
                             @forelse($report['liabilities']['accounts'] as $item)
                             <tr>
-                                <td>{{ $item['account']->account_name }}</td>
+                                <td>
+                                    <a href="{{ route('admin.reports.ledger', ['account_id' => $item['account']->id]) }}" class="report-detail-link" title="View ledger">
+                                        {{ $item['account']->account_name }}
+                                    </a>
+                                </td>
                                 <td class="text-end fw-semibold">₹{{ number_format($item['amount'], 2) }}</td>
                             </tr>
                             @empty
@@ -152,7 +160,11 @@
                         <tbody>
                             @forelse($report['equity']['accounts'] as $item)
                             <tr>
-                                <td>{{ $item['account']->account_name }}</td>
+                                <td>
+                                    <a href="{{ route('admin.reports.ledger', ['account_id' => $item['account']->id]) }}" class="report-detail-link" title="View ledger">
+                                        {{ $item['account']->account_name }}
+                                    </a>
+                                </td>
                                 <td class="text-end fw-semibold">₹{{ number_format($item['amount'], 2) }}</td>
                             </tr>
                             @empty

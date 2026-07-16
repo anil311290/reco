@@ -82,6 +82,36 @@ use OpenApi\Annotations as OA;
  *     @OA\Response(response=200, description="Updated", @OA\JsonContent(ref="#/components/schemas/SuccessResponse")),
  *     @OA\Response(response=404, description="Not found", @OA\JsonContent(ref="#/components/schemas/ErrorResponse"))
  * )
+ *
+ * @OA\Delete(
+ *     path="/items/{id}",
+ *     tags={"Items"},
+ *     summary="Delete item",
+ *     operationId="deleteItem",
+ *     security={{"bearerAuth":{}}},
+ *     @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")),
+ *     @OA\Response(response=200, description="Deleted", @OA\JsonContent(ref="#/components/schemas/SuccessResponse")),
+ *     @OA\Response(response=404, description="Not found", @OA\JsonContent(ref="#/components/schemas/ErrorResponse"))
+ * )
+ *
+ * @OA\Get(
+ *     path="/items/dropdown",
+ *     tags={"Items"},
+ *     summary="Items dropdown list",
+ *     operationId="getItemsDropdown",
+ *     security={{"bearerAuth":{}}},
+ *     @OA\Response(response=200, description="Success", @OA\JsonContent(ref="#/components/schemas/SuccessResponse"))
+ * )
+ *
+ * @OA\Patch(
+ *     path="/items/{id}/status",
+ *     tags={"Items"},
+ *     summary="Toggle item active status",
+ *     operationId="toggleItemStatus",
+ *     security={{"bearerAuth":{}}},
+ *     @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")),
+ *     @OA\Response(response=200, description="Status updated", @OA\JsonContent(ref="#/components/schemas/SuccessResponse"))
+ * )
  */
 class ItemDocs
 {

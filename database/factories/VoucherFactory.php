@@ -30,7 +30,7 @@ class VoucherFactory extends Factory
         return [
             'voucher_number' => $prefix . fake()->unique()->numerify('######'),
             'voucher_type' => $type,
-            'voucher_date' => fake()->dateTimeBetween('-1 year', 'now'),
+            'voucher_date' => now()->toDateString(),
             'narration' => fake()->sentence(),
             'total_debit' => $amount = fake()->randomFloat(2, 100, 100000),
             'total_credit' => $amount,

@@ -42,8 +42,8 @@
                 <label class="form-label">To</label>
                 <input type="date" name="date_to" class="form-control" value="{{ $dateTo }}">
             </div>
-            <div class="col-lg-3 report-filter-actions">
-                <button type="submit" class="btn btn-primary px-4">
+            <div class="col-lg-auto report-filter-actions">
+                <button type="submit" class="btn btn-primary">
                     <i class="bi bi-funnel me-1"></i>Filter
                 </button>
                 @if(!empty($accountId))
@@ -117,7 +117,15 @@
                     @forelse($report['entries'] as $entry)
                     <tr>
                         <td>@istDate($entry->transaction_date)</td>
-                        <td class="fw-semibold">{{ $entry->voucher->voucher_number ?? '-' }}</td>
+                        <td class="fw-semibold">
+                            @if($entry->voucher)
+                                <a href="{{ route('admin.vouchers.show', $entry->voucher->id) }}" class="report-detail-link" title="View voucher">
+                                    {{ $entry->voucher->voucher_number }}
+                                </a>
+                            @else
+                                -
+                            @endif
+                        </td>
                         <td>{{ $entry->narration ?? $entry->description ?? '-' }}</td>
                         <td class="text-end fw-semibold text-primary">{{ $entry->debit > 0 ? '₹' . number_format($entry->debit, 2) : '-' }}</td>
                         <td class="text-end fw-semibold text-danger">{{ $entry->credit > 0 ? '₹' . number_format($entry->credit, 2) : '-' }}</td>
@@ -125,7 +133,7 @@
                         <td class="text-center">
                             <div class="btn-group btn-group-sm">
                                 @if($entry->voucher)
-                                    <a href="{{ url('/admin/vouchers/' . $entry->voucher->id) }}" class="btn btn-outline-primary" title="View Voucher">
+                                    <a href="{{ route('admin.vouchers.show', $entry->voucher->id) }}" class="btn btn-outline-primary" title="View Voucher">
                                         <i class="bi bi-eye"></i>
                                     </a>
                                 @endif

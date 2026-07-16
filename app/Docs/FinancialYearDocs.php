@@ -42,6 +42,7 @@ use OpenApi\Annotations as OA;
  *     path="/financial-years/{id}/set-current",
  *     tags={"Financial Years"},
  *     summary="Set financial year as current",
+ *     description="Marks this FY as current and carries forward closing ledger balances into the new FY as opening journal entries (same as web).",
  *     operationId="setFinancialYearCurrent",
  *     security={{"bearerAuth":{}}},
  *     @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")),

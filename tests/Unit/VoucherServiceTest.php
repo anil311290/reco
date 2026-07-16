@@ -39,7 +39,15 @@ class VoucherServiceTest extends TestCase
         $journalEntryService = $this->createMock(JournalEntryService::class);
         $journalEntryService->expects($this->once())->method('syncFromVoucher')->with($voucher);
 
-        $service = new VoucherService($voucherRepo, $voucherLineRepo, $ledgerService, $journalEntryService);
+        $periodLockService = $this->createMock(\App\Services\PeriodLockService::class);
+
+        $service = new VoucherService(
+            $voucherRepo,
+            $voucherLineRepo,
+            $ledgerService,
+            $journalEntryService,
+            $periodLockService
+        );
 
         $result = $service->post(123);
 
