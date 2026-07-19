@@ -140,15 +140,27 @@ class TallyAccountingFlowTest extends TestCase
 
         /** @var AccountService $accountService */
         $accountService = app(AccountService::class);
+        // Particulars offer every party (debtor + creditor) plus ledger accounts,
+        // like adjustments. Only the cash/bank/OD contra accounts are excluded.
         $paymentOptions = $accountService->getPaymentParticularsOptions($company->id, 'payment');
         $this->assertSame('Parties', $paymentOptions[0]['group'] ?? null);
         $this->assertTrue(collect($paymentOptions)->contains('party_id', $creditor->id));
-        $this->assertFalse(collect($paymentOptions)->contains('party_id', $debtor->id));
-        $this->assertTrue(collect($paymentOptions)->every(fn (array $o) => ($o['kind'] ?? null) === 'party'));
+        $this->assertTrue(collect($paymentOptions)->contains('party_id', $debtor->id));
+        $this->assertTrue(collect($paymentOptions)->contains(
+            fn (array $o) => ($o['kind'] ?? null) === 'account' && (int) $o['id'] === $income->id
+        ));
+        $this->assertFalse(collect($paymentOptions)->contains(
+            fn (array $o) => ($o['kind'] ?? null) === 'account' && (int) $o['id'] === $cash->id
+        ));
 
         $receiptOptions = $accountService->getPaymentParticularsOptions($company->id, 'receipt');
         $this->assertTrue(collect($receiptOptions)->contains('party_id', $debtor->id));
-        $this->assertFalse(collect($receiptOptions)->contains('party_id', $creditor->id));
-        $this->assertTrue(collect($receiptOptions)->every(fn (array $o) => ($o['kind'] ?? null) === 'party'));
+        $this->assertTrue(collect($receiptOptions)->contains('party_id', $creditor->id));
+        $this->assertTrue(collect($receiptOptions)->contains(
+            fn (array $o) => ($o['kind'] ?? null) === 'account' && (int) $o['id'] === $income->id
+        ));
+        $this->assertFalse(collect($receiptOptions)->contains(
+            fn (array $o) => ($o['kind'] ?? null) === 'account' && (int) $o['id'] === $cash->id
+        ));
     }
 }

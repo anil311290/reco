@@ -401,7 +401,12 @@ class AccountService
             ->whereNotIn('account_code', [Account::CODE_AR, Account::CODE_AP])
             ->when(
                 $excludedTransactionModes !== [],
-                fn ($query) => $query->whereNotIn('transaction_mode', $excludedTransactionModes)
+                // Keep every ledger except the cash/bank/OD contra accounts.
+                // NULL transaction_mode (normal ledgers) must be retained, so a
+                // plain whereNotIn is unsafe (NULL NOT IN (...) is never true).
+                fn ($query) => $query->where(fn ($q) => $q
+                    ->whereNull('transaction_mode')
+                    ->orWhereNotIn('transaction_mode', $excludedTransactionModes))
             )
             ->orderBy('account_code')
             ->get()

@@ -398,15 +398,27 @@ class TallyFullBooksCycleTest extends TestCase
             );
         }
 
-        // --- Particulars rules (Payment = creditors only, Receipt = debtors only) ---
+        // --- Particulars rules: all parties + ledger accounts (like adjustments),
+        // excluding only the cash/bank/OD contra accounts. ---
         $paymentOptions = $accountService->getPaymentParticularsOptions($company->id, 'payment');
         $this->assertTrue(collect($paymentOptions)->contains('party_id', $supplier->id));
-        $this->assertFalse(collect($paymentOptions)->contains('party_id', $customer->id));
-        $this->assertTrue(collect($paymentOptions)->every(fn (array $o) => $o['kind'] === 'party'));
+        $this->assertTrue(collect($paymentOptions)->contains('party_id', $customer->id));
+        $this->assertTrue(collect($paymentOptions)->contains(
+            fn (array $o) => $o['kind'] === 'account' && (int) $o['id'] === $officeExpense->id
+        ));
+        $this->assertFalse(collect($paymentOptions)->contains(
+            fn (array $o) => $o['kind'] === 'account' && (int) $o['id'] === $cash->id
+        ));
+        $this->assertFalse(collect($paymentOptions)->contains(
+            fn (array $o) => $o['kind'] === 'account' && (int) $o['id'] === $bank->id
+        ));
 
         $receiptOptions = $accountService->getPaymentParticularsOptions($company->id, 'receipt');
         $this->assertTrue(collect($receiptOptions)->contains('party_id', $customer->id));
-        $this->assertFalse(collect($receiptOptions)->contains('party_id', $supplier->id));
+        $this->assertTrue(collect($receiptOptions)->contains('party_id', $supplier->id));
+        $this->assertTrue(collect($receiptOptions)->contains(
+            fn (array $o) => $o['kind'] === 'account' && (int) $o['id'] === $officeExpense->id
+        ));
 
         $adjustmentOptions = $accountService->getAdjustmentParticularsOptions($company->id);
         $this->assertTrue(collect($adjustmentOptions)->contains('kind', 'party'));
