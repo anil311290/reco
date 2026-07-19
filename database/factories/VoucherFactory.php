@@ -35,7 +35,6 @@ class VoucherFactory extends Factory
             'total_debit' => $amount = fake()->randomFloat(2, 100, 100000),
             'total_credit' => $amount,
             'status' => fake()->randomElement(['draft', 'posted']),
-            'remarks' => fake()->sentence(),
         ];
     }
 }

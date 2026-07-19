@@ -5,7 +5,7 @@ namespace Tests\Feature;
 use App\Models\Account;
 use App\Models\Company;
 use App\Models\FinancialYear;
-use App\Models\JournalEntry;
+use App\Models\Ledger;
 use App\Models\TaxRate;
 use App\Services\SalesInvoiceService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -119,15 +119,13 @@ class SalesInvoiceJournalPostingTest extends TestCase
         $this->assertNotNull($taxLine, 'Tax line was not created');
         $this->assertSame('liability', $taxLine->account->account_type);
 
-        $journalRows = JournalEntry::where('company_id', $company->id)
-            ->where('module', 'sales')
-            ->where('source_type', 'sales_invoice')
-            ->where('source_id', $invoice->id)
-            ->orderBy('line_no')
+        $ledgerRows = Ledger::where('company_id', $company->id)
+            ->where('voucher_id', $voucher->id)
+            ->orderBy('id')
             ->get();
 
-        $this->assertCount(3, $journalRows);
-        $this->assertEquals($expectedTaxable + $expectedTax, (float) $journalRows->sum('credit'));
-        $this->assertEquals($expectedTotal, (float) $journalRows->sum('debit'));
+        $this->assertCount(3, $ledgerRows);
+        $this->assertEquals($expectedTaxable + $expectedTax, (float) $ledgerRows->sum('credit'));
+        $this->assertEquals($expectedTotal, (float) $ledgerRows->sum('debit'));
     }
 }

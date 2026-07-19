@@ -114,7 +114,7 @@ use OpenApi\Annotations as OA;
  *     path="/accounts/payment-particulars",
  *     tags={"Accounts"},
  *     summary="Particulars for payment/receipt lines",
- *     description="Party ledgers only. type=payment returns creditors; type=receipt returns debtors.",
+ *     description="Grouped list of all parties (encoded as party:{id}) plus selectable ledger accounts. Cash/Bank/OD accounts are excluded because they are the fixed contra side. The type parameter is accepted for parity but no longer filters parties.",
  *     operationId="getPaymentParticulars",
  *     security={{"bearerAuth":{}}},
  *     @OA\Parameter(name="type", in="query", required=true, @OA\Schema(type="string", enum={"payment","receipt"})),

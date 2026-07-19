@@ -24,21 +24,21 @@ trait ValidatesVoucherPayload
             'payment_mode' => ['required_if:voucher_type,payment,receipt', Rule::in(['cash', 'bank', 'od'])],
             'cash_bank_account_id' => ['required_if:voucher_type,payment,receipt', 'nullable', $companyAccount],
             'narration' => 'nullable|string|max:500',
-            'remarks' => 'nullable|string|max:500',
 
             'payment_rows' => 'required_if:voucher_type,payment,receipt|array|min:1',
-            'payment_rows.*.account_id' => ['required_if:voucher_type,payment,receipt', $companyAccount],
+            'payment_rows.*.account_id' => ['required_if:voucher_type,payment,receipt', 'string'],
             'payment_rows.*.amount' => 'required_if:voucher_type,payment,receipt|numeric|gt:0',
             'payment_rows.*.description' => 'nullable|string|max:255',
 
             'adjustment_rows' => 'required_if:voucher_type,journal,adjustment|array|min:2',
-            'adjustment_rows.*.account_id' => ['required_if:voucher_type,journal,adjustment', $companyAccount],
+            'adjustment_rows.*.account_id' => ['required_if:voucher_type,journal,adjustment', 'string'],
             'adjustment_rows.*.entry_type' => ['required_if:voucher_type,journal,adjustment', Rule::in(['debit', 'credit'])],
             'adjustment_rows.*.amount' => 'required_if:voucher_type,journal,adjustment|numeric|gt:0',
             'adjustment_rows.*.description' => 'nullable|string|max:255',
 
             'lines' => 'required|array|min:1',
             'lines.*.account_id' => ['required', $companyAccount],
+            'lines.*.party_id' => ['nullable', $companyParty],
             'lines.*.debit' => 'required|numeric|min:0',
             'lines.*.credit' => 'required|numeric|min:0',
             'lines.*.description' => 'nullable|string|max:255',
@@ -95,6 +95,7 @@ trait ValidatesVoucherPayload
             $lines = collect($this->lines)->map(function ($line) {
                 return [
                     'account_id' => $line['account_id'] ?? null,
+                    'party_id' => $line['party_id'] ?? null,
                     'debit' => $line['debit'] ?? 0,
                     'credit' => $line['credit'] ?? 0,
                     'description' => $line['description'] ?? null,
@@ -124,26 +125,38 @@ trait ValidatesVoucherPayload
                 }
             }
 
-            $seenParticularAccountIds = [];
+            $seenParticulars = [];
             foreach ((array) $this->input('payment_rows', []) as $index => $row) {
-                $particularAccountId = (int) ($row['account_id'] ?? 0);
+                $token = (string) ($row['account_id'] ?? '');
 
-                if ($particularAccountId === $cashBankAccountId) {
+                if ($token === '') {
+                    continue;
+                }
+
+                $resolved = $this->resolveParticular($token);
+
+                if (!$resolved['account_id']) {
+                    $validator->errors()->add(
+                        "payment_rows.{$index}.account_id",
+                        'Selected particulars is invalid.'
+                    );
+                    continue;
+                }
+
+                if ($resolved['account_id'] === $cashBankAccountId) {
                     $validator->errors()->add(
                         "payment_rows.{$index}.account_id",
                         'Particulars cannot be the same as Cash / Bank account.'
                     );
                 }
 
-                if ($particularAccountId > 0) {
-                    if (in_array($particularAccountId, $seenParticularAccountIds, true)) {
-                        $validator->errors()->add(
-                            "payment_rows.{$index}.account_id",
-                            'Same particulars cannot be selected in more than one row. Combine the amount in a single row.'
-                        );
-                    } else {
-                        $seenParticularAccountIds[] = $particularAccountId;
-                    }
+                if (in_array($token, $seenParticulars, true)) {
+                    $validator->errors()->add(
+                        "payment_rows.{$index}.account_id",
+                        'Same particulars cannot be selected in more than one row. Combine the amount in a single row.'
+                    );
+                } else {
+                    $seenParticulars[] = $token;
                 }
             }
 
@@ -237,14 +250,10 @@ trait ValidatesVoucherPayload
 
     protected function resolvePartyIdFromPaymentRows(array $rows): ?int
     {
-        $partyByAccount = Party::where('company_id', $this->user()?->company_id)
-            ->whereNotNull('account_id')
-            ->pluck('id', 'account_id');
-
         foreach ($rows as $row) {
-            $accountId = $row['account_id'] ?? null;
-            if ($accountId && isset($partyByAccount[$accountId])) {
-                return (int) $partyByAccount[$accountId];
+            $resolved = $this->resolveParticular((string) ($row['account_id'] ?? ''));
+            if ($resolved['party_id']) {
+                return $resolved['party_id'];
             }
         }
 
@@ -253,15 +262,60 @@ trait ValidatesVoucherPayload
 
     protected function resolvePartyIdFromAdjustmentRows(array $rows): ?int
     {
-        $accountIds = collect($rows)
-            ->pluck('account_id')
-            ->filter()
-            ->map(fn ($id) => (int) $id)
-            ->unique();
+        foreach ($rows as $row) {
+            $resolved = $this->resolveParticular((string) ($row['account_id'] ?? ''));
+            if ($resolved['party_id']) {
+                return $resolved['party_id'];
+            }
+        }
 
-        return Party::where('company_id', $this->user()?->company_id)
-            ->whereIn('account_id', $accountIds)
+        return null;
+    }
+
+    /**
+     * Resolve a particulars token into a posting account + optional party.
+     * Party tokens ("party:{id}") post to the shared AR/AP control account and
+     * carry the party_id; numeric tokens are a direct ledger account.
+     *
+     * @return array{account_id: ?int, party_id: ?int}
+     */
+    protected function resolveParticular(string $token): array
+    {
+        $token = trim($token);
+
+        if (str_starts_with($token, 'party:')) {
+            $partyId = (int) substr($token, 6);
+            $party = Party::where('company_id', $this->user()?->company_id)->find($partyId);
+
+            if (!$party) {
+                return ['account_id' => null, 'party_id' => null];
+            }
+
+            $accountId = $party->account_id ?: $this->resolveControlAccountId($party->type);
+
+            return [
+                'account_id' => $accountId ? (int) $accountId : null,
+                'party_id' => $partyId,
+            ];
+        }
+
+        $accountId = (int) $token;
+
+        return [
+            'account_id' => $accountId > 0 ? $accountId : null,
+            'party_id' => null,
+        ];
+    }
+
+    protected function resolveControlAccountId(string $partyType): ?int
+    {
+        $code = $partyType === 'creditor' ? Account::CODE_AP : Account::CODE_AR;
+
+        $id = Account::where('company_id', $this->user()?->company_id)
+            ->where('account_code', $code)
             ->value('id');
+
+        return $id ? (int) $id : null;
     }
 
     protected function normalizePaymentReceiptRows(array $rows, int $cashBankAccountId, string $voucherType): array
@@ -271,46 +325,36 @@ trait ValidatesVoucherPayload
 
         foreach ($rows as $row) {
             $amount = (float) ($row['amount'] ?? 0);
-            $accountId = (int) ($row['account_id'] ?? 0);
+            $resolved = $this->resolveParticular((string) ($row['account_id'] ?? ''));
 
-            if ($amount <= 0 || $accountId <= 0) {
+            if ($amount <= 0 || !$resolved['account_id']) {
                 continue;
             }
 
             $totalAmount += $amount;
 
-            if ($voucherType === 'payment') {
-                $lines[] = [
-                    'account_id' => $accountId,
-                    'debit' => $amount,
-                    'credit' => 0,
-                    'description' => $row['description'] ?? null,
-                ];
-            } else {
-                $lines[] = [
-                    'account_id' => $accountId,
-                    'debit' => 0,
-                    'credit' => $amount,
-                    'description' => $row['description'] ?? null,
-                ];
-            }
+            $lines[] = [
+                'account_id' => $resolved['account_id'],
+                'party_id' => $resolved['party_id'],
+                'debit' => $voucherType === 'payment' ? $amount : 0,
+                'credit' => $voucherType === 'payment' ? 0 : $amount,
+                'description' => $row['description'] ?? null,
+            ];
         }
 
         if ($totalAmount > 0 && $cashBankAccountId > 0) {
+            $cashLine = [
+                'account_id' => $cashBankAccountId,
+                'party_id' => null,
+                'debit' => $voucherType === 'payment' ? 0 : $totalAmount,
+                'credit' => $voucherType === 'payment' ? $totalAmount : 0,
+                'description' => null,
+            ];
+
             if ($voucherType === 'payment') {
-                $lines[] = [
-                    'account_id' => $cashBankAccountId,
-                    'debit' => 0,
-                    'credit' => $totalAmount,
-                    'description' => null,
-                ];
+                $lines[] = $cashLine;
             } else {
-                array_unshift($lines, [
-                    'account_id' => $cashBankAccountId,
-                    'debit' => $totalAmount,
-                    'credit' => 0,
-                    'description' => null,
-                ]);
+                array_unshift($lines, $cashLine);
             }
         }
 
@@ -323,15 +367,16 @@ trait ValidatesVoucherPayload
 
         foreach ($rows as $row) {
             $amount = (float) ($row['amount'] ?? 0);
-            $accountId = (int) ($row['account_id'] ?? 0);
             $entryType = $row['entry_type'] ?? '';
+            $resolved = $this->resolveParticular((string) ($row['account_id'] ?? ''));
 
-            if ($amount <= 0 || $accountId <= 0 || !in_array($entryType, ['debit', 'credit'], true)) {
+            if ($amount <= 0 || !$resolved['account_id'] || !in_array($entryType, ['debit', 'credit'], true)) {
                 continue;
             }
 
             $lines[] = [
-                'account_id' => $accountId,
+                'account_id' => $resolved['account_id'],
+                'party_id' => $resolved['party_id'],
                 'debit' => $entryType === 'debit' ? $amount : 0,
                 'credit' => $entryType === 'credit' ? $amount : 0,
                 'description' => $row['description'] ?? null,

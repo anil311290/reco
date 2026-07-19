@@ -118,6 +118,7 @@
                             <th>Date</th>
                             <th>Voucher #</th>
                             <th>Particulars</th>
+                            <th>Party</th>
                             <th class="text-end">Receipts (₹)</th>
                             <th class="text-end">Payments (₹)</th>
                             <th class="text-end">Balance (₹)</th>
@@ -125,7 +126,7 @@
                     </thead>
                     <tbody>
                         <tr class="report-row-emphasis">
-                            <td colspan="3" class="fw-semibold">Opening Balance</td>
+                            <td colspan="4" class="fw-semibold">Opening Balance</td>
                             <td class="text-end">-</td>
                             <td class="text-end">-</td>
                             <td class="text-end fw-bold">
@@ -146,6 +147,15 @@
                                 @endif
                             </td>
                             <td>{{ $entry->description ?: ($entry->voucher->narration ?? '-') }}</td>
+                            <td>
+                                @if($entry->party_id && $entry->party)
+                                    <a href="{{ route('admin.parties.show', $entry->party_id) }}" class="report-detail-link" title="View party history">
+                                        {{ $entry->party->name }}
+                                    </a>
+                                @else
+                                    -
+                                @endif
+                            </td>
                             <td class="text-end">{{ $entry->debit > 0 ? '₹' . number_format($entry->debit, 2) : '-' }}</td>
                             <td class="text-end">{{ $entry->credit > 0 ? '₹' . number_format($entry->credit, 2) : '-' }}</td>
                             <td class="text-end fw-semibold">
@@ -154,12 +164,12 @@
                             </td>
                         </tr>
                         @empty
-                        <tr><td colspan="6" class="text-muted text-center py-4">No entries in this period</td></tr>
+                        <tr><td colspan="7" class="text-muted text-center py-4">No entries in this period</td></tr>
                         @endforelse
                     </tbody>
                     <tfoot>
                         <tr>
-                            <td colspan="3">Closing Balance</td>
+                            <td colspan="4">Closing Balance</td>
                             <td class="text-end fw-bold">₹{{ number_format($report['total_debit'], 2) }}</td>
                             <td class="text-end fw-bold">₹{{ number_format($report['total_credit'], 2) }}</td>
                             <td class="text-end fw-bold">

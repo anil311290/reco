@@ -4,21 +4,19 @@ namespace App\Services;
 
 use App\Models\Account;
 use App\Models\FinancialYear;
+use App\Models\Ledger;
 use App\Models\Party;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Str;
 
 class PartyService
 {
     protected LedgerService $ledgerService;
-    protected AccountService $accountService;
 
-    public function __construct(LedgerService $ledgerService, AccountService $accountService)
+    public function __construct(LedgerService $ledgerService)
     {
         $this->ledgerService = $ledgerService;
-        $this->accountService = $accountService;
     }
 
     /**
@@ -119,8 +117,7 @@ class PartyService
         try {
             DB::beginTransaction();
 
-            $linkedAccount = $this->createLinkedAccount($data);
-            $data['account_id'] = $linkedAccount->id;
+            $data['account_id'] = $this->resolveControlAccount($data)->id;
 
             $party = Party::create($data);
 
@@ -150,7 +147,7 @@ class PartyService
 
         $oldOpeningBalance = $party->opening_balance;
 
-        if ($party->account_id && $this->accountService->isAccountTransactionallyUsed($party->account_id)) {
+        if ($this->isPartyTransactionallyUsed($party->id)) {
             // Party name/contact details may change. Reclassifying Debtor ↔
             // Creditor or changing opening values would rewrite old books.
             unset(
@@ -164,7 +161,14 @@ class PartyService
         try {
             DB::beginTransaction();
 
-            $this->syncLinkedAccount($party, $data);
+            // Keep account_id pointing at the correct AR/AP control account.
+            $data['account_id'] = $this->resolveControlAccount([
+                'type' => $data['type'] ?? $party->type,
+                'company_id' => $party->company_id,
+                'financial_year_id' => $party->financial_year_id,
+                'created_by' => $data['updated_by'] ?? $party->created_by,
+                'created_by_ip' => $data['updated_by_ip'] ?? request()->ip(),
+            ])->id;
 
             $updated = $party->update($data);
 
@@ -198,15 +202,11 @@ class PartyService
             return false;
         }
 
-        if ($party->account_id) {
-            if ($this->accountService->isAccountTransactionallyUsed($party->account_id)) {
-                throw new \Exception(
-                    'This party cannot be deleted because accounting transactions are linked to it. '
-                    . 'Mark the party inactive instead.'
-                );
-            }
-
-            Account::where('id', $party->account_id)->update(['is_active' => false]);
+        if ($this->isPartyTransactionallyUsed($party->id)) {
+            throw new \Exception(
+                'This party cannot be deleted because accounting transactions are linked to it. '
+                . 'Mark the party inactive instead.'
+            );
         }
 
         return $party->delete();
@@ -233,40 +233,6 @@ class PartyService
                     'type' => $party->type,
                 ];
             })
-            ->toArray();
-    }
-
-    /**
-     * Get party-linked account options (AR/AP) for account-driven voucher forms.
-     */
-    public function getLinkedAccountDropdown(int $companyId, ?string $type = null): array
-    {
-        $query = Party::query()
-            ->where('company_id', $companyId)
-            ->where('is_active', true)
-            ->whereNotNull('account_id')
-            ->with('account');
-
-        if ($type) {
-            $query->where('type', $type);
-        }
-
-        return $query->orderBy('name')
-            ->get()
-            ->map(function (Party $party) {
-                if (!$party->account) {
-                    return null;
-                }
-
-                return [
-                    'id' => $party->account->id,
-                    'party_id' => $party->id,
-                    'type' => $party->type,
-                    'text' => "{$party->party_code} - {$party->name}",
-                ];
-            })
-            ->filter()
-            ->values()
             ->toArray();
     }
 
@@ -304,60 +270,30 @@ class PartyService
             ->get();
     }
 
-    protected function createLinkedAccount(array $partyData): Account
+    /**
+     * Resolve the shared AR/AP control account a party posts to.
+     * Debtors roll into Accounts Receivable, creditors into Accounts Payable.
+     */
+    protected function resolveControlAccount(array $partyData): Account
     {
-        $accountType = ($partyData['type'] ?? 'debtor') === 'creditor' ? 'liability' : 'asset';
-        $balanceType = ($partyData['type'] ?? 'debtor') === 'creditor' ? 'credit' : 'debit';
+        $code = ($partyData['type'] ?? 'debtor') === 'creditor'
+            ? Account::CODE_AP
+            : Account::CODE_AR;
 
-        return Account::create([
-            'uuid' => (string) Str::uuid(),
-            'company_id' => $partyData['company_id'],
-            'financial_year_id' => $partyData['financial_year_id'] ?? null,
-            'account_code' => Account::generateCode($accountType, $partyData['company_id']),
-            'account_name' => trim(($partyData['name'] ?? 'Party') . ' [' . ($partyData['party_code'] ?? 'PRTY') . ']'),
-            'account_type' => $accountType,
-            'entry_source' => 'system',
-            'opening_balance' => (float) ($partyData['opening_balance'] ?? 0),
-            'balance_type' => $balanceType,
-            'opening_date' => $partyData['opening_date'] ?? now()->toDateString(),
-            'remarks' => $partyData['remarks'] ?? 'Auto-linked account for party',
-            'is_active' => (bool) ($partyData['is_active'] ?? true),
-            'is_system' => false,
-            'created_by' => $partyData['created_by'] ?? null,
-            'updated_by' => $partyData['updated_by'] ?? null,
-            'created_by_ip' => $partyData['created_by_ip'] ?? request()->ip(),
-            'updated_by_ip' => $partyData['updated_by_ip'] ?? request()->ip(),
-        ]);
+        return $this->ledgerService->ensureSystemAccount(
+            $code,
+            (int) $partyData['company_id'],
+            $partyData['financial_year_id'] ?? null,
+            $partyData['created_by'] ?? null,
+            $partyData['created_by_ip'] ?? request()->ip()
+        );
     }
 
-    protected function syncLinkedAccount(Party $party, array $partyData): void
+    /**
+     * A party is transactionally used when any ledger row is tagged with it.
+     */
+    protected function isPartyTransactionallyUsed(int $partyId): bool
     {
-        $account = $party->account_id ? Account::find($party->account_id) : null;
-
-        if (!$account) {
-            $account = $this->createLinkedAccount([
-                ...$party->toArray(),
-                ...$partyData,
-                'company_id' => $party->company_id,
-                'party_code' => $party->party_code,
-            ]);
-            $partyData['account_id'] = $account->id;
-            $party->account_id = $account->id;
-        }
-
-        $targetType = ($partyData['type'] ?? $party->type) === 'creditor' ? 'liability' : 'asset';
-        $targetBalanceType = ($partyData['type'] ?? $party->type) === 'creditor' ? 'credit' : 'debit';
-
-        $account->update([
-            'account_name' => trim(($partyData['name'] ?? $party->name) . ' [' . ($party->party_code ?? 'PRTY') . ']'),
-            'account_type' => $targetType,
-            'balance_type' => $targetBalanceType,
-            'opening_balance' => (float) ($partyData['opening_balance'] ?? $party->opening_balance ?? 0),
-            'opening_date' => $partyData['opening_date'] ?? $party->opening_date ?? now()->toDateString(),
-            'remarks' => $partyData['remarks'] ?? $party->remarks,
-            'is_active' => (bool) ($partyData['is_active'] ?? $party->is_active),
-            'updated_by' => $partyData['updated_by'] ?? null,
-            'updated_by_ip' => $partyData['updated_by_ip'] ?? request()->ip(),
-        ]);
+        return Ledger::where('party_id', $partyId)->exists();
     }
 }

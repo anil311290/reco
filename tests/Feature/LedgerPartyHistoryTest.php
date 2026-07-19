@@ -87,16 +87,19 @@ class LedgerPartyHistoryTest extends TestCase
             ->where('reference_id', $party->id)
             ->get();
 
+        // Two balanced ledger legs (AR + suspense), but only the party leg is
+        // tagged with the party under the control-account model.
         $this->assertCount(2, $ledgerEntries);
-        $this->assertDatabaseCount('ledger_party_histories', 2);
 
-        foreach ($ledgerEntries as $entry) {
-            $this->assertDatabaseHas('ledger_party_histories', [
-                'ledger_id' => $entry->id,
-                'party_id' => $party->id,
-                'reference_type' => 'party_opening_balance',
-                'reference_id' => $party->id,
-            ]);
-        }
+        $partyLeg = $ledgerEntries->firstWhere('party_id', $party->id);
+        $this->assertNotNull($partyLeg);
+
+        $this->assertDatabaseCount('ledger_party_histories', 1);
+        $this->assertDatabaseHas('ledger_party_histories', [
+            'ledger_id' => $partyLeg->id,
+            'party_id' => $party->id,
+            'reference_type' => 'party_opening_balance',
+            'reference_id' => $party->id,
+        ]);
     }
 }

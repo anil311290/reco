@@ -15,8 +15,9 @@ return new class extends Migration
     {
         Schema::table('parties', function (Blueprint $table) {
             if (!Schema::hasColumn('parties', 'account_id')) {
+                // Not unique: under the control-account model many parties share
+                // one AR/AP control account.
                 $table->foreignId('account_id')->nullable()->after('type')->constrained('accounts')->nullOnDelete();
-                $table->unique('account_id', 'parties_account_id_unique');
             }
         });
 
@@ -64,7 +65,6 @@ return new class extends Migration
     {
         Schema::table('parties', function (Blueprint $table) {
             if (Schema::hasColumn('parties', 'account_id')) {
-                $table->dropUnique('parties_account_id_unique');
                 $table->dropConstrainedForeignId('account_id');
             }
         });

@@ -470,7 +470,7 @@
                     "Accounts"
                 ],
                 "summary": "Particulars for payment/receipt lines",
-                "description": "Party ledgers only. type=payment returns creditors; type=receipt returns debtors.",
+                "description": "Grouped list of all parties (encoded as party:{id}) plus selectable ledger accounts. Cash/Bank/OD accounts are excluded because they are the fixed contra side. The type parameter is accepted for parity but no longer filters parties.",
                 "operationId": "getPaymentParticulars",
                 "parameters": [
                     {
@@ -2289,7 +2289,7 @@
                     "Financial Years"
                 ],
                 "summary": "Set financial year as current",
-                "description": "Marks this FY as current and carries forward closing ledger balances into the new FY as opening journal entries (same as web).",
+                "description": "Marks this FY as current and carries forward closing ledger balances into the new FY as opening ledger entries (same as web).",
                 "operationId": "setFinancialYearCurrent",
                 "parameters": [
                     {
@@ -3739,6 +3739,66 @@
                                 "debtor",
                                 "creditor"
                             ]
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Success",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/SuccessResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/parties/{id}/history": {
+            "get": {
+                "tags": [
+                    "Parties"
+                ],
+                "summary": "Get party transaction history (ledger)",
+                "description": "Opening balance, all transactions, and running/closing balance for a party across the AR/AP control account.",
+                "operationId": "getPartyHistory",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "financial_year_id",
+                        "in": "query",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "date_from",
+                        "in": "query",
+                        "schema": {
+                            "type": "string",
+                            "format": "date"
+                        }
+                    },
+                    {
+                        "name": "date_to",
+                        "in": "query",
+                        "schema": {
+                            "type": "string",
+                            "format": "date"
                         }
                     }
                 ],

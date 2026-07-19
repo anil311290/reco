@@ -88,6 +88,7 @@ Route::prefix('v1')->middleware('auth:sanctum')->group(function () {
     Route::get('/parties', [PartyApiController::class, 'index']);
     Route::post('/parties', [PartyApiController::class, 'store']);
     Route::get('/parties/by-type', [PartyApiController::class, 'getByType']);
+    Route::get('/parties/{id}/history', [PartyApiController::class, 'history']);
     Route::get('/parties/{id}', [PartyApiController::class, 'show']);
     Route::put('/parties/{id}', [PartyApiController::class, 'update']);
     Route::delete('/parties/{id}', [PartyApiController::class, 'destroy']);

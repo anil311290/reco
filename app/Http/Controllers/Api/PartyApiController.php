@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\PartyRequest;
 use App\Http\Resources\PartyResource;
+use App\Services\LedgerService;
 use App\Services\PartyService;
 use App\Helpers\ResponseHelper;
 use Illuminate\Http\JsonResponse;
@@ -13,10 +14,12 @@ use Illuminate\Http\Request;
 class PartyApiController extends Controller
 {
     protected PartyService $partyService;
+    protected LedgerService $ledgerService;
 
-    public function __construct(PartyService $partyService)
+    public function __construct(PartyService $partyService, LedgerService $ledgerService)
     {
         $this->partyService = $partyService;
+        $this->ledgerService = $ledgerService;
     }
 
     public function index(Request $request): JsonResponse
@@ -42,6 +45,61 @@ class PartyApiController extends Controller
         return ResponseHelper::success(
             new PartyResource($party)
         );
+    }
+
+    /**
+     * Party transaction history (ledger) mirroring the web party detail page.
+     */
+    public function history(Request $request, int $id): JsonResponse
+    {
+        $validated = $request->validate([
+            'financial_year_id' => 'nullable|integer|exists:financial_years,id',
+            'date_from' => 'nullable|date',
+            'date_to' => 'nullable|date',
+        ]);
+
+        $party = $this->partyService->getById($id);
+
+        if (!$party || $party->company_id !== $request->user()->company_id) {
+            return ResponseHelper::notFound('Party not found');
+        }
+
+        $financialYearId = isset($validated['financial_year_id'])
+            ? (int) $validated['financial_year_id']
+            : $request->user()->company->currentFinancialYear?->id;
+
+        $ledger = $this->ledgerService->getPartyLedger(
+            $id,
+            $party->company_id,
+            $financialYearId,
+            $validated['date_from'] ?? null,
+            $validated['date_to'] ?? null
+        );
+
+        $transactions = collect($ledger['rows'])->map(function (array $row) {
+            $entry = $row['entry'];
+
+            return [
+                'date' => optional($entry->transaction_date)->toDateString(),
+                'voucher_id' => $entry->voucher?->id,
+                'voucher_number' => $entry->voucher?->voucher_number,
+                'voucher_type' => $entry->voucher?->voucher_type,
+                'description' => $entry->description ?: $entry->voucher?->narration,
+                'debit' => (float) $entry->debit,
+                'credit' => (float) $entry->credit,
+                'running_balance' => $row['running_balance'],
+                'running_type' => $row['running_type'],
+            ];
+        })->values();
+
+        return ResponseHelper::success([
+            'party' => new PartyResource($party),
+            'total_debit' => $ledger['total_debit'],
+            'total_credit' => $ledger['total_credit'],
+            'closing_balance' => $ledger['closing_balance'],
+            'closing_type' => $ledger['closing_type'],
+            'transactions' => $transactions,
+        ]);
     }
 
     public function store(PartyRequest $request): JsonResponse

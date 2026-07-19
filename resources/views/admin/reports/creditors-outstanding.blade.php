@@ -54,7 +54,7 @@
                         <th>Mobile</th>
                         <th>Email</th>
                         <th class="text-end">Balance (₹) Cr</th>
-                        <th class="text-center">Ledger</th>
+                        <th class="text-center">History</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -62,8 +62,8 @@
                     <tr>
                         <td>{{ $index + 1 }}</td>
                         <td class="fw-semibold">
-                            @permission('parties.edit')
-                                <a href="{{ route('admin.parties.edit', $item['party']->id) }}" class="report-detail-link" title="View party">
+                            @permission('parties.view')
+                                <a href="{{ route('admin.parties.show', $item['party']->id) }}" class="report-detail-link" title="View party history">
                                     {{ $item['party']->name }}
                                 </a>
                             @else
@@ -74,11 +74,7 @@
                         <td>{{ $item['party']->email ?? '-' }}</td>
                         <td class="text-end fw-bold text-warning">₹{{ number_format($item['balance'], 2) }}</td>
                         <td class="text-center">
-                            @if(!empty($item['account_id']))
-                                <a href="{{ route('admin.reports.ledger', ['account_id' => $item['account_id']]) }}" class="btn btn-sm btn-outline-primary" title="View ledger">Ledger</a>
-                            @else
-                                -
-                            @endif
+                            <a href="{{ route('admin.parties.show', $item['party']->id) }}" class="btn btn-sm btn-outline-primary" title="View party history">History</a>
                         </td>
                     </tr>
                     @empty

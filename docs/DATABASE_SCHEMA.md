@@ -17,7 +17,6 @@ Active tables used by the live application.
 | `vouchers` | Income, expense, payment, receipt, journal vouchers |
 | `voucher_lines` | Debit/credit lines per voucher |
 | `ledgers` | Posted ledger entries with running balances |
-| `journal_entries` | Journal posting audit trail |
 | `ledger_party_histories` | Party-wise ledger history snapshots |
 | `tax_rates` | GST and other tax rates |
 | `items` | Inventory and service items |

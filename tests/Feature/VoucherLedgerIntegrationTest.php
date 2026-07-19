@@ -11,7 +11,6 @@ use App\Models\Voucher;
 use App\Models\VoucherLine;
 use App\Services\LedgerService;
 use App\Services\LedgerPartyHistoryService;
-use App\Services\JournalEntryService;
 use App\Services\VoucherService;
 use App\Services\ReportService;
 use App\Repositories\LedgerRepository;
@@ -91,13 +90,11 @@ class VoucherLedgerIntegrationTest extends TestCase
         $voucherLineRepository = new VoucherLineRepository(new VoucherLine());
         $historyService = $this->app->make(LedgerPartyHistoryService::class);
         $ledgerService = new LedgerService($ledgerRepository, $accountRepository, $historyService);
-        $journalEntryService = $this->app->make(JournalEntryService::class);
 
         $voucherService = new VoucherService(
             $voucherRepository,
             $voucherLineRepository,
             $ledgerService,
-            $journalEntryService,
             $this->app->make(\App\Services\PeriodLockService::class)
         );
 
@@ -160,13 +157,11 @@ class VoucherLedgerIntegrationTest extends TestCase
         $voucherLineRepository = new VoucherLineRepository(new VoucherLine());
         $historyService = $this->app->make(LedgerPartyHistoryService::class);
         $ledgerService = new LedgerService($ledgerRepository, $accountRepository, $historyService);
-        $journalEntryService = $this->app->make(JournalEntryService::class);
 
         $voucherService = new VoucherService(
             $voucherRepository,
             $voucherLineRepository,
             $ledgerService,
-            $journalEntryService,
             $this->app->make(\App\Services\PeriodLockService::class)
         );
 

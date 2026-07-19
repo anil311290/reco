@@ -29,7 +29,6 @@ class Voucher extends Model
         'total_debit',
         'total_credit',
         'status',
-        'remarks',
         'created_by',
         'updated_by',
         'created_by_ip',

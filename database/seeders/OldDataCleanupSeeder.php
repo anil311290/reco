@@ -12,7 +12,6 @@ class OldDataCleanupSeeder extends Seeder
     {
         $tables = [
             'voucher_lines',
-            'journal_entries',
             'ledgers',
             'vouchers',
             'subscription_payments',

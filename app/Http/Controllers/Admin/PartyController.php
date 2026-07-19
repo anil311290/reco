@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\PartyRequest;
+use App\Services\LedgerService;
 use App\Services\PartyService;
 use App\Helpers\ResponseHelper;
 use Illuminate\Http\JsonResponse;
@@ -12,10 +13,34 @@ use Illuminate\Http\Request;
 class PartyController extends Controller
 {
     protected PartyService $partyService;
+    protected LedgerService $ledgerService;
 
-    public function __construct(PartyService $partyService)
+    public function __construct(PartyService $partyService, LedgerService $ledgerService)
     {
         $this->partyService = $partyService;
+        $this->ledgerService = $ledgerService;
+    }
+
+    /**
+     * Show party detail with its ledger transaction history.
+     */
+    public function show(Request $request, int $id)
+    {
+        $party = $this->partyService->getById($id);
+
+        if (!$party || $party->company_id !== $request->user()->company_id) {
+            return ResponseHelper::notFound('Party not found');
+        }
+
+        $financialYearId = $request->user()->company->currentFinancialYear?->id;
+
+        $ledger = $this->ledgerService->getPartyLedger(
+            $id,
+            $request->user()->company_id,
+            $financialYearId
+        );
+
+        return view('admin.parties.show', compact('party', 'ledger'));
     }
 
     /**

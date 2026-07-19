@@ -5,6 +5,7 @@ namespace Database\Seeders;
 use App\Models\Account;
 use App\Models\Company;
 use App\Models\FinancialYear;
+use App\Services\LedgerService;
 use Illuminate\Database\Seeder;
 
 class AccountSeeder extends Seeder
@@ -60,6 +61,13 @@ class AccountSeeder extends Seeder
             }
 
             $accountModel->save();
+
+            // Opening balances must be double-entried (Dr/Cr against the
+            // suspense account) or the Trial Balance will not balance.
+            // This call is idempotent.
+            if (round((float) $accountModel->opening_balance, 2) > 0) {
+                app(LedgerService::class)->createAccountOpeningBalanceEntries($accountModel);
+            }
         }
     }
 }

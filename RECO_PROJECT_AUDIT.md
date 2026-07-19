@@ -2045,7 +2045,7 @@ Net Profit = Total Income - Total Expenses
 **Implementation:** ReportService::getProfitLoss()
 
 ## 13.3 Cash Book & Bank Book
-**Source Tables:** accounts, ledgers, journal_entries
+**Source Tables:** accounts, ledgers
 **Implementation:** ReportService::getCashBankBook($companyId, 'cash'|'bank', ...)
 Cash Flow report was removed; legacy URLs redirect to Cash Book.
 

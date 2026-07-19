@@ -82,6 +82,7 @@ class InvoiceAccountingService
 
         $lines[] = [
             'account_id' => $debtorAccount->id,
+            'party_id' => $invoice->party_id,
             'debit' => round((float) $invoice->total, 2),
             'credit' => 0,
             'description' => "Receivable — Invoice #{$invoice->invoice_number}",
@@ -143,6 +144,7 @@ class InvoiceAccountingService
 
         $lines[] = [
             'account_id' => $creditorAccount->id,
+            'party_id' => $invoice->party_id,
             'debit' => 0,
             'credit' => round((float) $invoice->total, 2),
             'description' => "Payable — Invoice #{$invoice->invoice_number}",
@@ -408,15 +410,6 @@ class InvoiceAccountingService
 
     protected function resolveDebtorAccount(SalesInvoice $invoice): Account
     {
-        if ($invoice->party?->account_id) {
-            $partyAccount = Account::where('company_id', $invoice->company_id)
-                ->where('id', $invoice->party->account_id)
-                ->first();
-            if ($partyAccount) {
-                return $partyAccount;
-            }
-        }
-
         return $this->resolveSystemAccount(
             Account::CODE_AR,
             $invoice->company_id,
@@ -432,37 +425,6 @@ class InvoiceAccountingService
 
     protected function resolveCreditorAccount(PurchaseInvoice $invoice): Account
     {
-        if ($invoice->party?->account_id) {
-            $partyAccount = Account::where('company_id', $invoice->company_id)
-                ->where('id', $invoice->party->account_id)
-                ->first();
-            if ($partyAccount) {
-                return $partyAccount;
-            }
-        }
-
-        $byCode = $this->accountRepository->findByCode(
-            Account::CODE_AP,
-            $invoice->company_id,
-            $invoice->financial_year_id
-        );
-
-        if ($byCode) {
-            return $byCode;
-        }
-
-        $fallback = Account::where('company_id', $invoice->company_id)
-            ->where('account_type', 'liability')
-            ->where(function ($q) {
-                $q->where('account_name', 'like', '%payable%')
-                    ->orWhere('account_name', 'like', '%creditor%');
-            })
-            ->first();
-
-        if ($fallback) {
-            return $fallback;
-        }
-
         return $this->resolveSystemAccount(
             Account::CODE_AP,
             $invoice->company_id,

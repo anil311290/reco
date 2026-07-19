@@ -240,9 +240,7 @@ class PurchaseInvoiceService
                         'updated_by' => $invoice->updated_by,
                         'updated_by_ip' => $invoice->updated_by_ip,
                     ],
-                    $voucherLines,
-                    'purchase_invoice',
-                    'purchase'
+                    $voucherLines
                 );
             }
 
@@ -324,9 +322,13 @@ class PurchaseInvoiceService
                 }
             }
 
-            $partyAccountId = $invoice->party?->account_id;
+            $partyAccountId = $invoice->party?->account_id
+                ?: \App\Models\Account::query()
+                    ->where('company_id', $invoice->company_id)
+                    ->where('account_code', \App\Models\Account::CODE_AP)
+                    ->value('id');
             if (!$partyAccountId) {
-                throw new \RuntimeException('Party ledger is missing. Link an account to the party first.');
+                throw new \RuntimeException('Accounts Payable control account is missing.');
             }
 
             $this->voucherService->create([
@@ -343,6 +345,7 @@ class PurchaseInvoiceService
                 'lines' => [
                     [
                         'account_id' => (int) $partyAccountId,
+                        'party_id' => $invoice->party_id,
                         'debit' => $amount,
                         'credit' => 0,
                         'description' => "Payment against Invoice #{$invoice->invoice_number}",

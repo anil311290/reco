@@ -4,7 +4,6 @@ namespace Tests\Unit;
 
 use Tests\TestCase;
 use App\Services\VoucherService;
-use App\Services\JournalEntryService;
 use App\Interfaces\VoucherRepositoryInterface;
 use App\Interfaces\VoucherLineRepositoryInterface;
 use App\Services\LedgerService;
@@ -36,16 +35,12 @@ class VoucherServiceTest extends TestCase
         $ledgerService = $this->createMock(LedgerService::class);
         $ledgerService->expects($this->once())->method('generateForVoucher')->with($voucher);
 
-        $journalEntryService = $this->createMock(JournalEntryService::class);
-        $journalEntryService->expects($this->once())->method('syncFromVoucher')->with($voucher);
-
         $periodLockService = $this->createMock(\App\Services\PeriodLockService::class);
 
         $service = new VoucherService(
             $voucherRepo,
             $voucherLineRepo,
             $ledgerService,
-            $journalEntryService,
             $periodLockService
         );
 

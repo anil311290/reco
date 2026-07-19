@@ -120,8 +120,8 @@
 
                 <div class="col-md-{{ $isPaymentReceipt ? '3' : '4' }} mb-3">
                     <label for="narration" class="form-label">Narration</label>
-                    <input type="text" class="form-control" id="narration" name="narration"
-                           value="{{ old('narration', $voucher->narration) }}" placeholder="Brief description">
+                    <textarea class="form-control" id="narration" name="narration" rows="2"
+                              placeholder="Brief description">{{ old('narration', $voucher->narration) }}</textarea>
                 </div>
             </div>
 
@@ -133,7 +133,7 @@
                     @forelse($paymentRows as $index => $row)
                     <div class="payment-receipt-row row g-2 mb-2" data-index="{{ $index }}">
                         <div class="col-md-8">
-                            <label class="form-label">Particulars (Party) <span class="text-danger">*</span></label>
+                            <label class="form-label">Particulars <span class="text-danger">*</span></label>
                             <select class="form-select pr-particular" name="payment_rows[{{ $index }}][account_id]" required>
                                 <option value="">Select Particulars</option>
                                 @foreach(collect($particularsOptions ?? [])->groupBy('group') as $group => $options)
@@ -158,7 +158,7 @@
                     @empty
                     <div class="payment-receipt-row row g-2 mb-2" data-index="0">
                         <div class="col-md-8">
-                            <label class="form-label">Particulars (Party) <span class="text-danger">*</span></label>
+                            <label class="form-label">Particulars <span class="text-danger">*</span></label>
                             <select class="form-select pr-particular" name="payment_rows[0][account_id]" required>
                                 <option value="">Select Particulars</option>
                                 @foreach(collect($particularsOptions ?? [])->groupBy('group') as $group => $options)
@@ -369,12 +369,6 @@
                     </table>
                     @endif
                 </div>
-            </div>
-
-            <div class="mb-3">
-                <label for="remarks" class="form-label">Remarks</label>
-                <textarea class="form-control" id="remarks" name="remarks" rows="2"
-                          placeholder="Enter any additional notes">{{ old('remarks', $voucher->remarks) }}</textarea>
             </div>
 
             <div class="text-end">

@@ -150,7 +150,7 @@ class ReportService
         $query = Voucher::where('company_id', $companyId)
             ->whereDate('voucher_date', $date)
             ->where('status', 'posted')
-            ->with(['party', 'lines.account', 'salesInvoice', 'purchaseInvoice'])
+            ->with(['party', 'lines.account', 'lines.party', 'salesInvoice', 'purchaseInvoice'])
             ->orderBy('voucher_number');
 
         if ($financialYearId) {
@@ -177,8 +177,8 @@ class ReportService
                     'voucher_type' => $voucher->voucher_type,
                     'account_id' => $line->account_id,
                     'account_name' => $line->account?->account_name ?? '-',
-                    'party_id' => $voucher->party_id,
-                    'party_name' => $voucher->party?->name,
+                    'party_id' => $line->party_id ?: $voucher->party_id,
+                    'party_name' => $line->party?->name ?? $voucher->party?->name,
                     'sales_invoice_id' => $voucher->sales_invoice_id,
                     'sales_invoice_type' => $voucher->salesInvoice?->invoice_type,
                     'purchase_invoice_id' => $voucher->purchase_invoice_id,
@@ -266,7 +266,6 @@ class ReportService
 
         $debtors = Party::where('company_id', $companyId)
             ->where('type', 'debtor')
-            ->whereNotNull('account_id')
             ->orderBy('name')
             ->get();
 
@@ -278,16 +277,16 @@ class ReportService
                 continue;
             }
 
-            $balance = $this->ledgerService->getAccountBalance(
-                (int) $debtor->account_id,
+            $ledger = $this->ledgerService->getPartyLedger(
+                (int) $debtor->id,
                 $companyId,
                 $financialYearId
             );
 
-            // Receivable = debit balance on party account
-            $amount = $balance['type'] === 'debit'
-                ? (float) $balance['balance']
-                : -1 * (float) $balance['balance'];
+            // Receivable = net debit balance tagged to this party in AR
+            $amount = $ledger['closing_type'] === 'debit'
+                ? (float) $ledger['closing_balance']
+                : -1 * (float) $ledger['closing_balance'];
 
             if ($amount > 0.01) {
                 $outstanding[] = [
@@ -316,7 +315,6 @@ class ReportService
 
         $creditors = Party::where('company_id', $companyId)
             ->where('type', 'creditor')
-            ->whereNotNull('account_id')
             ->orderBy('name')
             ->get();
 
@@ -328,16 +326,16 @@ class ReportService
                 continue;
             }
 
-            $balance = $this->ledgerService->getAccountBalance(
-                (int) $creditor->account_id,
+            $ledger = $this->ledgerService->getPartyLedger(
+                (int) $creditor->id,
                 $companyId,
                 $financialYearId
             );
 
-            // Payable = credit balance on party account
-            $amount = $balance['type'] === 'credit'
-                ? (float) $balance['balance']
-                : -1 * (float) $balance['balance'];
+            // Payable = net credit balance tagged to this party in AP
+            $amount = $ledger['closing_type'] === 'credit'
+                ? (float) $ledger['closing_balance']
+                : -1 * (float) $ledger['closing_balance'];
 
             if ($amount > 0.01) {
                 $outstanding[] = [

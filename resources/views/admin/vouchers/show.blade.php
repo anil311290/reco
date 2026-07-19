@@ -101,12 +101,6 @@
             </div>
         </div>
 
-        <div class="card">
-            <div class="card-body">
-                <h5 class="card-title mb-3">Remarks</h5>
-                <p class="mb-0">{{ $voucher->remarks ?: '-' }}</p>
-            </div>
-        </div>
     </div>
 </div>
 @endsection

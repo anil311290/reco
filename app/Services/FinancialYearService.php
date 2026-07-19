@@ -148,7 +148,6 @@ class FinancialYearService
                 'voucher_type' => 'journal',
                 'voucher_date' => $targetFy->start_date->format('Y-m-d'),
                 'narration' => "Opening balances carried forward from {$previousFy->name}",
-                'remarks' => 'System FY opening carry-forward',
                 'lines' => $lines,
             ]);
 

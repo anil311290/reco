@@ -5,7 +5,6 @@ namespace Tests\Feature;
 use App\Models\Account;
 use App\Models\Company;
 use App\Models\FinancialYear;
-use App\Models\JournalEntry;
 use App\Models\Ledger;
 use App\Models\Voucher;
 use App\Services\AccountService;
@@ -280,7 +279,7 @@ class TallyFullBooksCycleTest extends TestCase
             'narration' => 'Additional customer collection',
             'lines' => [
                 ['account_id' => $bank->id, 'debit' => 100, 'credit' => 0],
-                ['account_id' => $customer->account_id, 'debit' => 0, 'credit' => 100],
+                ['account_id' => $customer->account_id, 'party_id' => $customer->id, 'debit' => 0, 'credit' => 100],
             ],
         ]);
 
@@ -387,16 +386,12 @@ class TallyFullBooksCycleTest extends TestCase
         $this->assertGreaterThanOrEqual(3, $partyLedger['entries']->count());
         $this->assertEqualsWithDelta(300.0, (float) $partyLedger['closing_balance']['balance'], 0.01);
 
-        // --- Journal entries projection exists for every posted voucher ---
+        // --- Ledger entries exist for every posted voucher ---
         $postedVoucherIds = Voucher::where('company_id', $company->id)
             ->where('status', 'posted')
             ->pluck('id');
         $this->assertGreaterThanOrEqual(6, $postedVoucherIds->count());
         foreach ($postedVoucherIds as $voucherId) {
-            $this->assertTrue(
-                JournalEntry::where('voucher_id', $voucherId)->exists(),
-                "Journal entries missing for voucher {$voucherId}"
-            );
             $this->assertTrue(
                 Ledger::where('voucher_id', $voucherId)->exists(),
                 "Ledger entries missing for voucher {$voucherId}"

@@ -16,20 +16,17 @@ class VoucherService
     protected VoucherRepositoryInterface $voucherRepository;
     protected VoucherLineRepositoryInterface $voucherLineRepository;
     protected LedgerService $ledgerService;
-    protected JournalEntryService $journalEntryService;
     protected PeriodLockService $periodLockService;
 
     public function __construct(
         VoucherRepositoryInterface $voucherRepository,
         VoucherLineRepositoryInterface $voucherLineRepository,
         LedgerService $ledgerService,
-        JournalEntryService $journalEntryService,
         PeriodLockService $periodLockService
     ) {
         $this->voucherRepository = $voucherRepository;
         $this->voucherLineRepository = $voucherLineRepository;
         $this->ledgerService = $ledgerService;
-        $this->journalEntryService = $journalEntryService;
         $this->periodLockService = $periodLockService;
     }
     /**
@@ -168,7 +165,7 @@ class VoucherService
             );
 
             // Payment / Receipt / Adjustment: CA style — post immediately so
-            // ledger + journal_entries are available for reports.
+            // ledger entries are available for reports.
             if (empty($data['status']) && in_array($data['voucher_type'] ?? '', ['payment', 'receipt', 'journal', 'adjustment'], true)) {
                 $data['status'] = 'posted';
             }
@@ -187,7 +184,6 @@ class VoucherService
 
             if ($voucher->status === 'posted') {
                 $this->ledgerService->generateForVoucher($voucher);
-                $this->journalEntryService->syncFromVoucher($voucher);
             }
 
             DB::commit();
@@ -279,7 +275,6 @@ class VoucherService
             if ($wasPosted) {
                 $voucher->refresh()->load(['party', 'lines.account']);
                 $this->ledgerService->generateForVoucher($voucher);
-                $this->journalEntryService->syncFromVoucher($voucher);
             }
 
             DB::commit();
@@ -323,12 +318,11 @@ class VoucherService
 
         $result = $voucher->post();
 
-        // Generate ledger + journal entries when voucher is posted
+        // Generate ledger entries when voucher is posted
         if ($result) {
             $voucher->refresh();
             $voucher->load(['party', 'lines.account']);
             $this->ledgerService->generateForVoucher($voucher);
-            $this->journalEntryService->syncFromVoucher($voucher);
         }
 
         return $result;
@@ -369,7 +363,6 @@ class VoucherService
         if ($result) {
             $voucher->refresh();
             $this->ledgerService->deleteEntriesByReference('voucher', $voucher->id);
-            $this->journalEntryService->cancelForVoucher($voucher);
             $this->reverseInvoiceSettlement($voucher);
         }
 
@@ -492,7 +485,6 @@ class VoucherService
             $voucher->load(['party', 'lines.account']);
 
             $this->ledgerService->generateForVoucher($voucher);
-            $this->journalEntryService->syncFromVoucher($voucher, 'sales_invoice', 'sales');
 
             return $voucher;
         });
@@ -543,7 +535,6 @@ class VoucherService
             $voucher->load(['party', 'lines.account']);
 
             $this->ledgerService->generateForVoucher($voucher);
-            $this->journalEntryService->syncFromVoucher($voucher, 'purchase_invoice', 'purchase');
 
             return $voucher;
         });
@@ -556,11 +547,9 @@ class VoucherService
     public function syncInvoiceVoucher(
         Voucher $voucher,
         array $invoiceData,
-        array $lines,
-        string $sourceType,
-        string $module
+        array $lines
     ): Voucher {
-        return DB::transaction(function () use ($voucher, $invoiceData, $lines, $sourceType, $module) {
+        return DB::transaction(function () use ($voucher, $invoiceData, $lines) {
             if ($voucher->status !== 'posted') {
                 throw new \RuntimeException('Only a posted invoice voucher can be synchronized.');
             }
@@ -597,7 +586,6 @@ class VoucherService
 
             $voucher->refresh()->load(['party', 'lines.account']);
             $this->ledgerService->generateForVoucher($voucher);
-            $this->journalEntryService->syncFromVoucher($voucher, $sourceType, $module);
 
             return $voucher->fresh(['party', 'lines.account']);
         });

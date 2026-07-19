@@ -5,7 +5,7 @@ namespace Tests\Feature;
 use App\Models\Account;
 use App\Models\Company;
 use App\Models\FinancialYear;
-use App\Models\JournalEntry;
+use App\Models\Ledger;
 use App\Models\Party;
 use App\Models\TaxRate;
 use App\Services\PurchaseInvoiceService;
@@ -186,15 +186,14 @@ class InvoiceAccountingPostingTest extends TestCase
         $voucher = $service->generateVoucher($invoice->fresh());
         $this->assertNotNull($voucher);
 
-        $journalRows = JournalEntry::where('company_id', $company->id)
-            ->where('source_type', 'sales_invoice')
-            ->where('source_id', $invoice->id)
+        $ledgerRows = Ledger::where('company_id', $company->id)
+            ->where('voucher_id', $voucher->id)
             ->get();
 
-        $this->assertGreaterThan(0, $journalRows->count());
+        $this->assertGreaterThan(0, $ledgerRows->count());
         $this->assertEquals(
-            round((float) $journalRows->sum('debit'), 2),
-            round((float) $journalRows->sum('credit'), 2)
+            round((float) $ledgerRows->sum('debit'), 2),
+            round((float) $ledgerRows->sum('credit'), 2)
         );
 
         $incomeLine = $voucher->fresh('lines.account')->lines->first(

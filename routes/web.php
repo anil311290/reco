@@ -222,6 +222,9 @@ Route::prefix('admin')->name('admin.')->group(function () {
                 ->name('parties.status')
                 ->middleware(CheckPermission::class . ':parties.edit');
             Route::get('parties/by-type', [PartyController::class, 'getByType'])->name('parties.by-type');
+            Route::get('parties/{party}', [PartyController::class, 'show'])
+                ->name('parties.show')
+                ->whereNumber('party');
         });
 
         /*

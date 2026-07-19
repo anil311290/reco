@@ -18,6 +18,7 @@ class VoucherLine extends Model
         'uuid',
         'voucher_id',
         'account_id',
+        'party_id',
         'debit',
         'credit',
         'description',
@@ -44,5 +45,13 @@ class VoucherLine extends Model
     public function account()
     {
         return $this->belongsTo(Account::class);
+    }
+
+    /**
+     * Get the party for the line (set on AR/AP control-account legs).
+     */
+    public function party()
+    {
+        return $this->belongsTo(Party::class);
     }
 }

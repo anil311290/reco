@@ -319,9 +319,7 @@ class SalesInvoiceService
                         'updated_by' => $invoice->updated_by,
                         'updated_by_ip' => $invoice->updated_by_ip,
                     ],
-                    $voucherLines,
-                    'sales_invoice',
-                    'sales'
+                    $voucherLines
                 );
             }
 
@@ -394,9 +392,13 @@ class SalesInvoiceService
                 throw new \RuntimeException('Selected account must match the payment mode.');
             }
 
-            $partyAccountId = $invoice->party?->account_id;
+            $partyAccountId = $invoice->party?->account_id
+                ?: \App\Models\Account::query()
+                    ->where('company_id', $invoice->company_id)
+                    ->where('account_code', \App\Models\Account::CODE_AR)
+                    ->value('id');
             if (!$partyAccountId) {
-                throw new \RuntimeException('Party ledger is missing. Link an account to the party first.');
+                throw new \RuntimeException('Accounts Receivable control account is missing.');
             }
 
             $this->voucherService->create([
@@ -419,6 +421,7 @@ class SalesInvoiceService
                     ],
                     [
                         'account_id' => (int) $partyAccountId,
+                        'party_id' => $invoice->party_id,
                         'debit' => 0,
                         'credit' => $amount,
                         'description' => "Receipt against Invoice #{$invoice->invoice_number}",

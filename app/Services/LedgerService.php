@@ -48,13 +48,10 @@ class LedgerService
             $this->ledgerRepository->deleteByVoucher($voucher->id);
 
             $touchedAccountIds = $previousEntries->pluck('account_id');
-            $partyByAccount = Party::where('company_id', $voucher->company_id)
-                ->whereIn('account_id', $voucher->lines->pluck('account_id'))
-                ->pluck('id', 'account_id');
 
             foreach ($voucher->lines as $line) {
                 $touchedAccountIds->push($line->account_id);
-                $linePartyId = $partyByAccount[$line->account_id] ?? $voucher->party_id;
+                $linePartyId = $line->party_id;
 
                 $this->createEntry(
                     $voucher->company_id,
@@ -279,7 +276,7 @@ class LedgerService
             $transactionDate,
             $referenceType,
             $referenceId,
-            $party->id,
+            null,
             $description,
             $offsetDebit,
             $offsetCredit,
@@ -450,7 +447,7 @@ class LedgerService
     ): array {
         $query = Ledger::where('company_id', $companyId)
             ->where('account_id', $accountId)
-            ->with(['voucher', 'account']);
+            ->with(['voucher', 'account', 'party']);
 
         if ($financialYearId) {
             $query->where('financial_year_id', $financialYearId);
@@ -532,6 +529,59 @@ class LedgerService
                 'type' => $entries->sum('debit') >= $entries->sum('credit') ? 'debit' : 'credit',
             ],
             'is_all_accounts' => true,
+        ];
+    }
+
+    /**
+     * Get a party's transaction history from the ledger, keyed by party_id.
+     * Running balance is netted (debit − credit) so it is correct whether the
+     * party posts to its own ledger account or to a shared AR/AP control account.
+     */
+    public function getPartyLedger(
+        int $partyId,
+        int $companyId,
+        ?int $financialYearId = null,
+        ?string $dateFrom = null,
+        ?string $dateTo = null
+    ): array {
+        $query = Ledger::where('company_id', $companyId)
+            ->where('party_id', $partyId)
+            ->with(['voucher', 'account']);
+
+        if ($financialYearId) {
+            $query->where('financial_year_id', $financialYearId);
+        }
+
+        if ($dateFrom) {
+            $query->where('transaction_date', '>=', $dateFrom);
+        }
+
+        if ($dateTo) {
+            $query->where('transaction_date', '<=', $dateTo);
+        }
+
+        $entries = $query->orderBy('transaction_date', 'asc')
+            ->orderBy('id', 'asc')
+            ->get();
+
+        $running = 0.0;
+        $rows = [];
+
+        foreach ($entries as $entry) {
+            $running += (float) $entry->debit - (float) $entry->credit;
+            $rows[] = [
+                'entry' => $entry,
+                'running_balance' => abs(round($running, 2)),
+                'running_type' => $running >= 0 ? 'debit' : 'credit',
+            ];
+        }
+
+        return [
+            'rows' => $rows,
+            'total_debit' => round((float) $entries->sum('debit'), 2),
+            'total_credit' => round((float) $entries->sum('credit'), 2),
+            'closing_balance' => abs(round($running, 2)),
+            'closing_type' => $running >= 0 ? 'debit' : 'credit',
         ];
     }
 

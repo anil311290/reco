@@ -50,6 +50,20 @@ use OpenApi\Annotations as OA;
  * )
  *
  * @OA\Get(
+ *     path="/parties/{id}/history",
+ *     tags={"Parties"},
+ *     summary="Get party transaction history (ledger)",
+ *     description="Opening balance, all transactions, and running/closing balance for a party across the AR/AP control account.",
+ *     operationId="getPartyHistory",
+ *     security={{"bearerAuth":{}}},
+ *     @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")),
+ *     @OA\Parameter(name="financial_year_id", in="query", @OA\Schema(type="integer")),
+ *     @OA\Parameter(name="date_from", in="query", @OA\Schema(type="string", format="date")),
+ *     @OA\Parameter(name="date_to", in="query", @OA\Schema(type="string", format="date")),
+ *     @OA\Response(response=200, description="Success", @OA\JsonContent(ref="#/components/schemas/SuccessResponse"))
+ * )
+ *
+ * @OA\Get(
  *     path="/parties/{id}",
  *     tags={"Parties"},
  *     summary="Get party by ID",

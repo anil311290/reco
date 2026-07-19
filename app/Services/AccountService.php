@@ -332,62 +332,61 @@ class AccountService
     }
 
     /**
-     * Particulars for payment/receipt lines: parties only.
-     * Cash/Bank/OD are selected separately in Paid From / Received In.
-     * Payment → creditors; Receipt → debtors.
+     * Particulars for payment/receipt lines: both Parties and Ledger Accounts.
+     * Cash/Bank/OD are selected separately in Paid From / Received In, so they
+     * are excluded here. Payment lists creditor parties first; Receipt lists
+     * debtor parties first. Any other ledger account can also be selected.
      */
     public function getPaymentParticularsOptions(int $companyId, ?string $voucherType = null): array
     {
-        $partyQuery = Party::query()
-            ->where('company_id', $companyId)
-            ->where('is_active', true)
-            ->whereNotNull('account_id')
-            ->with('account')
-            ->orderBy('name');
-
-        if ($voucherType === 'receipt') {
-            $partyQuery->where('type', 'debtor');
-        } elseif ($voucherType === 'payment') {
-            $partyQuery->where('type', 'creditor');
-        }
-
-        return $partyQuery->get()
-            ->filter(fn (Party $party) => $party->account && $party->account->is_active)
-            ->map(fn (Party $party) => [
-                'id' => $party->account->id,
-                'party_id' => $party->id,
-                'text' => "{$party->party_code} - {$party->name}",
-                'kind' => 'party',
-                'group' => 'Parties',
-                'sort_order' => 10,
-            ])
-            ->values()
-            ->toArray();
-    }
-
-    /**
-     * All ledgers for journal/adjustment vouchers, with party-linked ledgers
-     * displayed by party name rather than their internal account name.
-     */
-    public function getAdjustmentParticularsOptions(int $companyId): array
-    {
-        $options = collect();
-
+        // Both debtors and creditors are offered (like adjustments): a payment
+        // can settle a creditor or refund a debtor, and a receipt can collect
+        // from a debtor or a refund from a creditor. Cash/Bank/OD accounts are
+        // excluded because they are the fixed contra side chosen separately.
         $parties = Party::query()
             ->where('company_id', $companyId)
             ->where('is_active', true)
-            ->whereNotNull('account_id')
-            ->with('account')
             ->orderBy('name')
             ->get();
 
-        foreach ($parties as $party) {
-            if (!$party->account || !$party->account->is_active) {
-                continue;
-            }
+        return $this->buildParticularsOptions(
+            $companyId,
+            $parties,
+            ['cash', 'bank', 'od']
+        );
+    }
 
+    /**
+     * Particulars for journal/adjustment vouchers: parties plus every ledger
+     * account (cash/bank included). AR/AP control accounts are reached via the
+     * party rows, so they are hidden from the direct account list.
+     */
+    public function getAdjustmentParticularsOptions(int $companyId): array
+    {
+        $parties = Party::query()
+            ->where('company_id', $companyId)
+            ->where('is_active', true)
+            ->orderBy('name')
+            ->get();
+
+        return $this->buildParticularsOptions($companyId, $parties, []);
+    }
+
+    /**
+     * Build a grouped particulars list: parties encoded as "party:{id}" tokens
+     * (they post to a shared AR/AP control account) plus selectable ledger
+     * accounts. AR/AP control accounts are always excluded from the direct list.
+     *
+     * @param \Illuminate\Support\Collection<int, Party> $parties
+     * @param array<int, string> $excludedTransactionModes
+     */
+    protected function buildParticularsOptions(int $companyId, $parties, array $excludedTransactionModes): array
+    {
+        $options = collect();
+
+        foreach ($parties as $party) {
             $options->push([
-                'id' => $party->account->id,
+                'id' => 'party:' . $party->id,
                 'party_id' => $party->id,
                 'text' => "{$party->party_code} - {$party->name}",
                 'kind' => 'party',
@@ -396,17 +395,19 @@ class AccountService
             ]);
         }
 
-        $partyAccountIds = $options->pluck('id')->all();
-
         Account::query()
             ->where('company_id', $companyId)
             ->where('is_active', true)
-            ->when($partyAccountIds !== [], fn ($query) => $query->whereNotIn('id', $partyAccountIds))
+            ->whereNotIn('account_code', [Account::CODE_AR, Account::CODE_AP])
+            ->when(
+                $excludedTransactionModes !== [],
+                fn ($query) => $query->whereNotIn('transaction_mode', $excludedTransactionModes)
+            )
             ->orderBy('account_code')
             ->get()
             ->each(function (Account $account) use ($options) {
                 $options->push([
-                    'id' => $account->id,
+                    'id' => (string) $account->id,
                     'party_id' => null,
                     'text' => "{$account->account_code} - {$account->account_name}",
                     'kind' => 'account',
@@ -608,10 +609,6 @@ class AccountService
         }
 
         if (DB::table('voucher_lines')->where('account_id', $accountId)->exists()) {
-            return true;
-        }
-
-        if (DB::table('journal_entries')->where('account_id', $accountId)->exists()) {
             return true;
         }
 

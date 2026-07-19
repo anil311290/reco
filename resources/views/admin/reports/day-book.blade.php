@@ -86,6 +86,7 @@
                         <th>Voucher #</th>
                         <th>Type</th>
                         <th>Particulars</th>
+                        <th>Party</th>
                         <th>Narration</th>
                         <th class="text-end">Debit (₹)</th>
                         <th class="text-end">Credit (₹)</th>
@@ -113,6 +114,15 @@
                                 {{ $row['account_name'] }}
                             @endif
                         </td>
+                        <td>
+                            @if(!empty($row['party_id']))
+                                <a href="{{ route('admin.parties.show', $row['party_id']) }}" class="report-detail-link" title="View party history">
+                                    {{ $row['party_name'] }}
+                                </a>
+                            @else
+                                {{ $row['party_name'] ?? '-' }}
+                            @endif
+                        </td>
                         <td class="text-muted small">
                             @if(!empty($row['sales_invoice_id']))
                                 @php
@@ -124,19 +134,19 @@
                             @elseif(!empty($row['purchase_invoice_id']))
                                 <a href="{{ route('admin.purchase-invoices.show', $row['purchase_invoice_id']) }}" class="report-detail-link me-1" title="View purchase invoice">Invoice</a>
                             @endif
-                            {{ Str::limit($row['narration'] ?? ($row['party_name'] ?? '-'), 60) }}
+                            {{ Str::limit($row['narration'] ?? '-', 60) }}
                         </td>
                         <td class="text-end fw-semibold">{{ $row['debit'] > 0 ? '₹' . number_format($row['debit'], 2) : '-' }}</td>
                         <td class="text-end fw-semibold">{{ $row['credit'] > 0 ? '₹' . number_format($row['credit'], 2) : '-' }}</td>
                     </tr>
                     @empty
-                    <tr><td colspan="6" class="text-muted text-center py-4">No posted transactions found for {{ $date }}</td></tr>
+                    <tr><td colspan="7" class="text-muted text-center py-4">No posted transactions found for {{ $date }}</td></tr>
                     @endforelse
                 </tbody>
                 @if(count($report['rows']) > 0)
                 <tfoot>
                     <tr>
-                        <td colspan="4">Total</td>
+                        <td colspan="5">Total</td>
                         <td class="text-end fw-bold">₹{{ number_format($report['total_debit'], 2) }}</td>
                         <td class="text-end fw-bold">₹{{ number_format($report['total_credit'], 2) }}</td>
                     </tr>
