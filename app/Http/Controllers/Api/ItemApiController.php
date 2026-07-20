@@ -46,6 +46,51 @@ class ItemApiController extends Controller
     }
 
     /**
+     * Item sales history (sales invoices only — no stock tracking).
+     */
+    public function history(Request $request, int $id): JsonResponse
+    {
+        $validated = $request->validate([
+            'date_from' => 'nullable|date',
+            'date_to' => 'nullable|date',
+            'per_page' => 'nullable|integer|min:1|max:100',
+            'page' => 'nullable|integer|min:1',
+        ]);
+
+        $item = $this->itemService->getById($id);
+
+        if (!$item || $item->company_id !== $request->user()->company_id) {
+            return ResponseHelper::notFound('Item not found');
+        }
+
+        $history = $this->itemService->getItemHistory(
+            $id,
+            $item->company_id,
+            $validated['date_from'] ?? null,
+            $validated['date_to'] ?? null,
+            (int) ($validated['per_page'] ?? 15)
+        );
+
+        $paginator = $history['paginator'];
+
+        return ResponseHelper::success([
+            'item' => new ItemResource($item),
+            'total_in' => $history['total_in'],
+            'total_out' => $history['total_out'],
+            'total_sales_amount' => $history['total_sales_amount'],
+            'total_purchase_amount' => $history['total_purchase_amount'],
+            'closing_qty' => $history['closing_qty'],
+            'transactions' => $history['rows'],
+            'pagination' => [
+                'current_page' => $paginator->currentPage(),
+                'per_page' => $paginator->perPage(),
+                'total' => $paginator->total(),
+                'last_page' => $paginator->lastPage(),
+            ],
+        ]);
+    }
+
+    /**
      * Create item.
      */
     public function store(Request $request): JsonResponse

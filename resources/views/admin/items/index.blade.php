@@ -90,7 +90,13 @@ $(document).ready(function() {
     const table = loadDatatable('itemsTable', '{{ route("admin.items.index") }}', [
         { data: null, name: 'serial', orderable: false, searchable: false, render: function(data, type, row, meta) { return meta.row + meta.settings._iDisplayStart + 1; } },
         { data: 'item_code', name: 'item_code' },
-        { data: 'name', name: 'name' },
+        {
+            data: 'name',
+            name: 'name',
+            render: function(data, type, row) {
+                return `<a href="/admin/items/${row.id}" class="report-detail-link" title="View details">${data}</a>`;
+            }
+        },
         {
             data: 'category',
             name: 'category.name',
@@ -113,14 +119,14 @@ $(document).ready(function() {
                 return '₹' + parseFloat(data || 0).toFixed(2); 
             }
         },
-        { 
-            data: 'current_stock', 
+        {
+            data: 'current_stock',
             name: 'current_stock',
             render: function(data, type, row) {
-                if (!row.is_stockable) return '<span class="text-muted">N/A</span>';
-                let stock = parseFloat(data || 0);
-                let reorder = parseFloat(row.reorder_level || 0);
-                return stock <= reorder ? `<span class="text-danger fw-bold">${stock}</span>` : stock;
+                if (row.type === 'service' || row.is_stockable === false) {
+                    return '<span class="text-muted">-</span>';
+                }
+                return parseFloat(data || 0).toFixed(3);
             }
         },
         {
@@ -145,6 +151,9 @@ $(document).ready(function() {
             searchable: false,
             render: function(data) {
                 let actions = `<div class="btn-group btn-group-sm">`;
+                actions += `<a href="/admin/items/${data.id}" class="btn btn-outline-secondary" title="View Details">
+                    <i class="bi bi-eye"></i>
+                </a>`;
                 @permission('accounts.edit')
                 actions += `<a href="/admin/items/${data.id}/edit" class="btn btn-outline-primary" title="Edit">
                     <i class="bi bi-pencil"></i>

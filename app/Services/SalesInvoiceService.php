@@ -21,6 +21,7 @@ class SalesInvoiceService
     protected SettingsService $settingsService;
     protected InvoiceAccountingService $invoiceAccountingService;
     protected PeriodLockService $periodLockService;
+    protected ItemService $itemService;
 
     public function __construct(
         VoucherService $voucherService,
@@ -28,7 +29,8 @@ class SalesInvoiceService
         AccountRepositoryInterface $accountRepository,
         SettingsService $settingsService,
         InvoiceAccountingService $invoiceAccountingService,
-        PeriodLockService $periodLockService
+        PeriodLockService $periodLockService,
+        ItemService $itemService
     ) {
         $this->voucherService = $voucherService;
         $this->salesInvoiceRepository = $salesInvoiceRepository;
@@ -36,6 +38,7 @@ class SalesInvoiceService
         $this->settingsService = $settingsService;
         $this->invoiceAccountingService = $invoiceAccountingService;
         $this->periodLockService = $periodLockService;
+        $this->itemService = $itemService;
     }
 
     /**
@@ -183,6 +186,8 @@ class SalesInvoiceService
                 ]);
             }
 
+            $this->itemService->applyStockFromLines($lines, 'out');
+
             $invoice->calculateTotals();
             return $invoice->load('lines');
         });
@@ -256,6 +261,9 @@ class SalesInvoiceService
 
             $invoice->update($data);
 
+            $oldLines = $invoice->lines()->where('line_type', 'item')->get();
+            $this->itemService->applyStockFromLines($oldLines, 'in');
+
             // Delete existing lines and recreate
             $invoice->lines()->delete();
 
@@ -302,6 +310,8 @@ class SalesInvoiceService
                     'sort_order'          => count($lines) + $index,
                 ]);
             }
+
+            $this->itemService->applyStockFromLines($lines, 'out');
 
             $invoice->calculateTotals();
             $invoice->refresh()->load(['lines.item', 'lines.taxRate', 'lines.account', 'party']);
@@ -449,7 +459,12 @@ class SalesInvoiceService
                 'A posted sales invoice cannot be deleted because accounting entries exist. Cancel/reverse it instead.'
             );
         }
-        return $this->salesInvoiceRepository->delete($id);
+
+        return DB::transaction(function () use ($invoice, $id) {
+            $oldLines = $invoice->lines()->where('line_type', 'item')->get();
+            $this->itemService->applyStockFromLines($oldLines, 'in');
+            return $this->salesInvoiceRepository->delete($id);
+        });
     }
 
     /**

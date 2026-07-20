@@ -76,18 +76,32 @@ class SettingsController extends Controller
     public function updateTheme(Request $request): JsonResponse
     {
         $request->validate([
-            'primary_color' => 'required|string|max:7',
-            'secondary_color' => 'required|string|max:7',
-            'sidebar_color' => 'required|string|max:7',
-            'header_color' => 'required|string|max:7',
-            'dark_mode' => 'boolean',
+            'primary_color' => ['required', 'string', 'regex:/^#[0-9A-Fa-f]{6}$/'],
+            'secondary_color' => ['required', 'string', 'regex:/^#[0-9A-Fa-f]{6}$/'],
+            'sidebar_color' => ['required', 'string', 'regex:/^#[0-9A-Fa-f]{6}$/'],
+            'header_color' => ['required', 'string', 'regex:/^#[0-9A-Fa-f]{6}$/'],
+            'dark_mode' => 'nullable|boolean',
         ]);
 
         try {
             $companyId = Auth::user()->company_id;
-            $this->settingsService->updateThemeSettings($request->all(), $companyId);
+            $this->settingsService->updateThemeSettings($request->only([
+                'primary_color',
+                'secondary_color',
+                'sidebar_color',
+                'header_color',
+                'dark_mode',
+            ]), $companyId);
 
-            return ResponseHelper::success(null, 'Theme settings updated successfully');
+            return ResponseHelper::success([
+                'css' => $this->settingsService->getThemeCss($companyId),
+                'theme' => [
+                    'primary_color' => $request->input('primary_color'),
+                    'secondary_color' => $request->input('secondary_color'),
+                    'sidebar_color' => $request->input('sidebar_color'),
+                    'header_color' => $request->input('header_color'),
+                ],
+            ], 'Theme settings updated successfully');
         } catch (\Exception $e) {
             return ResponseHelper::error($e->getMessage());
         }

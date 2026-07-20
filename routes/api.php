@@ -197,6 +197,7 @@ Route::prefix('v1')->middleware('auth:sanctum')->group(function () {
     Route::post('/items', [ItemApiController::class, 'store']);
     Route::get('/items/low-stock', [ItemApiController::class, 'lowStock']);
     Route::get('/items/dropdown', [ItemApiController::class, 'dropdown']);
+    Route::get('/items/{id}/history', [ItemApiController::class, 'history']);
     Route::get('/items/{id}', [ItemApiController::class, 'show']);
     Route::put('/items/{id}', [ItemApiController::class, 'update']);
     Route::delete('/items/{id}', [ItemApiController::class, 'destroy']);

@@ -93,10 +93,10 @@
                                         <select class="form-select form-select-sm item-select w-100" name="lines[{{ $lineIdx }}][item_id]">
                                             <option value="">Select Item</option>
                                             @foreach($items as $item)
-                                            <option value="{{ $item->id }}" data-price="{{ $item->selling_price }}" data-tax="{{ $item->tax_rate_id }}" {{ $line->item_id == $item->id ? 'selected' : '' }}>{{ $item->name }}</option>
+                                            <option value="{{ $item->id }}" data-price="{{ $item->selling_price }}" data-tax="{{ $item->tax_rate_id }}" data-description="{{ e($item->description ?? '') }}" {{ $line->item_id == $item->id ? 'selected' : '' }}>{{ $item->name }}</option>
                                             @endforeach
                                         </select>
-                                        <input type="text" class="form-control form-control-sm mt-1" name="lines[{{ $lineIdx }}][description]" value="{{ $line->description }}" placeholder="Description">
+                                        <input type="text" class="form-control form-control-sm mt-1 bg-light" name="lines[{{ $lineIdx }}][description]" value="{{ $line->description }}" placeholder="Description" readonly>
                                     </td>
                                     <td><input type="number" class="form-control form-control-sm qty-input" name="lines[{{ $lineIdx }}][quantity]" value="{{ $line->quantity }}" min="0.001" step="0.001"></td>
                                     <td><input type="number" class="form-control form-control-sm price-input" name="lines[{{ $lineIdx }}][unit_price]" value="{{ $line->unit_price }}" min="0" step="0.01"></td>
@@ -118,10 +118,10 @@
                                         <select class="form-select form-select-sm item-select w-100" name="lines[0][item_id]">
                                             <option value="">Select Item</option>
                                             @foreach($items as $item)
-                                            <option value="{{ $item->id }}" data-price="{{ $item->selling_price }}" data-tax="{{ $item->tax_rate_id }}">{{ $item->name }}</option>
+                                            <option value="{{ $item->id }}" data-price="{{ $item->selling_price }}" data-tax="{{ $item->tax_rate_id }}" data-description="{{ e($item->description ?? '') }}">{{ $item->name }}</option>
                                             @endforeach
                                         </select>
-                                        <input type="text" class="form-control form-control-sm mt-1" name="lines[0][description]" placeholder="Description">
+                                        <input type="text" class="form-control form-control-sm mt-1 bg-light" name="lines[0][description]" placeholder="Description" readonly>
                                     </td>
                                     <td><input type="number" class="form-control form-control-sm qty-input" name="lines[0][quantity]" value="1" min="0.001" step="0.001"></td>
                                     <td><input type="number" class="form-control form-control-sm price-input" name="lines[0][unit_price]" value="0" min="0" step="0.01"></td>
@@ -239,10 +239,10 @@ $('#addLine').on('click', function() {
             <select class="form-select form-select-sm item-select w-100" name="lines[${lineIndex}][item_id]">
                 <option value="">Select Item</option>
                 @foreach($items as $item)
-                <option value="{{ $item->id }}" data-price="{{ $item->selling_price }}" data-tax="{{ $item->tax_rate_id }}">{{ $item->name }}</option>
+                <option value="{{ $item->id }}" data-price="{{ $item->selling_price }}" data-tax="{{ $item->tax_rate_id }}" data-description="{{ e($item->description ?? '') }}">{{ $item->name }}</option>
                 @endforeach
             </select>
-            <input type="text" class="form-control form-control-sm mt-1" name="lines[${lineIndex}][description]" placeholder="Description">
+            <input type="text" class="form-control form-control-sm mt-1 bg-light" name="lines[${lineIndex}][description]" placeholder="Description" readonly>
         </td>
         <td><input type="number" class="form-control form-control-sm qty-input" name="lines[${lineIndex}][quantity]" value="1" min="0.001" step="0.001"></td>
         <td><input type="number" class="form-control form-control-sm price-input" name="lines[${lineIndex}][unit_price]" value="0" min="0" step="0.01"></td>
@@ -272,14 +272,12 @@ $(document).on('click', '.remove-line', function() {
 $(document).on('change', '.item-select', function() {
     let row = $(this).closest('tr');
     let option = $(this).find(':selected');
-    let itemName = option.text().trim();
     let price = option.data('price') || 0;
     let taxId = option.data('tax') || '';
+    let description = option.attr('data-description') || '';
     let descInput = row.find('input[name*="[description]"]');
 
-    if (itemName && itemName !== 'Select Item' && !descInput.val()) {
-        descInput.val(itemName);
-    }
+    descInput.val($(this).val() ? description : '');
 
     row.find('.price-input').val(price);
     row.find('.tax-select').val(taxId);

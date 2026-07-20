@@ -64,19 +64,14 @@ class PurchaseInvoiceApiController extends Controller
             'due_date' => 'required|date|after_or_equal:invoice_date',
             'notes' => 'nullable|string',
             'discount_percentage' => 'nullable|numeric|min:0|max:100',
-            'lines' => 'required_without:service_lines|array|min:1',
+            'lines' => 'required|array|min:1',
             'lines.*.item_id' => 'nullable|exists:items,id',
             'lines.*.account_id' => 'nullable|exists:accounts,id',
             'lines.*.tax_rate_id' => 'nullable|exists:tax_rates,id',
             'lines.*.description' => 'nullable|string',
-            'lines.*.quantity' => 'required_with:lines|numeric|min:0.001',
-            'lines.*.unit_price' => 'required_with:lines|numeric|min:0',
+            'lines.*.quantity' => 'required|numeric|min:0.001',
+            'lines.*.unit_price' => 'required|numeric|min:0',
             'lines.*.discount_percentage' => 'nullable|numeric|min:0|max:100',
-            'service_lines' => 'required_without:lines|array|min:1',
-            'service_lines.*.account_id' => 'nullable|exists:accounts,id',
-            'service_lines.*.tax_rate_id' => 'nullable|exists:tax_rates,id',
-            'service_lines.*.description' => 'nullable|string',
-            'service_lines.*.amount' => 'required_with:service_lines|numeric|min:0',
         ]);
 
         $companyId = $request->user()->company_id;
@@ -98,8 +93,7 @@ class PurchaseInvoiceApiController extends Controller
 
         $invoice = $this->purchaseInvoiceService->create(
             $data,
-            $validated['lines'] ?? [],
-            $validated['service_lines'] ?? []
+            $validated['lines']
         );
 
         $voucher = $this->purchaseInvoiceService->generateVoucher($invoice);
@@ -162,19 +156,14 @@ class PurchaseInvoiceApiController extends Controller
             'due_date' => 'required|date|after_or_equal:invoice_date',
             'notes' => 'nullable|string',
             'discount_percentage' => 'nullable|numeric|min:0|max:100',
-            'lines' => 'required_without:service_lines|array|min:1',
+            'lines' => 'required|array|min:1',
             'lines.*.item_id' => 'nullable|exists:items,id',
             'lines.*.account_id' => 'nullable|exists:accounts,id',
             'lines.*.tax_rate_id' => 'nullable|exists:tax_rates,id',
             'lines.*.description' => 'nullable|string',
-            'lines.*.quantity' => 'required_with:lines|numeric|min:0.001',
-            'lines.*.unit_price' => 'required_with:lines|numeric|min:0',
+            'lines.*.quantity' => 'required|numeric|min:0.001',
+            'lines.*.unit_price' => 'required|numeric|min:0',
             'lines.*.discount_percentage' => 'nullable|numeric|min:0|max:100',
-            'service_lines' => 'required_without:lines|array|min:1',
-            'service_lines.*.account_id' => 'nullable|exists:accounts,id',
-            'service_lines.*.tax_rate_id' => 'nullable|exists:tax_rates,id',
-            'service_lines.*.description' => 'nullable|string',
-            'service_lines.*.amount' => 'required_with:service_lines|numeric|min:0',
         ]);
 
         try {
@@ -192,8 +181,7 @@ class PurchaseInvoiceApiController extends Controller
             $invoice = $this->purchaseInvoiceService->updateWithLines(
                 $id,
                 $data,
-                $validated['lines'] ?? [],
-                $validated['service_lines'] ?? []
+                $validated['lines']
             );
 
             return ResponseHelper::success(new PurchaseInvoiceResource($invoice), 'Invoice updated successfully');

@@ -31,6 +31,22 @@ use OpenApi\Annotations as OA;
  * )
  *
  * @OA\Get(
+ *     path="/items/{id}/history",
+ *     tags={"Items"},
+ *     summary="Get item stock and transaction history",
+ *     description="Opening stock, purchases (qty in), sales (qty out), running balance. Stock is updated on purchase/sales invoices.",
+ *     operationId="getItemHistory",
+ *     security={{"bearerAuth":{}}},
+ *     @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")),
+ *     @OA\Parameter(name="date_from", in="query", @OA\Schema(type="string", format="date")),
+ *     @OA\Parameter(name="date_to", in="query", @OA\Schema(type="string", format="date")),
+ *     @OA\Parameter(name="per_page", in="query", @OA\Schema(type="integer", default=15)),
+ *     @OA\Parameter(name="page", in="query", @OA\Schema(type="integer", default=1)),
+ *     @OA\Response(response=200, description="Success", @OA\JsonContent(ref="#/components/schemas/SuccessResponse")),
+ *     @OA\Response(response=404, description="Not found", @OA\JsonContent(ref="#/components/schemas/ErrorResponse"))
+ * )
+ *
+ * @OA\Get(
  *     path="/items/{id}",
  *     tags={"Items"},
  *     summary="Get item by ID",

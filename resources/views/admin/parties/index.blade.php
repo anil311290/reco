@@ -79,7 +79,13 @@ $(document).ready(function() {
     const table = loadDatatable('partiesTable', '{{ route("admin.parties.index") }}', [
         { data: null, name: 'serial', orderable: false, searchable: false, render: function(data, type, row, meta) { return meta.row + meta.settings._iDisplayStart + 1; } },
         { data: 'party_code', name: 'party_code' },
-        { data: 'name', name: 'name' },
+        {
+            data: 'name',
+            name: 'name',
+            render: function(data, type, row) {
+                return `<a href="/admin/parties/${row.id}" class="report-detail-link" title="View details">${data}</a>`;
+            }
+        },
         { 
             data: 'type',
             name: 'type',
@@ -117,6 +123,9 @@ $(document).ready(function() {
             render: function(data) {
                 return `
                     <div class="btn-group btn-group-sm">
+                        <a href="/admin/parties/${data.id}" class="btn btn-outline-secondary" title="View Details">
+                            <i class="bi bi-eye"></i>
+                        </a>
                         <a href="/admin/parties/${data.id}/edit" class="btn btn-outline-primary" title="Edit">
                             <i class="bi bi-pencil"></i>
                         </a>

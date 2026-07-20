@@ -7,6 +7,7 @@
         'payment' => 'Payment',
         'receipt' => 'Receipt',
         'journal' => 'Adjustment',
+        'adjustment' => 'Adjustment',
     ];
     $voucherLabel = $voucherLabels[$voucher->voucher_type] ?? ucfirst($voucher->voucher_type);
 @endphp
@@ -14,6 +15,54 @@
 @section('title', $voucherLabel . ' Voucher')
 
 @section('content')
+<style>
+    .detail-panel .label {
+        font-size: 0.75rem;
+        color: #6c757d;
+        margin-bottom: 0.15rem;
+    }
+    .detail-panel .value {
+        font-size: 0.9375rem;
+        color: #212529;
+        font-weight: 500;
+    }
+    .detail-panel .detail-row {
+        margin-bottom: 1rem;
+    }
+    .detail-panel .detail-row:last-child {
+        margin-bottom: 0;
+    }
+    .voucher-lines-table {
+        --bs-table-bg: transparent;
+        margin-bottom: 0;
+        font-size: 0.875rem;
+    }
+    .voucher-lines-table thead th {
+        background: #f8f9fa;
+        color: #495057;
+        font-weight: 600;
+        font-size: 0.75rem;
+        letter-spacing: 0.02em;
+        text-transform: uppercase;
+        white-space: nowrap;
+        border-bottom-width: 1px;
+        padding: 0.65rem 0.75rem;
+    }
+    .voucher-lines-table tbody td,
+    .voucher-lines-table tfoot td {
+        padding: 0.65rem 0.75rem;
+        vertical-align: middle;
+    }
+    .voucher-lines-table tfoot tr {
+        background: #f8f9fa;
+        border-top: 2px solid #dee2e6;
+    }
+    .voucher-lines-table .tabular-nums {
+        font-variant-numeric: tabular-nums;
+        white-space: nowrap;
+    }
+</style>
+
 <div class="row mb-4">
     <div class="col-md-6">
         <h4 class="mb-0">{{ $voucherLabel }} Voucher</h4>
@@ -34,73 +83,106 @@
 <div class="row g-4">
     <div class="col-lg-4">
         <div class="card h-100">
-            <div class="card-body">
+            <div class="card-body detail-panel">
                 <h5 class="card-title mb-3">Voucher Details</h5>
-                <div class="mb-3">
-                    <div class="text-muted small">Voucher Number</div>
-                    <div>{{ $voucher->voucher_number }}</div>
+                <div class="detail-row">
+                    <div class="label">Voucher Number</div>
+                    <div class="value">{{ $voucher->voucher_number }}</div>
                 </div>
-                <div class="mb-3">
-                    <div class="text-muted small">Type</div>
-                    <div>{{ $voucherLabel }}</div>
+                <div class="detail-row">
+                    <div class="label">Type</div>
+                    <div class="value">{{ $voucherLabel }}</div>
                 </div>
-                <div class="mb-3">
-                    <div class="text-muted small">Date</div>
-                    <div>{{ optional($voucher->voucher_date)->format('d/m/Y') }}</div>
+                <div class="detail-row">
+                    <div class="label">Date</div>
+                    <div class="value">@istDate($voucher->voucher_date)</div>
                 </div>
-                <div class="mb-3">
-                    <div class="text-muted small">Status</div>
-                    <div><span class="badge {{ $voucher->status_badge_class }}">{{ ucfirst($voucher->status) }}</span></div>
+                <div class="detail-row">
+                    <div class="label">Status</div>
+                    <div class="value">
+                        <span class="badge {{ $voucher->status_badge_class }}">{{ ucfirst($voucher->status) }}</span>
+                    </div>
                 </div>
-                <div class="mb-3">
-                    <div class="text-muted small">Party</div>
-                    <div>{{ $voucher->party?->name ?? '-' }}</div>
+                @if($voucher->party)
+                <div class="detail-row">
+                    <div class="label">Party</div>
+                    <div class="value">
+                        <a href="{{ route('admin.parties.show', $voucher->party->id) }}" class="report-detail-link">
+                            {{ $voucher->party->name }}
+                        </a>
+                    </div>
                 </div>
-                <div class="mb-0">
-                    <div class="text-muted small">Narration</div>
-                    <div>{{ $voucher->narration ?: '-' }}</div>
+                @endif
+                <div class="detail-row">
+                    <div class="label">Amount</div>
+                    <div class="value">&#8377; {{ number_format((float) $voucher->total_debit, 2) }}</div>
+                </div>
+                @if($voucher->financialYear)
+                <div class="detail-row">
+                    <div class="label">Financial Year</div>
+                    <div class="value">{{ $voucher->financialYear->name }}</div>
+                </div>
+                @endif
+                <div class="detail-row">
+                    <div class="label">Narration</div>
+                    <div class="value fw-normal">{{ $voucher->narration ?: '—' }}</div>
                 </div>
             </div>
         </div>
     </div>
 
     <div class="col-lg-8">
-        <div class="card mb-4">
+        <div class="card h-100">
             <div class="card-body">
                 <h5 class="card-title mb-3">Voucher Lines</h5>
                 <div class="table-responsive">
-                    <table class="table table-bordered align-middle mb-0">
+                    <table class="table table-hover voucher-lines-table">
                         <thead>
                             <tr>
-                                <th>Account</th>
-                                <th class="text-end">Debit</th>
-                                <th class="text-end">Credit</th>
-                                <th>Description</th>
+                                <th>Particulars</th>
+                                <th class="text-end">Debit (&#8377;)</th>
+                                <th class="text-end">Credit (&#8377;)</th>
                             </tr>
                         </thead>
                         <tbody>
-                            @foreach($voucher->lines as $line)
+                            @forelse($voucher->lines as $line)
                             <tr>
-                                <td>{{ $line->account?->account_name ?? '-' }}</td>
-                                <td class="text-end">{{ number_format((float) $line->debit, 2) }}</td>
-                                <td class="text-end">{{ number_format((float) $line->credit, 2) }}</td>
-                                <td>{{ $line->description ?: '-' }}</td>
+                                <td>
+                                    <div class="fw-medium">{{ $line->account?->account_name ?? '—' }}</div>
+                                    @if($line->party)
+                                    <small class="text-muted">
+                                        <a href="{{ route('admin.parties.show', $line->party->id) }}" class="report-detail-link">
+                                            {{ $line->party->name }}
+                                        </a>
+                                    </small>
+                                    @endif
+                                </td>
+                                <td class="text-end tabular-nums">
+                                    {{ $line->debit > 0 ? number_format((float) $line->debit, 2) : '—' }}
+                                </td>
+                                <td class="text-end tabular-nums">
+                                    {{ $line->credit > 0 ? number_format((float) $line->credit, 2) : '—' }}
+                                </td>
                             </tr>
-                            @endforeach
-                        </tbody>
-                        <tfoot>
+                            @empty
                             <tr>
-                                <th class="text-end">Totals</th>
-                                <th class="text-end">{{ number_format((float) $voucher->total_debit, 2) }}</th>
-                                <th class="text-end">{{ number_format((float) $voucher->total_credit, 2) }}</th>
-                                <th></th>
+                                <td colspan="3" class="text-center text-muted py-4">No voucher lines found.</td>
+                            </tr>
+                            @endforelse
+                        </tbody>
+                        @if($voucher->lines->count() > 0)
+                        <tfoot>
+                            <tr class="fw-semibold">
+                                <td class="text-end text-muted">Total</td>
+                                <td class="text-end tabular-nums">{{ number_format((float) $voucher->total_debit, 2) }}</td>
+                                <td class="text-end tabular-nums">{{ number_format((float) $voucher->total_credit, 2) }}</td>
                             </tr>
                         </tfoot>
+                        @endif
                     </table>
                 </div>
             </div>
         </div>
-
     </div>
 </div>
 @endsection

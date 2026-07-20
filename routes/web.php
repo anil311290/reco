@@ -222,6 +222,12 @@ Route::prefix('admin')->name('admin.')->group(function () {
                 ->name('parties.status')
                 ->middleware(CheckPermission::class . ':parties.edit');
             Route::get('parties/by-type', [PartyController::class, 'getByType'])->name('parties.by-type');
+            Route::get('parties/{party}/export/excel', [PartyController::class, 'exportExcel'])
+                ->name('parties.export-excel')
+                ->whereNumber('party');
+            Route::get('parties/{party}/export/pdf', [PartyController::class, 'exportPdf'])
+                ->name('parties.export-pdf')
+                ->whereNumber('party');
             Route::get('parties/{party}', [PartyController::class, 'show'])
                 ->name('parties.show')
                 ->whereNumber('party');
@@ -415,6 +421,15 @@ Route::prefix('admin')->name('admin.')->group(function () {
                 ->middleware(CheckPermission::class . ':accounts.edit');
             Route::get('items/dropdown', [ItemController::class, 'dropdown'])->name('items.dropdown');
             Route::get('items/low-stock', [ItemController::class, 'lowStock'])->name('items.low-stock');
+            Route::get('items/{id}/export/excel', [ItemController::class, 'exportExcel'])
+                ->name('items.export-excel')
+                ->whereNumber('id');
+            Route::get('items/{id}/export/pdf', [ItemController::class, 'exportPdf'])
+                ->name('items.export-pdf')
+                ->whereNumber('id');
+            Route::get('items/{id}', [ItemController::class, 'show'])
+                ->name('items.show')
+                ->whereNumber('id');
         });
 
         /*

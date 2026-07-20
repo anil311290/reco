@@ -24,21 +24,28 @@ class PartyController extends Controller
     /**
      * Show party detail with its ledger transaction history.
      */
-    public function show(Request $request, int $id)
+    public function show(Request $request, int $party)
     {
-        $party = $this->partyService->getById($id);
+        $id = $party;
+        $partyModel = $this->partyService->getById($id);
 
-        if (!$party || $party->company_id !== $request->user()->company_id) {
+        if (!$partyModel || $partyModel->company_id !== $request->user()->company_id) {
             return ResponseHelper::notFound('Party not found');
         }
 
         $financialYearId = $request->user()->company->currentFinancialYear?->id;
+        $perPage = (int) $request->input('per_page', 15);
 
         $ledger = $this->ledgerService->getPartyLedger(
             $id,
             $request->user()->company_id,
-            $financialYearId
+            $financialYearId,
+            $request->input('date_from'),
+            $request->input('date_to'),
+            $perPage > 0 ? $perPage : 15
         );
+
+        $party = $partyModel;
 
         return view('admin.parties.show', compact('party', 'ledger'));
     }
@@ -190,5 +197,67 @@ class PartyController extends Controller
         $parties = $this->partyService->getForDropdown($companyId, $request->type);
 
         return response()->json($parties);
+    }
+
+    /**
+     * Export party ledger to Excel.
+     */
+    public function exportExcel(Request $request, int $party)
+    {
+        $partyModel = $this->partyService->getById($party);
+
+        if (!$partyModel || $partyModel->company_id !== $request->user()->company_id) {
+            return ResponseHelper::notFound('Party not found');
+        }
+
+        $financialYearId = $request->user()->company->currentFinancialYear?->id;
+
+        $ledger = $this->ledgerService->getPartyLedger(
+            $party,
+            $request->user()->company_id,
+            $financialYearId,
+            $request->input('date_from'),
+            $request->input('date_to'),
+            0
+        );
+
+        $filename = 'party_ledger_' . preg_replace('/[^A-Za-z0-9_-]/', '_', $partyModel->party_code) . '_' . date('Y-m-d_H-i-s') . '.xlsx';
+
+        return \Maatwebsite\Excel\Facades\Excel::download(
+            new \App\Exports\PartyLedgerExport($ledger['rows']),
+            $filename
+        );
+    }
+
+    /**
+     * Export party ledger to PDF.
+     */
+    public function exportPdf(Request $request, int $party)
+    {
+        $partyModel = $this->partyService->getById($party);
+
+        if (!$partyModel || $partyModel->company_id !== $request->user()->company_id) {
+            return ResponseHelper::notFound('Party not found');
+        }
+
+        $financialYearId = $request->user()->company->currentFinancialYear?->id;
+
+        $ledger = $this->ledgerService->getPartyLedger(
+            $party,
+            $request->user()->company_id,
+            $financialYearId,
+            $request->input('date_from'),
+            $request->input('date_to'),
+            0
+        );
+
+        $filename = 'party_ledger_' . preg_replace('/[^A-Za-z0-9_-]/', '_', $partyModel->party_code) . '_' . date('Y-m-d_H-i-s') . '.pdf';
+
+        $party = $partyModel;
+
+        $pdf = \PDF::loadView('admin.parties.export-pdf', compact('party', 'ledger'))
+            ->setPaper('a4', 'landscape');
+
+        return $pdf->download($filename);
     }
 }

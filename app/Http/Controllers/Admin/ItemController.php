@@ -102,6 +102,30 @@ class ItemController extends Controller
     }
 
     /**
+     * Show item details with complete sales history.
+     */
+    public function show(Request $request, int $id)
+    {
+        $item = $this->itemService->getById($id);
+
+        if (!$item || $item->company_id !== Auth::user()->company_id) {
+            return ResponseHelper::notFound('Item not found');
+        }
+
+        $perPage = (int) $request->input('per_page', 15);
+
+        $history = $this->itemService->getItemHistory(
+            $id,
+            (int) Auth::user()->company_id,
+            $request->input('date_from'),
+            $request->input('date_to'),
+            $perPage > 0 ? $perPage : 15
+        );
+
+        return view('admin.items.show', compact('item', 'history'));
+    }
+
+    /**
      * Show edit form.
      */
     public function edit(int $id)
@@ -173,5 +197,59 @@ class ItemController extends Controller
         $companyId = Auth::user()->company_id;
         $items = $this->itemService->getLowStock($companyId);
         return ResponseHelper::success($items);
+    }
+
+    /**
+     * Export item stock history to Excel.
+     */
+    public function exportExcel(Request $request, int $id)
+    {
+        $item = $this->itemService->getById($id);
+
+        if (!$item || $item->company_id !== Auth::user()->company_id) {
+            return ResponseHelper::notFound('Item not found');
+        }
+
+        $history = $this->itemService->getItemHistory(
+            $id,
+            (int) Auth::user()->company_id,
+            $request->input('date_from'),
+            $request->input('date_to'),
+            0
+        );
+
+        $filename = 'item_history_' . preg_replace('/[^A-Za-z0-9_-]/', '_', $item->item_code) . '_' . date('Y-m-d_H-i-s') . '.xlsx';
+
+        return \Maatwebsite\Excel\Facades\Excel::download(
+            new \App\Exports\ItemHistoryExport($history['rows'], $item->name),
+            $filename
+        );
+    }
+
+    /**
+     * Export item stock history to PDF.
+     */
+    public function exportPdf(Request $request, int $id)
+    {
+        $item = $this->itemService->getById($id);
+
+        if (!$item || $item->company_id !== Auth::user()->company_id) {
+            return ResponseHelper::notFound('Item not found');
+        }
+
+        $history = $this->itemService->getItemHistory(
+            $id,
+            (int) Auth::user()->company_id,
+            $request->input('date_from'),
+            $request->input('date_to'),
+            0
+        );
+
+        $filename = 'item_history_' . preg_replace('/[^A-Za-z0-9_-]/', '_', $item->item_code) . '_' . date('Y-m-d_H-i-s') . '.pdf';
+
+        $pdf = \PDF::loadView('admin.items.export-pdf', compact('item', 'history'))
+            ->setPaper('a4', 'landscape');
+
+        return $pdf->download($filename);
     }
 }

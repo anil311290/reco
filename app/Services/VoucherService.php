@@ -110,7 +110,7 @@ class VoucherService
      */
     public function getById(int $id): ?Voucher
     {
-        return $this->voucherRepository->find($id, ['*'], ['party', 'lines.account', 'company', 'financialYear']);
+        return $this->voucherRepository->find($id, ['*'], ['party', 'lines.account', 'lines.party', 'company', 'financialYear']);
     }
 
     /**

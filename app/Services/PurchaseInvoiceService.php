@@ -16,17 +16,20 @@ class PurchaseInvoiceService
     protected InvoiceAccountingService $invoiceAccountingService;
     protected PeriodLockService $periodLockService;
     protected LedgerService $ledgerService;
+    protected ItemService $itemService;
 
     public function __construct(
         VoucherService $voucherService,
         InvoiceAccountingService $invoiceAccountingService,
         PeriodLockService $periodLockService,
-        LedgerService $ledgerService
+        LedgerService $ledgerService,
+        ItemService $itemService
     ) {
         $this->voucherService = $voucherService;
         $this->invoiceAccountingService = $invoiceAccountingService;
         $this->periodLockService = $periodLockService;
         $this->ledgerService = $ledgerService;
+        $this->itemService = $itemService;
     }
 
     /**
@@ -97,9 +100,9 @@ class PurchaseInvoiceService
     /**
      * Create a purchase invoice with lines.
      */
-    public function create(array $data, array $lines, array $serviceLines = []): PurchaseInvoice
+    public function create(array $data, array $lines): PurchaseInvoice
     {
-        return DB::transaction(function () use ($data, $lines, $serviceLines) {
+        return DB::transaction(function () use ($data, $lines) {
             $this->periodLockService->assertWritable(
                 (int) $data['company_id'],
                 $data['invoice_date'],
@@ -127,30 +130,7 @@ class PurchaseInvoiceService
                 PurchaseInvoiceLine::create($line);
             }
 
-            // Service lines
-            foreach ($serviceLines as $index => $sLine) {
-                $taxRate = null;
-                if (!empty($sLine['tax_rate_id'])) {
-                    $taxRate = TaxRate::find($sLine['tax_rate_id']);
-                }
-                $amount = (float) ($sLine['amount'] ?? 0);
-                $tax = $taxRate ? $taxRate->calculateTax($amount) : 0;
-
-                PurchaseInvoiceLine::create([
-                    'purchase_invoice_id' => $invoice->id,
-                    'line_type'           => 'service',
-                    'account_id'          => $sLine['account_id'] ?? null,
-                    'tax_rate_id'         => $sLine['tax_rate_id'] ?? null,
-                    'description'         => $sLine['description'] ?? null,
-                    'quantity'            => 1,
-                    'unit_price'          => $amount,
-                    'discount_percentage' => 0,
-                    'discount_amount'     => 0,
-                    'tax_amount'          => $tax,
-                    'total'               => $amount + $tax,
-                    'sort_order'          => count($lines) + $index,
-                ]);
-            }
+            $this->itemService->applyStockFromLines($lines, 'in');
 
             $invoice->calculateTotals();
             return $invoice->load('lines');
@@ -160,9 +140,9 @@ class PurchaseInvoiceService
     /**
      * Update a purchase invoice with lines.
      */
-    public function updateWithLines(int $id, array $data, array $lines, array $serviceLines = []): PurchaseInvoice
+    public function updateWithLines(int $id, array $data, array $lines): PurchaseInvoice
     {
-        return DB::transaction(function () use ($id, $data, $lines, $serviceLines) {
+        return DB::transaction(function () use ($id, $data, $lines) {
             $invoice = PurchaseInvoice::findOrFail($id);
 
             if (in_array($invoice->status, ['paid', 'partial', 'cancelled'], true)) {
@@ -177,6 +157,9 @@ class PurchaseInvoiceService
             );
 
             $invoice->update($data);
+
+            $oldLines = $invoice->lines()->where('line_type', 'item')->get();
+            $this->itemService->applyStockFromLines($oldLines, 'out');
 
             $invoice->lines()->delete();
 
@@ -199,30 +182,7 @@ class PurchaseInvoiceService
                 PurchaseInvoiceLine::create($line);
             }
 
-            // Service lines
-            foreach ($serviceLines as $index => $sLine) {
-                $taxRate = null;
-                if (!empty($sLine['tax_rate_id'])) {
-                    $taxRate = TaxRate::find($sLine['tax_rate_id']);
-                }
-                $amount = (float) ($sLine['amount'] ?? 0);
-                $tax = $taxRate ? $taxRate->calculateTax($amount) : 0;
-
-                PurchaseInvoiceLine::create([
-                    'purchase_invoice_id' => $invoice->id,
-                    'line_type'           => 'service',
-                    'account_id'          => $sLine['account_id'] ?? null,
-                    'tax_rate_id'         => $sLine['tax_rate_id'] ?? null,
-                    'description'         => $sLine['description'] ?? null,
-                    'quantity'            => 1,
-                    'unit_price'          => $amount,
-                    'discount_percentage' => 0,
-                    'discount_amount'     => 0,
-                    'tax_amount'          => $tax,
-                    'total'               => $amount + $tax,
-                    'sort_order'          => count($lines) + $index,
-                ]);
-            }
+            $this->itemService->applyStockFromLines($lines, 'in');
 
             $invoice->calculateTotals();
             $invoice->refresh()->load(['lines.item', 'lines.taxRate', 'lines.account', 'party']);
@@ -376,7 +336,12 @@ class PurchaseInvoiceService
                 'A posted purchase invoice cannot be deleted because accounting entries exist. Cancel/reverse it instead.'
             );
         }
-        return $invoice->delete();
+
+        return DB::transaction(function () use ($invoice) {
+            $oldLines = $invoice->lines()->where('line_type', 'item')->get();
+            $this->itemService->applyStockFromLines($oldLines, 'out');
+            return (bool) $invoice->delete();
+        });
     }
 
     /**

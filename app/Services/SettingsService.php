@@ -120,12 +120,15 @@ class SettingsService
             DB::beginTransaction();
 
             $themeSettings = [
-                'theme.primary_color' => $data['primary_color'] ?? '#4f46e5',
+                'theme.primary_color' => $data['primary_color'] ?? '#1f6feb',
                 'theme.secondary_color' => $data['secondary_color'] ?? '#6b7280',
-                'theme.sidebar_color' => $data['sidebar_color'] ?? '#1e1b4b',
+                'theme.sidebar_color' => $data['sidebar_color'] ?? '#ffffff',
                 'theme.header_color' => $data['header_color'] ?? '#ffffff',
-                'theme.dark_mode' => $data['dark_mode'] ?? '0',
             ];
+
+            if (array_key_exists('dark_mode', $data)) {
+                $themeSettings['theme.dark_mode'] = filter_var($data['dark_mode'], FILTER_VALIDATE_BOOLEAN) ? '1' : '0';
+            }
 
             foreach ($themeSettings as $key => $value) {
                 Setting::setValue($key, $value, $companyId, 'theme');
@@ -169,23 +172,49 @@ class SettingsService
      */
     public function getThemeCss(?int $companyId = null): string
     {
-        $primaryColor = Setting::getValue('theme.primary_color', '#7367f0', $companyId);
-        $secondaryColor = Setting::getValue('theme.secondary_color', '#a8aaae', $companyId);
-        $sidebarColor = Setting::getValue('theme.sidebar_color', '#ffffff', $companyId);
-        $headerColor = Setting::getValue('theme.header_color', '#ffffff', $companyId);
+        return $this->buildThemeCss([
+            'primary_color' => Setting::getValue('theme.primary_color', '#1f6feb', $companyId),
+            'secondary_color' => Setting::getValue('theme.secondary_color', '#6b7280', $companyId),
+            'sidebar_color' => Setting::getValue('theme.sidebar_color', '#ffffff', $companyId),
+            'header_color' => Setting::getValue('theme.header_color', '#ffffff', $companyId),
+        ]);
+    }
 
-        $css = "
-            :root {
-                --lp-primary: {$primaryColor};
-                --lp-primary-hover: {$this->adjustBrightness($primaryColor, -20)};
-                --lp-primary-light: {$this->hexToRgba($primaryColor, 0.1)};
-                --lp-primary-50: {$this->hexToRgba($primaryColor, 0.08)};
-                --lp-sidebar-bg: {$sidebarColor};
-            }
-            header.header { background: {$headerColor}; }
-        ";
+    /**
+     * Build theme CSS from color values (used for saved theme and live preview).
+     */
+    public function buildThemeCss(array $colors): string
+    {
+        $primaryColor = $colors['primary_color'] ?? '#1f6feb';
+        $secondaryColor = $colors['secondary_color'] ?? '#6b7280';
+        $sidebarColor = $colors['sidebar_color'] ?? '#ffffff';
+        $headerColor = $colors['header_color'] ?? '#ffffff';
 
-        return $css;
+        $primaryHover = $this->adjustBrightness($primaryColor, -20);
+        $primaryLight = $this->hexToRgba($primaryColor, 0.1);
+        $primary50 = $this->hexToRgba($primaryColor, 0.08);
+        $sidebarHover = $this->hexToRgba($primaryColor, 0.06);
+        $sidebarActiveBg = $this->hexToRgba($primaryColor, 0.1);
+
+        return trim("
+:root {
+    --lp-primary: {$primaryColor};
+    --lp-primary-hover: {$primaryHover};
+    --lp-primary-light: {$primaryLight};
+    --lp-primary-50: {$primary50};
+    --lp-secondary: {$secondaryColor};
+    --lp-sidebar-bg: {$sidebarColor};
+    --lp-sidebar-active: {$primaryColor};
+    --lp-sidebar-hover: {$sidebarHover};
+    --lp-sidebar-active-bg: {$sidebarActiveBg};
+    --bs-primary: {$primaryColor};
+    --bs-primary-rgb: {$this->hexToRgbCsv($primaryColor)};
+}
+header.header { background: {$headerColor} !important; }
+nav.sidebar { background: {$sidebarColor} !important; }
+.btn-primary { background: {$primaryColor}; border-color: {$primaryColor}; }
+.btn-primary:hover, .btn-primary:focus { background: {$primaryHover}; border-color: {$primaryHover}; }
+");
     }
 
     /**
@@ -194,7 +223,10 @@ class SettingsService
     private function adjustBrightness(string $hex, int $steps): string
     {
         $hex = ltrim($hex, '#');
-        
+        if (strlen($hex) !== 6) {
+            return '#' . $hex;
+        }
+
         $r = max(0, min(255, hexdec(substr($hex, 0, 2)) + $steps));
         $g = max(0, min(255, hexdec(substr($hex, 2, 2)) + $steps));
         $b = max(0, min(255, hexdec(substr($hex, 4, 2)) + $steps));
@@ -208,11 +240,26 @@ class SettingsService
     private function hexToRgba(string $hex, float $alpha): string
     {
         $hex = ltrim($hex, '#');
-        
+        if (strlen($hex) !== 6) {
+            return "rgba(0, 0, 0, {$alpha})";
+        }
+
         $r = hexdec(substr($hex, 0, 2));
         $g = hexdec(substr($hex, 2, 2));
         $b = hexdec(substr($hex, 4, 2));
 
         return "rgba({$r}, {$g}, {$b}, {$alpha})";
+    }
+
+    private function hexToRgbCsv(string $hex): string
+    {
+        $hex = ltrim($hex, '#');
+        if (strlen($hex) !== 6) {
+            return '31, 111, 235';
+        }
+
+        return hexdec(substr($hex, 0, 2)) . ', '
+            . hexdec(substr($hex, 2, 2)) . ', '
+            . hexdec(substr($hex, 4, 2));
     }
 }

@@ -80,10 +80,9 @@ class PurchaseInvoiceController extends Controller
         $parties = $this->partyService->getAll(['company_id' => $companyId, 'type' => 'creditor']);
         $items = $this->itemService->getAll($companyId);
         $taxRates = $this->taxRateService->getAll($companyId);
-        $serviceAccounts = $this->accountService->getForDropdown($companyId, 'expense');
         $invoiceNumber = $fyId ? $this->purchaseInvoiceService->generateInvoiceNumber($companyId, $fyId) : 'PUR-000001';
 
-        return view('admin.purchase-invoices.create', compact('parties', 'items', 'taxRates', 'serviceAccounts', 'invoiceNumber'));
+        return view('admin.purchase-invoices.create', compact('parties', 'items', 'taxRates', 'invoiceNumber'));
     }
 
     /**
@@ -108,11 +107,6 @@ class PurchaseInvoiceController extends Controller
             'lines.*.quantity' => 'required|numeric|min:0.001',
             'lines.*.unit_price' => 'required|numeric|min:0',
             'lines.*.discount_percentage' => 'nullable|numeric|min:0|max:100',
-            'service_lines' => 'nullable|array',
-            'service_lines.*.account_id' => 'nullable|exists:accounts,id',
-            'service_lines.*.tax_rate_id' => 'nullable|exists:tax_rates,id',
-            'service_lines.*.description' => 'nullable|string',
-            'service_lines.*.amount' => 'nullable|numeric|min:0',
         ]);
 
         try {
@@ -136,7 +130,7 @@ class PurchaseInvoiceController extends Controller
                 'created_by' => auth()->id(),
             ];
 
-            $invoice = $this->purchaseInvoiceService->create($data, $validated['lines'], $validated['service_lines'] ?? []);
+            $invoice = $this->purchaseInvoiceService->create($data, $validated['lines']);
 
             $voucher = $this->purchaseInvoiceService->generateVoucher($invoice);
             if (!$voucher) {
@@ -172,9 +166,8 @@ class PurchaseInvoiceController extends Controller
         $parties = $this->partyService->getAll(['company_id' => $companyId, 'type' => 'creditor']);
         $items = $this->itemService->getAll($companyId);
         $taxRates = $this->taxRateService->getAll($companyId);
-        $serviceAccounts = $this->accountService->getForDropdown($companyId, 'expense');
 
-        return view('admin.purchase-invoices.edit', compact('invoice', 'parties', 'items', 'taxRates', 'serviceAccounts'));
+        return view('admin.purchase-invoices.edit', compact('invoice', 'parties', 'items', 'taxRates'));
     }
 
     /**
@@ -199,11 +192,6 @@ class PurchaseInvoiceController extends Controller
             'lines.*.quantity' => 'required|numeric|min:0.001',
             'lines.*.unit_price' => 'required|numeric|min:0',
             'lines.*.discount_percentage' => 'nullable|numeric|min:0|max:100',
-            'service_lines' => 'nullable|array',
-            'service_lines.*.account_id' => 'nullable|exists:accounts,id',
-            'service_lines.*.tax_rate_id' => 'nullable|exists:tax_rates,id',
-            'service_lines.*.description' => 'nullable|string',
-            'service_lines.*.amount' => 'nullable|numeric|min:0',
         ]);
 
         try {
@@ -220,7 +208,7 @@ class PurchaseInvoiceController extends Controller
                 'updated_by_ip' => $request->ip(),
             ];
 
-            $invoice = $this->purchaseInvoiceService->updateWithLines($id, $data, $validated['lines'], $validated['service_lines'] ?? []);
+            $invoice = $this->purchaseInvoiceService->updateWithLines($id, $data, $validated['lines']);
             return ResponseHelper::success($invoice, 'Purchase invoice updated successfully');
         } catch (\Exception $e) {
             return ResponseHelper::error($e->getMessage());

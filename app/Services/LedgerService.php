@@ -10,6 +10,7 @@ use App\Models\Voucher;
 use App\Interfaces\LedgerRepositoryInterface;
 use App\Interfaces\AccountRepositoryInterface;
 use App\Services\LedgerPartyHistoryService;
+use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
@@ -542,7 +543,8 @@ class LedgerService
         int $companyId,
         ?int $financialYearId = null,
         ?string $dateFrom = null,
-        ?string $dateTo = null
+        ?string $dateTo = null,
+        int $perPage = 0
     ): array {
         $query = Ledger::where('company_id', $companyId)
             ->where('party_id', $partyId)
@@ -576,13 +578,36 @@ class LedgerService
             ];
         }
 
-        return [
+        $result = [
             'rows' => $rows,
             'total_debit' => round((float) $entries->sum('debit'), 2),
             'total_credit' => round((float) $entries->sum('credit'), 2),
             'closing_balance' => abs(round($running, 2)),
             'closing_type' => $running >= 0 ? 'debit' : 'credit',
+            'paginator' => null,
         ];
+
+        if ($perPage <= 0) {
+            return $result;
+        }
+
+        $page = LengthAwarePaginator::resolveCurrentPage();
+        $total = count($rows);
+        $pageItems = array_slice($rows, ($page - 1) * $perPage, $perPage);
+
+        $result['rows'] = $pageItems;
+        $result['paginator'] = new LengthAwarePaginator(
+            $pageItems,
+            $total,
+            $perPage,
+            $page,
+            [
+                'path' => LengthAwarePaginator::resolveCurrentPath(),
+                'query' => request()->query(),
+            ]
+        );
+
+        return $result;
     }
 
     /**
