@@ -19,7 +19,7 @@ class ItemCategoryService
             $query->active();
         }
 
-        return $query->orderBy('sort_order')->orderBy('name')->get();
+        return $query->orderBy('id', 'desc')->get();
     }
 
     /**
@@ -40,7 +40,7 @@ class ItemCategoryService
             });
         }
 
-        return $query->orderBy('sort_order')->orderBy('name')->paginate($perPage);
+        return $query->orderBy('id', 'desc')->paginate($perPage);
     }
 
     /**

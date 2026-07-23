@@ -20,6 +20,8 @@ class PurchaseInvoiceResource extends JsonResource
             'party' => new PartyResource($this->whenLoaded('party')),
             'financial_year_id' => $this->financial_year_id,
             'notes' => $this->notes,
+            'payment_terms' => $this->payment_terms,
+            'delivery_terms' => $this->delivery_terms,
             'subtotal' => (float) $this->subtotal,
             'discount_amount' => (float) $this->discount_amount,
             'discount_percentage' => (float) $this->discount_percentage,

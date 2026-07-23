@@ -173,8 +173,9 @@ class ExportApiController extends Controller
 
         return ResponseHelper::success([
             'filename' => $filename,
+            'content_type' => 'application/pdf',
+            'content_base64' => base64_encode($pdf),
             'path' => Storage::url($path),
-            'download_url' => url('api/v1/download/' . base64_encode($path)),
         ], 'PDF generated successfully');
     }
 }

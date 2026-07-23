@@ -36,6 +36,16 @@ class SalesInvoiceResource extends JsonResource
             'is_recurring' => $this->is_recurring,
             'is_overdue' => $this->isOverdue(),
             'lines' => SalesInvoiceLineResource::collection($this->whenLoaded('lines')),
+            'item_lines' => $this->whenLoaded('lines', function () {
+                return SalesInvoiceLineResource::collection(
+                    $this->lines->where('line_type', '!=', 'service')->values()
+                );
+            }),
+            'service_lines' => $this->whenLoaded('lines', function () {
+                return SalesInvoiceLineResource::collection(
+                    $this->lines->where('line_type', 'service')->values()
+                );
+            }),
             'created_at' => $this->created_at?->toISOString(),
             'updated_at' => $this->updated_at?->toISOString(),
         ];

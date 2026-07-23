@@ -18,7 +18,7 @@ trait ValidatesVoucherPayload
             ->where(fn ($query) => $query->where('company_id', $companyId)->where('is_active', true));
 
         return [
-            'voucher_type' => ['required', Rule::in(['income', 'expense', 'receipt', 'payment', 'journal', 'adjustment'])],
+            'voucher_type' => ['required', Rule::in(['receipt', 'payment', 'journal', 'adjustment'])],
             'voucher_date' => 'required|date',
             'party_id' => ['nullable', $companyParty],
             'payment_mode' => ['required_if:voucher_type,payment,receipt', Rule::in(['cash', 'bank', 'od'])],
@@ -49,7 +49,7 @@ trait ValidatesVoucherPayload
     {
         return [
             'voucher_type.required' => 'Voucher type is required',
-            'voucher_type.in' => 'Invalid voucher type',
+            'voucher_type.in' => 'Invalid voucher type. Use sales/purchase invoices for income and expense.',
             'voucher_date.required' => 'Voucher date is required',
             'cash_bank_account_id.required_if' => 'Cash / Bank account is required',
             'payment_rows.required_if' => 'At least one particulars row is required',

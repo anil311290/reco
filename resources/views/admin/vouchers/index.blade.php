@@ -232,7 +232,7 @@ $(document).ready(function() {
                 return actions;
             }
         }
-    ]);
+    ], { order: [[2, 'desc']] });
 
     // Filter form submission
     $('#filterForm').on('submit', function(e) {

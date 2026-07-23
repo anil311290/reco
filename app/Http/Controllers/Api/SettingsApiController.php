@@ -154,6 +154,44 @@ class SettingsApiController extends Controller
     }
 
     /**
+     * Update theme settings (same as web /admin/settings theme).
+     */
+    public function updateTheme(Request $request): JsonResponse
+    {
+        $request->validate([
+            'primary_color' => ['required', 'string', 'regex:/^#[0-9A-Fa-f]{6}$/'],
+            'secondary_color' => ['required', 'string', 'regex:/^#[0-9A-Fa-f]{6}$/'],
+            'sidebar_color' => ['required', 'string', 'regex:/^#[0-9A-Fa-f]{6}$/'],
+            'header_color' => ['required', 'string', 'regex:/^#[0-9A-Fa-f]{6}$/'],
+            'dark_mode' => 'nullable|boolean',
+        ]);
+
+        try {
+            $companyId = $request->user()->company_id;
+            $this->settingsService->updateThemeSettings($request->only([
+                'primary_color',
+                'secondary_color',
+                'sidebar_color',
+                'header_color',
+                'dark_mode',
+            ]), $companyId);
+
+            return ResponseHelper::success([
+                'css' => $this->settingsService->getThemeCss($companyId),
+                'theme' => [
+                    'primary_color' => $request->input('primary_color'),
+                    'secondary_color' => $request->input('secondary_color'),
+                    'sidebar_color' => $request->input('sidebar_color'),
+                    'header_color' => $request->input('header_color'),
+                    'dark_mode' => (bool) $request->input('dark_mode'),
+                ],
+            ], 'Theme settings updated successfully');
+        } catch (\Exception $e) {
+            return ResponseHelper::error($e->getMessage());
+        }
+    }
+
+    /**
      * Update accounting settings
      */
     public function updateAccounting(Request $request): JsonResponse

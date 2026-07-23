@@ -220,7 +220,7 @@ $(document).ready(function() {
             }
         }
     ], {
-        order: [[1, 'asc']],
+        order: [[1, 'desc']],
         pageLength: 25,
         ajax: {
             data: function(d) {

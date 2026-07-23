@@ -105,7 +105,7 @@ class SalesInvoiceController extends Controller
             'reference_number' => 'nullable|string|max:100',
             'notes' => 'nullable|string',
             'discount_percentage' => 'nullable|numeric|min:0|max:100',
-            'lines' => 'required|array|min:1',
+            'lines' => 'nullable|array',
             'lines.*.item_id' => 'nullable|exists:items,id',
             'lines.*.account_id' => 'nullable|exists:accounts,id',
             'lines.*.tax_rate_id' => 'nullable|exists:tax_rates,id',
@@ -114,11 +114,18 @@ class SalesInvoiceController extends Controller
             'lines.*.unit_price' => 'required|numeric|min:0',
             'lines.*.discount_percentage' => 'nullable|numeric|min:0|max:100',
             'service_lines' => 'nullable|array',
-            'service_lines.*.account_id' => 'nullable|exists:accounts,id',
+            'service_lines.*.account_id' => 'required|exists:accounts,id',
             'service_lines.*.tax_rate_id' => 'nullable|exists:tax_rates,id',
             'service_lines.*.description' => 'nullable|string',
-            'service_lines.*.amount' => 'nullable|numeric|min:0',
+            'service_lines.*.amount' => 'required|numeric|min:0.01',
         ]);
+
+        if (empty($validated['lines']) && empty($validated['service_lines'])) {
+            return ResponseHelper::error('Please add at least one item or service line', 422);
+        }
+
+        $validated['lines'] = $validated['lines'] ?? [];
+        $validated['service_lines'] = $validated['service_lines'] ?? [];
 
         try {
             $companyId = auth()->user()->company_id;
@@ -209,7 +216,7 @@ class SalesInvoiceController extends Controller
             'reference_number' => 'nullable|string|max:100',
             'notes' => 'nullable|string',
             'discount_percentage' => 'nullable|numeric|min:0|max:100',
-            'lines' => 'required|array|min:1',
+            'lines' => 'nullable|array',
             'lines.*.item_id' => 'nullable|exists:items,id',
             'lines.*.account_id' => 'nullable|exists:accounts,id',
             'lines.*.tax_rate_id' => 'nullable|exists:tax_rates,id',
@@ -218,11 +225,18 @@ class SalesInvoiceController extends Controller
             'lines.*.unit_price' => 'required|numeric|min:0',
             'lines.*.discount_percentage' => 'nullable|numeric|min:0|max:100',
             'service_lines' => 'nullable|array',
-            'service_lines.*.account_id' => 'nullable|exists:accounts,id',
+            'service_lines.*.account_id' => 'required|exists:accounts,id',
             'service_lines.*.tax_rate_id' => 'nullable|exists:tax_rates,id',
             'service_lines.*.description' => 'nullable|string',
-            'service_lines.*.amount' => 'nullable|numeric|min:0',
+            'service_lines.*.amount' => 'required|numeric|min:0.01',
         ]);
+
+        if (empty($validated['lines']) && empty($validated['service_lines'])) {
+            return ResponseHelper::error('Please add at least one item or service line', 422);
+        }
+
+        $validated['lines'] = $validated['lines'] ?? [];
+        $validated['service_lines'] = $validated['service_lines'] ?? [];
 
         try {
             $data = [

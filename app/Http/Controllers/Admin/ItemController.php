@@ -180,13 +180,15 @@ class ItemController extends Controller
     }
 
     /**
-     * Get items for dropdown.
+     * Get items + income-account services for dropdown.
      */
     public function dropdown(Request $request): JsonResponse
     {
         $companyId = Auth::user()->company_id;
-        $items = $this->itemService->getAll($companyId);
-        return ResponseHelper::success($items);
+        $filters = $request->only(['search', 'type', 'is_active']);
+        $catalog = $this->itemService->getSalesLineCatalog($companyId, $filters);
+
+        return ResponseHelper::success($catalog);
     }
 
     /**

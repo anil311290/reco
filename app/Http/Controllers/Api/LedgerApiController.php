@@ -44,7 +44,7 @@ class LedgerApiController extends Controller
             });
         }
 
-        $accounts = $query->orderBy('account_code')->get();
+        $accounts = $query->orderBy('id', 'desc')->get();
 
         $ledgerSummary = $accounts->map(function ($account) use ($companyId, $financialYearId) {
             $balance = $this->ledgerService->getAccountBalance($account->id, $companyId, $financialYearId);

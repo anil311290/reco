@@ -64,13 +64,13 @@ class SalesInvoiceService
         if (isset($filters['search'])) {
             $query->where(function ($q) use ($filters) {
                 $q->where('invoice_number', 'like', "%{$filters['search']}%")
-                  ->orWhereHas('party', function ($pq) use ($filters) {
-                      $pq->where('name', 'like', "%{$filters['search']}%");
-                  });
+                    ->orWhereHas('party', function ($pq) use ($filters) {
+                        $pq->where('name', 'like', "%{$filters['search']}%");
+                    });
             });
         }
 
-        return $query->orderBy('invoice_date', 'desc')->get();
+        return $query->orderBy('invoice_date', 'desc')->orderBy('id', 'desc')->get();
     }
 
     /**
@@ -90,13 +90,13 @@ class SalesInvoiceService
         if (isset($filters['search'])) {
             $query->where(function ($q) use ($filters) {
                 $q->where('invoice_number', 'like', "%{$filters['search']}%")
-                  ->orWhereHas('party', function ($pq) use ($filters) {
-                      $pq->where('name', 'like', "%{$filters['search']}%");
-                  });
+                    ->orWhereHas('party', function ($pq) use ($filters) {
+                        $pq->where('name', 'like', "%{$filters['search']}%");
+                    });
             });
         }
 
-        return $query->orderBy('invoice_date', 'desc')->paginate($perPage);
+        return $query->orderBy('invoice_date', 'desc')->orderBy('id', 'desc')->paginate($perPage);
     }
 
     /**
@@ -114,7 +114,7 @@ class SalesInvoiceService
     {
         return DB::transaction(function () use ($data, $lines, $serviceLines) {
             $companyId = $data['company_id'] ?? null;
-            
+
             if (!$companyId) {
                 throw new \Exception('Company ID is required');
             }
@@ -133,7 +133,7 @@ class SalesInvoiceService
                     $taxRate = TaxRate::where('id', $line['tax_rate_id'])
                         ->where('company_id', $companyId)
                         ->first();
-                    
+
                     if (!$taxRate && $line['tax_rate_id'] !== null) {
                         throw new \Exception('Invalid tax rate for this company');
                     }
@@ -404,9 +404,9 @@ class SalesInvoiceService
 
             $partyAccountId = $invoice->party?->account_id
                 ?: \App\Models\Account::query()
-                    ->where('company_id', $invoice->company_id)
-                    ->where('account_code', \App\Models\Account::CODE_AR)
-                    ->value('id');
+                ->where('company_id', $invoice->company_id)
+                ->where('account_code', \App\Models\Account::CODE_AR)
+                ->value('id');
             if (!$partyAccountId) {
                 throw new \RuntimeException('Accounts Receivable control account is missing.');
             }

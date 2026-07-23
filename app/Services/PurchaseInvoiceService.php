@@ -55,14 +55,14 @@ class PurchaseInvoiceService
         if (isset($filters['search'])) {
             $query->where(function ($q) use ($filters) {
                 $q->where('invoice_number', 'like', "%{$filters['search']}%")
-                  ->orWhere('supplier_invoice_number', 'like', "%{$filters['search']}%")
-                  ->orWhereHas('party', function ($pq) use ($filters) {
-                      $pq->where('name', 'like', "%{$filters['search']}%");
-                  });
+                    ->orWhere('supplier_invoice_number', 'like', "%{$filters['search']}%")
+                    ->orWhereHas('party', function ($pq) use ($filters) {
+                        $pq->where('name', 'like', "%{$filters['search']}%");
+                    });
             });
         }
 
-        return $query->orderBy('invoice_date', 'desc')->get();
+        return $query->orderBy('invoice_date', 'desc')->orderBy('id', 'desc')->get();
     }
 
     /**
@@ -79,13 +79,13 @@ class PurchaseInvoiceService
         if (isset($filters['search'])) {
             $query->where(function ($q) use ($filters) {
                 $q->where('invoice_number', 'like', "%{$filters['search']}%")
-                  ->orWhereHas('party', function ($pq) use ($filters) {
-                      $pq->where('name', 'like', "%{$filters['search']}%");
-                  });
+                    ->orWhereHas('party', function ($pq) use ($filters) {
+                        $pq->where('name', 'like', "%{$filters['search']}%");
+                    });
             });
         }
 
-        return $query->orderBy('invoice_date', 'desc')->paginate($perPage);
+        return $query->orderBy('invoice_date', 'desc')->orderBy('id', 'desc')->paginate($perPage);
     }
 
     /**
@@ -284,9 +284,9 @@ class PurchaseInvoiceService
 
             $partyAccountId = $invoice->party?->account_id
                 ?: \App\Models\Account::query()
-                    ->where('company_id', $invoice->company_id)
-                    ->where('account_code', \App\Models\Account::CODE_AP)
-                    ->value('id');
+                ->where('company_id', $invoice->company_id)
+                ->where('account_code', \App\Models\Account::CODE_AP)
+                ->value('id');
             if (!$partyAccountId) {
                 throw new \RuntimeException('Accounts Payable control account is missing.');
             }

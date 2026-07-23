@@ -46,7 +46,7 @@ class PartyService
             });
         }
 
-        return $query->orderBy('name')->get();
+        return $query->orderBy('id', 'desc')->get();
     }
 
     /**
@@ -71,7 +71,7 @@ class PartyService
             });
         }
 
-        return $query->orderBy('name')->paginate($perPage);
+        return $query->orderBy('id', 'desc')->paginate($perPage);
     }
 
     /**

@@ -4,10 +4,14 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Http\Resources\PurchaseInvoiceResource;
+use App\Models\Item;
 use App\Services\PurchaseInvoiceService;
 use App\Helpers\ResponseHelper;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 
 class PurchaseInvoiceApiController extends Controller
 {
@@ -18,9 +22,6 @@ class PurchaseInvoiceApiController extends Controller
         $this->purchaseInvoiceService = $purchaseInvoiceService;
     }
 
-    /**
-     * Get all purchase invoices.
-     */
     public function index(Request $request): JsonResponse
     {
         $companyId = $request->user()->company_id;
@@ -38,9 +39,6 @@ class PurchaseInvoiceApiController extends Controller
         ]);
     }
 
-    /**
-     * Get invoice by ID.
-     */
     public function show(int $id): JsonResponse
     {
         $invoice = $this->purchaseInvoiceService->getById($id);
@@ -52,33 +50,16 @@ class PurchaseInvoiceApiController extends Controller
         return ResponseHelper::success(new PurchaseInvoiceResource($invoice));
     }
 
-    /**
-     * Create purchase invoice.
-     */
     public function store(Request $request): JsonResponse
     {
-        $validated = $request->validate([
-            'party_id' => 'required|exists:parties,id',
-            'supplier_invoice_number' => 'nullable|string|max:100',
-            'invoice_date' => 'required|date',
-            'due_date' => 'required|date|after_or_equal:invoice_date',
-            'notes' => 'nullable|string',
-            'discount_percentage' => 'nullable|numeric|min:0|max:100',
-            'lines' => 'required|array|min:1',
-            'lines.*.item_id' => 'nullable|exists:items,id',
-            'lines.*.account_id' => 'nullable|exists:accounts,id',
-            'lines.*.tax_rate_id' => 'nullable|exists:tax_rates,id',
-            'lines.*.description' => 'nullable|string',
-            'lines.*.quantity' => 'required|numeric|min:0.001',
-            'lines.*.unit_price' => 'required|numeric|min:0',
-            'lines.*.discount_percentage' => 'nullable|numeric|min:0|max:100',
-        ]);
-
         $companyId = $request->user()->company_id;
+        $validated = $request->validate($this->purchaseRules($companyId));
+        $this->assertGoodsOnlyLines($companyId, $validated['lines']);
+
         $fyId = $request->user()->company->currentFinancialYear?->id;
 
         $data = [
-            'uuid' => \Illuminate\Support\Str::uuid(),
+            'uuid' => Str::uuid(),
             'company_id' => $companyId,
             'financial_year_id' => $fyId,
             'party_id' => $validated['party_id'],
@@ -87,14 +68,13 @@ class PurchaseInvoiceApiController extends Controller
             'invoice_date' => $validated['invoice_date'],
             'due_date' => $validated['due_date'],
             'notes' => $validated['notes'] ?? null,
+            'payment_terms' => $validated['payment_terms'] ?? null,
+            'delivery_terms' => $validated['delivery_terms'] ?? null,
             'discount_percentage' => $validated['discount_percentage'] ?? 0,
             'status' => 'draft',
         ];
 
-        $invoice = $this->purchaseInvoiceService->create(
-            $data,
-            $validated['lines']
-        );
+        $invoice = $this->purchaseInvoiceService->create($data, $validated['lines']);
 
         $voucher = $this->purchaseInvoiceService->generateVoucher($invoice);
         if (!$voucher) {
@@ -104,21 +84,22 @@ class PurchaseInvoiceApiController extends Controller
         return ResponseHelper::success(new PurchaseInvoiceResource($invoice), 'Invoice created', 201);
     }
 
-    /**
-     * Record payment against invoice.
-     */
     public function payment(Request $request, int $id): JsonResponse
     {
+        $companyId = $request->user()->company_id;
         $invoice = $this->purchaseInvoiceService->getById($id);
 
-        if (!$invoice || $invoice->company_id !== $request->user()->company_id) {
+        if (!$invoice || $invoice->company_id !== $companyId) {
             return ResponseHelper::notFound('Invoice not found');
         }
 
         $validated = $request->validate([
             'amount' => 'required|numeric|min:0.01',
             'payment_mode' => 'required|in:cash,bank,od',
-            'cash_bank_account_id' => 'required|exists:accounts,id',
+            'cash_bank_account_id' => [
+                'required',
+                Rule::exists('accounts', 'id')->where('company_id', $companyId),
+            ],
             'payment_date' => 'nullable|date',
         ]);
 
@@ -138,33 +119,17 @@ class PurchaseInvoiceApiController extends Controller
         return ResponseHelper::success(new PurchaseInvoiceResource($invoice->fresh()), 'Payment recorded and payment voucher posted');
     }
 
-    /**
-     * Update purchase invoice.
-     */
     public function update(Request $request, int $id): JsonResponse
     {
+        $companyId = $request->user()->company_id;
         $invoice = $this->purchaseInvoiceService->getById($id);
 
-        if (!$invoice || $invoice->company_id !== $request->user()->company_id) {
+        if (!$invoice || $invoice->company_id !== $companyId) {
             return ResponseHelper::notFound('Invoice not found');
         }
 
-        $validated = $request->validate([
-            'party_id' => 'required|exists:parties,id',
-            'supplier_invoice_number' => 'nullable|string|max:100',
-            'invoice_date' => 'required|date',
-            'due_date' => 'required|date|after_or_equal:invoice_date',
-            'notes' => 'nullable|string',
-            'discount_percentage' => 'nullable|numeric|min:0|max:100',
-            'lines' => 'required|array|min:1',
-            'lines.*.item_id' => 'nullable|exists:items,id',
-            'lines.*.account_id' => 'nullable|exists:accounts,id',
-            'lines.*.tax_rate_id' => 'nullable|exists:tax_rates,id',
-            'lines.*.description' => 'nullable|string',
-            'lines.*.quantity' => 'required|numeric|min:0.001',
-            'lines.*.unit_price' => 'required|numeric|min:0',
-            'lines.*.discount_percentage' => 'nullable|numeric|min:0|max:100',
-        ]);
+        $validated = $request->validate($this->purchaseRules($companyId));
+        $this->assertGoodsOnlyLines($companyId, $validated['lines']);
 
         try {
             $data = [
@@ -173,6 +138,8 @@ class PurchaseInvoiceApiController extends Controller
                 'invoice_date' => $validated['invoice_date'],
                 'due_date' => $validated['due_date'],
                 'notes' => $validated['notes'] ?? null,
+                'payment_terms' => $validated['payment_terms'] ?? null,
+                'delivery_terms' => $validated['delivery_terms'] ?? null,
                 'discount_percentage' => $validated['discount_percentage'] ?? 0,
                 'updated_by' => $request->user()->id,
                 'updated_by_ip' => $request->ip(),
@@ -190,9 +157,6 @@ class PurchaseInvoiceApiController extends Controller
         }
     }
 
-    /**
-     * Delete purchase invoice.
-     */
     public function destroy(int $id): JsonResponse
     {
         $invoice = $this->purchaseInvoiceService->getById($id);
@@ -207,6 +171,57 @@ class PurchaseInvoiceApiController extends Controller
             return ResponseHelper::success(null, 'Invoice deleted successfully');
         } catch (\Exception $e) {
             return ResponseHelper::error($e->getMessage());
+        }
+    }
+
+    protected function purchaseRules(int $companyId): array
+    {
+        return [
+            'party_id' => [
+                'required',
+                Rule::exists('parties', 'id')->where('company_id', $companyId),
+            ],
+            'supplier_invoice_number' => 'nullable|string|max:100',
+            'invoice_date' => 'required|date',
+            'due_date' => 'required|date|after_or_equal:invoice_date',
+            'notes' => 'nullable|string',
+            'payment_terms' => 'nullable|string|max:100',
+            'delivery_terms' => 'nullable|string|max:100',
+            'discount_percentage' => 'nullable|numeric|min:0|max:100',
+            'lines' => 'required|array|min:1',
+            'lines.*.item_id' => [
+                'nullable',
+                Rule::exists('items', 'id')->where('company_id', $companyId),
+            ],
+            'lines.*.account_id' => [
+                'nullable',
+                Rule::exists('accounts', 'id')->where('company_id', $companyId),
+            ],
+            'lines.*.tax_rate_id' => [
+                'nullable',
+                Rule::exists('tax_rates', 'id')->where('company_id', $companyId),
+            ],
+            'lines.*.description' => 'nullable|string',
+            'lines.*.quantity' => 'required|numeric|min:0.001',
+            'lines.*.unit_price' => 'required|numeric|min:0',
+            'lines.*.discount_percentage' => 'nullable|numeric|min:0|max:100',
+        ];
+    }
+
+    protected function assertGoodsOnlyLines(int $companyId, array $lines): void
+    {
+        foreach ($lines as $index => $line) {
+            $itemId = $line['item_id'] ?? null;
+            if (!$itemId) {
+                continue;
+            }
+
+            $item = Item::where('company_id', $companyId)->find($itemId);
+            if (!$item || $item->type !== 'goods') {
+                throw ValidationException::withMessages([
+                    "lines.{$index}.item_id" => 'Purchase invoices only allow goods items.',
+                ]);
+            }
         }
     }
 }

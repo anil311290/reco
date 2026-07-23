@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Admin\TaxRateRequest;
 use App\Http\Resources\TaxRateResource;
 use App\Services\TaxRateService;
 use App\Helpers\ResponseHelper;
@@ -46,18 +47,9 @@ class TaxRateApiController extends Controller
     /**
      * Create tax rate.
      */
-    public function store(Request $request): JsonResponse
+    public function store(TaxRateRequest $request): JsonResponse
     {
-        $validated = $request->validate([
-            'tax_name' => 'required|string|max:255',
-            'tax_code' => 'nullable|string|max:50',
-            'tax_rate' => 'required|numeric|min:0|max:100',
-            'tax_type' => 'required|in:addition,deduction',
-            'tax_category' => 'required|in:GST,CGST,SGST,IGST,TDS,TCS,CESS,OTHER',
-            'notes' => 'nullable|string',
-            'status' => 'sometimes|in:active,inactive',
-        ]);
-
+        $validated = $request->validated();
         $validated['company_id'] = $request->user()->company_id;
         $validated['status'] = $validated['status'] ?? 'active';
         $taxRate = $this->taxRateService->create($validated);
@@ -68,7 +60,7 @@ class TaxRateApiController extends Controller
     /**
      * Update tax rate.
      */
-    public function update(Request $request, int $id): JsonResponse
+    public function update(TaxRateRequest $request, int $id): JsonResponse
     {
         $taxRate = $this->taxRateService->getById($id);
 
@@ -76,17 +68,7 @@ class TaxRateApiController extends Controller
             return ResponseHelper::notFound('Tax rate not found');
         }
 
-        $validated = $request->validate([
-            'tax_name' => 'sometimes|string|max:255',
-            'tax_code' => 'nullable|string|max:50',
-            'tax_rate' => 'sometimes|numeric|min:0|max:100',
-            'tax_type' => 'sometimes|in:addition,deduction',
-            'tax_category' => 'sometimes|in:GST,CGST,SGST,IGST,TDS,TCS,CESS,OTHER',
-            'notes' => 'nullable|string',
-            'status' => 'sometimes|in:active,inactive',
-        ]);
-
-        $this->taxRateService->update($id, $validated);
+        $this->taxRateService->update($id, $request->validated());
 
         return ResponseHelper::success(new TaxRateResource($taxRate->fresh()), 'Tax rate updated');
     }

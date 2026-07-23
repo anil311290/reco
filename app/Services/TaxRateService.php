@@ -17,7 +17,7 @@ class TaxRateService
         if ($activeOnly) {
             $query->active();
         }
-        return $query->orderBy('tax_name')->get();
+        return $query->orderBy('id', 'desc')->get();
     }
 
     /**
@@ -50,7 +50,7 @@ class TaxRateService
             });
         }
 
-        return $query->orderBy('tax_name')->paginate($perPage);
+        return $query->orderBy('id', 'desc')->paginate($perPage);
     }
 
     /**

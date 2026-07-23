@@ -153,7 +153,7 @@ $(document).ready(function() {
             }
         }
     ], {
-        order: [[3, 'asc']],
+        order: [[1, 'desc']],
         ajax: {
             data: function(d) {
                 d.search = $('#search').val();

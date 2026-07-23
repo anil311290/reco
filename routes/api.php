@@ -149,6 +149,7 @@ Route::prefix('v1')->middleware('auth:sanctum')->group(function () {
     Route::get('/settings/company', [SettingsApiController::class, 'getCompanySettings']);
     Route::put('/settings/company', [SettingsApiController::class, 'updateCompany']);
     Route::get('/settings/theme', [SettingsApiController::class, 'getThemeSettings']);
+    Route::put('/settings/theme', [SettingsApiController::class, 'updateTheme']);
     Route::put('/settings/accounting', [SettingsApiController::class, 'updateAccounting']);
 
     // Financial years

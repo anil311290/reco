@@ -15,8 +15,8 @@
 </div>
 
 <form id="invoiceForm">
+    <div id="builtPayload"></div>
     <div class="row g-4">
-        <!-- Invoice Details -->
         <div class="col-lg-9 col-md-8">
             <div class="card mb-4">
                 <div class="card-header"><h5 class="mb-0">Invoice Details</h5></div>
@@ -64,7 +64,6 @@
                 </div>
             </div>
 
-            <!-- Line Items -->
             <div class="card mb-4">
                 <div class="card-header d-flex justify-content-between align-items-center">
                     <h5 class="mb-0">Line Items</h5>
@@ -77,7 +76,7 @@
                         <table class="table table-bordered mb-0" id="linesTable">
                             <thead class="table-light">
                                 <tr>
-                                    <th style="width:28%">Item / Description</th>
+                                    <th style="width:28%">Item / Service</th>
                                     <th style="width:10%;">Qty</th>
                                     <th style="width:15%;">Unit Price</th>
                                     <th style="width:10%;">Disc %</th>
@@ -87,24 +86,31 @@
                                 </tr>
                             </thead>
                             <tbody id="linesBody">
-                                <tr class="line-row">
+                                <tr class="line-row" data-kind="">
                                     <td>
-                                        <select class="form-select form-select-sm item-select w-100" name="lines[0][item_id]">
-                                            <option value="">Select Item</option>
-                                            @foreach($items as $item)
-                                            <option value="{{ $item->id }}" data-price="{{ $item->selling_price }}" data-tax="{{ $item->tax_rate_id }}" data-description="{{ e($item->description ?? '') }}">{{ $item->name }}</option>
-                                            @endforeach
+                                        <select class="form-select form-select-sm particular-select w-100">
+                                            <option value="">Select Item / Service</option>
+                                            <optgroup label="Items">
+                                                @foreach($items as $item)
+                                                <option value="item:{{ $item->id }}" data-kind="item" data-id="{{ $item->id }}" data-price="{{ $item->selling_price }}" data-tax="{{ $item->tax_rate_id }}" data-description="{{ e($item->description ?? '') }}">{{ $item->name }}</option>
+                                                @endforeach
+                                            </optgroup>
+                                            <optgroup label="Services">
+                                                @foreach($serviceAccounts as $account)
+                                                <option value="service:{{ $account['id'] }}" data-kind="service" data-id="{{ $account['id'] }}" data-price="0" data-tax="" data-description="{{ e($account['text']) }}">{{ $account['text'] }}</option>
+                                                @endforeach
+                                            </optgroup>
                                         </select>
-                                        <input type="text" class="form-control form-control-sm mt-1 bg-light" name="lines[0][description]" placeholder="Description" readonly>
+                                        <input type="text" class="form-control form-control-sm mt-1 bg-light description-input" placeholder="Description" readonly>
                                     </td>
-                                    <td><input type="number" class="form-control form-control-sm qty-input" name="lines[0][quantity]" value="1" min="0.001" step="0.001"></td>
-                                    <td><input type="number" class="form-control form-control-sm price-input" name="lines[0][unit_price]" value="0" min="0" step="0.01"></td>
-                                    <td><input type="number" class="form-control form-control-sm disc-input" name="lines[0][discount_percentage]" value="0" min="0" max="100" step="0.01"></td>
+                                    <td><input type="number" class="form-control form-control-sm qty-input" value="1" min="0.001" step="0.001"></td>
+                                    <td><input type="number" class="form-control form-control-sm price-input" value="0" min="0" step="0.01"></td>
+                                    <td><input type="number" class="form-control form-control-sm disc-input" value="0" min="0" max="100" step="0.01"></td>
                                     <td>
-                                        <select class="form-select form-select-sm tax-select w-100" name="lines[0][tax_rate_id]">
+                                        <select class="form-select form-select-sm tax-select w-100">
                                             <option value="">No Tax</option>
                                             @foreach($taxRates as $tax)
-                                            <option value="{{ $tax->id }}" data-rate="{{ $tax->tax_rate }}">{{ $tax->tax_name }} ({{ $tax->tax_rate }}%)</option>
+                                            <option value="{{ $tax->id }}" data-rate="{{ $tax->tax_rate ?? $tax->rate }}">{{ $tax->tax_name ?? $tax->name }} ({{ $tax->tax_rate ?? $tax->rate }}%)</option>
                                             @endforeach
                                         </select>
                                     </td>
@@ -116,36 +122,8 @@
                     </div>
                 </div>
             </div>
-
-            <!-- Service Line Items -->
-            <div class="card mb-4">
-                <div class="card-header d-flex justify-content-between align-items-center">
-                    <h5 class="mb-0">Service Line Items</h5>
-                    <button type="button" class="btn btn-sm btn-primary" id="addServiceLine">
-                        <i class="bi bi-plus-circle me-1"></i>Add Service
-                    </button>
-                </div>
-                <div class="card-body p-0">
-                    <div class="table-responsive">
-                        <table class="table table-bordered mb-0" id="serviceTable">
-                            <thead class="table-light">
-                                <tr>
-                                    <th style="width:40%">Service Account / Description</th>
-                                    <th style="width:15%">Amount</th>
-                                    <th style="width:15%;">Tax</th>
-                                    <th style="width:15%">Total</th>
-                                    <th style="width:5%"></th>
-                                </tr>
-                            </thead>
-                            <tbody id="serviceLinesBody">
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
         </div>
 
-        <!-- Summary -->
         <div class="col-lg-3 col-md-4">
             <div class="card sticky-top" style="top:1rem">
                 <div class="card-header"><h5 class="mb-0">Summary</h5></div>
@@ -175,39 +153,162 @@
         </div>
     </div>
 </form>
-@endsection
 
-@section('scripts')
-<script>
-let lineIndex = 1;
-
-$('#addLine').on('click', function() {
-    let row = `<tr class="line-row">
+<template id="lineRowTemplate">
+    <tr class="line-row" data-kind="">
         <td>
-            <select class="form-select form-select-sm item-select w-100" name="lines[${lineIndex}][item_id]">
-                <option value="">Select Item</option>
-                @foreach($items as $item)
-                <option value="{{ $item->id }}" data-price="{{ $item->selling_price }}" data-tax="{{ $item->tax_rate_id }}" data-description="{{ e($item->description ?? '') }}">{{ $item->name }}</option>
-                @endforeach
+            <select class="form-select form-select-sm particular-select w-100">
+                <option value="">Select Item / Service</option>
+                <optgroup label="Items">
+                    @foreach($items as $item)
+                    <option value="item:{{ $item->id }}" data-kind="item" data-id="{{ $item->id }}" data-price="{{ $item->selling_price }}" data-tax="{{ $item->tax_rate_id }}" data-description="{{ e($item->description ?? '') }}">{{ $item->name }}</option>
+                    @endforeach
+                </optgroup>
+                <optgroup label="Services">
+                    @foreach($serviceAccounts as $account)
+                    <option value="service:{{ $account['id'] }}" data-kind="service" data-id="{{ $account['id'] }}" data-price="0" data-tax="" data-description="{{ e($account['text']) }}">{{ $account['text'] }}</option>
+                    @endforeach
+                </optgroup>
             </select>
-            <input type="text" class="form-control form-control-sm mt-1 bg-light" name="lines[${lineIndex}][description]" placeholder="Description" readonly>
+            <input type="text" class="form-control form-control-sm mt-1 bg-light description-input" placeholder="Description" readonly>
         </td>
-        <td><input type="number" class="form-control form-control-sm qty-input" name="lines[${lineIndex}][quantity]" value="1" min="0.001" step="0.001"></td>
-        <td><input type="number" class="form-control form-control-sm price-input" name="lines[${lineIndex}][unit_price]" value="0" min="0" step="0.01"></td>
-        <td><input type="number" class="form-control form-control-sm disc-input" name="lines[${lineIndex}][discount_percentage]" value="0" min="0" max="100" step="0.01"></td>
+        <td><input type="number" class="form-control form-control-sm qty-input" value="1" min="0.001" step="0.001"></td>
+        <td><input type="number" class="form-control form-control-sm price-input" value="0" min="0" step="0.01"></td>
+        <td><input type="number" class="form-control form-control-sm disc-input" value="0" min="0" max="100" step="0.01"></td>
         <td>
-            <select class="form-select form-select-sm tax-select w-100" name="lines[${lineIndex}][tax_rate_id]">
+            <select class="form-select form-select-sm tax-select w-100">
                 <option value="">No Tax</option>
                 @foreach($taxRates as $tax)
-                <option value="{{ $tax->id }}" data-rate="{{ $tax->tax_rate }}">{{ $tax->tax_name }} ({{ $tax->tax_rate }}%)</option>
+                <option value="{{ $tax->id }}" data-rate="{{ $tax->tax_rate ?? $tax->rate }}">{{ $tax->tax_name ?? $tax->name }} ({{ $tax->tax_rate ?? $tax->rate }}%)</option>
                 @endforeach
             </select>
         </td>
         <td><input type="text" class="form-control form-control-sm line-total" readonly></td>
         <td><button type="button" class="btn btn-sm btn-outline-danger remove-line"><i class="bi bi-trash"></i></button></td>
-    </tr>`;
-    $('#linesBody').append(row);
-    lineIndex++;
+    </tr>
+</template>
+@endsection
+
+@section('scripts')
+<script>
+function applyParticularSelection(row) {
+    const option = row.find('.particular-select option:selected');
+    const kind = option.data('kind') || '';
+    const description = option.attr('data-description') || '';
+    const price = option.data('price') || 0;
+    const taxId = option.data('tax') || '';
+
+    row.attr('data-kind', kind);
+    row.find('.description-input').val(kind ? description : '');
+
+    if (kind === 'service') {
+        row.find('.qty-input').val(1).prop('readonly', true).addClass('bg-light');
+        row.find('.disc-input').val(0).prop('readonly', true).addClass('bg-light');
+        row.find('.price-input').val(0).prop('readonly', false).removeClass('bg-light');
+    } else if (kind === 'item') {
+        row.find('.qty-input').prop('readonly', false).removeClass('bg-light');
+        row.find('.disc-input').prop('readonly', false).removeClass('bg-light');
+        row.find('.price-input').val(price).prop('readonly', false).removeClass('bg-light');
+        row.find('.tax-select').val(taxId);
+    } else {
+        row.find('.qty-input').val(1).prop('readonly', false).removeClass('bg-light');
+        row.find('.disc-input').val(0).prop('readonly', false).removeClass('bg-light');
+        row.find('.price-input').val(0).prop('readonly', false).removeClass('bg-light');
+        row.find('.tax-select').val('');
+    }
+
+    calculateLineTotal(row);
+}
+
+function calculateLineTotal(row) {
+    const qty = parseFloat(row.find('.qty-input').val()) || 0;
+    const price = parseFloat(row.find('.price-input').val()) || 0;
+    const disc = parseFloat(row.find('.disc-input').val()) || 0;
+    const taxRate = parseFloat(row.find('.tax-select option:selected').data('rate')) || 0;
+
+    const base = qty * price;
+    const discAmount = base * (disc / 100);
+    const afterDisc = base - discAmount;
+    const tax = afterDisc * (taxRate / 100);
+
+    row.find('.line-total').val('₹' + (afterDisc + tax).toFixed(2));
+    calculateTotals();
+}
+
+function calculateTotals() {
+    let subtotal = 0;
+    let discount = 0;
+    let taxTotal = 0;
+
+    $('#linesBody tr').each(function() {
+        if (!$(this).attr('data-kind')) return;
+
+        const qty = parseFloat($(this).find('.qty-input').val()) || 0;
+        const price = parseFloat($(this).find('.price-input').val()) || 0;
+        const disc = parseFloat($(this).find('.disc-input').val()) || 0;
+        const taxRate = parseFloat($(this).find('.tax-select option:selected').data('rate')) || 0;
+
+        const base = qty * price;
+        const discAmount = base * (disc / 100);
+        const afterDisc = base - discAmount;
+        const tax = afterDisc * (taxRate / 100);
+
+        subtotal += afterDisc;
+        discount += discAmount;
+        taxTotal += tax;
+    });
+
+    $('#subtotal').text('₹' + subtotal.toFixed(2));
+    $('#discountAmount').text('-₹' + discount.toFixed(2));
+    $('#taxAmount').text('₹' + taxTotal.toFixed(2));
+    $('#totalAmount').text('₹' + (subtotal + taxTotal).toFixed(2));
+}
+
+function appendHidden(name, value) {
+    $('<input>', { type: 'hidden', name: name, value: value ?? '' }).appendTo('#builtPayload');
+}
+
+function buildSubmitPayload() {
+    $('#builtPayload').empty();
+    let itemIdx = 0;
+    let serviceIdx = 0;
+    let hasLine = false;
+
+    $('#linesBody tr').each(function() {
+        const row = $(this);
+        const option = row.find('.particular-select option:selected');
+        const kind = option.data('kind');
+        if (!kind) return;
+
+        hasLine = true;
+        const description = row.find('.description-input').val() || '';
+        const taxRateId = row.find('.tax-select').val() || '';
+        const qty = row.find('.qty-input').val() || 1;
+        const price = row.find('.price-input').val() || 0;
+        const disc = row.find('.disc-input').val() || 0;
+
+        if (kind === 'item') {
+            appendHidden(`lines[${itemIdx}][item_id]`, option.data('id'));
+            appendHidden(`lines[${itemIdx}][description]`, description);
+            appendHidden(`lines[${itemIdx}][quantity]`, qty);
+            appendHidden(`lines[${itemIdx}][unit_price]`, price);
+            appendHidden(`lines[${itemIdx}][discount_percentage]`, disc);
+            appendHidden(`lines[${itemIdx}][tax_rate_id]`, taxRateId);
+            itemIdx++;
+        } else if (kind === 'service') {
+            appendHidden(`service_lines[${serviceIdx}][account_id]`, option.data('id'));
+            appendHidden(`service_lines[${serviceIdx}][description]`, description);
+            appendHidden(`service_lines[${serviceIdx}][amount]`, price);
+            appendHidden(`service_lines[${serviceIdx}][tax_rate_id]`, taxRateId);
+            serviceIdx++;
+        }
+    });
+
+    return hasLine;
+}
+
+$('#addLine').on('click', function() {
+    $('#linesBody').append($($('#lineRowTemplate').html()));
 });
 
 $(document).on('click', '.remove-line', function() {
@@ -217,19 +318,8 @@ $(document).on('click', '.remove-line', function() {
     }
 });
 
-$(document).on('change', '.item-select', function() {
-    let row = $(this).closest('tr');
-    let option = $(this).find(':selected');
-    let price = option.data('price') || 0;
-    let taxId = option.data('tax') || '';
-    let description = option.attr('data-description') || '';
-    let descInput = row.find('input[name*="[description]"]');
-
-    descInput.val($(this).val() ? description : '');
-
-    row.find('.price-input').val(price);
-    row.find('.tax-select').val(taxId);
-    calculateLineTotal(row);
+$(document).on('change', '.particular-select', function() {
+    applyParticularSelection($(this).closest('tr'));
 });
 
 $(document).on('input', '.qty-input, .price-input, .disc-input', function() {
@@ -240,152 +330,24 @@ $(document).on('change', '.tax-select', function() {
     calculateLineTotal($(this).closest('tr'));
 });
 
-function calculateLineTotal(row) {
-    let qty = parseFloat(row.find('.qty-input').val()) || 0;
-    let price = parseFloat(row.find('.price-input').val()) || 0;
-    let disc = parseFloat(row.find('.disc-input').val()) || 0;
-    let taxRate = parseFloat(row.find('.tax-select').find(':selected').data('rate')) || 0;
-
-    let base = qty * price;
-    let discAmount = base * (disc / 100);
-    let afterDisc = base - discAmount;
-    let tax = afterDisc * (taxRate / 100);
-    let total = afterDisc + tax;
-
-    row.find('.line-total').val('₹' + total.toFixed(2));
-    calculateTotals();
-}
-
-function calculateTotals() {
-    let itemsSubtotal = 0;
-    let itemsDiscount = 0;
-    let totalTax = 0;
-
-    // Line Items
-    $('#linesBody tr').each(function() {
-        let qty = parseFloat($(this).find('.qty-input').val()) || 0;
-        let price = parseFloat($(this).find('.price-input').val()) || 0;
-        let disc = parseFloat($(this).find('.disc-input').val()) || 0;
-        let taxRate = parseFloat($(this).find('.tax-select').find(':selected').data('rate')) || 0;
-
-        let base = qty * price;
-        let discAmount = base * (disc / 100);
-        let afterDisc = base - discAmount;
-        let tax = afterDisc * (taxRate / 100);
-
-        itemsSubtotal += afterDisc;
-        itemsDiscount += discAmount;
-        totalTax += tax;
-    });
-
-    // Service Lines
-    let serviceSubtotal = 0;
-    $('#serviceLinesBody tr').each(function() {
-        let amount = parseFloat($(this).find('.service-amount-input').val()) || 0;
-        let taxRate = parseFloat($(this).find('.service-tax-select').find(':selected').data('rate')) || 0;
-
-        let tax = amount * (taxRate / 100);
-        serviceSubtotal += amount;
-        totalTax += tax;
-    });
-
-    let subtotal = itemsSubtotal + serviceSubtotal;
-    let total = subtotal + totalTax;
-
-    $('#subtotal').text('₹' + subtotal.toFixed(2));
-    $('#discountAmount').text('-₹' + itemsDiscount.toFixed(2));
-    $('#taxAmount').text('₹' + totalTax.toFixed(2));
-    $('#totalAmount').text('₹' + total.toFixed(2));
-}
-
-// Service Lines Handling
-let serviceLineIndex = 0;
-
-$('#addServiceLine').on('click', function() {
-    let row = `<tr class="service-line-row">
-        <td>
-            <select class="form-select form-select-sm service-account-select" name="service_lines[${serviceLineIndex}][account_id]">
-                <option value="">Select Service Account</option>
-                @foreach($serviceAccounts as $account)
-                <option value="{{ $account['id'] }}">{{ $account['text'] }}</option>
-                @endforeach
-            </select>
-            <input type="text" class="form-control form-control-sm mt-1" name="service_lines[${serviceLineIndex}][description]" placeholder="Description">
-        </td>
-        <td><input type="number" class="form-control form-control-sm service-amount-input" name="service_lines[${serviceLineIndex}][amount]" value="0" min="0" step="0.01"></td>
-        <td>
-            <select class="form-select form-select-sm service-tax-select" name="service_lines[${serviceLineIndex}][tax_rate_id]">
-                <option value="">No Tax</option>
-                @foreach($taxRates as $tax)
-                <option value="{{ $tax->id }}" data-rate="{{ $tax->tax_rate }}">{{ $tax->tax_name }} ({{ $tax->tax_rate }}%)</option>
-                @endforeach
-            </select>
-        </td>
-        <td><input type="text" class="form-control form-control-sm service-line-total" readonly></td>
-        <td><button type="button" class="btn btn-sm btn-outline-danger remove-service-line"><i class="bi bi-trash"></i></button></td>
-    </tr>`;
-    $('#serviceLinesBody').append(row);
-    serviceLineIndex++;
-});
-
-$(document).on('click', '.remove-service-line', function() {
-    $(this).closest('tr').remove();
-    calculateTotals();
-});
-
-$(document).on('input', '.service-amount-input', function() {
-    calculateServiceLineTotal($(this).closest('tr'));
-});
-
-$(document).on('change', '.service-account-select', function() {
-    let row = $(this).closest('tr');
-    let accountName = $(this).find(':selected').text().trim();
-    let descInput = row.find('input[name*="[description]"]');
-    if (accountName && accountName !== 'Select Service Account' && !descInput.val()) {
-        descInput.val(accountName);
-    }
-});
-
-$(document).on('change', '.service-tax-select', function() {
-    calculateServiceLineTotal($(this).closest('tr'));
-});
-
-function calculateServiceLineTotal(row) {
-    let amount = parseFloat(row.find('.service-amount-input').val()) || 0;
-    let taxRate = parseFloat(row.find('.service-tax-select').find(':selected').data('rate')) || 0;
-
-    let tax = amount * (taxRate / 100);
-    let total = amount + tax;
-
-    row.find('.service-line-total').val('₹' + total.toFixed(2));
-    calculateTotals();
-}
-
-// Client-side pre-validation (runs BEFORE ajaxFormSubmit handler)
 $('#invoiceForm').on('submit.clientValidate', function(e) {
     let hasError = false;
-
-    // Clear previous inline errors
     $(this).find('.is-invalid').removeClass('is-invalid');
     $(this).find('.invalid-feedback').remove();
 
-    // Validate: Customer required
     if (!$('#party_id').val()) {
         $('#party_id').addClass('is-invalid')
             .after('<div class="invalid-feedback d-block">Please select a customer</div>');
         hasError = true;
     }
 
-    // Validate: Invoice date required
     const invoiceDate = $('[name="invoice_date"]').val();
+    const dueDate = $('[name="due_date"]').val();
     if (!invoiceDate) {
         $('[name="invoice_date"]').addClass('is-invalid')
             .after('<div class="invalid-feedback d-block">Invoice date is required</div>');
         hasError = true;
     }
-
-    // Validate: Due date required
-    const dueDate = $('[name="due_date"]').val();
     if (!dueDate) {
         $('[name="due_date"]').addClass('is-invalid')
             .after('<div class="invalid-feedback d-block">Due date is required</div>');
@@ -396,30 +358,35 @@ $('#invoiceForm').on('submit.clientValidate', function(e) {
         hasError = true;
     }
 
-    // Validate: line qty > 0
     let lineError = false;
+    let selectedCount = 0;
     $('#linesBody tr').each(function() {
+        const kind = $(this).attr('data-kind');
+        if (!kind) return;
+        selectedCount++;
+
         const qty = parseFloat($(this).find('.qty-input').val());
         const price = parseFloat($(this).find('.price-input').val());
         if (isNaN(qty) || qty <= 0) {
             $(this).find('.qty-input').addClass('is-invalid');
             lineError = true;
         }
-        if (isNaN(price) || price < 0) {
+        if (isNaN(price) || price < 0 || (kind === 'service' && price <= 0)) {
             $(this).find('.price-input').addClass('is-invalid');
             lineError = true;
         }
     });
 
-    if (hasError || lineError) {
-        toastr.error('Please fill in all required fields correctly');
+    if (selectedCount === 0 || hasError || lineError || !buildSubmitPayload()) {
+        toastr.error(selectedCount === 0
+            ? 'Please add at least one item or service line'
+            : 'Please fill in all required fields correctly');
         e.preventDefault();
         e.stopImmediatePropagation();
         return false;
     }
 });
 
-// Clear validation state on field change
 $('#invoiceForm').on('change input', '.is-invalid', function() {
     $(this).removeClass('is-invalid');
     $(this).nextAll('.invalid-feedback').first().remove();

@@ -25,7 +25,7 @@ class ItemRequest extends BaseFormRequest
             ],
             'name' => 'required|string|max:255',
             'hsn_sac_code' => 'nullable|string|max:20',
-            'type' => 'required',
+            'type' => ['required', Rule::in(['goods', 'service'])],
             'category_id' => [
                 'nullable',
                 Rule::exists('item_categories', 'id')->where('company_id', $this->user()->company_id),

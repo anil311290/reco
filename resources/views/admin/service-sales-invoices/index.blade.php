@@ -51,7 +51,7 @@ $(document).ready(function() {
                 <a href="/admin/service-sales-invoices/${data.id}/edit" class="btn btn-sm btn-outline-primary"><i class="bi bi-pencil"></i></a>
             </div>`;
         }}
-    ]);
+    ], { order: [[1, 'desc']] });
 });
 </script>
 @endpush

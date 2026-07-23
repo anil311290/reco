@@ -443,7 +443,7 @@ function loadDatatable(tableId, url, columns, additionalOptions = {}) {
             }
         },
         columns: columns,
-        order: [[0, 'desc']],
+        order: [[1, 'desc']],
         language: {
             processing: '<div class="spinner-border text-primary" role="status"><span class="visually-hidden">Loading...</span></div>',
             emptyTable: 'No data available',

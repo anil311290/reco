@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Admin\ItemRequest;
 use App\Http\Resources\ItemResource;
 use App\Services\ItemService;
 use App\Helpers\ResponseHelper;
@@ -19,16 +20,23 @@ class ItemApiController extends Controller
     }
 
     /**
-     * Get all items.
+     * Get all items (paginated master list — same as web Items module).
      */
     public function index(Request $request): JsonResponse
     {
         $companyId = $request->user()->company_id;
         $filters = $request->only(['search', 'type', 'category_id', 'is_active']);
+        $perPage = (int) $request->input('per_page', 15);
 
-        $items = $this->itemService->getAll($companyId, $filters);
+        $items = $this->itemService->getPaginated($companyId, $filters, $perPage);
 
-        return ResponseHelper::success(ItemResource::collection($items));
+        return ResponseHelper::success([
+            'data' => ItemResource::collection($items->items()),
+            'current_page' => $items->currentPage(),
+            'last_page' => $items->lastPage(),
+            'per_page' => $items->perPage(),
+            'total' => $items->total(),
+        ]);
     }
 
     /**
@@ -93,21 +101,12 @@ class ItemApiController extends Controller
     /**
      * Create item.
      */
-    public function store(Request $request): JsonResponse
+    public function store(ItemRequest $request): JsonResponse
     {
-        $validated = $request->validate([
-            'item_code' => 'required|string|max:50|unique:items,item_code',
-            'name' => 'required|string|max:255',
-            'type' => 'required|in:goods,service',
-            'category_id' => 'nullable|exists:item_categories,id',
-            'tax_rate_id' => 'nullable|exists:tax_rates,id',
-            'purchase_price' => 'nullable|numeric|min:0',
-            'selling_price' => 'nullable|numeric|min:0',
-            'unit' => 'nullable|string|max:20',
-            'opening_stock' => 'nullable|numeric|min:0',
-        ]);
-
+        $validated = $request->validated();
         $validated['company_id'] = $request->user()->company_id;
+        $validated['type'] = $validated['type'] ?? 'goods';
+
         $item = $this->itemService->create($validated);
 
         return ResponseHelper::success(new ItemResource($item), 'Item created', 201);
@@ -116,7 +115,7 @@ class ItemApiController extends Controller
     /**
      * Update item.
      */
-    public function update(Request $request, int $id): JsonResponse
+    public function update(ItemRequest $request, int $id): JsonResponse
     {
         $item = $this->itemService->getById($id);
 
@@ -124,17 +123,7 @@ class ItemApiController extends Controller
             return ResponseHelper::notFound('Item not found');
         }
 
-        $validated = $request->validate([
-            'name' => 'sometimes|string|max:255',
-            'type' => 'sometimes|in:goods,service',
-            'category_id' => 'nullable|exists:item_categories,id',
-            'tax_rate_id' => 'nullable|exists:tax_rates,id',
-            'purchase_price' => 'nullable|numeric|min:0',
-            'selling_price' => 'nullable|numeric|min:0',
-            'unit' => 'nullable|string|max:20',
-        ]);
-
-        $this->itemService->update($id, $validated);
+        $this->itemService->update($id, $request->validated());
 
         return ResponseHelper::success(new ItemResource($item->fresh()), 'Item updated');
     }
@@ -180,13 +169,19 @@ class ItemApiController extends Controller
     }
 
     /**
-     * Get items for dropdown.
+     * Get items + services for dropdown (sales invoice line picker).
      */
     public function dropdown(Request $request): JsonResponse
     {
         $companyId = $request->user()->company_id;
+        $filters = $request->only(['search', 'type', 'is_active']);
 
-        return ResponseHelper::success($this->itemService->getAll($companyId));
+        $catalog = $this->itemService->getSalesLineCatalog($companyId, $filters);
+
+        return ResponseHelper::success([
+            'items' => ItemResource::collection($catalog['items'])->resolve(),
+            'services' => $catalog['services'],
+        ]);
     }
 
     /**

@@ -111,7 +111,8 @@ $(document).ready(function() {
                     <a href="/admin/purchase-invoices/${data.id}/edit" class="btn btn-sm btn-outline-primary"><i class="bi bi-pencil"></i></a>
                 </div>`;
             }}
-        ]
+        ],
+        order: [[2, 'desc']]
     });
 
     $('#filterForm').on('submit', function(e) { e.preventDefault(); table.ajax.reload(); });

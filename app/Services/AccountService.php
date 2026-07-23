@@ -61,7 +61,7 @@ class AccountService
             });
         }
 
-        return $query->orderBy('account_code')->get();
+        return $query->orderBy('id', 'desc')->get();
     }
 
     /**
@@ -90,7 +90,7 @@ class AccountService
             });
         }
 
-        return $query->orderBy('account_code')->paginate($perPage);
+        return $query->orderBy('id', 'desc')->paginate($perPage);
     }
 
     /**

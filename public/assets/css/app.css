@@ -623,6 +623,11 @@ footer.footer { padding: 10px 16px; background: var(--lp-card); border-top: 1px 
     background-position: right 0.75rem center;
     background-size: 16px 12px;
 }
+.form-select.form-select-sm {
+    padding-right: 2rem;
+    background-position: right 0.5rem center;
+    background-size: 14px 10px;
+}
 .form-control:focus, .form-select:focus { border-color: var(--lp-primary); box-shadow: 0 0 0 3px var(--lp-primary-50); outline: none; }
 .form-control::placeholder { color: var(--lp-text-muted); }
 .form-label { font-weight: 500; color: var(--lp-text); margin-bottom: 4px; font-size: 13px; }
@@ -749,7 +754,21 @@ body.dark-mode .card-body form .invalid-feedback {
     opacity: 0.65;
 }
 
-/* Invoice entry table tuning */
+/* Invoice / entry tables */
+.table .form-control-sm,
+.table .form-select-sm {
+    min-height: 38px;
+    font-size: 0.875rem;
+    padding: 0.35rem 0.55rem;
+}
+
+.table .form-select-sm {
+    padding-right: 2rem !important;
+    background-position: right 0.45rem center !important;
+    background-size: 14px 10px !important;
+    text-overflow: ellipsis;
+}
+
 #linesTable th,
 #linesTable td,
 #serviceTable th,
@@ -765,15 +784,6 @@ body.dark-mode .card-body form .invalid-feedback {
 #linesTable td:first-child,
 #serviceTable td:first-child {
     min-width: 220px;
-}
-
-#linesTable .form-control-sm,
-#linesTable .form-select-sm,
-#serviceTable .form-control-sm,
-#serviceTable .form-select-sm {
-    min-height: 38px;
-    font-size: 0.875rem;
-    padding: 0.35rem 0.55rem;
 }
 
 #linesTable .qty-input {
@@ -793,8 +803,9 @@ body.dark-mode .card-body form .invalid-feedback {
 }
 
 #linesTable .tax-select,
-#serviceTable .service-tax-select {
-    min-width: 115px;
+#serviceTable .service-tax-select,
+#purchaseLinesTable .tax-select {
+    min-width: 140px;
 }
 
 #linesTable td:last-child,

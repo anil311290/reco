@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\Account;
 use App\Models\Item;
 use App\Models\PurchaseInvoiceLine;
 use App\Models\SalesInvoiceLine;
@@ -35,7 +36,7 @@ class ItemService
             });
         }
 
-        return $query->orderBy('name')->get();
+        return $query->orderBy('id', 'desc')->get();
     }
 
     /**
@@ -62,7 +63,7 @@ class ItemService
             });
         }
 
-        return $query->orderBy('name')->paginate($perPage);
+        return $query->orderBy('id', 'desc')->paginate($perPage);
     }
 
     /**
@@ -117,6 +118,86 @@ class ItemService
         $item = Item::findOrFail($id);
         $item->update(['is_active' => !$item->is_active]);
         return $item;
+    }
+
+    /**
+     * Sales line catalog: goods/service items + income accounts as services.
+     * Matches admin sales invoice Items/Services dropdown.
+     *
+     * @return array{items: Collection, services: array<int, array<string, mixed>>}
+     */
+    public function getSalesLineCatalog(int $companyId, array $filters = []): array
+    {
+        $type = $filters['type'] ?? null;
+        $items = new Collection();
+        $services = [];
+
+        if ($type !== 'service') {
+            $itemFilters = $filters;
+            if ($type === 'goods') {
+                $itemFilters['type'] = 'goods';
+            } else {
+                unset($itemFilters['type']);
+            }
+            $items = $this->getAll($companyId, $itemFilters);
+        }
+
+        if ($type === null || $type === '' || $type === 'service') {
+            $services = $this->getServiceAccountsForListing(
+                $companyId,
+                $filters['search'] ?? null,
+                isset($filters['is_active']) ? (bool) $filters['is_active'] : true
+            );
+        }
+
+        return [
+            'items' => $items,
+            'services' => $services,
+        ];
+    }
+
+    /**
+     * Active income accounts exposed as selectable service lines.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    public function getServiceAccountsForListing(int $companyId, ?string $search = null, bool $activeOnly = true): array
+    {
+        $query = Account::query()
+            ->where('company_id', $companyId)
+            ->where('account_type', 'income');
+
+        if ($activeOnly) {
+            $query->where('is_active', true);
+        }
+
+        if (!empty($search)) {
+            $query->where(function ($q) use ($search) {
+                $q->where('account_name', 'like', "%{$search}%")
+                    ->orWhere('account_code', 'like', "%{$search}%");
+            });
+        }
+
+        return $query->orderBy('id', 'desc')
+            ->get()
+            ->map(static function (Account $account) {
+                $text = "{$account->account_code} - {$account->account_name}";
+
+                return [
+                    'id' => $account->id,
+                    'kind' => 'service',
+                    'type' => 'service',
+                    'account_code' => $account->account_code,
+                    'name' => $account->account_name,
+                    'text' => $text,
+                    'description' => $text,
+                    'account_type' => $account->account_type,
+                    'selling_price' => 0,
+                    'is_active' => (bool) $account->is_active,
+                ];
+            })
+            ->values()
+            ->all();
     }
 
     /**
