@@ -8,7 +8,7 @@ use OpenApi\Annotations as OA;
  * @OA\Info(
  *     title="Reco API",
  *     version="1.0.0",
- *     description="Reco offline-first accounting SaaS API under /api/v1. Payment/receipt/adjustment APIs match web Tally forms (payment_mode + cash_bank_account_id + payment_rows / adjustment_rows). Helpers: GET /accounts/cash-bank, /accounts/payment-particulars, /accounts/adjustment-particulars. Service sales: /service-sales-invoices (or sales-invoices with invoice_type=service). Invoice settlement requires amount + payment_mode + cash_bank_account_id. PATCH /financial-years/{id}/set-current carries forward opening balances. Period lock applies when FY is closed or date is outside FY. Web-only: roles, CMS, audit logs, Excel/CSV export.",
+ *  *     description="Reco offline-first accounting SaaS API under /api/v1. Payment/receipt/adjustment APIs match web Tally forms (payment_mode + cash_bank_account_id + payment_rows / adjustment_rows). Helpers: GET /accounts/cash-bank, /accounts/payment-particulars, /accounts/adjustment-particulars. Sales invoices are unified (item + service lines) via /sales-invoices; /service-sales-invoices remains a legacy alias. Invoice settlement requires amount + payment_mode + cash_bank_account_id. PATCH /financial-years/{id}/set-current carries forward opening balances. Period lock applies when FY is closed or date is outside FY. Web-only: roles, CMS, audit logs, Excel/CSV export.",
  *     @OA\Contact(
  *         name="Reco Support",
  *         email="support@reco.app",

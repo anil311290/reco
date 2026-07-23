@@ -2,7 +2,7 @@
     "openapi": "3.0.0",
     "info": {
         "title": "Reco API",
-        "description": "Reco offline-first accounting SaaS API under /api/v1. Payment/receipt/adjustment APIs match web Tally forms (payment_mode + cash_bank_account_id + payment_rows / adjustment_rows). Helpers: GET /accounts/cash-bank, /accounts/payment-particulars, /accounts/adjustment-particulars. Service sales: /service-sales-invoices (or sales-invoices with invoice_type=service). Invoice settlement requires amount + payment_mode + cash_bank_account_id. PATCH /financial-years/{id}/set-current carries forward opening balances. Period lock applies when FY is closed or date is outside FY. Web-only: roles, CMS, audit logs, Excel/CSV export.",
+        "description": "Reco offline-first accounting SaaS API under /api/v1. Payment/receipt/adjustment APIs match web Tally forms (payment_mode + cash_bank_account_id + payment_rows / adjustment_rows). Helpers: GET /accounts/cash-bank, /accounts/payment-particulars, /accounts/adjustment-particulars. Sales invoices are unified (item + service lines) via /sales-invoices; /service-sales-invoices remains a legacy alias. Invoice settlement requires amount + payment_mode + cash_bank_account_id. PATCH /financial-years/{id}/set-current carries forward opening balances. Period lock applies when FY is closed or date is outside FY. Web-only: roles, CMS, audit logs, Excel/CSV export.",
         "contact": {
             "name": "Reco Support",
             "url": "https://reco.app/support",
@@ -2831,8 +2831,8 @@
                 "tags": [
                     "Items"
                 ],
-                "summary": "Get item sales history",
-                "description": "Sales invoice lines for this item (date, invoice, party, qty, rate, amount). No stock tracking.",
+                "summary": "Get item stock and transaction history",
+                "description": "Opening stock, purchases (qty in), sales (qty out), running balance. Stock is updated on purchase/sales invoices.",
                 "operationId": "getItemHistory",
                 "parameters": [
                     {
@@ -2857,6 +2857,22 @@
                         "schema": {
                             "type": "string",
                             "format": "date"
+                        }
+                    },
+                    {
+                        "name": "per_page",
+                        "in": "query",
+                        "schema": {
+                            "type": "integer",
+                            "default": 15
+                        }
+                    },
+                    {
+                        "name": "page",
+                        "in": "query",
+                        "schema": {
+                            "type": "integer",
+                            "default": 1
                         }
                     }
                 ],
@@ -6007,12 +6023,10 @@
         "/sales-invoices": {
             "get": {
                 "tags": [
-                    "Sales Invoices",
-                    "Item Sales Invoices",
-                    "Service Sales Invoices"
+                    "Sales Invoices"
                 ],
                 "summary": "List sales invoices",
-                "description": "Returns paginated sales invoices for both item-based and service-based flows. Use invoice_type=item for item invoices (default) or invoice_type=service for service invoices.",
+                "description": "Returns paginated sales invoices (item and service). Optional invoice_type filter; omit to list all (same as web Sales Invoice).",
                 "operationId": "getSalesInvoices",
                 "parameters": [
                     {
@@ -6047,10 +6061,9 @@
                     {
                         "name": "invoice_type",
                         "in": "query",
-                        "description": "Filter by invoice type: item (default) or service",
+                        "description": "Optional filter: item or service. Omit to return all.",
                         "schema": {
                             "type": "string",
-                            "default": "item",
                             "enum": [
                                 "item",
                                 "service"
@@ -6096,12 +6109,10 @@
             },
             "post": {
                 "tags": [
-                    "Sales Invoices",
-                    "Item Sales Invoices",
-                    "Service Sales Invoices"
+                    "Sales Invoices"
                 ],
                 "summary": "Create sales invoice",
-                "description": "Creates an item or service sales invoice. Set invoice_type=service for service-only invoices (no line items required, only service_lines). Default is item. This single API supports the same behavior used by the web item-sales and service-sales modules.",
+                "description": "Unified create matching web Sales Invoice: send lines and/or service_lines. Default invoice_type is item.",
                 "operationId": "createSalesInvoice",
                 "requestBody": {
                     "required": true,
@@ -6265,9 +6276,7 @@
         "/sales-invoices/overdue": {
             "get": {
                 "tags": [
-                    "Sales Invoices",
-                    "Item Sales Invoices",
-                    "Service Sales Invoices"
+                    "Sales Invoices"
                 ],
                 "summary": "Get overdue invoices",
                 "operationId": "getOverdueSalesInvoices",
@@ -6293,9 +6302,7 @@
         "/sales-invoices/{id}": {
             "get": {
                 "tags": [
-                    "Sales Invoices",
-                    "Item Sales Invoices",
-                    "Service Sales Invoices"
+                    "Sales Invoices"
                 ],
                 "summary": "Get invoice details",
                 "operationId": "getSalesInvoice",
@@ -6409,9 +6416,7 @@
         "/sales-invoices/{id}/payment": {
             "post": {
                 "tags": [
-                    "Sales Invoices",
-                    "Item Sales Invoices",
-                    "Service Sales Invoices"
+                    "Sales Invoices"
                 ],
                 "summary": "Record payment against invoice",
                 "operationId": "recordSalesInvoicePayment",
@@ -6536,8 +6541,8 @@
                 "tags": [
                     "Service Sales Invoices"
                 ],
-                "summary": "List service sales invoices",
-                "description": "Alias of GET /sales-invoices?invoice_type=service",
+                "summary": "List service sales invoices (legacy)",
+                "description": "Legacy alias of GET /sales-invoices?invoice_type=service. Prefer unified /sales-invoices.",
                 "operationId": "getServiceSalesInvoices",
                 "parameters": [
                     {
@@ -6585,8 +6590,8 @@
                 "tags": [
                     "Service Sales Invoices"
                 ],
-                "summary": "Create service sales invoice",
-                "description": "Forces invoice_type=service. Send service_lines (same as web).",
+                "summary": "Create service sales invoice (legacy)",
+                "description": "Legacy alias. Prefer POST /sales-invoices with service_lines (and optional item lines).",
                 "operationId": "createServiceSalesInvoice",
                 "requestBody": {
                     "required": true,
@@ -9956,16 +9961,12 @@
             "description": "API Endpoints for Item & Service Catalog Management"
         },
         {
-            "name": "Item Sales Invoices",
-            "description": "API Endpoints for Item-based Sales Invoice Management"
+            "name": "Sales Invoices",
+            "description": "Unified sales invoices (item lines and/or service/income lines). Prefer /sales-invoices for all app flows."
         },
         {
             "name": "Service Sales Invoices",
-            "description": "API Endpoints for Service-based Sales Invoice Management"
-        },
-        {
-            "name": "Sales Invoices",
-            "description": "API Endpoints for Sales Invoice (AR) Management"
+            "description": "Legacy alias of /sales-invoices with invoice_type=service. Prefer unified Sales Invoices endpoints."
         },
         {
             "name": "Purchase Invoices",

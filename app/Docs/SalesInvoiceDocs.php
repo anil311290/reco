@@ -7,15 +7,15 @@ use OpenApi\Annotations as OA;
 /**
  * @OA\Get(
  *     path="/sales-invoices",
- *     tags={"Sales Invoices", "Item Sales Invoices", "Service Sales Invoices"},
+ *     tags={"Sales Invoices"},
  *     summary="List sales invoices",
- *     description="Returns paginated sales invoices for both item-based and service-based flows. Use invoice_type=item for item invoices (default) or invoice_type=service for service invoices.",
+ *     description="Returns paginated sales invoices (item and service). Optional invoice_type filter; omit to list all (same as web Sales Invoice).",
  *     operationId="getSalesInvoices",
  *     security={{"bearerAuth":{}}},
  *     @OA\Parameter(name="search", in="query", @OA\Schema(type="string")),
  *     @OA\Parameter(name="status", in="query", @OA\Schema(type="string", enum={"draft","sent","partial","paid","overdue","cancelled"})),
  *     @OA\Parameter(name="party_id", in="query", @OA\Schema(type="integer")),
- *     @OA\Parameter(name="invoice_type", in="query", description="Filter by invoice type: item (default) or service", @OA\Schema(type="string", enum={"item","service"}, default="item")),
+ *     @OA\Parameter(name="invoice_type", in="query", description="Optional filter: item or service. Omit to return all.", @OA\Schema(type="string", enum={"item","service"})),
  *     @OA\Parameter(name="per_page", in="query", @OA\Schema(type="integer", default=15)),
  *     @OA\Response(response=200, description="Success", @OA\JsonContent(ref="#/components/schemas/SuccessResponse")),
  *     @OA\Response(response=401, description="Unauthorized", @OA\JsonContent(ref="#/components/schemas/ErrorResponse"))
@@ -23,7 +23,7 @@ use OpenApi\Annotations as OA;
  *
  * @OA\Get(
  *     path="/sales-invoices/overdue",
- *     tags={"Sales Invoices", "Item Sales Invoices", "Service Sales Invoices"},
+ *     tags={"Sales Invoices"},
  *     summary="Get overdue invoices",
  *     operationId="getOverdueSalesInvoices",
  *     security={{"bearerAuth":{}}},
@@ -32,7 +32,7 @@ use OpenApi\Annotations as OA;
  *
  * @OA\Get(
  *     path="/sales-invoices/{id}",
- *     tags={"Sales Invoices", "Item Sales Invoices", "Service Sales Invoices"},
+ *     tags={"Sales Invoices"},
  *     summary="Get invoice details",
  *     operationId="getSalesInvoice",
  *     security={{"bearerAuth":{}}},
@@ -43,9 +43,9 @@ use OpenApi\Annotations as OA;
  *
  * @OA\Post(
  *     path="/sales-invoices",
- *     tags={"Sales Invoices", "Item Sales Invoices", "Service Sales Invoices"},
+ *     tags={"Sales Invoices"},
  *     summary="Create sales invoice",
- *     description="Creates an item or service sales invoice. Set invoice_type=service for service-only invoices (no line items required, only service_lines). Default is item. This single API supports the same behavior used by the web item-sales and service-sales modules.",
+ *     description="Unified create matching web Sales Invoice: send lines and/or service_lines. Default invoice_type is item.",
  *     operationId="createSalesInvoice",
  *     security={{"bearerAuth":{}}},
  *     @OA\RequestBody(required=true, @OA\JsonContent(
@@ -83,7 +83,7 @@ use OpenApi\Annotations as OA;
  *
  * @OA\Post(
  *     path="/sales-invoices/{id}/payment",
- *     tags={"Sales Invoices", "Item Sales Invoices", "Service Sales Invoices"},
+ *     tags={"Sales Invoices"},
  *     summary="Record payment against invoice",
  *     operationId="recordSalesInvoicePayment",
  *     security={{"bearerAuth":{}}},
@@ -132,8 +132,8 @@ use OpenApi\Annotations as OA;
  * @OA\Get(
  *     path="/service-sales-invoices",
  *     tags={"Service Sales Invoices"},
- *     summary="List service sales invoices",
- *     description="Alias of GET /sales-invoices?invoice_type=service",
+ *     summary="List service sales invoices (legacy)",
+ *     description="Legacy alias of GET /sales-invoices?invoice_type=service. Prefer unified /sales-invoices.",
  *     operationId="getServiceSalesInvoices",
  *     security={{"bearerAuth":{}}},
  *     @OA\Parameter(name="search", in="query", @OA\Schema(type="string")),
@@ -145,8 +145,8 @@ use OpenApi\Annotations as OA;
  * @OA\Post(
  *     path="/service-sales-invoices",
  *     tags={"Service Sales Invoices"},
- *     summary="Create service sales invoice",
- *     description="Forces invoice_type=service. Send service_lines (same as web).",
+ *     summary="Create service sales invoice (legacy)",
+ *     description="Legacy alias. Prefer POST /sales-invoices with service_lines (and optional item lines).",
  *     operationId="createServiceSalesInvoice",
  *     security={{"bearerAuth":{}}},
  *     @OA\RequestBody(required=true, @OA\JsonContent(

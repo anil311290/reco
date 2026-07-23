@@ -400,15 +400,9 @@
                             @endpermission
                             @permission('vouchers.view')
                             <li class="nav-item">
-                                <a class="nav-link {{ request()->routeIs('admin.sales-invoices.*') ? 'active' : '' }}" href="{{ route('admin.sales-invoices.index') }}">
+                                <a class="nav-link {{ request()->routeIs('admin.sales-invoices.*') || request()->routeIs('admin.service-sales-invoices.*') ? 'active' : '' }}" href="{{ route('admin.sales-invoices.index') }}">
                                     <i class="bi bi-file-earmark-text"></i>
-                                    <span>Item Sale Invoices</span>
-                                </a>
-                            </li>
-                            <li class="nav-item">
-                                <a class="nav-link {{ request()->routeIs('admin.service-sales-invoices.*') ? 'active' : '' }}" href="{{ route('admin.service-sales-invoices.index') }}">
-                                    <i class="bi bi-file-earmark-text"></i>
-                                    <span>Service Sale Invoices</span>
+                                    <span>Sales Invoice</span>
                                 </a>
                             </li>
                             <li class="nav-item">

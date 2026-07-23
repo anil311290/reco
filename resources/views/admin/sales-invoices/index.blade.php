@@ -1,11 +1,11 @@
 @extends('layouts.app')
 
-@section('title', 'Sales Invoices')
+@section('title', 'Sales Invoice')
 
 @section('content')
 <div class="row mb-4">
     <div class="col-md-6">
-        <h4 class="mb-0">Sales Invoices</h4>
+        <h4 class="mb-0">Sales Invoice</h4>
     </div>
     <div class="col-md-6 text-md-end">
         @permission('vouchers.create')

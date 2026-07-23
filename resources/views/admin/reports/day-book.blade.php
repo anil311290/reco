@@ -125,12 +125,7 @@
                         </td>
                         <td class="text-muted small">
                             @if(!empty($row['sales_invoice_id']))
-                                @php
-                                    $salesInvoiceRoute = ($row['sales_invoice_type'] ?? 'item') === 'service'
-                                        ? 'admin.service-sales-invoices.show'
-                                        : 'admin.sales-invoices.show';
-                                @endphp
-                                <a href="{{ route($salesInvoiceRoute, $row['sales_invoice_id']) }}" class="report-detail-link me-1" title="View sales invoice">Invoice</a>
+                                <a href="{{ route('admin.sales-invoices.show', $row['sales_invoice_id']) }}" class="report-detail-link me-1" title="View sales invoice">Invoice</a>
                             @elseif(!empty($row['purchase_invoice_id']))
                                 <a href="{{ route('admin.purchase-invoices.show', $row['purchase_invoice_id']) }}" class="report-detail-link me-1" title="View purchase invoice">Invoice</a>
                             @endif

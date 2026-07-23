@@ -18,7 +18,6 @@ use App\Http\Controllers\Admin\ItemController;
 use App\Http\Controllers\Admin\ItemCategoryController;
 use App\Http\Controllers\Admin\SalesInvoiceController;
 use App\Http\Controllers\Admin\PurchaseInvoiceController;
-use App\Http\Controllers\Admin\ServiceSalesInvoiceController;
 use App\Http\Controllers\Admin\SubscriptionController;
 use App\Http\Controllers\Admin\SubscriptionPlanController;
 use App\Http\Controllers\Admin\CompanyApprovalController;
@@ -468,18 +467,18 @@ Route::prefix('admin')->name('admin.')->group(function () {
 
         /*
         |--------------------------------------------------------------------------
-        | Service Sales Invoice Routes
+        | Service Sales Invoice Routes (redirected — unified under Sales Invoice)
         |--------------------------------------------------------------------------
         */
         Route::middleware(CheckPermission::class . ':vouchers.view')->group(function () {
-            Route::get('service-sales-invoices', [ServiceSalesInvoiceController::class, 'index'])->name('service-sales-invoices.index');
-            Route::get('service-sales-invoices/create', [ServiceSalesInvoiceController::class, 'create'])->name('service-sales-invoices.create');
-            Route::post('service-sales-invoices', [ServiceSalesInvoiceController::class, 'store'])->name('service-sales-invoices.store');
-            Route::get('service-sales-invoices/{id}', [ServiceSalesInvoiceController::class, 'show'])->name('service-sales-invoices.show');
-            Route::post('service-sales-invoices/{id}/payment', [ServiceSalesInvoiceController::class, 'payment'])->name('service-sales-invoices.payment');
-            Route::get('service-sales-invoices/{id}/edit', [ServiceSalesInvoiceController::class, 'edit'])->name('service-sales-invoices.edit');
-            Route::put('service-sales-invoices/{id}', [ServiceSalesInvoiceController::class, 'update'])->name('service-sales-invoices.update');
-            Route::delete('service-sales-invoices/{id}', [ServiceSalesInvoiceController::class, 'destroy'])->name('service-sales-invoices.destroy');
+            Route::get('service-sales-invoices', fn () => redirect()->route('admin.sales-invoices.index'))
+                ->name('service-sales-invoices.index');
+            Route::get('service-sales-invoices/create', fn () => redirect()->route('admin.sales-invoices.create'))
+                ->name('service-sales-invoices.create');
+            Route::get('service-sales-invoices/{id}/edit', fn (int $id) => redirect()->route('admin.sales-invoices.edit', $id))
+                ->name('service-sales-invoices.edit');
+            Route::get('service-sales-invoices/{id}', fn (int $id) => redirect()->route('admin.sales-invoices.show', $id))
+                ->name('service-sales-invoices.show');
         });
 
         /*

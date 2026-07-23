@@ -46,7 +46,7 @@ class SalesInvoiceController extends Controller
     {
         if ($request->ajax()) {
             $companyId = auth()->user()->company_id;
-            $filters = ['invoice_type' => 'item'];
+            $filters = [];
 
             if ($request->filled('status')) {
                 $filters['status'] = $request->input('status');

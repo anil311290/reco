@@ -204,7 +204,7 @@ Route::prefix('v1')->middleware('auth:sanctum')->group(function () {
     Route::delete('/items/{id}', [ItemApiController::class, 'destroy']);
     Route::patch('/items/{id}/status', [ItemApiController::class, 'status']);
 
-    // Sales invoices
+    // Sales invoices (unified item + service lines)
     Route::get('/sales-invoices', [SalesInvoiceApiController::class, 'index']);
     Route::post('/sales-invoices', [SalesInvoiceApiController::class, 'store']);
     Route::get('/sales-invoices/overdue', [SalesInvoiceApiController::class, 'overdue']);
@@ -214,7 +214,7 @@ Route::prefix('v1')->middleware('auth:sanctum')->group(function () {
     Route::post('/sales-invoices/{id}/payment', [SalesInvoiceApiController::class, 'payment']);
     Route::get('/sales-invoices/{id}/pdf', [SalesInvoiceApiController::class, 'exportPdf']);
 
-    // Service sales invoices (same resource as sales with invoice_type=service)
+    // Legacy service-sales aliases (prefer /sales-invoices)
     Route::get('/service-sales-invoices', [SalesInvoiceApiController::class, 'indexService']);
     Route::post('/service-sales-invoices', [SalesInvoiceApiController::class, 'storeService']);
     Route::get('/service-sales-invoices/{id}', [SalesInvoiceApiController::class, 'showService']);

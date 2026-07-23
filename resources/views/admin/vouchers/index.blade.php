@@ -54,8 +54,7 @@
                     <li><a class="dropdown-item" href="{{ route('admin.vouchers.create', 'journal') }}"><i class="bi bi-journal-bookmark me-2"></i>Adjustment</a></li>
                     <li><hr class="dropdown-divider"></li>
                     <li><h6 class="dropdown-header">Invoices</h6></li>
-                    <li><a class="dropdown-item" href="{{ route('admin.sales-invoices.create') }}"><i class="bi bi-file-earmark-text me-2"></i>Item Sale Invoice</a></li>
-                    <li><a class="dropdown-item" href="{{ route('admin.service-sales-invoices.create') }}"><i class="bi bi-file-earmark-text me-2"></i>Service Sale Invoice</a></li>
+                    <li><a class="dropdown-item" href="{{ route('admin.sales-invoices.create') }}"><i class="bi bi-file-earmark-text me-2"></i>Sales Invoice</a></li>
                     <li><a class="dropdown-item" href="{{ route('admin.purchase-invoices.create') }}"><i class="bi bi-file-earmark-text me-2"></i>Purchase Invoice</a></li>
                 </ul>
             </div>

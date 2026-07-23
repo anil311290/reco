@@ -25,8 +25,10 @@ class SalesInvoiceApiController extends Controller
     {
         $companyId = $request->user()->company_id;
         $filters = $request->only(['search', 'status', 'party_id', 'date_from', 'date_to', 'invoice_type']);
+
+        // Match web: list all sales invoices unless invoice_type filter is provided
         if (empty($filters['invoice_type'])) {
-            $filters['invoice_type'] = 'item';
+            unset($filters['invoice_type']);
         }
 
         $perPage = $request->input('per_page', 15);

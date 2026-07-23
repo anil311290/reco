@@ -126,11 +126,6 @@
             align-items: center; justify-content: center; font-weight: 700; font-size: .85rem;
         }
 
-        .toc-mini {
-            background: var(--white); border: 1px solid var(--border); border-radius: 12px;
-            padding: 18px 22px; margin: 20px 0;
-        }
-
         @media (max-width: 900px) {
             .sidebar { display: none; }
             .main { margin-left: 0; padding: 24px; }
@@ -163,24 +158,24 @@
             <a href="#financial-years">Financial Years</a>
 
             <div class="nav-section">Transactions</div>
-            <a href="#sales-invoices">Sales Invoices</a>
-            <a href="#service-sales">Service Sales</a>
+            <a href="#sales-invoice">Sales Invoice</a>
             <a href="#purchase-invoices">Purchase Invoices</a>
             <a href="#payments">Payments</a>
             <a href="#receipts">Receipts</a>
             <a href="#adjustments">Adjustments</a>
+            <a href="#vouchers">All Vouchers</a>
 
             <div class="nav-section">Reports</div>
             <a href="#reports">All Reports</a>
             <a href="#exports">Export PDF / Excel</a>
 
             <div class="nav-section">Settings</div>
-            <a href="#settings">Company Settings</a>
+            <a href="#settings">Company &amp; Theme</a>
             <a href="#subscriptions">Subscription</a>
             <a href="#support">Support &amp; Alerts</a>
 
             <div class="nav-section">More</div>
-            <a href="#mobile">Mobile App</a>
+            <a href="#mobile">Mobile App / API</a>
             <a href="#roles">Roles</a>
             <a href="#tips">Tips &amp; FAQ</a>
         </nav>
@@ -189,7 +184,7 @@
     <main class="main">
         <div class="hero">
             <h1>Reco User Guide</h1>
-            <p>Simple double-entry accounting for your business — invoices, payments, receipts, ledgers, and reports.</p>
+            <p>Double-entry accounting for your business — unified sales invoicing, payments, receipts, ledgers, and reports. Web and mobile share the same rules.</p>
             <div class="badges">
                 <span class="badge">Web Admin</span>
                 <span class="badge">Mobile API</span>
@@ -198,18 +193,17 @@
             </div>
         </div>
 
-        <!-- WELCOME -->
         <h2 id="welcome">Welcome</h2>
-        <p><strong>Reco</strong> helps you keep books clean: every transaction is a balanced voucher (Debit = Credit), posted to ledgers automatically.</p>
+        <p><strong>Reco</strong> keeps books clean: every transaction is a balanced voucher (Debit = Credit) and posts to ledgers automatically.</p>
 
         <div class="card-grid">
             <div class="card">
                 <h4>Masters</h4>
-                <p>Ledgers, parties, items, tax rates, and financial years.</p>
+                <p>Ledgers, parties, goods items, tax rates, and financial years.</p>
             </div>
             <div class="card">
                 <h4>Day-to-day work</h4>
-                <p>Sales / purchase / service invoices, payments, receipts, adjustments.</p>
+                <p>One Sales Invoice for goods and services, purchase invoices, payments, receipts, adjustments.</p>
             </div>
             <div class="card">
                 <h4>Reports</h4>
@@ -217,23 +211,22 @@
             </div>
             <div class="card">
                 <h4>Mobile</h4>
-                <p>Same accounting rules as web via the Reco API.</p>
+                <p>Same accounting behaviour as web via the Reco API.</p>
             </div>
         </div>
 
-        <div class="warn-box">
-            <strong>Removed / not used</strong>
-            There is <em>no separate Bank Accounts module</em>. Cash, Bank, and OD are normal ledgers with a transaction mode.
-            There is <em>no Cash Flow report</em> — use Cash Book / Bank Book instead.
-            Stock / inventory costing (COGS) is not part of the accounting flow; items are for invoice lines only.
+        <div class="info-box">
+            <strong>Current product shape</strong>
+            There is a single menu <strong>Sales Invoice</strong> (items + services on one bill). There is no separate “Service Sale Invoices” menu.
+            Cash / Bank / OD are ledgers with a transaction mode — there is no separate Bank Accounts module.
+            Use Cash Book / Bank Book instead of a Cash Flow report.
         </div>
 
-        <!-- QUICK START -->
         <h2 id="quick-start">Quick Start</h2>
         <ol class="step-list">
             <li>
                 <strong>Register or log in</strong><br>
-                Create your company (or join an existing one), then open the admin dashboard.
+                Create your company (or join an existing one), then open the admin dashboard at <code>/admin/login</code>.
             </li>
             <li>
                 <strong>Set the Financial Year</strong><br>
@@ -245,11 +238,15 @@
             </li>
             <li>
                 <strong>Add parties</strong><br>
-                Create customers (debtors) and suppliers (creditors). Each party gets a linked ledger.
+                Create customers (debtors) and suppliers (creditors).
             </li>
             <li>
-                <strong>Start billing</strong><br>
-                Create a Sales or Service invoice → it posts income automatically → record payment when money comes in.
+                <strong>Add goods items (and income ledgers for services)</strong><br>
+                Goods live under <em>Masters → Items</em>. Billable services are <strong>Income</strong> ledgers — pick them on the Sales Invoice line dropdown under Services.
+            </li>
+            <li>
+                <strong>Create a Sales Invoice</strong><br>
+                <em>Transactions → Sales Invoice</em> → add item and/or service lines → save (posts income) → Record Payment when money arrives.
             </li>
             <li>
                 <strong>Review books</strong><br>
@@ -257,7 +254,6 @@
             </li>
         </ol>
 
-        <!-- LOGIN -->
         <h2 id="login">Login &amp; Registration</h2>
         <h3>Register a new company</h3>
         <p>Open the public <strong>Register</strong> page, fill company and admin details, then submit. After approval (if required), log in at <code>/admin/login</code>.</p>
@@ -265,7 +261,7 @@
         <h3>Login</h3>
         <ul>
             <li>Email + password</li>
-            <li>Use the sidebar to move between Dashboard, Masters, Transactions, Reports, and Settings</li>
+            <li>Use the sidebar: Dashboard, Masters, Transactions (Vouchers), Reports, Settings</li>
         </ul>
 
         <div class="tip-box">
@@ -273,11 +269,10 @@
             Keep one <strong>current</strong> financial year open. Creating or editing vouchers/invoices is blocked if the year is closed or the date is outside the FY (period lock).
         </div>
 
-        <!-- DASHBOARD -->
         <h2 id="dashboard">Dashboard</h2>
-        <p>After login you see a snapshot of your books: receivables, payables, recent activity, and charts. Use it as a daily overview — details live in Reports and Transactions.</p>
+        <p>After login you see receivables, payables, recent activity, and charts. Use it as a daily overview — details live in Reports and Transactions.</p>
+        <p>List screens (invoices, vouchers, masters) show <strong>newest first</strong> by default.</p>
 
-        <!-- LEDGERS -->
         <h2 id="ledgers">Ledgers (Chart of Accounts)</h2>
         <p>Menu: <strong>Masters → Ledgers</strong></p>
         <p>Every money movement posts to a ledger. Types: Asset, Liability, Income, Expense, Equity.</p>
@@ -286,20 +281,22 @@
         <p>When creating an asset ledger, set <strong>Transaction mode</strong>:</p>
         <table>
             <tr><th>Mode</th><th>Use for</th></tr>
-            <tr><td>Cash</td><td>Petty cash / till — used in Cash Book and as Paid From / Received In</td></tr>
-            <tr><td>Bank</td><td>Bank accounts — used in Bank Book and settlements</td></tr>
+            <tr><td>Cash</td><td>Petty cash / till — Cash Book and Paid From / Received In</td></tr>
+            <tr><td>Bank</td><td>Bank accounts — Bank Book and settlements</td></tr>
             <tr><td>OD</td><td>Overdraft — can pay even with low/negative available balance</td></tr>
         </table>
 
+        <h3>Income ledgers = services on sales</h3>
+        <p>Income accounts appear under the <strong>Services</strong> group on the Sales Invoice line picker. Create them from Ledgers (type Income), or choose Service when adding a new item (you are redirected to create an income ledger).</p>
+
         <h3>Opening balance</h3>
-        <p>Enter opening balance + Debit/Credit type when creating a ledger. Reco posts a balanced opening entry (via suspense) so Trial Balance stays clean.</p>
+        <p>Enter opening balance + Debit/Credit when creating a ledger. Reco posts a balanced opening entry so Trial Balance stays clean.</p>
 
         <div class="info-box">
             <strong>No separate Bank Accounts menu</strong>
             Manage all cash and bank ledgers here. Payments and receipts pick them from “Paid From” / “Received In”.
         </div>
 
-        <!-- PARTIES -->
         <h2 id="parties">Parties (Customers &amp; Suppliers)</h2>
         <p>Menu: <strong>Masters → Parties</strong></p>
         <ul>
@@ -307,28 +304,35 @@
             <li><strong>Creditor</strong> — supplier (payable)</li>
         </ul>
         <p>Each party is linked to its own ledger. Opening balances on parties also post through the books.</p>
+        <p>Open a party’s <strong>details</strong> (name or eye icon) to see ledger / transaction history, with Excel / PDF export and pagination.</p>
         <p>On invoice and voucher screens you can use <strong>Quick Add Party</strong> without leaving the form.</p>
 
-        <!-- ITEMS -->
         <h2 id="items">Items &amp; Categories</h2>
         <p>Menu: <strong>Masters → Items</strong> and <strong>Item Categories</strong></p>
-        <p>Items are used on <strong>Sales</strong> and <strong>Purchase</strong> invoice lines (name, rate, tax). Categories help organize the item list.</p>
+
+        <h3>Goods items</h3>
+        <p>Used on Sales and Purchase invoice lines (code, name, rate, tax, unit). Categories help organize the list.</p>
+
+        <h3>Services</h3>
+        <p>Billable services are <strong>not</strong> a second Items menu. They are <strong>Income ledgers</strong>. On Sales Invoice, pick them from the Services group in the line dropdown.</p>
+
+        <h3>Item history</h3>
+        <p>Open an item’s details to see sales / purchase history, export Excel or PDF, and browse pages of transactions.</p>
+
         <div class="warn-box">
-            <strong>Books-only</strong>
-            Reco does not run perpetual inventory or COGS journals. Stock quantity fields (if shown) are for reference — accounting focuses on sales/purchase and cash books.
+            <strong>Books-first</strong>
+            Reco does not run full perpetual inventory or COGS journals as a separate costing engine. Goods stock fields support invoice and history views; accounting focuses on sales, purchase, and cash books.
         </div>
 
-        <!-- TAX -->
         <h2 id="tax-rates">Tax Rates</h2>
         <p>Menu: <strong>Masters → Tax Rates</strong></p>
         <p>Define GST / tax percentages used on invoice lines. Inactive rates are hidden from new invoices.</p>
 
-        <!-- FY -->
         <h2 id="financial-years">Financial Years</h2>
         <p>Menu: <strong>Settings → Financial Years</strong></p>
         <ul>
             <li><strong>Create</strong> a year (e.g. 1 Apr 2025 – 31 Mar 2026)</li>
-            <li><strong>Set as Current</strong> — new vouchers and invoices use this year. Closing balances are carried forward into the new year as opening entries.</li>
+            <li><strong>Set as Current</strong> — new vouchers and invoices use this year. Closing balances are carried forward as opening entries.</li>
             <li><strong>Close</strong> — locks the year; you cannot post or edit dated transactions in a closed year</li>
         </ul>
         <div class="warn-box">
@@ -336,33 +340,45 @@
             Create / edit / cancel is blocked when the financial year is closed, or when the voucher/invoice date falls outside the current FY range.
         </div>
 
-        <!-- SALES -->
-        <h2 id="sales-invoices">Sales Invoices (Item)</h2>
-        <p>Menu: <strong>Transactions → Sales Invoices</strong></p>
+        <h2 id="sales-invoice">Sales Invoice</h2>
+        <p>Menu: <strong>Transactions → Sales Invoice</strong> (single menu — items and services together)</p>
+
+        <div class="success-box">
+            <strong>Unified billing</strong>
+            One invoice can include goods lines, service (income) lines, or both. There is no separate Service Sale Invoices screen.
+        </div>
+
         <ol class="step-list">
-            <li>Choose customer (debtor), invoice date, due date.</li>
-            <li>Add item lines (qty, rate, tax, discount).</li>
-            <li>Save — Reco creates the invoice and posts an <strong>income voucher</strong> (Dr Party, Cr Sales / Tax).</li>
+            <li>Choose customer (debtor), invoice date, and due date.</li>
+            <li>
+                Add line rows from one dropdown:
+                <ul>
+                    <li><strong>Items</strong> — goods (qty, unit price, discount, tax)</li>
+                    <li><strong>Services</strong> — income ledgers (amount as unit price, qty locked to 1, discount locked)</li>
+                </ul>
+                Description fills from the item description / service name and stays read-only on the form.
+            </li>
+            <li>Save — Reco creates the invoice and posts an <strong>income voucher</strong> (Dr Party, Cr Sales / service income / tax as mapped).</li>
             <li>Open the invoice → <strong>Record Payment</strong> when money is received (mode + cash/bank + amount + date). A <strong>Receipt</strong> voucher is posted and linked to the invoice.</li>
         </ol>
+
         <p>Invoice numbers continue company-wide (e.g. <code>INV-000002</code>), even after a new financial year starts.</p>
+        <p>Old URLs under Service Sale Invoices redirect to this Sales Invoice module.</p>
 
-        <!-- SERVICE -->
-        <h2 id="service-sales">Service Sales Invoices</h2>
-        <p>Menu: <strong>Transactions → Service Sale Invoices</strong></p>
-        <p>Same flow as sales invoices, but lines are <strong>services</strong> (description + amount + tax) instead of stock items. Record Payment works the same way (Receipt voucher).</p>
-
-        <!-- PURCHASE -->
         <h2 id="purchase-invoices">Purchase Invoices</h2>
         <p>Menu: <strong>Transactions → Purchase Invoices</strong></p>
         <ol class="step-list">
-            <li>Choose supplier (creditor), dates, optional supplier reference.</li>
-            <li>Add item or service lines.</li>
+            <li>Choose supplier (creditor), dates, optional supplier bill number / terms.</li>
+            <li>Add <strong>goods item</strong> lines only (qty, rate, tax, discount). Purchase does not use service/income lines.</li>
             <li>Save — posts an <strong>expense voucher</strong>.</li>
             <li><strong>Record Payment</strong> posts a <strong>Payment</strong> voucher against the bill.</li>
         </ol>
 
-        <!-- PAYMENTS -->
+        <div class="tip-box">
+            <strong>Tip</strong>
+            For buying a service from a supplier, use a Payment voucher (or expense ledger) — not a purchase “service line”.
+        </div>
+
         <h2 id="payments">Payments</h2>
         <p>Menu: <strong>Transactions → Payments</strong></p>
         <p>Use this when you pay money out (supplier, expense, etc.) — Tally style:</p>
@@ -371,35 +387,34 @@
             <span class="arrow">→</span>
             <span class="step">2. Paid From</span>
             <span class="arrow">→</span>
-            <span class="step">3. Particulars (creditors)</span>
+            <span class="step">3. Particulars</span>
             <span class="arrow">→</span>
             <span class="step">4. Amount</span>
         </div>
         <ul>
+            <li>Particulars can be a party or a ledger account</li>
             <li>Reco builds the voucher: <strong>Dr Particulars, Cr Cash/Bank</strong></li>
             <li>Insufficient cash/bank balance is blocked (OD is exempt)</li>
-            <li>Posted immediately to ledgers and journals</li>
+            <li>Posted immediately to ledgers</li>
         </ul>
 
-        <!-- RECEIPTS -->
         <h2 id="receipts">Receipts</h2>
         <p>Menu: <strong>Transactions → Receipts</strong></p>
-        <p>Use this when you receive money — same form as Payments:</p>
+        <p>Use this when you receive money — same form pattern as Payments:</p>
         <div class="flow">
             <span class="step">1. Mode</span>
             <span class="arrow">→</span>
             <span class="step">2. Received In</span>
             <span class="arrow">→</span>
-            <span class="step">3. Particulars (debtors)</span>
+            <span class="step">3. Particulars</span>
             <span class="arrow">→</span>
             <span class="step">4. Amount</span>
         </div>
         <ul>
             <li>Posting: <strong>Dr Cash/Bank, Cr Particulars</strong></li>
-            <li>Invoice “Record Payment” creates these receipts for you automatically</li>
+            <li>Sales Invoice “Record Payment” creates these receipts for you automatically</li>
         </ul>
 
-        <!-- ADJUSTMENTS -->
         <h2 id="adjustments">Adjustments (Journal)</h2>
         <p>Menu: <strong>Transactions → Adjustments</strong></p>
         <p>For corrections and transfers that are not a simple payment/receipt:</p>
@@ -411,12 +426,16 @@
         <div class="tip-box">
             <strong>Tip</strong>
             Prefer Payments / Receipts for money movement. Use Adjustments for ledger-to-ledger journals only.
+            Do not create income/expense vouchers by hand — use Sales Invoice / Purchase Invoice.
         </div>
 
-        <!-- REPORTS -->
+        <h2 id="vouchers">All Vouchers</h2>
+        <p>Menu: <strong>Transactions → All Vouchers</strong></p>
+        <p>Browse every posted voucher (payments, receipts, adjustments, and invoice postings). Open a voucher to see header details and lines side by side. Newest vouchers appear first.</p>
+
         <h2 id="reports">Reports</h2>
-        <p>Menu: <strong>Analytics → Reports</strong></p>
-        <p>All reports support filters (date / financial year where applicable). Clickable names open the related voucher, ledger, or party detail.</p>
+        <p>Menu: <strong>Analytics → Reports</strong> (or Reports section in your sidebar)</p>
+        <p>All reports support filters (date / financial year where applicable). Clickable names open the related voucher, ledger, invoice, or party detail.</p>
 
         <table>
             <tr><th>Report</th><th>What it shows</th></tr>
@@ -433,48 +452,56 @@
 
         <div class="info-box">
             <strong>Drill-down</strong>
-            In reports, voucher numbers open the voucher; account names open the ledger; party names open party details where available.
+            Voucher numbers open the voucher; account names open the ledger; party names open party details where available; invoice links open Sales Invoice / Purchase Invoice.
         </div>
 
-        <!-- EXPORTS -->
         <h2 id="exports">Export PDF / Excel</h2>
-        <p>On most report screens use the <strong>PDF</strong> and <strong>Excel</strong> buttons next to Filter. Day Book PDF also respects the selected financial year.</p>
-        <p>Sales invoices have their own PDF from the invoice detail page.</p>
+        <ul>
+            <li>Most report screens: <strong>PDF</strong> and <strong>Excel</strong> next to Filter</li>
+            <li>Sales Invoice detail: PDF from the invoice page</li>
+            <li>Item / Party history: Excel and PDF from the detail screens</li>
+            <li>List tables: Excel / PDF buttons on DataTables where enabled</li>
+        </ul>
 
-        <!-- SETTINGS -->
         <h2 id="settings">Company Settings &amp; Theme</h2>
         <p>Menu: <strong>Settings</strong></p>
         <ul>
-            <li>Company profile and preferences</li>
-            <li>Theme colours / dark mode</li>
-            <li>Financial Years (see above)</li>
+            <li><strong>Company</strong> — profile, address, GST / PAN, currency, timezone</li>
+            <li><strong>Theme</strong> — primary / secondary / sidebar / header colours and dark mode; live preview while you change colours; Save to apply for the company</li>
+            <li><strong>Accounting</strong> — map tax ledgers (sales tax, purchase tax, TDS, TCS, cess) where used</li>
+            <li><strong>Financial Years</strong> — see above</li>
         </ul>
 
-        <!-- SUBSCRIPTIONS -->
         <h2 id="subscriptions">Subscription &amp; Billing</h2>
         <p>If your plan is managed in Reco, open subscription from Settings / billing screens to view plan, invoices, and renewals (Razorpay where enabled).</p>
 
-        <!-- SUPPORT -->
         <h2 id="support">Support, Notifications &amp; Audit</h2>
         <ul>
             <li><strong>Notifications</strong> — bell icon in the header for system alerts</li>
-            <li><strong>Support tickets</strong> — raise and track help requests</li>
-            <li><strong>Audit logs</strong> — who changed what (for users with permission)</li>
+            <li><strong>Support tickets</strong> — raise and track help requests with the platform team</li>
+            <li><strong>Audit logs</strong> — who changed what (users with permission)</li>
         </ul>
 
-        <!-- MOBILE -->
-        <h2 id="mobile">Mobile App</h2>
-        <p>The mobile API mirrors web accounting:</p>
-        <ul>
-            <li>Payments / Receipts use the same Tally fields (<code>payment_mode</code>, cash/bank account, particulars rows)</li>
-            <li>Adjustments use journal rows (Debit / Credit)</li>
-            <li>Invoice settlement needs amount + mode + cash/bank account</li>
-            <li>Helpers: cash-bank list and particulars lists for form dropdowns</li>
-            <li>Offline sync endpoints keep devices up to date</li>
-        </ul>
-        <p>API docs (Swagger): <code>/api/documentation</code></p>
+        <h2 id="mobile">Mobile App / API</h2>
+        <p>The mobile API mirrors web accounting. Prefer these endpoints:</p>
+        <table>
+            <tr><th>Area</th><th>Use</th></tr>
+            <tr><td><strong>Sales</strong></td><td><code>GET/POST /api/v1/sales-invoices</code> — list all by default; create with <code>lines</code> and/or <code>service_lines</code></td></tr>
+            <tr><td><strong>Line picker</strong></td><td><code>GET /api/v1/items/dropdown</code> returns <code>{ items, services }</code> (services = income accounts)</td></tr>
+            <tr><td><strong>Items master</strong></td><td><code>GET /api/v1/items</code> — paginated goods list (not the sales catalog)</td></tr>
+            <tr><td><strong>Purchase</strong></td><td>Item (goods) lines only; supports payment/delivery terms</td></tr>
+            <tr><td><strong>Payments / Receipts</strong></td><td>Same Tally fields: <code>payment_mode</code>, cash/bank account, particulars rows</td></tr>
+            <tr><td><strong>Theme</strong></td><td><code>GET/PUT /api/v1/settings/theme</code></td></tr>
+            <tr><td><strong>PDF</strong></td><td>Export responses include <code>content_base64</code> for offline-friendly download</td></tr>
+        </table>
 
-        <!-- ROLES -->
+        <div class="warn-box">
+            <strong>Legacy alias</strong>
+            <code>/api/v1/service-sales-invoices</code> still works for older apps but is deprecated. Use unified <code>/sales-invoices</code>.
+        </div>
+
+        <p>Swagger: <code>/api/documentation</code></p>
+
         <h2 id="roles">Roles (short)</h2>
         <table>
             <tr><th>Role</th><th>Typical access</th></tr>
@@ -485,8 +512,13 @@
         </table>
         <p>Exact menus depend on permissions assigned to the role.</p>
 
-        <!-- TIPS -->
         <h2 id="tips">Tips &amp; FAQ</h2>
+
+        <h3>Where did Service Sale Invoices go?</h3>
+        <p>They are merged into <strong>Sales Invoice</strong>. Add service lines from the Services group on the same form. Old bookmarks redirect automatically.</p>
+
+        <h3>How do I bill a service?</h3>
+        <p>Create an <strong>Income</strong> ledger (or choose Service when adding an item — you are sent to create an income ledger). On Sales Invoice, pick it under Services.</p>
 
         <h3>Why can’t I save a voucher?</h3>
         <ul>
@@ -496,7 +528,7 @@
         </ul>
 
         <h3>Invoice number already exists?</h3>
-        <p>Numbers are unique across the company. After a new FY, numbering continues (<code>INV-000002</code>…), it does not restart at 000001.</p>
+        <p>Numbers are unique across the company. After a new FY, numbering continues (<code>INV-000002</code>…); it does not restart at 000001.</p>
 
         <h3>Where did Bank Accounts go?</h3>
         <p>They are ledgers now. Create an Asset ledger with transaction mode Bank (or Cash / OD).</p>
@@ -504,9 +536,12 @@
         <h3>Where is Cash Flow?</h3>
         <p>Use <strong>Cash Book</strong> and <strong>Bank Book</strong> reports.</p>
 
+        <h3>Can purchase invoices include services?</h3>
+        <p>No — purchase lines are goods items only. Pay service suppliers via Payment vouchers.</p>
+
         <h3>Recommended daily flow</h3>
         <div class="flow">
-            <span class="step">Invoices</span>
+            <span class="step">Sales Invoice</span>
             <span class="arrow">→</span>
             <span class="step">Record Payment</span>
             <span class="arrow">→</span>
@@ -521,7 +556,7 @@
         </div>
 
         <p style="margin-top: 40px; color: var(--text-light); font-size: .85rem;">
-            Reco User Guide · Matches current web &amp; mobile accounting behaviour · Open anytime at <code>/user-guide</code>
+            Reco User Guide · Aligned with current web &amp; API (unified Sales Invoice, goods purchase, Tally vouchers) · Open at <code>/user-guide</code>
         </p>
     </main>
 

@@ -304,7 +304,6 @@ class ItemService
 
         foreach ($salesQuery->get() as $line) {
             $invoice = $line->salesInvoice;
-            $isService = ($invoice->invoice_type ?? 'item') === 'service';
 
             $rows[] = [
                 'date' => optional($invoice->invoice_date)->toDateString(),
@@ -312,9 +311,7 @@ class ItemService
                 'type_label' => 'Sales',
                 'invoice_id' => $invoice->id,
                 'invoice_number' => $invoice->invoice_number,
-                'invoice_route' => $isService
-                    ? 'admin.service-sales-invoices.show'
-                    : 'admin.sales-invoices.show',
+                'invoice_route' => 'admin.sales-invoices.show',
                 'party_id' => $invoice->party_id,
                 'party_name' => $invoice->party?->name,
                 'description' => $line->description ?: $item->name,
