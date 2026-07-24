@@ -7,6 +7,9 @@ use App\Models\SalesInvoice;
 use App\Models\Account;
 use App\Models\FinancialYear;
 use App\Models\Party;
+use App\Models\Item;
+use App\Models\ItemCategory;
+use App\Models\TaxRate;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Maatwebsite\Excel\Facades\Excel;
 use App\Exports\GenericExport;
@@ -150,28 +153,35 @@ class ExportService
     }
 
     /**
+     * Export master list to PDF.
+     */
+    public function exportMasterPdf(string $type, int $companyId, array $filters = []): string
+    {
+        $dataset = $this->getMasterExportDataset($type, $companyId, $filters);
+
+        $pdf = Pdf::loadView('exports.master-list', [
+            'title' => $dataset['title'],
+            'columns' => $dataset['columns'],
+            'rows' => $dataset['rows'],
+        ]);
+
+        return $pdf->output();
+    }
+
+    /**
      * Export data to Excel
      */
     public function exportToExcel(string $type, int $companyId, array $filters = []): string
     {
+        $masterTypes = ['accounts', 'parties', 'items', 'item-categories', 'tax-rates'];
+        if (in_array($type, $masterTypes, true)) {
+            $dataset = $this->getMasterExportDataset($type, $companyId, $filters);
+            return Excel::raw(new GenericExport($dataset['rows']), \Maatwebsite\Excel\Excel::XLSX);
+        }
+
         $data = [];
 
         switch ($type) {
-            case 'accounts':
-                $data = Account::where('company_id', $companyId)
-                    ->orderBy('account_code')
-                    ->get()
-                    ->toArray();
-                break;
-
-            case 'parties':
-                $query = Party::where('company_id', $companyId);
-                if (isset($filters['type'])) {
-                    $query->where('type', $filters['type']);
-                }
-                $data = $query->orderBy('name')->get()->toArray();
-                break;
-
             case 'vouchers':
                 $query = Voucher::where('company_id', $companyId)
                     ->where('status', 'posted');
@@ -322,24 +332,24 @@ class ExportService
      */
     public function exportToCsv(string $type, int $companyId, array $filters = []): string
     {
+        $masterTypes = ['accounts', 'parties', 'items', 'item-categories', 'tax-rates'];
+        if (in_array($type, $masterTypes, true)) {
+            $dataset = $this->getMasterExportDataset($type, $companyId, $filters);
+            $data = $dataset['rows'];
+            $csv = implode(',', array_keys($data[0] ?? [])) . "\n";
+
+            foreach ($data as $row) {
+                $csv .= implode(',', array_map(function ($value) {
+                    return '"' . str_replace('"', '""', $value) . '"';
+                }, $row)) . "\n";
+            }
+
+            return $csv;
+        }
+
         $data = [];
 
         switch ($type) {
-            case 'accounts':
-                $data = Account::where('company_id', $companyId)
-                    ->orderBy('account_code')
-                    ->get()
-                    ->toArray();
-                break;
-
-            case 'parties':
-                $query = Party::where('company_id', $companyId);
-                if (isset($filters['type'])) {
-                    $query->where('type', $filters['type']);
-                }
-                $data = $query->orderBy('name')->get()->toArray();
-                break;
-
             case 'cash-book':
                 $book = $this->reportService->getCashBankBook(
                     $companyId,
@@ -491,5 +501,210 @@ class ExportService
         }
 
         return $csv;
+    }
+
+    protected function getMasterExportDataset(string $type, int $companyId, array $filters = []): array
+    {
+        return match ($type) {
+            'accounts' => $this->buildAccountsExportDataset($companyId, $filters),
+            'parties' => $this->buildPartiesExportDataset($companyId, $filters),
+            'items' => $this->buildItemsExportDataset($companyId, $filters),
+            'item-categories' => $this->buildCategoriesExportDataset($companyId, $filters),
+            'tax-rates' => $this->buildTaxRatesExportDataset($companyId, $filters),
+            default => throw new \InvalidArgumentException("Unsupported export type [{$type}]"),
+        };
+    }
+
+    protected function buildAccountsExportDataset(int $companyId, array $filters = []): array
+    {
+        $query = Account::query()->where('company_id', $companyId);
+
+        if (!empty($filters['account_type'])) {
+            $query->where('account_type', $filters['account_type']);
+        }
+        if (array_key_exists('is_active', $filters) && $filters['is_active'] !== '' && $filters['is_active'] !== null) {
+            $query->where('is_active', (int) $filters['is_active']);
+        }
+        if (!empty($filters['search'])) {
+            $search = $filters['search'];
+            $query->where(function ($builder) use ($search) {
+                $builder
+                    ->where('account_name', 'like', '%' . $search . '%')
+                    ->orWhere('account_code', 'like', '%' . $search . '%');
+            });
+        }
+
+        $accounts = $query->orderBy('account_code')->get();
+
+        return [
+            'title' => 'Account Master Report',
+            'columns' => ['Code', 'Name', 'Type', 'Mode', 'Opening Balance', 'Balance Type', 'Opening Date', 'Status', 'Remarks'],
+            'rows' => $accounts->map(fn (Account $account) => [
+                'Code' => $account->account_code,
+                'Name' => $account->account_name,
+                'Type' => ucfirst($account->account_type),
+                'Mode' => $account->transaction_mode_label ?? ($account->transaction_mode ?: '-'),
+                'Opening Balance' => $account->opening_balance,
+                'Balance Type' => ucfirst($account->balance_type ?? 'debit'),
+                'Opening Date' => optional($account->opening_date)->format('d-m-Y') ?? '-',
+                'Status' => $account->is_active ? 'Active' : 'Inactive',
+                'Remarks' => $account->remarks ?: '-',
+            ])->values()->all(),
+        ];
+    }
+
+    protected function buildPartiesExportDataset(int $companyId, array $filters = []): array
+    {
+        $query = Party::query()->where('company_id', $companyId);
+
+        if (!empty($filters['type'])) {
+            $query->where('type', $filters['type']);
+        }
+        if (array_key_exists('is_active', $filters) && $filters['is_active'] !== '' && $filters['is_active'] !== null) {
+            $query->where('is_active', (int) $filters['is_active']);
+        }
+        if (!empty($filters['search'])) {
+            $search = $filters['search'];
+            $query->where(function ($builder) use ($search) {
+                $builder
+                    ->where('name', 'like', '%' . $search . '%')
+                    ->orWhere('party_code', 'like', '%' . $search . '%')
+                    ->orWhere('mobile', 'like', '%' . $search . '%');
+            });
+        }
+
+        $parties = $query->orderBy('name')->get();
+
+        return [
+            'title' => 'Party Master Report',
+            'columns' => ['Code', 'Name', 'Type', 'Mobile', 'Email', 'GSTIN', 'Opening Balance', 'Balance Type', 'Status'],
+            'rows' => $parties->map(fn (Party $party) => [
+                'Code' => $party->party_code,
+                'Name' => $party->name,
+                'Type' => ucfirst($party->type),
+                'Mobile' => $party->mobile ?: '-',
+                'Email' => $party->email ?: '-',
+                'GSTIN' => $party->gstin ?: '-',
+                'Opening Balance' => $party->opening_balance,
+                'Balance Type' => ucfirst($party->opening_balance_type ?? 'debit'),
+                'Status' => $party->is_active ? 'Active' : 'Inactive',
+            ])->values()->all(),
+        ];
+    }
+
+    protected function buildItemsExportDataset(int $companyId, array $filters = []): array
+    {
+        $query = Item::query()
+            ->with(['category', 'taxRate'])
+            ->where('company_id', $companyId);
+
+        if (!empty($filters['type'])) {
+            $query->where('type', $filters['type']);
+        }
+        if (!empty($filters['category_id'])) {
+            $query->where('category_id', (int) $filters['category_id']);
+        }
+        if (array_key_exists('is_active', $filters) && $filters['is_active'] !== '' && $filters['is_active'] !== null) {
+            $query->where('is_active', (int) $filters['is_active']);
+        }
+        if (!empty($filters['search'])) {
+            $search = $filters['search'];
+            $query->where(function ($builder) use ($search) {
+                $builder
+                    ->where('name', 'like', '%' . $search . '%')
+                    ->orWhere('item_code', 'like', '%' . $search . '%')
+                    ->orWhere('barcode', 'like', '%' . $search . '%');
+            });
+        }
+
+        $items = $query->orderBy('name')->get();
+
+        return [
+            'title' => 'Items and Services Report',
+            'columns' => ['Code', 'Name', 'Category', 'Type', 'HSN/SAC', 'Selling Price', 'Current Stock', 'Tax', 'Status'],
+            'rows' => $items->map(fn (Item $item) => [
+                'Code' => $item->item_code,
+                'Name' => $item->name,
+                'Category' => $item->category?->name ?? '-',
+                'Type' => ucfirst($item->type),
+                'HSN/SAC' => $item->hsn_sac_code ?: '-',
+                'Selling Price' => $item->selling_price,
+                'Current Stock' => $item->is_stockable ? $item->current_stock : 'N/A',
+                'Tax' => $item->taxRate?->tax_name ?? '-',
+                'Status' => $item->is_active ? 'Active' : 'Inactive',
+            ])->values()->all(),
+        ];
+    }
+
+    protected function buildCategoriesExportDataset(int $companyId, array $filters = []): array
+    {
+        $query = ItemCategory::query()
+            ->withCount('items')
+            ->where('company_id', $companyId);
+
+        if (array_key_exists('is_active', $filters) && $filters['is_active'] !== '' && $filters['is_active'] !== null) {
+            $query->where('is_active', (int) $filters['is_active']);
+        }
+        if (!empty($filters['search'])) {
+            $search = $filters['search'];
+            $query->where(function ($builder) use ($search) {
+                $builder
+                    ->where('name', 'like', '%' . $search . '%')
+                    ->orWhere('description', 'like', '%' . $search . '%');
+            });
+        }
+
+        $categories = $query->orderBy('sort_order')->orderBy('name')->get();
+
+        return [
+            'title' => 'Item Category Master Report',
+            'columns' => ['Name', 'Description', 'Sort Order', 'Items Count', 'Status'],
+            'rows' => $categories->map(fn (ItemCategory $category) => [
+                'Name' => $category->name,
+                'Description' => $category->description ?: '-',
+                'Sort Order' => $category->sort_order,
+                'Items Count' => $category->items_count,
+                'Status' => $category->is_active ? 'Active' : 'Inactive',
+            ])->values()->all(),
+        ];
+    }
+
+    protected function buildTaxRatesExportDataset(int $companyId, array $filters = []): array
+    {
+        $query = TaxRate::query()->where('company_id', $companyId);
+
+        if (!empty($filters['tax_category'])) {
+            $query->where('tax_category', $filters['tax_category']);
+        }
+        if (!empty($filters['tax_type'])) {
+            $query->where('tax_type', $filters['tax_type']);
+        }
+        if (!empty($filters['status'])) {
+            $query->where('status', $filters['status']);
+        }
+        if (!empty($filters['search'])) {
+            $search = $filters['search'];
+            $query->where(function ($builder) use ($search) {
+                $builder
+                    ->where('tax_name', 'like', '%' . $search . '%')
+                    ->orWhere('tax_code', 'like', '%' . $search . '%');
+            });
+        }
+
+        $rates = $query->orderBy('tax_name')->get();
+
+        return [
+            'title' => 'Tax Master Report',
+            'columns' => ['Tax Code', 'Tax Name', 'Category', 'Type', 'Rate', 'Status', 'Notes'],
+            'rows' => $rates->map(fn (TaxRate $rate) => [
+                'Tax Code' => $rate->tax_code ?: '-',
+                'Tax Name' => $rate->tax_name,
+                'Category' => $rate->tax_category,
+                'Type' => ucfirst($rate->tax_type),
+                'Rate' => $rate->tax_rate,
+                'Status' => ucfirst($rate->status),
+                'Notes' => $rate->notes ?: '-',
+            ])->values()->all(),
+        ];
     }
 }

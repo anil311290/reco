@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\AuditLog;
+use App\Models\User;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Pagination\LengthAwarePaginator;
 
@@ -126,6 +127,55 @@ class AuditLogService
                 ->groupBy('module')
                 ->pluck('count', 'module')
                 ->toArray(),
+        ];
+    }
+
+    /**
+     * Get audit log filter options for mobile/web clients.
+     */
+    public function getFilterOptions(int $companyId): array
+    {
+        $baseQuery = AuditLog::query()->where('company_id', $companyId);
+
+        $actions = (clone $baseQuery)
+            ->select('action')
+            ->distinct()
+            ->orderBy('action')
+            ->pluck('action')
+            ->values()
+            ->toArray();
+
+        $modules = (clone $baseQuery)
+            ->select('module')
+            ->distinct()
+            ->orderBy('module')
+            ->pluck('module')
+            ->values()
+            ->toArray();
+
+        $userIds = (clone $baseQuery)
+            ->whereNotNull('user_id')
+            ->select('user_id')
+            ->distinct()
+            ->pluck('user_id')
+            ->values()
+            ->toArray();
+
+        $users = User::query()
+            ->whereIn('id', $userIds)
+            ->orderBy('name')
+            ->get(['id', 'name'])
+            ->map(fn (User $user) => [
+                'id' => $user->id,
+                'name' => $user->name,
+            ])
+            ->values()
+            ->toArray();
+
+        return [
+            'actions' => $actions,
+            'modules' => $modules,
+            'users' => $users,
         ];
     }
 
