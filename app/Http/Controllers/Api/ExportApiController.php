@@ -166,15 +166,71 @@ class ExportApiController extends Controller
         }
     }
 
+    public function masterExcel(Request $request, string $type): JsonResponse
+    {
+        $companyId = $request->user()->company_id;
+
+        try {
+            $excel = $this->exportService->exportToExcel(
+                $this->resolveMasterType($type),
+                $companyId,
+                $request->all()
+            );
+
+            return $this->storeBinaryResponse(
+                $excel,
+                $type . '-' . date('Y-m-d-H-i-s') . '.xlsx'
+            );
+        } catch (\Throwable $e) {
+            return ResponseHelper::error($e->getMessage());
+        }
+    }
+
+    public function masterPdf(Request $request, string $type): JsonResponse
+    {
+        $companyId = $request->user()->company_id;
+
+        try {
+            $pdf = $this->exportService->exportMasterPdf(
+                $this->resolveMasterType($type),
+                $companyId,
+                $request->all()
+            );
+
+            return $this->storeBinaryResponse(
+                $pdf,
+                $type . '-' . date('Y-m-d-H-i-s') . '.pdf'
+            );
+        } catch (\Throwable $e) {
+            return ResponseHelper::error($e->getMessage());
+        }
+    }
+
     protected function storePdfResponse(string $pdf, string $filename): JsonResponse
     {
+        return $this->storeBinaryResponse($pdf, $filename);
+    }
+
+    protected function storeBinaryResponse(string $content, string $filename): JsonResponse
+    {
         $path = "exports/{$filename}";
-        Storage::put($path, $pdf);
+        Storage::put($path, $content);
 
         return ResponseHelper::success([
             'filename' => $filename,
             'path' => Storage::url($path),
             'download_url' => url('api/v1/download/' . base64_encode($path)),
-        ], 'PDF generated successfully');
+        ], 'Export generated successfully');
+    }
+
+    protected function resolveMasterType(string $type): string
+    {
+        $allowed = ['accounts', 'parties', 'items', 'item-categories', 'tax-rates'];
+
+        if (!in_array($type, $allowed, true)) {
+            throw new \InvalidArgumentException('Unsupported export type');
+        }
+
+        return $type;
     }
 }

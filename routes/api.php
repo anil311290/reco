@@ -23,6 +23,7 @@ use App\Http\Controllers\Api\LocationApiController;
 use App\Http\Controllers\Api\StatesCitiesApiController;
 use App\Http\Controllers\Api\SyncApiController;
 use App\Http\Controllers\Api\NotificationApiController;
+use App\Http\Controllers\Api\AuditLogApiController;
 use App\Http\Controllers\Api\SupportTicketApiController;
 use App\Http\Controllers\Api\DeviceApiController;
 use Illuminate\Support\Facades\Route;
@@ -173,6 +174,8 @@ Route::prefix('v1')->middleware('auth:sanctum')->group(function () {
     Route::get('/export/creditors-outstanding/pdf', [ExportApiController::class, 'creditorsOutstandingPdf']);
     Route::get('/export/voucher/{id}/pdf', [ExportApiController::class, 'voucherPdf']);
     Route::get('/export/sales-invoice/{id}/pdf', [ExportApiController::class, 'salesInvoicePdf']);
+    Route::get('/export/masters/{type}/excel', [ExportApiController::class, 'masterExcel']);
+    Route::get('/export/masters/{type}/pdf', [ExportApiController::class, 'masterPdf']);
 
     // Tax rates
     Route::get('/tax-rates', [TaxRateApiController::class, 'index']);
@@ -257,6 +260,10 @@ Route::prefix('v1')->middleware('auth:sanctum')->group(function () {
     Route::get('/notifications/unread-count', [NotificationApiController::class, 'unreadCount']);
     Route::patch('/notifications/{id}/read', [NotificationApiController::class, 'markAsRead']);
     Route::post('/notifications/read-all', [NotificationApiController::class, 'markAllAsRead']);
+
+    // Audit logs
+    Route::get('/audit-logs', [AuditLogApiController::class, 'index']);
+    Route::get('/audit-logs/{id}', [AuditLogApiController::class, 'show']);
 
     // Support tickets
     Route::get('/support-tickets', [SupportTicketApiController::class, 'index']);
