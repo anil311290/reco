@@ -8,7 +8,6 @@ import 'tabs/payments_tab_screen.dart';
 import 'tabs/purchase_invoices_tab_screen.dart';
 import 'tabs/receipts_tab_screen.dart';
 import 'tabs/sales_invoices_tab_screen.dart';
-import 'tabs/service_sales_invoices_tab_screen.dart';
 import '../masters/widgets/masters_ui_components.dart';
 import 'transaction_options_screen.dart';
 
@@ -48,8 +47,7 @@ class TransactionsScreen extends StatelessWidget {
                   'Payments',
                   'Receipts',
                   'Adjustments',
-                  'Sales',
-                  'Service Sales',
+                  'Sales Invoice',
                   'Purchase',
                 ],
                 value: controller.selectedTab.value.index,
@@ -65,7 +63,6 @@ class TransactionsScreen extends StatelessWidget {
                     ReceiptsTabScreen(),
                     AdjustmentsTabScreen(),
                     SalesInvoicesTabScreen(),
-                    ServiceSalesInvoicesTabScreen(),
                     PurchaseInvoicesTabScreen(),
                   ],
                 ),

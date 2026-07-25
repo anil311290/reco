@@ -7,6 +7,7 @@ import '../../../../data/models/masters/master_entities.dart';
 import '../../../controllers/masters/parties_controller.dart';
 import '../../../widgets/common/custom_text_field.dart';
 import '../forms/party_form_sheet.dart';
+import '../history/party_history_screen.dart';
 import '../widgets/masters_ui_components.dart';
 
 class PartiesTabScreen extends GetView<PartiesController> {
@@ -46,7 +47,7 @@ class PartiesTabScreen extends GetView<PartiesController> {
                   masterColumn(context, 'Mobile', size: ColumnSize.M),
                   masterColumn(context, 'Opening Balance', size: ColumnSize.M),
                   masterColumn(context, 'Status', fixedWidth: 120),
-                  masterColumn(context, 'Actions', fixedWidth: 120),
+                  masterColumn(context, 'Actions', fixedWidth: 170),
                 ],
                 rows: List<DataRow>.generate(controller.filteredItems.length, (
                   index,
@@ -79,6 +80,20 @@ class PartiesTabScreen extends GetView<PartiesController> {
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: <Widget>[
+                              MasterActionButton(
+                                icon: Icons.receipt_long_outlined,
+                                tooltip: 'History',
+                                color: const Color(0xFF2563EB),
+                                onTap: item.id == null
+                                    ? null
+                                    : () => Get.to(
+                                          () => PartyHistoryScreen(
+                                            partyId: item.id!,
+                                            seedParty: item,
+                                          ),
+                                        ),
+                              ),
+                              const SizedBox(width: 8),
                               MasterActionButton(
                                 icon: Icons.edit_outlined,
                                 tooltip: 'Edit',

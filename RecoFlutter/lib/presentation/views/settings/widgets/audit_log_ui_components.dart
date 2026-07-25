@@ -78,91 +78,132 @@ class AuditLogCard extends StatelessWidget {
         ? (log['user']['name'] ?? 'System').toString()
         : 'System';
     final description = (log['description'] ?? '').toString();
-    final amount = _extractAmount(log);
+    final ip = log['ip_address']?.toString() ?? '';
     final color = _actionColor(action);
+    final icon = _actionIcon(action);
 
     return Material(
       color: Colors.transparent,
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(24),
-        child: Ink(
-          padding: const EdgeInsets.all(16),
+        borderRadius: BorderRadius.circular(14),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
           decoration: BoxDecoration(
             color: theme.cardColor,
-            borderRadius: BorderRadius.circular(24),
-            border: Border.all(color: theme.dividerColor.withValues(alpha: .45)),
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(
+              color: theme.dividerColor.withValues(alpha: .3),
+            ),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: <Widget>[
               Row(
                 children: <Widget>[
+                  // ── Action icon + label ──
                   Container(
-                    width: 42,
-                    height: 42,
+                    width: 32,
+                    height: 32,
                     decoration: BoxDecoration(
                       color: color.withValues(alpha: .12),
-                      borderRadius: BorderRadius.circular(14),
+                      borderRadius: BorderRadius.circular(10),
                     ),
-                    child: Icon(_actionIcon(action), size: 16, color: color),
+                    child: Icon(icon, size: 14, color: color),
                   ),
-                  const SizedBox(width: 12),
+                  const SizedBox(width: 10),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: <Widget>[
                         Text(
                           auditLabelize(action),
-                          style: theme.textTheme.titleMedium?.copyWith(
+                          style: theme.textTheme.bodyMedium?.copyWith(
                             fontWeight: FontWeight.w700,
                           ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                         ),
-                        const SizedBox(height: 3),
+                        const SizedBox(height: 2),
                         Text(
                           _formatDate(log['created_at']),
-                          style: theme.textTheme.bodySmall?.copyWith(
+                          style: theme.textTheme.labelSmall?.copyWith(
                             color: theme.colorScheme.onSurfaceVariant,
                           ),
                         ),
                       ],
                     ),
                   ),
-                  _AuditChip(
-                    label: auditLabelize(module),
-                    color: theme.colorScheme.primary,
+                  // ── Module chip ──
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 3,
+                    ),
+                    decoration: BoxDecoration(
+                      color: theme.colorScheme.primary.withValues(alpha: .08),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: Text(
+                      auditLabelize(module),
+                      style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w700,
+                        color: theme.colorScheme.primary,
+                      ),
+                    ),
                   ),
                 ],
               ),
-              const SizedBox(height: 14),
-              if (description.isNotEmpty)
+              // ── Description ──
+              if (description.isNotEmpty) ...[
+                const SizedBox(height: 8),
                 Text(
                   description,
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
-                  style: theme.textTheme.bodyMedium,
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
                 ),
-              if (description.isNotEmpty) const SizedBox(height: 12),
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
+              ],
+              // ── Bottom info row ──
+              const SizedBox(height: 8),
+              Row(
                 children: <Widget>[
-                  _AuditChip(
-                    label: user,
-                    color: Colors.indigo,
-                    icon: Icons.person_outline_rounded,
+                  Icon(
+                    Icons.person_outline_rounded,
+                    size: 13,
+                    color: theme.colorScheme.onSurfaceVariant.withValues(alpha: .6),
                   ),
-                  _AuditChip(
-                    label: log['ip_address']?.toString() ?? '-',
-                    color: Colors.teal,
-                    icon: Icons.lan_rounded,
-                  ),
-                  if (amount != null)
-                    _AuditChip(
-                      label: amount,
-                      color: Colors.green,
-                      icon: Icons.currency_rupee_rounded,
+                  const SizedBox(width: 3),
+                  Text(
+                    user,
+                    style: theme.textTheme.labelSmall?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant,
                     ),
+                  ),
+                  if (ip.isNotEmpty) ...[
+                    const SizedBox(width: 10),
+                    Icon(
+                      Icons.lan_rounded,
+                      size: 13,
+                      color: theme.colorScheme.onSurfaceVariant.withValues(alpha: .6),
+                    ),
+                    const SizedBox(width: 3),
+                    Text(
+                      ip,
+                      style: theme.textTheme.labelSmall?.copyWith(
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ],
+                  const Spacer(),
+                  Icon(
+                    Icons.chevron_right_rounded,
+                    size: 18,
+                    color: theme.colorScheme.onSurfaceVariant.withValues(alpha: .4),
+                  ),
                 ],
               ),
             ],
@@ -187,52 +228,52 @@ class AuditDetailSection extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: theme.cardColor,
-        borderRadius: BorderRadius.circular(22),
-        border: Border.all(color: theme.dividerColor.withValues(alpha: .45)),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: theme.dividerColor.withValues(alpha: .35)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
           Text(
             title,
-            style: theme.textTheme.titleMedium?.copyWith(
+            style: theme.textTheme.titleSmall?.copyWith(
               fontWeight: FontWeight.w700,
             ),
           ),
-          const SizedBox(height: 14),
+          const SizedBox(height: 10),
           if (values.isEmpty)
             Text(
               'No values recorded.',
-              style: theme.textTheme.bodyMedium?.copyWith(
+              style: theme.textTheme.bodySmall?.copyWith(
                 color: theme.colorScheme.onSurfaceVariant,
               ),
             )
           else
             ...values.entries.map(
               (entry) => Padding(
-                padding: const EdgeInsets.only(bottom: 12),
+                padding: const EdgeInsets.only(bottom: 8),
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: <Widget>[
                     SizedBox(
-                      width: 118,
+                      width: 100,
                       child: Text(
-                        entry.key,
-                        style: theme.textTheme.bodySmall?.copyWith(
+                        auditLabelize(entry.key),
+                        style: theme.textTheme.labelSmall?.copyWith(
                           color: theme.colorScheme.onSurfaceVariant,
                           fontWeight: FontWeight.w600,
                         ),
                       ),
                     ),
-                    const SizedBox(width: 12),
+                    const SizedBox(width: 10),
                     Expanded(
                       child: Text(
                         _formatValue(entry.value),
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          height: 1.35,
+                        style: theme.textTheme.labelSmall?.copyWith(
+                          height: 1.3,
                         ),
                       ),
                     ),

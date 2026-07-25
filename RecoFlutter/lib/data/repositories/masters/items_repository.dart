@@ -18,7 +18,7 @@ class ItemsRepository extends OfflineFirstRepository {
     Map<String, dynamic>? queryParameters,
   }) async {
     final local = await getLocalModuleRecords(_module);
-    final entities = local.map(ItemEntity.fromRecord).toList();
+    final entities = local.map(ItemEntity.fromRecord).toList()..sort(_sortItems);
 
     if (entities.isNotEmpty) {
       if (await networkMonitorService.hasInternetNow()) {
@@ -43,7 +43,57 @@ class ItemsRepository extends OfflineFirstRepository {
     );
     final records = _extractList(response.data?['data']);
     await mergeRemoteRecords(module: _module, records: records);
-    return records.map(ItemEntity.fromRecord).toList();
+    return records.map(ItemEntity.fromRecord).toList()..sort(_sortItems);
+  }
+
+  Future<Map<String, dynamic>> getItemHistory(
+    int itemId, {
+    Map<String, dynamic>? queryParameters,
+  }) async {
+    final endpoint = ApiEndpoints.itemHistory(itemId);
+    final cacheKey = buildCacheKey(endpoint, queryParameters);
+    final cached = await getCachedObject(cacheKey) ?? <String, dynamic>{};
+
+    if (cached.isNotEmpty) {
+      if (await networkMonitorService.hasInternetNow()) {
+        unawaited(
+          refreshItemHistory(
+            itemId,
+            queryParameters: queryParameters,
+          ),
+        );
+      }
+      return cached;
+    }
+
+    if (await networkMonitorService.hasInternetNow()) {
+      return refreshItemHistory(
+        itemId,
+        queryParameters: queryParameters,
+      );
+    }
+
+    return cached;
+  }
+
+  Future<Map<String, dynamic>> refreshItemHistory(
+    int itemId, {
+    Map<String, dynamic>? queryParameters,
+  }) async {
+    final endpoint = ApiEndpoints.itemHistory(itemId);
+    final response = await apiClient.get<Map<String, dynamic>>(
+      endpoint,
+      queryParameters: queryParameters,
+    );
+    final body = response.data ?? <String, dynamic>{};
+    await saveCachedObject(
+      cacheKey: buildCacheKey(endpoint, queryParameters),
+      module: 'reports',
+      endpoint: endpoint,
+      response: body,
+      queryParameters: queryParameters,
+    );
+    return body;
   }
 
   Future<List<ItemEntity>> getDropdownItems() {
@@ -104,6 +154,7 @@ class ItemsRepository extends OfflineFirstRepository {
       payload: const <String, dynamic>{},
       recordLocalId: localId,
     );
+    await invalidateRelatedCaches(module: _module);
     if (await networkMonitorService.hasInternetNow()) {
       unawaited(syncService.syncPendingMutations(showSuccessMessage: false));
     }
@@ -117,5 +168,13 @@ class ItemsRepository extends OfflineFirstRepository {
           .toList();
     }
     return <Map<String, dynamic>>[];
+  }
+
+  int _sortItems(ItemEntity a, ItemEntity b) {
+    final codeCompare = a.itemCode.toLowerCase().compareTo(b.itemCode.toLowerCase());
+    if (codeCompare != 0) {
+      return codeCompare;
+    }
+    return a.name.toLowerCase().compareTo(b.name.toLowerCase());
   }
 }

@@ -18,7 +18,7 @@ class PartiesRepository extends OfflineFirstRepository {
     Map<String, dynamic>? queryParameters,
   }) async {
     final local = await getLocalModuleRecords(_module);
-    final entities = local.map(PartyEntity.fromRecord).toList();
+    final entities = local.map(PartyEntity.fromRecord).toList()..sort(_sortParties);
 
     if (entities.isNotEmpty) {
       if (await networkMonitorService.hasInternetNow()) {
@@ -43,7 +43,57 @@ class PartiesRepository extends OfflineFirstRepository {
     );
     final records = _extractList(response.data?['data']);
     await mergeRemoteRecords(module: _module, records: records);
-    return records.map(PartyEntity.fromRecord).toList();
+    return records.map(PartyEntity.fromRecord).toList()..sort(_sortParties);
+  }
+
+  Future<Map<String, dynamic>> getPartyHistory(
+    int partyId, {
+    Map<String, dynamic>? queryParameters,
+  }) async {
+    final endpoint = ApiEndpoints.partyHistory(partyId);
+    final cacheKey = buildCacheKey(endpoint, queryParameters);
+    final cached = await getCachedObject(cacheKey) ?? <String, dynamic>{};
+
+    if (cached.isNotEmpty) {
+      if (await networkMonitorService.hasInternetNow()) {
+        unawaited(
+          refreshPartyHistory(
+            partyId,
+            queryParameters: queryParameters,
+          ),
+        );
+      }
+      return cached;
+    }
+
+    if (await networkMonitorService.hasInternetNow()) {
+      return refreshPartyHistory(
+        partyId,
+        queryParameters: queryParameters,
+      );
+    }
+
+    return cached;
+  }
+
+  Future<Map<String, dynamic>> refreshPartyHistory(
+    int partyId, {
+    Map<String, dynamic>? queryParameters,
+  }) async {
+    final endpoint = ApiEndpoints.partyHistory(partyId);
+    final response = await apiClient.get<Map<String, dynamic>>(
+      endpoint,
+      queryParameters: queryParameters,
+    );
+    final body = response.data ?? <String, dynamic>{};
+    await saveCachedObject(
+      cacheKey: buildCacheKey(endpoint, queryParameters),
+      module: 'reports',
+      endpoint: endpoint,
+      response: body,
+      queryParameters: queryParameters,
+    );
+    return body;
   }
 
   Future<String> create(PartyEntity entity) {
@@ -113,6 +163,7 @@ class PartiesRepository extends OfflineFirstRepository {
       payload: remotePayload,
       recordLocalId: localId,
     );
+    await invalidateRelatedCaches(module: _module);
     if (await networkMonitorService.hasInternetNow()) {
       unawaited(syncService.syncPendingMutations(showSuccessMessage: false));
     }
@@ -126,5 +177,13 @@ class PartiesRepository extends OfflineFirstRepository {
           .toList();
     }
     return <Map<String, dynamic>>[];
+  }
+
+  int _sortParties(PartyEntity a, PartyEntity b) {
+    final codeCompare = a.partyCode.toLowerCase().compareTo(b.partyCode.toLowerCase());
+    if (codeCompare != 0) {
+      return codeCompare;
+    }
+    return a.name.toLowerCase().compareTo(b.name.toLowerCase());
   }
 }

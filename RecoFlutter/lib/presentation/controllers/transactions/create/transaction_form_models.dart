@@ -2,6 +2,32 @@ import 'package:flutter/material.dart';
 
 import '../../../../data/models/masters/master_entities.dart';
 
+enum InvoiceCatalogOptionKind { item, service }
+
+class InvoiceCatalogOption {
+  const InvoiceCatalogOption.item(this.item)
+    : kind = InvoiceCatalogOptionKind.item,
+      account = null;
+
+  const InvoiceCatalogOption.service(this.account)
+    : kind = InvoiceCatalogOptionKind.service,
+      item = null;
+
+  final InvoiceCatalogOptionKind kind;
+  final ItemEntity? item;
+  final LookupOption? account;
+
+  bool get isItem => kind == InvoiceCatalogOptionKind.item;
+  bool get isService => kind == InvoiceCatalogOptionKind.service;
+
+  String get label {
+    if (isItem) {
+      return '[Item] ${item?.name ?? ''}';
+    }
+    return '[Service] ${account?.label ?? ''}';
+  }
+}
+
 class PaymentVoucherRowModel {
   PaymentVoucherRowModel({
     LookupOption? account,
@@ -52,13 +78,17 @@ class AdjustmentVoucherRowModel {
 
 class InvoiceItemRowModel {
   InvoiceItemRowModel({
+    InvoiceCatalogOption? catalogOption,
     ItemEntity? item,
+    LookupOption? serviceAccount,
     TaxRateEntity? taxRate,
     String description = '',
     String quantity = '1',
     String unitPrice = '',
     String discountPercentage = '0',
   }) : item = ValueNotifier<ItemEntity?>(item),
+       serviceAccount = ValueNotifier<LookupOption?>(serviceAccount),
+       catalogOption = ValueNotifier<InvoiceCatalogOption?>(catalogOption),
        taxRate = ValueNotifier<TaxRateEntity?>(taxRate),
        descriptionController = TextEditingController(text: description),
        quantityController = TextEditingController(text: quantity),
@@ -66,11 +96,17 @@ class InvoiceItemRowModel {
        discountController = TextEditingController(text: discountPercentage);
 
   final ValueNotifier<ItemEntity?> item;
+  final ValueNotifier<LookupOption?> serviceAccount;
+  final ValueNotifier<InvoiceCatalogOption?> catalogOption;
   final ValueNotifier<TaxRateEntity?> taxRate;
   final TextEditingController descriptionController;
   final TextEditingController quantityController;
   final TextEditingController unitPriceController;
   final TextEditingController discountController;
+
+  bool get isServiceSelection => catalogOption.value?.isService == true;
+  bool get isItemSelection =>
+      catalogOption.value == null || catalogOption.value?.isItem == true;
 
   double get quantity => double.tryParse(quantityController.text.trim()) ?? 0;
   double get unitPrice => double.tryParse(unitPriceController.text.trim()) ?? 0;
@@ -79,14 +115,17 @@ class InvoiceItemRowModel {
 
   double get taxPercentage => taxRate.value?.taxRate ?? 0;
 
-  double get baseAmount => quantity * unitPrice;
-  double get discountAmount => baseAmount * (discountPercentage / 100);
+  double get baseAmount => (isServiceSelection ? 1 : quantity) * unitPrice;
+  double get discountAmount =>
+      isServiceSelection ? 0 : baseAmount * (discountPercentage / 100);
   double get taxableAmount => baseAmount - discountAmount;
   double get taxAmount => taxableAmount * (taxPercentage / 100);
   double get totalAmount => taxableAmount + taxAmount;
 
   void dispose() {
     item.dispose();
+    serviceAccount.dispose();
+    catalogOption.dispose();
     taxRate.dispose();
     descriptionController.dispose();
     quantityController.dispose();
@@ -125,4 +164,3 @@ class InvoiceServiceRowModel {
 }
 
 String formatAmount(double value) => value.toStringAsFixed(2);
-

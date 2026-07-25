@@ -37,6 +37,7 @@ class _PartyFormSheetState extends State<PartyFormSheet> {
   String openingBalanceType = 'debit';
   int? selectedStateId;
   int? selectedCityId;
+  bool _isActive = true;
 
   @override
   void initState() {
@@ -59,6 +60,7 @@ class _PartyFormSheetState extends State<PartyFormSheet> {
     openingBalanceType = entity?.openingBalanceType ?? 'debit';
     selectedStateId = entity?.stateId;
     selectedCityId = entity?.cityId;
+    _isActive = entity?.isActive ?? true;
     if (selectedStateId != null) {
       lookupController.loadCitiesForState(selectedStateId);
     }
@@ -110,17 +112,19 @@ class _PartyFormSheetState extends State<PartyFormSheet> {
                 validator: _required,
               ),
               const SizedBox(height: 12),
-              CustomDropdown<String>(
-                label: 'Party Type',
-                items: const <String>['debtor', 'creditor'],
-                value: partyType,
-                itemLabelBuilder: (item) => item.toUpperCase(),
-                onChanged: (value) =>
-                    setState(() => partyType = value ?? partyType),
-              ),
-              const SizedBox(height: 12),
               Row(
                 children: <Widget>[
+                  Expanded(
+                    child: CustomDropdown<String>(
+                      label: 'Party Type',
+                      items: const <String>['debtor', 'creditor'],
+                      value: partyType,
+                      itemLabelBuilder: _capitalize,
+                      onChanged: (value) =>
+                          setState(() => partyType = value ?? partyType),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
                   Expanded(
                     child: CustomTextField(
                       controller: _mobileController,
@@ -128,7 +132,11 @@ class _PartyFormSheetState extends State<PartyFormSheet> {
                       hintText: 'Mobile',
                     ),
                   ),
-                  const SizedBox(width: 12),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Row(
+                children: <Widget>[
                   Expanded(
                     child: CustomTextField(
                       controller: _emailController,
@@ -136,7 +144,21 @@ class _PartyFormSheetState extends State<PartyFormSheet> {
                       hintText: 'Email',
                     ),
                   ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: CustomTextField(
+                      controller: _gstController,
+                      label: 'GSTIN',
+                      hintText: 'GSTIN',
+                    ),
+                  ),
                 ],
+              ),
+              const SizedBox(height: 12),
+              CustomTextField(
+                controller: _panController,
+                label: 'PAN Number',
+                hintText: 'PAN',
               ),
               const SizedBox(height: 12),
               CustomTextField(
@@ -153,9 +175,11 @@ class _PartyFormSheetState extends State<PartyFormSheet> {
                       .map((item) => item.id)
                       .toList(),
                   value: selectedStateId,
+                  requiredField: true,
                   itemLabelBuilder: (id) => lookupController.states
                       .firstWhere((item) => item.id == id)
                       .label,
+                  validator: _requiredDropdown,
                   onChanged: (value) async {
                     setState(() {
                       selectedStateId = value;
@@ -173,9 +197,11 @@ class _PartyFormSheetState extends State<PartyFormSheet> {
                       .map((item) => item.id)
                       .toList(),
                   value: selectedCityId,
+                  requiredField: true,
                   itemLabelBuilder: (id) => lookupController.cities
                       .firstWhere((item) => item.id == id)
                       .label,
+                  validator: _requiredDropdown,
                   onChanged: (value) => setState(() => selectedCityId = value),
                 ),
               ),
@@ -193,26 +219,6 @@ class _PartyFormSheetState extends State<PartyFormSheet> {
                   const SizedBox(width: 12),
                   Expanded(
                     child: CustomTextField(
-                      controller: _gstController,
-                      label: 'GSTIN',
-                      hintText: 'GSTIN',
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              Row(
-                children: <Widget>[
-                  Expanded(
-                    child: CustomTextField(
-                      controller: _panController,
-                      label: 'PAN Number',
-                      hintText: 'PAN',
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: CustomTextField(
                       controller: _amountController,
                       label: 'Opening Balance',
                       hintText: '0',
@@ -225,10 +231,12 @@ class _PartyFormSheetState extends State<PartyFormSheet> {
                 children: <Widget>[
                   Expanded(
                     child: CustomDropdown<String>(
-                      label: 'Opening Balance Type',
+                      label: 'Balance Type',
                       items: const <String>['debit', 'credit'],
                       value: openingBalanceType,
-                      itemLabelBuilder: (item) => item,
+                      requiredField: true,
+                      itemLabelBuilder: _capitalize,
+                      validator: _requiredDropdown,
                       onChanged: (value) => setState(
                         () => openingBalanceType = value ?? openingBalanceType,
                       ),
@@ -252,7 +260,16 @@ class _PartyFormSheetState extends State<PartyFormSheet> {
                 label: 'Remarks',
                 hintText: 'Remarks',
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: 12),
+              SwitchListTile(
+                contentPadding: EdgeInsets.zero,
+                title: const Text('Active Party'),
+                subtitle: const Text('Inactive parties won\'t appear in dropdowns'),
+                value: _isActive,
+                onChanged: (v) => setState(() => _isActive = v),
+                dense: true,
+              ),
+              const SizedBox(height: 12),
               CommonButton(
                 text: 'Save',
                 isLoading: isSaving,
@@ -275,6 +292,11 @@ class _PartyFormSheetState extends State<PartyFormSheet> {
     if (picked != null) {
       _dateController.text = picked.toIso8601String().split('T').first;
     }
+  }
+
+  String _capitalize(String value) {
+    if (value.isEmpty) return value;
+    return '${value[0].toUpperCase()}${value.substring(1)}';
   }
 
   Future<void> _submit() async {
@@ -310,7 +332,7 @@ class _PartyFormSheetState extends State<PartyFormSheet> {
           openingBalanceType: openingBalanceType,
           openingDate: _dateController.text.trim(),
           remarks: _remarksController.text.trim(),
-          isActive: widget.entity?.isActive ?? true,
+          isActive: _isActive,
         ),
       );
       if (mounted) Navigator.of(context).pop();
@@ -321,4 +343,7 @@ class _PartyFormSheetState extends State<PartyFormSheet> {
 
   String? _required(String? value) =>
       (value ?? '').trim().isEmpty ? 'Required field' : null;
+
+  String? _requiredDropdown<T>(T? value) =>
+      value == null ? 'This field is required' : null;
 }

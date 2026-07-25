@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/services.dart';
@@ -29,6 +30,18 @@ abstract class BaseReportController extends GetxController {
   String get endpoint;
   Map<String, dynamic> get queryParameters;
 
+  String formatCurrency(dynamic value) {
+    final amount = double.tryParse(value?.toString() ?? '0') ?? 0;
+    return '₹${_formatAmount(amount)}';
+  }
+
+  String _formatAmount(double amount) {
+    if (amount == amount.roundToDouble()) {
+      return amount.toStringAsFixed(0);
+    }
+    return amount.toStringAsFixed(2);
+  }
+
   Future<void> loadReport() async {
     isLoading.value = true;
     try {
@@ -57,33 +70,47 @@ abstract class BaseReportController extends GetxController {
     required String exportEndpoint,
     Map<String, dynamic>? queryParameters,
   }) async {
-    final response = await repository.exportPdf(
-      exportEndpoint,
-      queryParameters: queryParameters,
-    );
-    final data = response['data'];
-    if (data is Map<String, dynamic>) {
-      final url = _resolveExportUrl(
-        data['download_url']?.toString(),
-        data['path']?.toString(),
+    try {
+      final response = await repository.exportPdf(
+        exportEndpoint,
+        queryParameters: queryParameters,
       );
-      if (url != null && url.isNotEmpty) {
-        final uri = Uri.tryParse(url);
-        if (uri != null) {
-          final launched = await launchUrl(
-            uri,
-            mode: LaunchMode.inAppBrowserView,
-          );
-          if (launched) {
-            return;
-          }
+      final data = response['data'];
+      if (data is Map<String, dynamic>) {
+        final base64 = data['content_base64']?.toString();
+        if (base64 != null && base64.isNotEmpty) {
+          final bytes = base64Decode(base64);
+          final directory = await getTemporaryDirectory();
+          final reportName = exportEndpoint
+              .split('/')
+              .last
+              .replaceAll('-', '_');
+          final fileName =
+              '${reportName}_${DateTime.now().millisecondsSinceEpoch}.pdf';
+          final file = File(p.join(directory.path, fileName));
+          await file.writeAsBytes(bytes);
+          AppSnackbar.success('PDF exported successfully.');
+          await _openOrShare(file.path, 'Report PDF');
+          return;
         }
-        await Clipboard.setData(ClipboardData(text: url));
-        AppSnackbar.success('PDF link copied successfully.');
-        return;
+
+        final url = _resolveExportUrl(
+          data['download_url']?.toString(),
+          data['path']?.toString(),
+        );
+        if (url != null && url.isNotEmpty) {
+          final uri = Uri.tryParse(url);
+          if (uri != null) {
+            final launched = await launchUrl(uri, mode: LaunchMode.externalApplication);
+            if (launched) return;
+          }
+          await Clipboard.setData(ClipboardData(text: url));
+          AppSnackbar.success('PDF link copied.');
+          return;
+        }
       }
-    }
-    AppSnackbar.error('Unable to generate PDF link.');
+    } catch (_) {}
+    AppSnackbar.error('Unable to generate PDF.');
   }
 
   Future<void> exportExcel({required String reportName}) async {
@@ -100,9 +127,19 @@ abstract class BaseReportController extends GetxController {
     final file = File(p.join(directory.path, fileName));
     await file.writeAsString(csv);
 
+    await _openOrShare(file.path, reportName);
+  }
+
+  Future<void> _openOrShare(String filePath, String reportName) async {
+    final opened = await launchUrl(
+      Uri.file(filePath),
+      mode: LaunchMode.externalApplication,
+    );
+    if (opened) return;
+
     await SharePlus.instance.share(
       ShareParams(
-        files: <XFile>[XFile(file.path)],
+        files: <XFile>[XFile(filePath)],
         subject: '$reportName Export',
         text: '$reportName exported successfully.',
       ),
@@ -208,11 +245,6 @@ abstract class BaseReportController extends GetxController {
       return '${AppConfig.origin}$path';
     }
     return null;
-  }
-
-  String formatCurrency(dynamic value) {
-    final amount = double.tryParse(value?.toString() ?? '') ?? 0;
-    return 'Rs ${amount.toStringAsFixed(2)}';
   }
 
   String formatDate(String value) =>

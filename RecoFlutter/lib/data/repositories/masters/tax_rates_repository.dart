@@ -16,7 +16,8 @@ class TaxRatesRepository extends OfflineFirstRepository {
 
   Future<List<TaxRateEntity>> getTaxRates() async {
     final local = await getLocalModuleRecords(_module);
-    final entities = local.map(TaxRateEntity.fromRecord).toList();
+    final entities = local.map(TaxRateEntity.fromRecord).toList()
+      ..sort(_sortTaxRates);
 
     if (entities.isNotEmpty) {
       if (await networkMonitorService.hasInternetNow()) {
@@ -38,7 +39,8 @@ class TaxRatesRepository extends OfflineFirstRepository {
     );
     final records = _extractList(response.data?['data']);
     await mergeRemoteRecords(module: _module, records: records);
-    return records.map(TaxRateEntity.fromRecord).toList();
+    return records.map(TaxRateEntity.fromRecord).toList()
+      ..sort(_sortTaxRates);
   }
 
   Future<String> create(TaxRateEntity entity) {
@@ -124,5 +126,13 @@ class TaxRatesRepository extends OfflineFirstRepository {
           .toList();
     }
     return <Map<String, dynamic>>[];
+  }
+
+  int _sortTaxRates(TaxRateEntity a, TaxRateEntity b) {
+    final codeCompare = a.taxCode.toLowerCase().compareTo(b.taxCode.toLowerCase());
+    if (codeCompare != 0) {
+      return codeCompare;
+    }
+    return a.taxName.toLowerCase().compareTo(b.taxName.toLowerCase());
   }
 }

@@ -33,15 +33,17 @@ class MastersBinding extends Bindings {
       fenix: true,
     );
     Get.lazyPut<CategoriesController>(
-      () => CategoriesController(Get.find(), Get.find()),
+      () => CategoriesController(Get.find(), Get.find(), Get.find(), Get.find()),
       fenix: true,
     );
     Get.lazyPut<TaxRatesController>(
-      () => TaxRatesController(Get.find(), Get.find()),
+      () => TaxRatesController(Get.find(), Get.find(), Get.find(), Get.find()),
       fenix: true,
     );
     Get.lazyPut<ItemsController>(
       () => ItemsController(
+        Get.find(),
+        Get.find(),
         Get.find(),
         Get.find(),
         Get.find(),

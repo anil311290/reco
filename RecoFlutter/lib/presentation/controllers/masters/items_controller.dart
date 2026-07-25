@@ -3,6 +3,8 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
+import '../../../core/services/network_monitor_service.dart';
+import '../../../core/services/sync_service.dart';
 import '../../../core/utils/app_snackbar.dart';
 import '../../../data/models/masters/master_entities.dart';
 import '../../../data/repositories/accounts/accounts_repository.dart';
@@ -21,6 +23,8 @@ class ItemsController extends GetxController with MasterExportMixin {
     this._accountsRepository,
     this._lookupController,
     this._exportRepository,
+    this._syncService,
+    this._networkMonitorService,
   );
 
   final ItemsRepository _repository;
@@ -29,6 +33,8 @@ class ItemsController extends GetxController with MasterExportMixin {
   final AccountsRepository _accountsRepository;
   final MastersLookupController _lookupController;
   final MastersExportRepository _exportRepository;
+  final SyncService _syncService;
+  final NetworkMonitorService _networkMonitorService;
 
   final searchController = TextEditingController();
   final searchQuery = ''.obs;
@@ -116,10 +122,13 @@ class ItemsController extends GetxController with MasterExportMixin {
   Future<void> save(ItemEntity entity) async {
     if (entity.id == null) {
       await _repository.create(entity);
-      AppSnackbar.success('Item saved locally. Sync queue updated.');
+      AppSnackbar.success('Item saved. Syncing to server...');
     } else {
       await _repository.update(entity);
-      AppSnackbar.success('Item update queued successfully.');
+      AppSnackbar.success('Item update queued. Syncing to server...');
+    }
+    if (_networkMonitorService.isOnline.value) {
+      await _syncService.syncPendingMutations(showSuccessMessage: true);
     }
     await refreshData();
   }

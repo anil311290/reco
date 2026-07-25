@@ -16,7 +16,6 @@ import 'create/payment_voucher_screen.dart';
 import 'create/purchase_invoice_screen.dart';
 import 'create/receipt_voucher_screen.dart';
 import 'create/sales_invoice_screen.dart';
-import 'create/service_sales_invoice_screen.dart';
 import 'widgets/transactions_ui_components.dart';
 
 class TransactionOptionsScreen extends GetView<TransactionOptionsController> {
@@ -144,29 +143,6 @@ class TransactionOptionsScreen extends GetView<TransactionOptionsController> {
               );
               Get.put(
                 SalesInvoiceFormController(
-                  Get.find<TransactionsRepository>(),
-                  lookup,
-                ),
-              );
-            },
-          ),
-        );
-        break;
-      case 'service_sales':
-        Get.to(
-          () => const ServiceSalesInvoiceScreen(),
-          binding: BindingsBuilder(
-            () {
-              final lookup = Get.put(
-                TransactionFormLookupController(
-                  Get.find<PartiesRepository>(),
-                  Get.find<AccountsRepository>(),
-                  Get.find<ItemsRepository>(),
-                  Get.find<TaxRatesRepository>(),
-                ),
-              );
-              Get.put(
-                ServiceSalesInvoiceFormController(
                   Get.find<TransactionsRepository>(),
                   lookup,
                 ),

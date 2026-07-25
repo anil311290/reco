@@ -33,6 +33,9 @@ class _ItemFormSheetState extends State<ItemFormSheet> {
   int? taxRateId;
   int? incomeAccountId;
   int? expenseAccountId;
+  String _unit = 'nos';
+  bool _isStockable = true;
+  bool _isActive = true;
 
   @override
   void initState() {
@@ -45,7 +48,7 @@ class _ItemFormSheetState extends State<ItemFormSheet> {
     _hsnController.text = entity?.hsnSacCode ?? '';
     _purchaseController.text = '${entity?.purchasePrice ?? 0}';
     _sellingController.text = '${entity?.sellingPrice ?? 0}';
-    _unitController.text = entity?.unit ?? '';
+    _unitController.text = entity?.unit ?? 'nos';
     _descriptionController.text = entity?.description ?? '';
     _barcodeController.text = entity?.barcode ?? '';
     _stockController.text = '${entity?.openingStock ?? 0}';
@@ -54,6 +57,9 @@ class _ItemFormSheetState extends State<ItemFormSheet> {
     taxRateId = entity?.taxRateId;
     incomeAccountId = entity?.incomeAccountId;
     expenseAccountId = entity?.expenseAccountId;
+    _unit = entity?.unit ?? 'nos';
+    _isStockable = entity?.isStockable ?? true;
+    _isActive = entity?.isActive ?? true;
   }
 
   @override
@@ -111,7 +117,7 @@ class _ItemFormSheetState extends State<ItemFormSheet> {
                 label: 'Item Type',
                 items: const ['goods', 'service'],
                 value: type,
-                itemLabelBuilder: (item) => item,
+                itemLabelBuilder: _capitalize,
                 onChanged: (value) => setState(() => type = value ?? type),
               ),
               const SizedBox(height: 12),
@@ -193,10 +199,12 @@ class _ItemFormSheetState extends State<ItemFormSheet> {
               Row(
                 children: <Widget>[
                   Expanded(
-                    child: CustomTextField(
-                      controller: _unitController,
+                    child: CustomDropdown<String>(
                       label: 'Unit',
-                      hintText: 'PCS',
+                      items: const ['nos', 'kg', 'ltr', 'mtr', 'pcs', 'box', 'set'],
+                      value: _unit,
+                      itemLabelBuilder: _capitalize,
+                      onChanged: (v) => setState(() => _unit = v ?? _unit),
                     ),
                   ),
                   const SizedBox(width: 12),
@@ -221,7 +229,24 @@ class _ItemFormSheetState extends State<ItemFormSheet> {
                 label: 'Description',
                 hintText: 'Description',
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: 12),
+              SwitchListTile(
+                contentPadding: EdgeInsets.zero,
+                title: const Text('Stockable Item'),
+                subtitle: const Text('Enable stock tracking for this item'),
+                value: _isStockable,
+                onChanged: (v) => setState(() => _isStockable = v),
+                dense: true,
+              ),
+              SwitchListTile(
+                contentPadding: EdgeInsets.zero,
+                title: const Text('Active Item'),
+                subtitle: const Text('Inactive items won\'t appear in dropdowns'),
+                value: _isActive,
+                onChanged: (v) => setState(() => _isActive = v),
+                dense: true,
+              ),
+              const SizedBox(height: 8),
               CommonButton(
                 text: 'Save',
                 isLoading: isSaving,
@@ -232,6 +257,11 @@ class _ItemFormSheetState extends State<ItemFormSheet> {
         ),
       ),
     );
+  }
+
+  String _capitalize(String value) {
+    if (value.isEmpty) return value;
+    return '${value[0].toUpperCase()}${value.substring(1)}';
   }
 
   Future<void> _submit() async {
@@ -252,11 +282,12 @@ class _ItemFormSheetState extends State<ItemFormSheet> {
           expenseAccountId: expenseAccountId,
           purchasePrice: double.tryParse(_purchaseController.text.trim()) ?? 0,
           sellingPrice: double.tryParse(_sellingController.text.trim()) ?? 0,
-          unit: _unitController.text.trim(),
+          unit: _unit,
           description: _descriptionController.text.trim(),
           barcode: _barcodeController.text.trim(),
           openingStock: double.tryParse(_stockController.text.trim()) ?? 0,
-          isStockable: widget.entity?.isStockable ?? true,
+          isStockable: _isStockable,
+          isActive: _isActive,
         ),
       );
       if (mounted) Navigator.of(context).pop();

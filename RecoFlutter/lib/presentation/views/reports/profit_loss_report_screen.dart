@@ -78,42 +78,53 @@ class ProfitLossReportScreen extends GetView<ProfitLossReportController> {
             ),
             const SizedBox(height: 12),
             if (report is Map<String, dynamic>) ...<Widget>[
-              GridView.count(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                crossAxisCount: 2,
-                mainAxisSpacing: 10,
-                crossAxisSpacing: 10,
-                childAspectRatio: 1.35,
+              Column(
                 children: <Widget>[
-                  ReportStatCard(
-                    label: 'Total Income',
-                    value: controller.formatCurrency(
-                      income is Map<String, dynamic> ? income['total'] : 0,
-                    ),
-                    note: 'Revenue recorded',
-                    color: const Color(0xFF16A34A),
-                    icon: FontAwesomeIcons.sackDollar,
+                  Row(
+                    children: <Widget>[
+                      Expanded(
+                        child: ReportStatCard(
+                          label: 'Total Income',
+                          value: controller.formatCurrency(
+                            income is Map<String, dynamic> ? income['total'] : 0,
+                          ),
+                          note: 'Revenue recorded',
+                          color: const Color(0xFF16A34A),
+                          icon: FontAwesomeIcons.sackDollar,
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: ReportStatCard(
+                          label: 'Total Expenses',
+                          value: controller.formatCurrency(
+                            expense is Map<String, dynamic> ? expense['total'] : 0,
+                          ),
+                          note: 'Expense heads in period',
+                          color: const Color(0xFFEF4444),
+                          icon: FontAwesomeIcons.moneyBillTransfer,
+                        ),
+                      ),
+                    ],
                   ),
-                  ReportStatCard(
-                    label: 'Total Expenses',
-                    value: controller.formatCurrency(
-                      expense is Map<String, dynamic> ? expense['total'] : 0,
-                    ),
-                    note: 'Expense heads in period',
-                    color: const Color(0xFFEF4444),
-                    icon: FontAwesomeIcons.moneyBillTransfer,
-                  ),
-                  ReportStatCard(
-                    label: 'Net Result',
-                    value: '${(report['is_profit'] == true) ? '+' : '-'}${controller.formatCurrency((report['net_profit'] as num?)?.abs() ?? 0)}',
-                    note: (report['is_profit'] == true) ? 'Profit' : 'Loss',
-                    color: (report['is_profit'] == true)
-                        ? const Color(0xFF2563EB)
-                        : const Color(0xFFF59E0B),
-                    icon: (report['is_profit'] == true)
-                        ? FontAwesomeIcons.chartSimple
-                        : FontAwesomeIcons.chartColumn,
+                  const SizedBox(height: 10),
+                  Row(
+                    children: <Widget>[
+                      Expanded(
+                        child: ReportStatCard(
+                          label: 'Net Result',
+                          value: '${(report['is_profit'] == true) ? '+' : '-'}${controller.formatCurrency((report['net_profit'] as num?)?.abs() ?? 0)}',
+                          note: (report['is_profit'] == true) ? 'Profit' : 'Loss',
+                          color: (report['is_profit'] == true)
+                              ? const Color(0xFF2563EB)
+                              : const Color(0xFFF59E0B),
+                          icon: (report['is_profit'] == true)
+                              ? FontAwesomeIcons.chartSimple
+                              : FontAwesomeIcons.chartColumn,
+                        ),
+                      ),
+                      const Spacer(),
+                    ],
                   ),
                 ],
               ),

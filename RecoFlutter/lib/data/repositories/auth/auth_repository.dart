@@ -39,4 +39,30 @@ class AuthRepository {
     return (response.data?['data'] ?? <String, dynamic>{})
         as Map<String, dynamic>;
   }
+
+  Future<String> forgotPassword(String email) async {
+    final response = await _apiClient.post<Map<String, dynamic>>(
+      ApiEndpoints.forgotPassword,
+      data: <String, dynamic>{'email': email},
+    );
+    return (response.data?['message'] ?? 'Password reset link sent.').toString();
+  }
+
+  Future<String> resetPassword({
+    required String email,
+    required String token,
+    required String password,
+    required String passwordConfirmation,
+  }) async {
+    final response = await _apiClient.post<Map<String, dynamic>>(
+      ApiEndpoints.resetPassword,
+      data: <String, dynamic>{
+        'email': email,
+        'token': token,
+        'password': password,
+        'password_confirmation': passwordConfirmation,
+      },
+    );
+    return (response.data?['message'] ?? 'Password reset successfully.').toString();
+  }
 }

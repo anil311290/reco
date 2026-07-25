@@ -20,6 +20,7 @@ class _CategoryFormSheetState extends State<CategoryFormSheet> {
   final _sortOrderController = TextEditingController(text: '0');
   late final CategoriesController controller;
   bool isSaving = false;
+  bool _isActive = true;
 
   @override
   void initState() {
@@ -28,6 +29,7 @@ class _CategoryFormSheetState extends State<CategoryFormSheet> {
     _nameController.text = widget.entity?.name ?? '';
     _descriptionController.text = widget.entity?.description ?? '';
     _sortOrderController.text = '${widget.entity?.sortOrder ?? 0}';
+    _isActive = widget.entity?.isActive ?? true;
   }
 
   @override
@@ -73,6 +75,14 @@ class _CategoryFormSheetState extends State<CategoryFormSheet> {
                 label: 'Sort Order',
                 hintText: '0',
               ),
+              const SizedBox(height: 12),
+              CustomDropdown<String>(
+                label: 'Status',
+                items: const ['Active', 'Inactive'],
+                value: _isActive ? 'Active' : 'Inactive',
+                itemLabelBuilder: (v) => v,
+                onChanged: (v) => setState(() => _isActive = v == 'Active'),
+              ),
               const SizedBox(height: 20),
               CommonButton(
                 text: 'Save',
@@ -97,7 +107,7 @@ class _CategoryFormSheetState extends State<CategoryFormSheet> {
           name: _nameController.text.trim(),
           description: _descriptionController.text.trim(),
           sortOrder: int.tryParse(_sortOrderController.text.trim()) ?? 0,
-          isActive: widget.entity?.isActive ?? true,
+          isActive: _isActive,
         ),
       );
       if (mounted) Navigator.of(context).pop();

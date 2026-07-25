@@ -36,16 +36,10 @@ class TransactionOptionsController extends GetxController {
           tag: 'adjustment',
         ),
         TransactionOptionItem(
-          title: 'Item Sale Invoice',
-          subtitle: 'Goods invoice for customers',
+          title: 'Sales Invoice',
+          subtitle: 'Item and service invoice for customers',
           icon: Icons.request_quote_outlined,
           tag: 'sales',
-        ),
-        TransactionOptionItem(
-          title: 'Service Sale Invoice',
-          subtitle: 'Service billing invoice',
-          icon: Icons.design_services_outlined,
-          tag: 'service_sales',
         ),
         TransactionOptionItem(
           title: 'Purchase Invoice',

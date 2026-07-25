@@ -25,6 +25,8 @@ class AuditLogsController extends GetxController {
 
   final searchController = TextEditingController();
 
+  bool get hasMore => currentPage.value < lastPage.value;
+
   @override
   void onInit() {
     super.onInit();
@@ -47,23 +49,37 @@ class AuditLogsController extends GetxController {
 
     try {
       final result = await _repository.getAuditLogs(
-        search: searchController.text.trim(),
-        action: selectedAction.value,
-        module: selectedModule.value,
-        userId: selectedUserId.value,
+        search: searchController.text.trim().isEmpty
+            ? null
+            : searchController.text.trim(),
+        action: selectedAction.value.isEmpty ? null : selectedAction.value,
+        module: selectedModule.value.isEmpty ? null : selectedModule.value,
+        userId: selectedUserId.value.isEmpty ? null : selectedUserId.value,
         page: currentPage.value,
       );
 
-      final records = _extractList(result['logs']);
+      final records =
+          (result['logs'] as List?)
+              ?.whereType<Map>()
+              .map((item) => Map<String, dynamic>.from(item))
+              .toList() ??
+          <Map<String, dynamic>>[];
+
       if (reset) {
         logs.assignAll(records);
       } else {
         logs.addAll(records);
       }
 
-      statistics.assignAll(_extractMap(result['statistics']));
+      statistics.assignAll(
+        (result['statistics'] is Map<String, dynamic>)
+            ? result['statistics'] as Map<String, dynamic>
+            : <String, dynamic>{},
+      );
 
-      final filters = _extractMap(result['filters']);
+      final filters = (result['filters'] is Map<String, dynamic>)
+          ? result['filters'] as Map<String, dynamic>
+          : <String, dynamic>{};
       actionOptions.assignAll(
         (filters['actions'] as List? ?? const <dynamic>[])
             .map((item) => item.toString())
@@ -77,10 +93,16 @@ class AuditLogsController extends GetxController {
             .toList(),
       );
       userOptions.assignAll(
-        _extractList(filters['users']),
+        (filters['users'] as List?)
+                ?.whereType<Map>()
+                .map((item) => Map<String, dynamic>.from(item))
+                .toList() ??
+            <Map<String, dynamic>>[],
       );
 
-      final pagination = _extractMap(result['pagination']);
+      final pagination = (result['pagination'] is Map<String, dynamic>)
+          ? result['pagination'] as Map<String, dynamic>
+          : <String, dynamic>{};
       currentPage.value = int.tryParse(
             pagination['current_page']?.toString() ?? '1',
           ) ??
@@ -99,10 +121,8 @@ class AuditLogsController extends GetxController {
   }
 
   Future<void> loadMore() async {
-    if (isLoadingMore.value || currentPage.value >= lastPage.value) {
-      return;
-    }
-    currentPage.value += 1;
+    if (!hasMore || isLoadingMore.value) return;
+    currentPage.value++;
     await loadLogs(reset: false);
   }
 
@@ -111,31 +131,9 @@ class AuditLogsController extends GetxController {
   }
 
   void clearFilters() {
-    searchController.clear();
     selectedAction.value = '';
     selectedModule.value = '';
     selectedUserId.value = '';
-  }
-
-  bool get hasMore => currentPage.value < lastPage.value;
-
-  List<Map<String, dynamic>> _extractList(dynamic data) {
-    if (data is List) {
-      return data
-          .whereType<Map>()
-          .map((item) => Map<String, dynamic>.from(item))
-          .toList();
-    }
-    return <Map<String, dynamic>>[];
-  }
-
-  Map<String, dynamic> _extractMap(dynamic data) {
-    if (data is Map<String, dynamic>) {
-      return Map<String, dynamic>.from(data);
-    }
-    if (data is Map) {
-      return Map<String, dynamic>.from(data);
-    }
-    return <String, dynamic>{};
+    searchController.clear();
   }
 }

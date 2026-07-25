@@ -95,6 +95,15 @@ class LoginScreen extends GetView<LoginController> {
                 onPressed: controller.login,
               ),
             ),
+            const SizedBox(height: 16),
+            Align(
+              alignment: Alignment.centerRight,
+              child: TextButton.icon(
+                onPressed: controller.openForgotPassword,
+                icon: const Icon(Icons.lock_reset_rounded, size: 18),
+                label: const Text('Forgot Password?'),
+              ),
+            ),
             const SizedBox(height: AppSpacing.lg),
             AuthSwitchPrompt(
               message: 'Don\'t have an account?',

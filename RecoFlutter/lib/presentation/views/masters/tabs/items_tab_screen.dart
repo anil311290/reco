@@ -7,6 +7,7 @@ import '../../../../data/models/masters/master_entities.dart';
 import '../../../controllers/masters/items_controller.dart';
 import '../../../widgets/common/custom_text_field.dart';
 import '../forms/item_form_sheet.dart';
+import '../history/item_history_screen.dart';
 import '../widgets/masters_ui_components.dart';
 
 class ItemsTabScreen extends GetView<ItemsController> {
@@ -47,7 +48,7 @@ class ItemsTabScreen extends GetView<ItemsController> {
                   masterColumn(context, 'Selling Price', size: ColumnSize.M),
                   masterColumn(context, 'Stock', size: ColumnSize.S),
                   masterColumn(context, 'Status', fixedWidth: 120),
-                  masterColumn(context, 'Actions', fixedWidth: 120),
+                  masterColumn(context, 'Actions', fixedWidth: 170),
                 ],
                 rows: List<DataRow>.generate(controller.filteredItems.length, (
                   index,
@@ -66,7 +67,11 @@ class ItemsTabScreen extends GetView<ItemsController> {
                         item.hsnSacCode.isEmpty ? 'NA' : item.hsnSacCode,
                       ),
                       masterTextCell(item.sellingPrice.toStringAsFixed(2)),
-                      masterTextCell(item.currentStock.toStringAsFixed(2)),
+                      masterTextCell(
+                        item.type == 'service' || item.isStockable == false
+                            ? '-'
+                            : item.currentStock.toStringAsFixed(2),
+                      ),
                       DataCell(
                         Center(
                           child: Row(
@@ -91,6 +96,20 @@ class ItemsTabScreen extends GetView<ItemsController> {
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: <Widget>[
+                              MasterActionButton(
+                                icon: Icons.receipt_long_outlined,
+                                tooltip: 'History',
+                                color: const Color(0xFF2563EB),
+                                onTap: item.id == null
+                                    ? null
+                                    : () => Get.to(
+                                          () => ItemHistoryScreen(
+                                            itemId: item.id!,
+                                            seedItem: item,
+                                          ),
+                                        ),
+                              ),
+                              const SizedBox(width: 8),
                               MasterActionButton(
                                 icon: Icons.edit_outlined,
                                 tooltip: 'Edit',

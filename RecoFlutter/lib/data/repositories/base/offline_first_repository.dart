@@ -60,6 +60,30 @@ abstract class OfflineFirstRepository {
     return databaseService.getModuleRecords(module);
   }
 
+  Future<void> invalidateRelatedCaches({required String module}) async {
+    const masterModules = <String>{
+      'accounts',
+      'parties',
+      'items',
+      'item_categories',
+      'tax_rates',
+      'financial_years',
+      'payment_vouchers',
+      'receipt_vouchers',
+      'adjustment_vouchers',
+      'sales_invoices',
+      'purchase_invoices',
+      'vouchers',
+    };
+
+    if (!masterModules.contains(module)) {
+      return;
+    }
+
+    await databaseService.clearCachedResponses(module: 'reports');
+    await databaseService.clearCachedResponses(module: 'dashboard');
+  }
+
   Future<void> mergeRemoteRecords({
     required String module,
     required List<Map<String, dynamic>> records,
@@ -90,6 +114,7 @@ abstract class OfflineFirstRepository {
       payload: payload,
       recordLocalId: localId,
     );
+    await invalidateRelatedCaches(module: module);
 
     if (await networkMonitorService.hasInternetNow()) {
       unawaited(syncService.syncPendingMutations(showSuccessMessage: false));
@@ -120,6 +145,7 @@ abstract class OfflineFirstRepository {
       payload: payload,
       recordLocalId: localId,
     );
+    await invalidateRelatedCaches(module: module);
 
     if (await networkMonitorService.hasInternetNow()) {
       unawaited(syncService.syncPendingMutations(showSuccessMessage: false));
@@ -151,6 +177,7 @@ abstract class OfflineFirstRepository {
       payload: payload,
       recordLocalId: localId,
     );
+    await invalidateRelatedCaches(module: module);
 
     if (await networkMonitorService.hasInternetNow()) {
       unawaited(syncService.syncPendingMutations(showSuccessMessage: false));

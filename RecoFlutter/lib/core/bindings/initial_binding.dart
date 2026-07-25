@@ -15,6 +15,7 @@ import '../../data/repositories/masters/items_repository.dart';
 import '../../data/repositories/masters/locations_repository.dart';
 import '../../data/repositories/masters/parties_repository.dart';
 import '../../data/repositories/masters/tax_rates_repository.dart';
+import '../../data/repositories/masters/financial_years_repository.dart';
 import '../../data/repositories/reports/reports_repository.dart';
 import '../../data/repositories/settings/notifications_repository.dart';
 import '../../data/repositories/settings/audit_logs_repository.dart';
@@ -179,6 +180,15 @@ class InitialBinding extends Bindings {
     );
     Get.lazyPut<SubscriptionsRepository>(
       () => SubscriptionsRepository(Get.find<ApiClient>()),
+      fenix: true,
+    );
+    Get.lazyPut<FinancialYearsRepository>(
+      () => FinancialYearsRepository(
+        Get.find<ApiClient>(),
+        Get.find<AppDatabaseService>(),
+        Get.find<NetworkMonitorService>(),
+        Get.find<SyncService>(),
+      ),
       fenix: true,
     );
   }

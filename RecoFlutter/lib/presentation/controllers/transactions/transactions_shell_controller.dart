@@ -5,7 +5,6 @@ enum TransactionsTab {
   receipts,
   adjustments,
   sales,
-  serviceSales,
   purchases,
 }
 

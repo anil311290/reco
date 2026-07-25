@@ -7,8 +7,10 @@ import '../../../data/models/auth/login_request_model.dart';
 import '../../../data/repositories/auth/auth_repository.dart';
 import '../../bindings/main_binding.dart';
 import '../../bindings/register_binding.dart';
+import '../../views/auth/forgot_password_screen.dart';
 import '../../views/auth/register_screen.dart';
 import '../../views/main/main_screen.dart';
+import 'forgot_password_controller.dart';
 
 class LoginController extends GetxController {
   LoginController(this._authRepository);
@@ -33,6 +35,15 @@ class LoginController extends GetxController {
 
   void openRegister() {
     Get.to(() => const RegisterScreen(), binding: RegisterBinding());
+  }
+
+  void openForgotPassword() {
+    Get.to(
+      () => const ForgotPasswordScreen(),
+      binding: BindingsBuilder(() {
+        Get.put(ForgotPasswordController(Get.find<AuthRepository>()));
+      }),
+    );
   }
 
   Future<void> login() async {

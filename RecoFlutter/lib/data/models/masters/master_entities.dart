@@ -397,8 +397,65 @@ class ItemEntity {
       'barcode': barcode.trim().isEmpty ? null : barcode.trim(),
       'opening_stock': openingStock,
       'is_stockable': isStockable,
+      'is_active': isActive,
       if (id != null) 'id': id,
-      if (isActive) 'is_active': isActive,
+    };
+  }
+}
+
+class FinancialYearEntity {
+  const FinancialYearEntity({
+    this.id,
+    this.localId,
+    this.syncStatus = 'synced',
+    this.isDirty = false,
+    this.name = '',
+    this.startDate = '',
+    this.endDate = '',
+    this.isCurrent = false,
+    this.isClosed = false,
+    this.closedAt,
+  });
+
+  final int? id;
+  final String? localId;
+  final String syncStatus;
+  final bool isDirty;
+  final String name;
+  final String startDate;
+  final String endDate;
+  final bool isCurrent;
+  final bool isClosed;
+  final String? closedAt;
+
+  String get statusLabel {
+    if (isClosed) return 'Closed';
+    if (isCurrent) return 'Current';
+    return 'Open';
+  }
+
+  factory FinancialYearEntity.fromRecord(Map<String, dynamic> record) {
+    final payload = _recordPayload(record);
+    return FinancialYearEntity(
+      id: _tryParseInt(payload['id']),
+      localId: record['local_id']?.toString(),
+      syncStatus: record['sync_status']?.toString() ?? 'synced',
+      isDirty: record['is_dirty'] == true,
+      name: (payload['name'] ?? '').toString(),
+      startDate: (payload['start_date'] ?? '').toString(),
+      endDate: (payload['end_date'] ?? '').toString(),
+      isCurrent: _parseBool(payload['is_current'], fallback: false),
+      isClosed: _parseBool(payload['is_closed'], fallback: false),
+      closedAt: payload['closed_at']?.toString(),
+    );
+  }
+
+  Map<String, dynamic> toPayload() {
+    return <String, dynamic>{
+      'name': name.trim(),
+      'start_date': startDate.trim(),
+      'end_date': endDate.trim(),
+      if (id != null) 'id': id,
     };
   }
 }

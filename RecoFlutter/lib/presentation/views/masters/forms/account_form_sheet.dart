@@ -24,6 +24,7 @@ class _AccountFormSheetState extends State<AccountFormSheet> {
   String accountType = 'asset';
   String balanceType = 'debit';
   String? transactionMode;
+  bool _isActive = true;
 
   @override
   void initState() {
@@ -39,6 +40,7 @@ class _AccountFormSheetState extends State<AccountFormSheet> {
     transactionMode = entity?.transactionMode.isEmpty == true
         ? null
         : entity?.transactionMode;
+    _isActive = entity?.isActive ?? true;
   }
 
   @override
@@ -84,7 +86,7 @@ class _AccountFormSheetState extends State<AccountFormSheet> {
                   'equity',
                 ],
                 value: accountType,
-                itemLabelBuilder: (item) => item,
+                itemLabelBuilder: _capitalize,
                 onChanged: (value) =>
                     setState(() => accountType = value ?? accountType),
               ),
@@ -93,8 +95,40 @@ class _AccountFormSheetState extends State<AccountFormSheet> {
                 label: 'Transaction Mode',
                 items: const ['cash', 'bank', 'od'],
                 value: transactionMode,
-                itemLabelBuilder: (item) => item,
+                itemLabelBuilder: _capitalize,
                 onChanged: (value) => setState(() => transactionMode = value),
+              ),
+              Padding(
+                padding: const EdgeInsets.only(left: 4, right: 4, bottom: 12),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: <Widget>[
+                    Expanded(
+                      child: Text(
+                        'Transaction mode is only for cash, bank, or OD ledgers. For normal ledgers, leave it blank.',
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                              color: Theme.of(context)
+                                  .colorScheme
+                                  .onSurfaceVariant,
+                              height: 1.35,
+                            ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    InkWell(
+                      borderRadius: BorderRadius.circular(20),
+                      onTap: () => _showTransactionModeHelp(context),
+                      child: Padding(
+                        padding: const EdgeInsets.all(4),
+                        child: Icon(
+                          Icons.info_outline_rounded,
+                          size: 18,
+                          color: Theme.of(context).colorScheme.primary,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
               const SizedBox(height: 12),
               Row(
@@ -112,7 +146,7 @@ class _AccountFormSheetState extends State<AccountFormSheet> {
                       label: 'Balance Type',
                       items: const ['debit', 'credit'],
                       value: balanceType,
-                      itemLabelBuilder: (item) => item,
+                      itemLabelBuilder: _capitalize,
                       onChanged: (value) =>
                           setState(() => balanceType = value ?? balanceType),
                     ),
@@ -124,6 +158,10 @@ class _AccountFormSheetState extends State<AccountFormSheet> {
                 controller: _dateController,
                 label: 'Opening Date',
                 hintText: 'YYYY-MM-DD',
+                readOnly: true,
+                onTap: () => _pickDate(_dateController),
+                suffixIcon: Icons.calendar_today,
+                onSuffixTap: () => _pickDate(_dateController),
               ),
               const SizedBox(height: 12),
               CustomTextField(
@@ -131,7 +169,16 @@ class _AccountFormSheetState extends State<AccountFormSheet> {
                 label: 'Remarks',
                 hintText: 'Remarks',
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: 12),
+              SwitchListTile(
+                contentPadding: EdgeInsets.zero,
+                title: const Text('Active Account'),
+                subtitle: const Text('Inactive accounts won\'t appear in dropdowns'),
+                value: _isActive,
+                onChanged: (v) => setState(() => _isActive = v),
+                dense: true,
+              ),
+              const SizedBox(height: 12),
               CommonButton(
                 text: 'Save',
                 isLoading: isSaving,
@@ -142,6 +189,26 @@ class _AccountFormSheetState extends State<AccountFormSheet> {
         ),
       ),
     );
+  }
+
+  Future<void> _pickDate(TextEditingController controller) async {
+    final initial = DateTime.tryParse(controller.text.trim());
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: initial ?? DateTime.now(),
+      firstDate: DateTime(2000),
+      lastDate: DateTime(2100),
+      helpText: 'Select date',
+    );
+    if (picked != null) {
+      controller.text =
+          '${picked.year}-${picked.month.toString().padLeft(2, '0')}-${picked.day.toString().padLeft(2, '0')}';
+    }
+  }
+
+  String _capitalize(String value) {
+    if (value.isEmpty) return value;
+    return '${value[0].toUpperCase()}${value.substring(1)}';
   }
 
   Future<void> _submit() async {
@@ -160,7 +227,7 @@ class _AccountFormSheetState extends State<AccountFormSheet> {
           balanceType: balanceType,
           openingDate: _dateController.text.trim(),
           remarks: _remarksController.text.trim(),
-          isActive: widget.entity?.isActive ?? true,
+          isActive: _isActive,
         ),
       );
       if (mounted) Navigator.of(context).pop();
@@ -171,4 +238,117 @@ class _AccountFormSheetState extends State<AccountFormSheet> {
 
   String? _required(String? value) =>
       (value ?? '').trim().isEmpty ? 'Required field' : null;
+
+  void _showTransactionModeHelp(BuildContext context) {
+    showDialog<void>(
+      context: context,
+      builder: (dialogContext) {
+        final scheme = Theme.of(dialogContext).colorScheme;
+        return AlertDialog(
+          insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+          titlePadding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+          contentPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+          actionsPadding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+          title: Row(
+            children: <Widget>[
+              Icon(Icons.info_outline_rounded, color: scheme.primary, size: 20),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'Transaction Mode Help',
+                  style: Theme.of(dialogContext).textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w700,
+                      ),
+                ),
+              ),
+            ],
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              _HelpBlock(
+                title: 'Cash',
+                text: 'Use for physical cash accounts and petty cash balances.',
+              ),
+              const SizedBox(height: 10),
+              _HelpBlock(
+                title: 'Bank',
+                text: 'Use for current, savings, and online bank ledger accounts.',
+              ),
+              const SizedBox(height: 10),
+              _HelpBlock(
+                title: 'OD',
+                text: 'Use for overdraft or cash-credit style accounts.',
+              ),
+              const SizedBox(height: 14),
+              Text(
+                'Other info:',
+                style: Theme.of(dialogContext).textTheme.bodySmall?.copyWith(
+                      fontWeight: FontWeight.w700,
+                      color: scheme.onSurfaceVariant,
+                    ),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                'Transaction mode appears only for asset accounts. Keep it blank for regular ledgers.',
+                style: Theme.of(dialogContext).textTheme.bodySmall?.copyWith(
+                      color: scheme.onSurfaceVariant,
+                      height: 1.35,
+                    ),
+              ),
+            ],
+          ),
+          actions: <Widget>[
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(),
+              child: const Text('Close'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+}
+
+class _HelpBlock extends StatelessWidget {
+  const _HelpBlock({required this.title, required this.text});
+
+  final String title;
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: scheme.surfaceContainerHighest.withValues(alpha: .45),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          Text(
+            title,
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  fontWeight: FontWeight.w700,
+                ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            text,
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: scheme.onSurfaceVariant,
+                  height: 1.3,
+                ),
+          ),
+        ],
+      ),
+    );
+  }
 }

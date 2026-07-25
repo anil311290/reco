@@ -7,7 +7,6 @@ import '../../../../data/models/masters/master_entities.dart';
 import '../../../../data/repositories/transactions/transactions_repository.dart';
 import '../purchase_invoices_controller.dart';
 import '../sales_invoices_controller.dart';
-import '../service_sales_invoices_controller.dart';
 import 'transaction_form_lookup_controller.dart';
 import 'transaction_form_models.dart';
 
@@ -40,11 +39,20 @@ abstract class BaseInvoiceFormController extends GetxController {
   bool get supportsServices;
   bool get isServiceInvoice => false;
   bool get isPurchaseInvoice => false;
+  bool get usesUnifiedSalesRows =>
+      supportsItems &&
+      supportsServices &&
+      !isPurchaseInvoice &&
+      !isServiceInvoice;
 
   List<PartyEntity> get parties => lookupController.parties;
   List<ItemEntity> get items => lookupController.items;
   List<TaxRateEntity> get taxRates => lookupController.taxRates;
   List<LookupOption> get serviceAccounts => lookupController.serviceAccounts;
+  List<InvoiceCatalogOption> get salesCatalogOptions => <InvoiceCatalogOption>[
+    ...items.map(InvoiceCatalogOption.item),
+    ...serviceAccounts.map(InvoiceCatalogOption.service),
+  ];
 
   double get summarySubtotal {
     final itemSubtotal =
@@ -78,7 +86,7 @@ abstract class BaseInvoiceFormController extends GetxController {
     if (supportsItems) {
       itemRows.add(InvoiceItemRowModel());
     }
-    if (supportsServices) {
+    if (supportsServices && !usesUnifiedSalesRows) {
       serviceRows.add(InvoiceServiceRowModel());
     }
     _loadLookups();
@@ -148,8 +156,13 @@ abstract class BaseInvoiceFormController extends GetxController {
   }
 
   void onItemChanged(InvoiceItemRowModel row, ItemEntity? item) {
+    row.catalogOption.value = item == null ? null : InvoiceCatalogOption.item(item);
     row.item.value = item;
+    row.serviceAccount.value = null;
     if (item == null) {
+      row.descriptionController.clear();
+      row.unitPriceController.clear();
+      row.taxRate.value = null;
       return;
     }
     if (row.descriptionController.text.trim().isEmpty) {
@@ -165,6 +178,41 @@ abstract class BaseInvoiceFormController extends GetxController {
         row.taxRate.value = taxRate;
       }
     }
+    update();
+  }
+
+  void onSalesCatalogChanged(
+    InvoiceItemRowModel row,
+    InvoiceCatalogOption? option,
+  ) {
+    row.catalogOption.value = option;
+    row.taxRate.value = null;
+
+    if (option == null) {
+      row.item.value = null;
+      row.serviceAccount.value = null;
+      row.descriptionController.clear();
+      row.quantityController.text = '1';
+      row.unitPriceController.clear();
+      row.discountController.text = '0';
+      update();
+      return;
+    }
+
+    if (option.isItem) {
+      row.discountController.text =
+          row.discountController.text.trim().isEmpty ? '0' : row.discountController.text;
+      row.quantityController.text =
+          row.quantityController.text.trim().isEmpty ? '1' : row.quantityController.text;
+      onItemChanged(row, option.item);
+      return;
+    }
+
+    row.item.value = null;
+    row.serviceAccount.value = option.account;
+    row.quantityController.text = '1';
+    row.discountController.text = '0';
+    row.descriptionController.text = option.account?.label ?? '';
     update();
   }
 
@@ -192,13 +240,29 @@ abstract class BaseInvoiceFormController extends GetxController {
       return;
     }
     final validItemRows = itemRows
-        .where((row) => row.item.value != null && row.quantity > 0 && row.unitPrice >= 0)
+        .where(
+          (row) =>
+              row.isItemSelection &&
+              row.item.value != null &&
+              row.quantity > 0 &&
+              row.unitPrice >= 0,
+        )
         .toList();
-    final validServiceRows = serviceRows
-        .where((row) => row.account.value != null && row.amount >= 0)
+    final validMixedServiceRows = itemRows
+        .where(
+          (row) =>
+              row.isServiceSelection &&
+              row.serviceAccount.value != null &&
+              row.unitPrice > 0,
+        )
         .toList();
+    final validServiceRows = <InvoiceServiceRowModel>[
+      ...serviceRows.where((row) => row.account.value != null && row.amount > 0),
+    ];
     if (supportsItems && supportsServices) {
-      if (validItemRows.isEmpty && validServiceRows.isEmpty) {
+      if (validItemRows.isEmpty &&
+          validServiceRows.isEmpty &&
+          validMixedServiceRows.isEmpty) {
         AppSnackbar.error('Kam se kam ek line item ya service row add karein.');
         return;
       }
@@ -212,7 +276,11 @@ abstract class BaseInvoiceFormController extends GetxController {
 
     isSubmitting.value = true;
     try {
-      final payload = _buildPayload(validItemRows, validServiceRows);
+      final payload = _buildPayload(
+        validItemRows,
+        validServiceRows,
+        validMixedServiceRows,
+      );
       await repository.createRecord(
         module: module,
         endpoint: endpoint,
@@ -231,6 +299,7 @@ abstract class BaseInvoiceFormController extends GetxController {
   Map<String, dynamic> _buildPayload(
     List<InvoiceItemRowModel> validItemRows,
     List<InvoiceServiceRowModel> validServiceRows,
+    List<InvoiceItemRowModel> validMixedServiceRows,
   ) {
     final tempNumber = '$temporaryPrefix-${DateTime.now().millisecondsSinceEpoch}';
     return <String, dynamic>{
@@ -255,7 +324,7 @@ abstract class BaseInvoiceFormController extends GetxController {
           ? null
           : notesController.text.trim(),
       'discount_percentage': double.tryParse(discountController.text.trim()) ?? 0,
-      if (isServiceInvoice) 'invoice_type': 'service' else 'invoice_type': 'item',
+      if (isServiceInvoice) 'invoice_type': 'service',
       'lines': validItemRows
           .map(
             (row) => <String, dynamic>{
@@ -285,6 +354,18 @@ abstract class BaseInvoiceFormController extends GetxController {
               'amount': row.amount,
             },
           )
+          .followedBy(
+            validMixedServiceRows.map(
+              (row) => <String, dynamic>{
+                'account_id': row.serviceAccount.value?.id,
+                'tax_rate_id': row.taxRate.value?.id,
+                'description': row.descriptionController.text.trim().isEmpty
+                    ? row.serviceAccount.value?.label
+                    : row.descriptionController.text.trim(),
+                'amount': row.unitPrice,
+              },
+            ),
+          )
           .toList(),
       'invoice_number': tempNumber,
       'status': 'draft',
@@ -305,10 +386,6 @@ abstract class BaseInvoiceFormController extends GetxController {
     if (module == 'sales_invoices' && Get.isRegistered<SalesInvoicesController>()) {
       await Get.find<SalesInvoicesController>().refreshData();
     }
-    if (module == 'service_sales_invoices' &&
-        Get.isRegistered<ServiceSalesInvoicesController>()) {
-      await Get.find<ServiceSalesInvoicesController>().refreshData();
-    }
     if (module == 'purchase_invoices' &&
         Get.isRegistered<PurchaseInvoicesController>()) {
       await Get.find<PurchaseInvoicesController>().refreshData();
@@ -320,7 +397,7 @@ class SalesInvoiceFormController extends BaseInvoiceFormController {
   SalesInvoiceFormController(super.repository, super.lookupController);
 
   @override
-  String get title => 'Item Sale Invoice';
+  String get title => 'Sales Invoice';
 
   @override
   String get module => 'sales_invoices';
@@ -405,4 +482,3 @@ class PurchaseInvoiceFormController extends BaseInvoiceFormController {
   @override
   bool get isPurchaseInvoice => true;
 }
-

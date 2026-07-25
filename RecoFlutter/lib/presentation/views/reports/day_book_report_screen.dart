@@ -98,41 +98,54 @@ class DayBookReportScreen extends GetView<DayBookReportController> {
                 ),
                 const SizedBox(height: 12),
                 if (report is Map<String, dynamic>) ...<Widget>[
-                  GridView.count(
-                    shrinkWrap: true,
-                    crossAxisCount: 2,
-                    physics: const NeverScrollableScrollPhysics(),
-                    mainAxisSpacing: 10,
-                    crossAxisSpacing: 10,
-                    childAspectRatio: 1.35,
+                  Column(
                     children: <Widget>[
-                      ReportStatCard(
-                        label: 'Report Date',
-                        value: controller.formatDate(controller.dateController.text),
-                        note: 'Selected daily book date',
-                        color: const Color(0xFF0891B2),
-                        icon: FontAwesomeIcons.calendarCheck,
+                      Row(
+                        children: <Widget>[
+                          Expanded(
+                            child: ReportStatCard(
+                              label: 'Report Date',
+                              value: controller.formatDate(controller.dateController.text),
+                              note: 'Selected daily book date',
+                              color: const Color(0xFF0891B2),
+                              icon: FontAwesomeIcons.calendarCheck,
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: ReportStatCard(
+                              label: 'Vouchers',
+                              value: '${rows.length}',
+                              note: 'Posted voucher lines',
+                              color: const Color(0xFF2563EB),
+                              icon: FontAwesomeIcons.receipt,
+                            ),
+                          ),
+                        ],
                       ),
-                      ReportStatCard(
-                        label: 'Vouchers',
-                        value: '${rows.length}',
-                        note: 'Posted voucher lines',
-                        color: const Color(0xFF2563EB),
-                        icon: FontAwesomeIcons.receipt,
-                      ),
-                      ReportStatCard(
-                        label: 'Total Debit',
-                        value: controller.formatCurrency(report['total_debit']),
-                        note: 'Must equal credit',
-                        color: const Color(0xFF16A34A),
-                        icon: FontAwesomeIcons.arrowTrendUp,
-                      ),
-                      ReportStatCard(
-                        label: 'Total Credit',
-                        value: controller.formatCurrency(report['total_credit']),
-                        note: 'Must equal debit',
-                        color: const Color(0xFFF59E0B),
-                        icon: FontAwesomeIcons.arrowTrendDown,
+                      const SizedBox(height: 10),
+                      Row(
+                        children: <Widget>[
+                          Expanded(
+                            child: ReportStatCard(
+                              label: 'Total Debit',
+                              value: controller.formatCurrency(report['total_debit']),
+                              note: 'Must equal credit',
+                              color: const Color(0xFF16A34A),
+                              icon: FontAwesomeIcons.arrowTrendUp,
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: ReportStatCard(
+                              label: 'Total Credit',
+                              value: controller.formatCurrency(report['total_credit']),
+                              note: 'Must equal debit',
+                              color: const Color(0xFFF59E0B),
+                              icon: FontAwesomeIcons.arrowTrendDown,
+                            ),
+                          ),
+                        ],
                       ),
                     ],
                   ),
@@ -147,46 +160,7 @@ class DayBookReportScreen extends GetView<DayBookReportController> {
                           padding: EdgeInsets.all(16),
                           child: Text('No posted transactions found.'),
                         ))
-                      : SingleChildScrollView(
-                          scrollDirection: Axis.horizontal,
-                          child: DataTable2(
-                            minWidth: 1120,
-                            columns: <DataColumn2>[
-                              masterColumn(context, 'Voucher #', size: ColumnSize.M),
-                              masterColumn(context, 'Type', size: ColumnSize.S),
-                              masterColumn(context, 'Particulars', size: ColumnSize.L),
-                              masterColumn(context, 'Party', size: ColumnSize.M),
-                              masterColumn(context, 'Narration', size: ColumnSize.L),
-                              masterColumn(context, 'Debit', size: ColumnSize.M),
-                              masterColumn(context, 'Credit', size: ColumnSize.M),
-                            ],
-                            rows: rows.map((row) {
-                              final accountId = _asInt(row['account_id']);
-                              return DataRow(
-                                cells: <DataCell>[
-                                  masterTextCell((row['voucher_number'] ?? '-').toString()),
-                                  masterTextCell((row['voucher_type'] ?? '-').toString()),
-                                  DataCell(
-                                    InkWell(
-                                      onTap: accountId == null
-                                          ? null
-                                          : () => Get.to(
-                                                () => LedgerReportScreen(
-                                                  initialAccountId: accountId,
-                                                ),
-                                              ),
-                                      child: Text((row['account_name'] ?? '-').toString()),
-                                    ),
-                                  ),
-                                  masterTextCell((row['party_name'] ?? '-').toString()),
-                                  masterTextCell((row['narration'] ?? '-').toString()),
-                                  masterTextCell(controller.formatCurrency(row['debit'])),
-                                  masterTextCell(controller.formatCurrency(row['credit'])),
-                                ],
-                              );
-                            }).toList(),
-                          ),
-                        ),
+                      : _buildDayBookTable(context, report, rows),
                 ),
               ],
             ),
@@ -207,6 +181,68 @@ class DayBookReportScreen extends GetView<DayBookReportController> {
     if (selected != null) {
       controller.dateController.text = selected.toIso8601String().substring(0, 10);
     }
+  }
+
+  Widget _buildDayBookTable(
+    BuildContext context,
+    dynamic reportData,
+    List<Map<String, dynamic>> rows,
+  ) {
+    if (reportData is! Map) {
+      return const Center(
+        child: Padding(
+          padding: EdgeInsets.all(24),
+          child: Text('No posted transactions found.'),
+        ),
+      );
+    }
+
+    final tableRows = <DataRow>[
+      ...List<DataRow>.generate(rows.length, (index) {
+        final row = rows[index];
+        final accountId = _asInt(row['account_id']);
+        return DataRow(
+          cells: <DataCell>[
+            masterTextCell((row['voucher_number'] ?? '-').toString()),
+            masterTextCell((row['voucher_type'] ?? '-').toString()),
+            DataCell(Center(
+              child: InkWell(
+                onTap: accountId == null
+                    ? null
+                    : () => Get.to(() => LedgerReportScreen(initialAccountId: accountId)),
+                child: Text((row['account_name'] ?? '-').toString(), textAlign: TextAlign.center, style: const TextStyle(fontSize: 13)),
+              ),
+            )),
+            masterTextCell((row['party_name'] ?? '-').toString()),
+            masterTextCell((row['narration'] ?? '-').toString()),
+            DataCell(Center(child: Text(controller.formatCurrency(row['debit']), textAlign: TextAlign.center, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)))),
+            DataCell(Center(child: Text(controller.formatCurrency(row['credit']), textAlign: TextAlign.center, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)))),
+          ],
+        );
+      }),
+    ];
+
+    final calculatedHeight = 42.0 + (rows.length * 52.0);
+    final tableHeight = calculatedHeight.clamp(160.0, 550.0);
+
+    return SizedBox(
+      height: tableHeight,
+      child: MastersTableShell(
+        isLoading: false,
+        emptyText: 'No posted transactions found.',
+        minWidth: 1120,
+        columns: <DataColumn2>[
+          masterColumn(context, 'Voucher #', size: ColumnSize.M),
+          masterColumn(context, 'Type', size: ColumnSize.S),
+          masterColumn(context, 'Particulars', size: ColumnSize.L),
+          masterColumn(context, 'Party', size: ColumnSize.M),
+          masterColumn(context, 'Narration', size: ColumnSize.L),
+          masterColumn(context, 'Debit', size: ColumnSize.M),
+          masterColumn(context, 'Credit', size: ColumnSize.M),
+        ],
+        rows: tableRows,
+      ),
+    );
   }
 
   int? _asInt(dynamic value) => int.tryParse(value?.toString() ?? '');

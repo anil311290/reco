@@ -1,3 +1,7 @@
+import 'dart:async';
+
+import 'package:dio/dio.dart';
+
 import '../../../core/config/api_endpoints.dart';
 import '../base/offline_first_repository.dart';
 
@@ -11,6 +15,31 @@ class AuditLogsRepository extends OfflineFirstRepository {
 
   static const String _module = 'audit_logs';
 
+  static Map<String, dynamic> _emptyResult({int perPage = 25}) {
+    return <String, dynamic>{
+      'logs': <Map<String, dynamic>>[],
+      'pagination': <String, dynamic>{
+        'current_page': 1,
+        'last_page': 1,
+        'per_page': perPage,
+        'total': 0,
+        'has_more': false,
+      },
+      'statistics': <String, dynamic>{
+        'total_logs': 0,
+        'today_logs': 0,
+        'month_logs': 0,
+        'by_action': <String, dynamic>{},
+        'by_module': <String, dynamic>{},
+      },
+      'filters': <String, dynamic>{
+        'actions': <String>[],
+        'modules': <String>[],
+        'users': <Map<String, dynamic>>[],
+      },
+    };
+  }
+
   Future<Map<String, dynamic>> getAuditLogs({
     String? search,
     String? action,
@@ -19,21 +48,21 @@ class AuditLogsRepository extends OfflineFirstRepository {
     int page = 1,
     int perPage = 25,
   }) async {
-    final queryParameters = <String, dynamic>{
-      if (search != null && search.isNotEmpty) 'search': search,
-      if (action != null && action.isNotEmpty) 'action': action,
-      if (module != null && module.isNotEmpty) 'module': module,
-      if (userId != null && userId.isNotEmpty) 'user_id': userId,
-      'page': page,
-      'per_page': perPage,
-    };
+    final queryParameters = _buildQueryParams(
+      search: search,
+      action: action,
+      module: module,
+      userId: userId,
+      page: page,
+      perPage: perPage,
+    );
     final cacheKey = buildCacheKey(ApiEndpoints.auditLogs, queryParameters);
     final cached = await getCachedObject(cacheKey);
 
     if (cached != null) {
       if (await networkMonitorService.hasInternetNow()) {
-        Future<void>.microtask(
-          () => refreshAuditLogs(
+        unawaited(
+          refreshAuditLogs(
             search: search,
             action: action,
             module: module,
@@ -57,18 +86,7 @@ class AuditLogsRepository extends OfflineFirstRepository {
       );
     }
 
-    return <String, dynamic>{
-      'logs': <Map<String, dynamic>>[],
-      'pagination': <String, dynamic>{
-        'current_page': 1,
-        'last_page': 1,
-        'per_page': perPage,
-        'total': 0,
-        'has_more': false,
-      },
-      'statistics': <String, dynamic>{},
-      'filters': <String, dynamic>{},
-    };
+    return _emptyResult(perPage: perPage);
   }
 
   Future<Map<String, dynamic>> refreshAuditLogs({
@@ -79,29 +97,33 @@ class AuditLogsRepository extends OfflineFirstRepository {
     int page = 1,
     int perPage = 25,
   }) async {
-    final queryParameters = <String, dynamic>{
-      if (search != null && search.isNotEmpty) 'search': search,
-      if (action != null && action.isNotEmpty) 'action': action,
-      if (module != null && module.isNotEmpty) 'module': module,
-      if (userId != null && userId.isNotEmpty) 'user_id': userId,
-      'page': page,
-      'per_page': perPage,
-    };
-
-    final response = await apiClient.get<Map<String, dynamic>>(
-      ApiEndpoints.auditLogs,
-      queryParameters: queryParameters,
+    final queryParameters = _buildQueryParams(
+      search: search,
+      action: action,
+      module: module,
+      userId: userId,
+      page: page,
+      perPage: perPage,
     );
 
-    final data = _extractMap(response.data?['data']);
-    await saveCachedObject(
-      cacheKey: buildCacheKey(ApiEndpoints.auditLogs, queryParameters),
-      module: _module,
-      endpoint: ApiEndpoints.auditLogs,
-      response: data,
-      queryParameters: queryParameters,
-    );
-    return data;
+    try {
+      final response = await apiClient.get<Map<String, dynamic>>(
+        ApiEndpoints.auditLogs,
+        queryParameters: queryParameters,
+        options: Options(extra: <String, dynamic>{'silentError': true}),
+      );
+
+      final data = _extractMap(response.data?['data']);
+      await saveCachedObject(
+        cacheKey: buildCacheKey(ApiEndpoints.auditLogs, queryParameters),
+        module: _module,
+        endpoint: ApiEndpoints.auditLogs,
+        response: data,
+      );
+      return data;
+    } catch (_) {
+      return _emptyResult(perPage: perPage);
+    }
   }
 
   Future<Map<String, dynamic>?> getAuditLogDetail(int id) async {
@@ -110,7 +132,7 @@ class AuditLogsRepository extends OfflineFirstRepository {
 
     if (cached != null) {
       if (await networkMonitorService.hasInternetNow()) {
-        Future<void>.microtask(() => refreshAuditLogDetail(id));
+        unawaited(refreshAuditLogDetail(id));
       }
       return cached;
     }
@@ -123,17 +145,40 @@ class AuditLogsRepository extends OfflineFirstRepository {
   }
 
   Future<Map<String, dynamic>?> refreshAuditLogDetail(int id) async {
-    final response = await apiClient.get<Map<String, dynamic>>(
-      ApiEndpoints.auditLogDetail(id),
-    );
-    final data = _extractMap(response.data?['data']);
-    await saveCachedObject(
-      cacheKey: buildCacheKey(ApiEndpoints.auditLogDetail(id)),
-      module: _module,
-      endpoint: ApiEndpoints.auditLogDetail(id),
-      response: data,
-    );
-    return data;
+    try {
+      final response = await apiClient.get<Map<String, dynamic>>(
+        ApiEndpoints.auditLogDetail(id),
+        options: Options(extra: <String, dynamic>{'silentError': true}),
+      );
+      final data = _extractMap(response.data?['data']);
+      await saveCachedObject(
+        cacheKey: buildCacheKey(ApiEndpoints.auditLogDetail(id)),
+        module: _module,
+        endpoint: ApiEndpoints.auditLogDetail(id),
+        response: data,
+      );
+      return data;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Map<String, dynamic> _buildQueryParams({
+    String? search,
+    String? action,
+    String? module,
+    String? userId,
+    int page = 1,
+    int perPage = 25,
+  }) {
+    return <String, dynamic>{
+      if (search != null && search.isNotEmpty) 'search': search,
+      if (action != null && action.isNotEmpty) 'action': action,
+      if (module != null && module.isNotEmpty) 'module': module,
+      if (userId != null && userId.isNotEmpty) 'user_id': userId,
+      'page': page,
+      'per_page': perPage,
+    };
   }
 
   Map<String, dynamic> _extractMap(dynamic data) {

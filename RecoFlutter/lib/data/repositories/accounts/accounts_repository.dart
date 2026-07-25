@@ -20,7 +20,8 @@ class AccountsRepository extends OfflineFirstRepository {
     final localRecords = await getLocalModuleRecords(_module);
     final localPayloads = localRecords
         .map((record) => (record['payload'] as Map<String, dynamic>))
-        .toList();
+        .toList()
+      ..sort(_sortAccounts);
 
     if (localPayloads.isNotEmpty) {
       if (await networkMonitorService.hasInternetNow()) {
@@ -45,7 +46,7 @@ class AccountsRepository extends OfflineFirstRepository {
     );
 
     final data = response.data?['data'];
-    final records = _extractList(data);
+    final records = _extractList(data)..sort(_sortAccounts);
 
     await mergeRemoteRecords(module: _module, records: records);
     return records;
@@ -194,5 +195,17 @@ class AccountsRepository extends OfflineFirstRepository {
     }
 
     return <Map<String, dynamic>>[];
+  }
+
+  int _sortAccounts(Map<String, dynamic> a, Map<String, dynamic> b) {
+    final codeA = (a['account_code'] ?? '').toString().toLowerCase();
+    final codeB = (b['account_code'] ?? '').toString().toLowerCase();
+    final codeCompare = codeA.compareTo(codeB);
+    if (codeCompare != 0) {
+      return codeCompare;
+    }
+    final nameA = (a['account_name'] ?? '').toString().toLowerCase();
+    final nameB = (b['account_name'] ?? '').toString().toLowerCase();
+    return nameA.compareTo(nameB);
   }
 }

@@ -206,45 +206,40 @@ class ReportSectionCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(12),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: <Widget>[
+        Row(
           children: <Widget>[
-            Row(
-              children: <Widget>[
-                Expanded(
-                  child: Row(
-                    children: <Widget>[
-                      if (icon != null) ...<Widget>[
-                        Icon(
-                          icon,
-                          size: 16,
-                          color: iconColor ?? Theme.of(context).colorScheme.primary,
-                        ),
-                        const SizedBox(width: 8),
-                      ],
-                      Expanded(
-                        child: Text(
-                          title,
-                          style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.w600,
-                            fontSize: 15,
-                          ),
-                        ),
+            Expanded(
+              child: Row(
+                children: <Widget>[
+                  if (icon != null) ...<Widget>[
+                    Icon(
+                      icon,
+                      size: 16,
+                      color: iconColor ?? Theme.of(context).colorScheme.primary,
+                    ),
+                    const SizedBox(width: 8),
+                  ],
+                  Expanded(
+                    child: Text(
+                      title,
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 15,
                       ),
-                    ],
+                    ),
                   ),
-                ),
-                trailing ?? const SizedBox.shrink(),
-              ],
+                ],
+              ),
             ),
-            const SizedBox(height: 10),
-            child,
+            trailing ?? const SizedBox.shrink(),
           ],
         ),
-      ),
+        const SizedBox(height: 10),
+        child,
+      ],
     );
   }
 }

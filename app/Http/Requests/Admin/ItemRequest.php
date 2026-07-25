@@ -45,6 +45,7 @@ class ItemRequest extends BaseFormRequest
             ],
             'opening_stock' => 'nullable|numeric|min:0',
             'is_stockable' => 'boolean',
+            'is_active' => 'boolean',
         ];
     }
 

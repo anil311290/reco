@@ -89,14 +89,17 @@ class AccountsController extends GetxController with MasterExportMixin {
   Future<void> save(AccountEntity entity) async {
     if (entity.id == null) {
       await _repository.createAccountOffline(entity.toPayload());
-      AppSnackbar.success('Account saved locally. Sync queue updated.');
+      AppSnackbar.success('Account saved. Syncing to server...');
     } else {
       await _repository.updateAccountOffline(
         localId: entity.localId ?? 'remote-accounts-${entity.id}',
         accountId: entity.id.toString(),
         payload: entity.toPayload(),
       );
-      AppSnackbar.success('Account update queued successfully.');
+      AppSnackbar.success('Account update queued. Syncing to server...');
+    }
+    if (_networkMonitorService.isOnline.value) {
+      await _syncService.syncPendingMutations(showSuccessMessage: true);
     }
     await refreshData();
   }

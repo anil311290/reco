@@ -88,7 +88,7 @@ class _TaxRateFormSheetState extends State<TaxRateFormSheet> {
                 label: 'Tax Type',
                 items: const ['addition', 'deduction'],
                 value: type,
-                itemLabelBuilder: (item) => item,
+                itemLabelBuilder: _capitalize,
                 onChanged: (value) => setState(() => type = value ?? type),
               ),
               const SizedBox(height: 12),
@@ -105,7 +105,7 @@ class _TaxRateFormSheetState extends State<TaxRateFormSheet> {
                   'OTHER',
                 ],
                 value: category,
-                itemLabelBuilder: (item) => item,
+                itemLabelBuilder: _capitalize,
                 onChanged: (value) =>
                     setState(() => category = value ?? category),
               ),
@@ -114,7 +114,7 @@ class _TaxRateFormSheetState extends State<TaxRateFormSheet> {
                 label: 'Status',
                 items: const ['active', 'inactive'],
                 value: status,
-                itemLabelBuilder: (item) => item,
+                itemLabelBuilder: _capitalize,
                 onChanged: (value) => setState(() => status = value ?? status),
               ),
               const SizedBox(height: 12),
@@ -134,6 +134,11 @@ class _TaxRateFormSheetState extends State<TaxRateFormSheet> {
         ),
       ),
     );
+  }
+
+  String _capitalize(String value) {
+    if (value.isEmpty) return value;
+    return '${value[0].toUpperCase()}${value.substring(1)}';
   }
 
   Future<void> _submit() async {

@@ -3,8 +3,11 @@ import 'package:get/get.dart';
 
 import '../../../data/models/masters/master_entities.dart';
 import '../../controllers/settings/admin_settings_controller.dart';
+import '../../controllers/settings/financial_years_controller.dart';
 import '../../widgets/common/common_button.dart';
 import '../../widgets/common/custom_text_field.dart';
+import '../../../data/repositories/masters/financial_years_repository.dart';
+import 'forms/financial_year_form_sheet.dart';
 
 class AdminSettingsScreen extends GetView<AdminSettingsController> {
   const AdminSettingsScreen({super.key});
@@ -57,6 +60,11 @@ class AdminSettingsScreen extends GetView<AdminSettingsController> {
                   _FinancialYearTab(controller: controller),
                 ],
               ),
+      ),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () => Get.to(() => const FinancialYearFormSheet()),
+        icon: const Icon(Icons.add_rounded),
+        label: const Text('Add FY'),
       ),
     );
   }
@@ -440,46 +448,483 @@ class _AccountingTab extends StatelessWidget {
   }
 }
 
-class _FinancialYearTab extends StatelessWidget {
+class _FinancialYearTab extends StatefulWidget {
   const _FinancialYearTab({required this.controller});
   final AdminSettingsController controller;
+
+  @override
+  State<_FinancialYearTab> createState() => _FinancialYearTabState();
+}
+
+class _FinancialYearTabState extends State<_FinancialYearTab> {
+  late final FinancialYearsController _fyController;
+
+  @override
+  void initState() {
+    super.initState();
+    if (!Get.isRegistered<FinancialYearsController>()) {
+      _fyController = Get.put(
+        FinancialYearsController(
+          Get.find<FinancialYearsRepository>(),
+          Get.find(),
+          Get.find(),
+        ),
+        permanent: false,
+      );
+    } else {
+      _fyController = Get.find<FinancialYearsController>();
+    }
+  }
+
+  Future<bool> _confirmAction(String title, String message) async {
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(title),
+        content: Text(message),
+        actions: <Widget>[
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Confirm'),
+          ),
+        ],
+      ),
+    );
+    return result == true;
+  }
+
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
     return Obx(
       () => RefreshIndicator(
-        onRefresh: controller.loadFinancialYears,
+        onRefresh: _fyController.refreshData,
         child: ListView(
           padding: const EdgeInsets.all(16),
           children: <Widget>[
-            if (controller.currentFinancialYear.isNotEmpty)
-              Card(
-                child: ListTile(
-                  title: Text(
-                    (controller.currentFinancialYear['name'] ??
-                            controller.currentFinancialYear['financial_year'] ??
-                            'Current Financial Year')
-                        .toString(),
+            // ── Current Financial Year Card ──
+            if (_fyController.currentFinancialYear.value != null) ...[
+              Container(
+                padding: const EdgeInsets.all(18),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: <Color>[
+                      theme.colorScheme.primary.withValues(alpha: 0.12),
+                      theme.colorScheme.primary.withValues(alpha: 0.04),
+                    ],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
                   ),
-                  subtitle: Text(
-                    '${controller.currentFinancialYear['start_date'] ?? ''}  to  ${controller.currentFinancialYear['end_date'] ?? ''}',
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(
+                    color: theme.colorScheme.primary.withValues(alpha: 0.3),
+                  ),
+                ),
+                child: Row(
+                  children: <Widget>[
+                    Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: theme.colorScheme.primary.withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                      child: Icon(
+                        Icons.today_rounded,
+                        color: theme.colorScheme.primary,
+                        size: 28,
+                      ),
+                    ),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: <Widget>[
+                          Row(
+                            children: <Widget>[
+                              Text(
+                                _fyController.currentFinancialYear.value!.name,
+                                style: theme.textTheme.titleMedium?.copyWith(
+                                  fontWeight: FontWeight.w800,
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical: 2,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: Colors.green.withValues(alpha: 0.15),
+                                  borderRadius: BorderRadius.circular(6),
+                                ),
+                                child: Text(
+                                  'CURRENT',
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.w800,
+                                    color: Colors.green.shade700,
+                                    letterSpacing: 0.6,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            '${_fyController.currentFinancialYear.value!.startDate}  →  ${_fyController.currentFinancialYear.value!.endDate}',
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: theme.colorScheme.onSurfaceVariant,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+            ],
+
+            // ── Section Header ──
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: <Widget>[
+                Text(
+                  'All Financial Years',
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                Obx(
+                  () => _fyController.isLoading.value
+                      ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const SizedBox.shrink(),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+
+            // ── Financial Year Cards ──
+            ..._fyController.financialYears.map((fy) {
+              final isCurrent = fy.isCurrent;
+              final isClosed = fy.isClosed;
+
+              return Card(
+                margin: const EdgeInsets.only(bottom: 10),
+                elevation: isCurrent ? 2 : 0.5,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                  side: isCurrent
+                      ? BorderSide(
+                          color: theme.colorScheme.primary.withValues(alpha: 0.4),
+                          width: 1.5,
+                        )
+                      : BorderSide(
+                          color: theme.dividerColor.withValues(alpha: 0.4),
+                        ),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.all(14),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: <Widget>[
+                      Row(
+                        children: <Widget>[
+                          Expanded(
+                            child: Row(
+                              children: <Widget>[
+                                Icon(
+                                  isClosed
+                                      ? Icons.lock_outline_rounded
+                                      : isCurrent
+                                          ? Icons.check_circle_rounded
+                                          : Icons.calendar_month_outlined,
+                                  size: 20,
+                                  color: isClosed
+                                      ? Colors.grey
+                                      : isCurrent
+                                          ? Colors.green
+                                          : theme.colorScheme.primary,
+                                ),
+                                const SizedBox(width: 8),
+                                Flexible(
+                                  child: Text(
+                                    fy.name,
+                                    style: theme.textTheme.bodyLarge?.copyWith(
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          _FyStatusChip(
+                            label: fy.statusLabel,
+                            isCurrent: isCurrent,
+                            isClosed: isClosed,
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      Row(
+                        children: <Widget>[
+                          _FyInfoChip(
+                            icon: Icons.play_arrow_rounded,
+                            label: fy.startDate,
+                          ),
+                          const SizedBox(width: 4),
+                          const Icon(Icons.arrow_forward_rounded, size: 14),
+                          const SizedBox(width: 4),
+                          _FyInfoChip(
+                            icon: Icons.stop_rounded,
+                            label: fy.endDate,
+                          ),
+                        ],
+                      ),
+                      if (fy.closedAt != null && fy.closedAt!.isNotEmpty) ...[
+                        const SizedBox(height: 4),
+                        Text(
+                          'Closed on: ${fy.closedAt}',
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: theme.colorScheme.onSurfaceVariant,
+                          ),
+                        ),
+                      ],
+                      const SizedBox(height: 10),
+                      // ── Action Buttons ──
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        children: <Widget>[
+                          if (!isCurrent && !isClosed) ...[
+                            _FyActionButton(
+                              icon: Icons.check_rounded,
+                              label: 'Set Current',
+                              color: Colors.green,
+                              onTap: () => _fyController.setAsCurrent(fy),
+                            ),
+                            const SizedBox(width: 6),
+                          ],
+                          if (!isClosed) ...[
+                            if (isCurrent)
+                              _FyActionButton(
+                                icon: Icons.edit_outlined,
+                                label: 'Edit',
+                                color: theme.colorScheme.primary,
+                                onTap: () => Get.to(
+                                  () => FinancialYearFormSheet(entity: fy),
+                                ),
+                              )
+                            else ...[
+                              _FyActionButton(
+                                icon: Icons.edit_outlined,
+                                label: 'Edit',
+                                color: theme.colorScheme.primary,
+                                onTap: () => Get.to(
+                                  () => FinancialYearFormSheet(entity: fy),
+                                ),
+                              ),
+                              const SizedBox(width: 6),
+                              _FyActionButton(
+                                icon: Icons.lock_outline_rounded,
+                                label: 'Close',
+                                color: Colors.orange,
+                                onTap: () async {
+                                  final confirmed = await _confirmAction(
+                                    'Close Financial Year',
+                                    'Are you sure you want to close "${fy.name}"? '
+                                    'This action cannot be undone.',
+                                  );
+                                  if (confirmed == true) {
+                                    _fyController.closeFinancialYear(fy);
+                                  }
+                                },
+                              ),
+                            ],
+                            if (!isCurrent) ...[
+                              const SizedBox(width: 6),
+                              _FyActionButton(
+                                icon: Icons.delete_outline_rounded,
+                                label: 'Delete',
+                                color: Colors.red,
+                                onTap: () async {
+                                  final confirmed = await _confirmAction(
+                                    'Delete Financial Year',
+                                    'Are you sure you want to delete "${fy.name}"?',
+                                  );
+                                  if (confirmed == true) {
+                                    _fyController.deleteFinancialYear(fy);
+                                  }
+                                },
+                              ),
+                            ],
+                          ],
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            }),
+
+            if (_fyController.financialYears.isEmpty &&
+                !_fyController.isLoading.value)
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 40),
+                child: Center(
+                  child: Column(
+                    children: <Widget>[
+                      Icon(
+                        Icons.calendar_month_outlined,
+                        size: 48,
+                        color: theme.colorScheme.onSurfaceVariant
+                            .withValues(alpha: 0.4),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'No financial years found',
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          color: theme.colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ),
-            const SizedBox(height: 12),
-            for (final year in controller.financialYears)
-              Card(
-                child: ListTile(
-                  title: Text(
-                    (year['name'] ?? year['financial_year'] ?? 'Financial Year')
-                        .toString(),
-                  ),
-                  subtitle: Text(
-                    '${year['start_date'] ?? ''}  to  ${year['end_date'] ?? ''}',
-                  ),
-                  trailing: Text((year['status'] ?? '').toString()),
-                ),
-              ),
+
+            const SizedBox(height: 80),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+class _FyStatusChip extends StatelessWidget {
+  const _FyStatusChip({
+    required this.label,
+    required this.isCurrent,
+    required this.isClosed,
+  });
+
+  final String label;
+  final bool isCurrent;
+  final bool isClosed;
+
+  @override
+  Widget build(BuildContext context) {
+    Color bg;
+    Color fg;
+    if (isClosed) {
+      bg = Colors.grey.withValues(alpha: 0.15);
+      fg = Colors.grey.shade700;
+    } else if (isCurrent) {
+      bg = Colors.green.withValues(alpha: 0.15);
+      fg = Colors.green.shade700;
+    } else {
+      bg = Colors.blue.withValues(alpha: 0.1);
+      fg = Colors.blue.shade700;
+    }
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          fontSize: 11,
+          fontWeight: FontWeight.w700,
+          color: fg,
+          letterSpacing: 0.4,
+        ),
+      ),
+    );
+  }
+}
+
+class _FyInfoChip extends StatelessWidget {
+  const _FyInfoChip({required this.icon, required this.label});
+
+  final IconData icon;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: <Widget>[
+          Icon(icon, size: 12, color: theme.colorScheme.onSurfaceVariant),
+          const SizedBox(width: 3),
+          Text(
+            label,
+            style: theme.textTheme.bodySmall?.copyWith(
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _FyActionButton extends StatelessWidget {
+  const _FyActionButton({
+    required this.icon,
+    required this.label,
+    required this.color,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String label;
+  final Color color;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: color.withValues(alpha: 0.1),
+      borderRadius: BorderRadius.circular(8),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(8),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: <Widget>[
+              Icon(icon, size: 14, color: color),
+              const SizedBox(width: 4),
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                  color: color,
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

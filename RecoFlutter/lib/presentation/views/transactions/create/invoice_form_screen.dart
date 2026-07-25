@@ -119,7 +119,8 @@ class InvoiceFormScreen<T extends BaseInvoiceFormController> extends GetView<T> 
                     ),
                   ),
                   if (controller.supportsItems) _ItemLinesSection<T>(),
-                  if (controller.supportsServices) _ServiceLinesSection<T>(),
+                  if (controller.supportsServices && !controller.usesUnifiedSalesRows)
+                    _ServiceLinesSection<T>(),
                   TransactionFormSectionCard(
                     title: 'Summary',
                     child: Column(
@@ -163,7 +164,7 @@ class _ItemLinesSection<T extends BaseInvoiceFormController> extends GetView<T> 
   @override
   Widget build(BuildContext context) {
     return TransactionFormSectionCard(
-      title: 'Line Items',
+      title: controller.usesUnifiedSalesRows ? 'Sales Lines' : 'Line Items',
       action: IconButton(
         onPressed: controller.addItemRow,
         icon: const Icon(Icons.add_circle_outline_rounded),
@@ -195,12 +196,26 @@ class _ItemRowCard<T extends BaseInvoiceFormController> extends GetView<T> {
       ),
       child: Column(
         children: <Widget>[
-          ValueListenableBuilder<ItemEntity?>(
-            valueListenable: row.item,
+          ValueListenableBuilder<Object?>(
+            valueListenable: controller.usesUnifiedSalesRows
+                ? row.catalogOption
+                : row.item,
             builder: (context, value, _) {
+              if (controller.usesUnifiedSalesRows) {
+                return CustomDropdown<InvoiceCatalogOption>(
+                  label: 'Item / Service',
+                  value: row.catalogOption.value,
+                  items: controller.salesCatalogOptions,
+                  itemLabelBuilder: (item) => item.label,
+                  onChanged: (item) => controller.onSalesCatalogChanged(row, item),
+                  hint: 'Select item or service',
+                  requiredField: true,
+                );
+              }
+
               return CustomDropdown<ItemEntity>(
                 label: 'Item',
-                value: value,
+                value: row.item.value,
                 items: controller.items,
                 itemLabelBuilder: (item) => item.name,
                 onChanged: (item) => controller.onItemChanged(row, item),
@@ -208,22 +223,24 @@ class _ItemRowCard<T extends BaseInvoiceFormController> extends GetView<T> {
               );
             },
           ),
+          if (!row.isServiceSelection)
+            CustomTextField(
+              label: 'Description',
+              controller: row.descriptionController,
+              hintText: 'Item description',
+            ),
+          if (!row.isServiceSelection)
+            CustomTextField(
+              label: 'Quantity',
+              controller: row.quantityController,
+              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              inputFormatters: <TextInputFormatter>[
+                FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d{0,3}')),
+              ],
+              onChanged: (_) => controller.update(),
+            ),
           CustomTextField(
-            label: 'Description',
-            controller: row.descriptionController,
-            hintText: 'Item description',
-          ),
-          CustomTextField(
-            label: 'Quantity',
-            controller: row.quantityController,
-            keyboardType: const TextInputType.numberWithOptions(decimal: true),
-            inputFormatters: <TextInputFormatter>[
-              FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d{0,3}')),
-            ],
-            onChanged: (_) => controller.update(),
-          ),
-          CustomTextField(
-            label: 'Unit Price',
+            label: row.isServiceSelection ? 'Amount' : 'Unit Price',
             controller: row.unitPriceController,
             keyboardType: const TextInputType.numberWithOptions(decimal: true),
             inputFormatters: <TextInputFormatter>[
@@ -231,15 +248,16 @@ class _ItemRowCard<T extends BaseInvoiceFormController> extends GetView<T> {
             ],
             onChanged: (_) => controller.update(),
           ),
-          CustomTextField(
-            label: 'Discount %',
-            controller: row.discountController,
-            keyboardType: const TextInputType.numberWithOptions(decimal: true),
-            inputFormatters: <TextInputFormatter>[
-              FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d{0,2}')),
-            ],
-            onChanged: (_) => controller.update(),
-          ),
+          if (!row.isServiceSelection)
+            CustomTextField(
+              label: 'Discount %',
+              controller: row.discountController,
+              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              inputFormatters: <TextInputFormatter>[
+                FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d{0,2}')),
+              ],
+              onChanged: (_) => controller.update(),
+            ),
           ValueListenableBuilder<TaxRateEntity?>(
             valueListenable: row.taxRate,
             builder: (context, value, _) {

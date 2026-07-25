@@ -135,6 +135,45 @@ class AppDatabaseService {
     }, conflictAlgorithm: ConflictAlgorithm.replace);
   }
 
+  Future<void> clearCachedResponses({
+    String? module,
+    List<String>? endpointPrefixes,
+  }) async {
+    if ((module == null || module.isEmpty) &&
+        (endpointPrefixes == null || endpointPrefixes.isEmpty)) {
+      return;
+    }
+
+    final clauses = <String>[];
+    final args = <Object?>[];
+
+    if (module != null && module.isNotEmpty) {
+      clauses.add('module = ?');
+      args.add(module);
+    }
+
+    if (endpointPrefixes != null && endpointPrefixes.isNotEmpty) {
+      final prefixClauses = <String>[];
+      for (final prefix in endpointPrefixes.where((item) => item.isNotEmpty)) {
+        prefixClauses.add('endpoint LIKE ?');
+        args.add('$prefix%');
+      }
+      if (prefixClauses.isNotEmpty) {
+        clauses.add('(${prefixClauses.join(' OR ')})');
+      }
+    }
+
+    if (clauses.isEmpty) {
+      return;
+    }
+
+    await database.delete(
+      DbConstants.apiCacheTable,
+      where: clauses.join(' AND '),
+      whereArgs: args,
+    );
+  }
+
   Future<List<Map<String, dynamic>>> getModuleRecords(String module) async {
     final rows = await database.query(
       DbConstants.offlineRecordsTable,

@@ -90,10 +90,14 @@ class PartiesController extends GetxController with MasterExportMixin {
   Future<void> save(PartyEntity entity) async {
     if (entity.id == null) {
       await _repository.create(entity);
-      AppSnackbar.success('Party saved locally. Sync queue updated.');
+      AppSnackbar.success('Party saved. Syncing to server...');
     } else {
       await _repository.update(entity);
-      AppSnackbar.success('Party update queued successfully.');
+      AppSnackbar.success('Party update queued. Syncing to server...');
+    }
+    // Force sync now so user sees result immediately
+    if (_networkMonitorService.isOnline.value) {
+      await _syncService.syncPendingMutations(showSuccessMessage: true);
     }
     await refreshData();
   }

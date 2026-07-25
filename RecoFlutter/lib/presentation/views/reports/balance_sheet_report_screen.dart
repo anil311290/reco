@@ -76,42 +76,53 @@ class BalanceSheetReportScreen extends GetView<BalanceSheetReportController> {
             ),
             const SizedBox(height: 12),
             if (report is Map<String, dynamic>) ...<Widget>[
-              GridView.count(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                crossAxisCount: 2,
-                mainAxisSpacing: 10,
-                crossAxisSpacing: 10,
-                childAspectRatio: 1.35,
+              Column(
                 children: <Widget>[
-                  ReportStatCard(
-                    label: 'Total Assets',
-                    value: controller.formatCurrency(
-                      (report['assets'] as Map?)?['total'],
-                    ),
-                    note: 'Asset side total',
-                    color: const Color(0xFF2563EB),
-                    icon: FontAwesomeIcons.buildingCircleCheck,
+                  Row(
+                    children: <Widget>[
+                      Expanded(
+                        child: ReportStatCard(
+                          label: 'Total Assets',
+                          value: controller.formatCurrency(
+                            (report['assets'] as Map?)?['total'],
+                          ),
+                          note: 'Asset side total',
+                          color: const Color(0xFF2563EB),
+                          icon: FontAwesomeIcons.buildingCircleCheck,
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: ReportStatCard(
+                          label: 'Liabilities + Equity',
+                          value: controller.formatCurrency(report['total_liabilities_equity']),
+                          note: 'Source side total',
+                          color: const Color(0xFFEF4444),
+                          icon: FontAwesomeIcons.scaleBalanced,
+                        ),
+                      ),
+                    ],
                   ),
-                  ReportStatCard(
-                    label: 'Liabilities + Equity',
-                    value: controller.formatCurrency(report['total_liabilities_equity']),
-                    note: 'Source side total',
-                    color: const Color(0xFFEF4444),
-                    icon: FontAwesomeIcons.scaleBalanced,
-                  ),
-                  ReportStatCard(
-                    label: 'Balance Status',
-                    value: (report['is_balanced'] == true) ? 'Balanced' : 'Review',
-                    note: (report['is_balanced'] == true)
-                        ? 'Assets match liabilities and equity.'
-                        : 'Difference exists',
-                    color: (report['is_balanced'] == true)
-                        ? const Color(0xFF16A34A)
-                        : const Color(0xFFF59E0B),
-                    icon: (report['is_balanced'] == true)
-                        ? FontAwesomeIcons.circleCheck
-                        : FontAwesomeIcons.triangleExclamation,
+                  const SizedBox(height: 10),
+                  Row(
+                    children: <Widget>[
+                      Expanded(
+                        child: ReportStatCard(
+                          label: 'Balance Status',
+                          value: (report['is_balanced'] == true) ? 'Balanced' : 'Review',
+                          note: (report['is_balanced'] == true)
+                              ? 'Assets match liabilities and equity.'
+                              : 'Difference exists',
+                          color: (report['is_balanced'] == true)
+                              ? const Color(0xFF16A34A)
+                              : const Color(0xFFF59E0B),
+                          icon: (report['is_balanced'] == true)
+                              ? FontAwesomeIcons.circleCheck
+                              : FontAwesomeIcons.triangleExclamation,
+                        ),
+                      ),
+                      const Spacer(),
+                    ],
                   ),
                 ],
               ),

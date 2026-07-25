@@ -18,6 +18,14 @@ import 'widgets/masters_ui_components.dart';
 class MastersScreen extends StatelessWidget {
   const MastersScreen({super.key});
 
+  static const List<MastersTab> _tabOrder = <MastersTab>[
+    MastersTab.accounts,
+    MastersTab.parties,
+    MastersTab.items,
+    MastersTab.categories,
+    MastersTab.taxes,
+  ];
+
   @override
   Widget build(BuildContext context) {
     if (!Get.isRegistered<MastersShellController>()) {
@@ -50,23 +58,23 @@ class MastersScreen extends StatelessWidget {
             children: <Widget>[
               MasterLineTabs(
                 labels: const <String>[
-                  'AR / AP',
                   'Ledgers',
+                  'AR / AP',
                   'Items',
                   'Item Categories',
                   'Tax Rates',
                 ],
-                value: controller.selectedTab.value.index,
+                value: _tabOrder.indexOf(controller.selectedTab.value),
                 onChanged: (index) =>
-                    controller.changeTab(MastersTab.values[index]),
+                    controller.changeTab(_tabOrder[index]),
               ),
               const SizedBox(height: 4),
               Expanded(
                 child: IndexedStack(
-                  index: controller.selectedTab.value.index,
+                  index: _tabOrder.indexOf(controller.selectedTab.value),
                   children: const <Widget>[
-                    PartiesTabScreen(),
                     AccountsTabScreen(),
+                    PartiesTabScreen(),
                     ItemsTabScreen(),
                     CategoriesTabScreen(),
                     TaxRatesTabScreen(),
@@ -79,8 +87,8 @@ class MastersScreen extends StatelessWidget {
             final selectedTab = controller.selectedTab.value;
             return MasterFab(
               label: switch (selectedTab) {
-                MastersTab.parties => 'Add Party',
                 MastersTab.accounts => 'Add Ledger',
+                MastersTab.parties => 'Add Party',
                 MastersTab.items => 'Add Item',
                 MastersTab.categories => 'Add Category',
                 MastersTab.taxes => 'Add Tax',
@@ -94,7 +102,7 @@ class MastersScreen extends StatelessWidget {
                     Get.to(() => const AccountFormSheet());
                     break;
                   case MastersTab.items:
-                    Get.to(() => const ItemFormSheet());
+                    _showItemTypeDialog(context);
                     break;
                   case MastersTab.categories:
                     Get.to(() => const CategoryFormSheet());
@@ -108,6 +116,72 @@ class MastersScreen extends StatelessWidget {
           }),
         );
       },
+    );
+  }
+
+  void _showItemTypeDialog(BuildContext context) {
+    final theme = Theme.of(context);
+    final primary = theme.colorScheme.primary;
+    showDialog<void>(
+      context: context,
+      barrierDismissible: true,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: theme.cardColor,
+        insetPadding: const EdgeInsets.all(20),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        title: Text(
+          'Select Item Type',
+          style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+        ),
+        content: Text(
+          'What would you like to create?',
+          style: theme.textTheme.bodyMedium?.copyWith(
+            color: theme.colorScheme.onSurfaceVariant,
+          ),
+        ),
+        actionsPadding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
+        actions: <Widget>[
+          Row(
+            children: <Widget>[
+              Expanded(
+                child: FilledButton.icon(
+                  onPressed: () {
+                    Navigator.of(ctx).pop();
+                    Get.to(() => const ItemFormSheet());
+                  },
+                  icon: const Icon(Icons.inventory_2_outlined, size: 18),
+                  label: const Text('Goods'),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: primary,
+                    minimumSize: const Size(0, 48),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: FilledButton.icon(
+                  onPressed: () {
+                    Navigator.of(ctx).pop();
+                    Get.to(() => const AccountFormSheet());
+                  },
+                  icon: const Icon(Icons.miscellaneous_services_outlined, size: 18),
+                  label: const Text('Service'),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: primary,
+                    minimumSize: const Size(0, 48),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
     );
   }
 }

@@ -39,7 +39,5 @@ class SalesInvoicesController extends BaseTransactionsTabController {
       ];
 
   @override
-  Map<String, dynamic> get extraQueryParameters => const <String, dynamic>{
-        'invoice_type': 'item',
-      };
+  Map<String, dynamic> get extraQueryParameters => const <String, dynamic>{};
 }

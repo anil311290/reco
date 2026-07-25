@@ -81,40 +81,51 @@ class TrialBalanceReportScreen extends GetView<TrialBalanceReportController> {
             ),
             const SizedBox(height: 12),
             if (report is Map<String, dynamic>) ...<Widget>[
-              GridView.count(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                crossAxisCount: 2,
-                mainAxisSpacing: 10,
-                crossAxisSpacing: 10,
-                childAspectRatio: 1.35,
+              Column(
                 children: <Widget>[
-                  ReportStatCard(
-                    label: 'Total Debit',
-                    value: controller.formatCurrency(report['total_debit']),
-                    note: 'Debit side total',
-                    color: const Color(0xFF2563EB),
-                    icon: FontAwesomeIcons.arrowTrendUp,
+                  Row(
+                    children: <Widget>[
+                      Expanded(
+                        child: ReportStatCard(
+                          label: 'Total Debit',
+                          value: controller.formatCurrency(report['total_debit']),
+                          note: 'Debit side total',
+                          color: const Color(0xFF2563EB),
+                          icon: FontAwesomeIcons.arrowTrendUp,
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: ReportStatCard(
+                          label: 'Total Credit',
+                          value: controller.formatCurrency(report['total_credit']),
+                          note: 'Credit side total',
+                          color: const Color(0xFFF59E0B),
+                          icon: FontAwesomeIcons.arrowTrendDown,
+                        ),
+                      ),
+                    ],
                   ),
-                  ReportStatCard(
-                    label: 'Total Credit',
-                    value: controller.formatCurrency(report['total_credit']),
-                    note: 'Credit side total',
-                    color: const Color(0xFFF59E0B),
-                    icon: FontAwesomeIcons.arrowTrendDown,
-                  ),
-                  ReportStatCard(
-                    label: 'Status',
-                    value: (report['is_balanced'] == true) ? 'Balanced' : 'Mismatch',
-                    note: (report['is_balanced'] == true)
-                        ? 'Trial balance is closed cleanly.'
-                        : 'Difference exists',
-                    color: (report['is_balanced'] == true)
-                        ? const Color(0xFF16A34A)
-                        : const Color(0xFFEF4444),
-                    icon: (report['is_balanced'] == true)
-                        ? FontAwesomeIcons.circleCheck
-                        : FontAwesomeIcons.triangleExclamation,
+                  const SizedBox(height: 10),
+                  Row(
+                    children: <Widget>[
+                      Expanded(
+                        child: ReportStatCard(
+                          label: 'Status',
+                          value: (report['is_balanced'] == true) ? 'Balanced' : 'Mismatch',
+                          note: (report['is_balanced'] == true)
+                              ? 'Trial balance is closed cleanly.'
+                              : 'Difference exists',
+                          color: (report['is_balanced'] == true)
+                              ? const Color(0xFF16A34A)
+                              : const Color(0xFFEF4444),
+                          icon: (report['is_balanced'] == true)
+                              ? FontAwesomeIcons.circleCheck
+                              : FontAwesomeIcons.triangleExclamation,
+                        ),
+                      ),
+                      const Spacer(),
+                    ],
                   ),
                 ],
               ),
@@ -126,61 +137,72 @@ class TrialBalanceReportScreen extends GetView<TrialBalanceReportController> {
               iconColor: const Color(0xFFD97706),
               child: accounts.isEmpty
                   ? const Text('No accounts found')
-                  : SingleChildScrollView(
-                      scrollDirection: Axis.horizontal,
-                      child: DataTable2(
-                        minWidth: 860,
-                        columns: <DataColumn2>[
-                          masterColumn(context, 'Code'),
-                          masterColumn(context, 'Account Name', size: ColumnSize.L),
-                          masterColumn(context, 'Type'),
-                          masterColumn(context, 'Debit'),
-                          masterColumn(context, 'Credit'),
-                        ],
-                        rows: accounts.map((item) {
-                          final account = item['account'];
-                          final accountId = account is Map<String, dynamic>
-                              ? _asInt(account['id'])
-                              : null;
-                          return DataRow(
-                            cells: <DataCell>[
-                              DataCell(
-                                InkWell(
-                                  onTap: accountId == null
-                                      ? null
-                                      : () => Get.to(
-                                            () => LedgerReportScreen(
-                                              initialAccountId: accountId,
-                                            ),
-                                          ),
-                                  child: Text(
-                                    account is Map<String, dynamic>
-                                        ? (account['account_code'] ?? '-').toString()
-                                        : '-',
-                                  ),
-                                ),
-                              ),
-                              masterTextCell(
-                                account is Map<String, dynamic>
-                                    ? (account['account_name'] ?? '-').toString()
-                                    : '-',
-                              ),
-                              masterTextCell(
-                                account is Map<String, dynamic>
-                                    ? (account['account_type'] ?? '-').toString()
-                                    : '-',
-                              ),
-                              masterTextCell(controller.formatCurrency(item['debit'])),
-                              masterTextCell(controller.formatCurrency(item['credit'])),
-                            ],
-                          );
-                        }).toList(),
-                      ),
-                    ),
+                  : _buildTrialBalanceTable(context, report, accounts),
             ),
           ],
         );
       }),
+    );
+  }
+
+  Widget _buildTrialBalanceTable(
+    BuildContext context,
+    dynamic reportData,
+    List<Map<String, dynamic>> accounts,
+  ) {
+    if (reportData is! Map) {
+      return const Center(
+        child: Padding(
+          padding: EdgeInsets.all(24),
+          child: Text('No accounts found'),
+        ),
+      );
+    }
+
+    final tableRows = <DataRow>[
+      ...List<DataRow>.generate(accounts.length, (index) {
+        final item = accounts[index];
+        final account = item['account'];
+        final accountId = account is Map<String, dynamic> ? _asInt(account['id']) : null;
+        return DataRow(
+          cells: <DataCell>[
+            DataCell(Center(
+              child: InkWell(
+                onTap: accountId == null ? null : () => Get.to(() => LedgerReportScreen(initialAccountId: accountId)),
+                child: Text(
+                  account is Map<String, dynamic> ? (account['account_code'] ?? '-').toString() : '-',
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(fontSize: 13),
+                ),
+              ),
+            )),
+            masterTextCell(account is Map<String, dynamic> ? (account['account_name'] ?? '-').toString() : '-'),
+            masterTextCell(account is Map<String, dynamic> ? (account['account_type'] ?? '-').toString() : '-'),
+            DataCell(Center(child: Text(controller.formatCurrency(item['debit']), textAlign: TextAlign.center, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)))),
+            DataCell(Center(child: Text(controller.formatCurrency(item['credit']), textAlign: TextAlign.center, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)))),
+          ],
+        );
+      }),
+    ];
+
+    final calculatedHeight = 42.0 + (accounts.length * 52.0);
+    final tableHeight = calculatedHeight.clamp(160.0, 550.0);
+
+    return SizedBox(
+      height: tableHeight,
+      child: MastersTableShell(
+        isLoading: false,
+        emptyText: 'No accounts found',
+        minWidth: 860,
+        columns: <DataColumn2>[
+          masterColumn(context, 'Code'),
+          masterColumn(context, 'Account Name', size: ColumnSize.L),
+          masterColumn(context, 'Type'),
+          masterColumn(context, 'Debit'),
+          masterColumn(context, 'Credit'),
+        ],
+        rows: tableRows,
+      ),
     );
   }
 

@@ -6,6 +6,8 @@ class ApiEndpoints {
   static const String logout = '/logout';
   static const String me = '/me';
   static const String changePassword = '/change-password';
+  static const String forgotPassword = '/forgot-password';
+  static const String resetPassword = '/reset-password';
 
   static const String pinLogin = '/pin/login';
   static const String pinSet = '/pin/set';
@@ -37,6 +39,7 @@ class ApiEndpoints {
 
   static const String parties = '/parties';
   static const String partyByType = '/parties/by-type';
+  static String partyHistory(Object id) => '/parties/$id/history';
   static const String states = '/states';
 
   static String stateCities(int stateId) => '/states/$stateId/cities';
@@ -69,6 +72,7 @@ class ApiEndpoints {
   static const String itemCategoriesDropdown = '/item-categories/dropdown';
   static const String items = '/items';
   static const String itemsDropdown = '/items/dropdown';
+  static String itemHistory(Object id) => '/items/$id/history';
   static const String salesInvoices = '/sales-invoices';
   static const String serviceSalesInvoices = '/service-sales-invoices';
   static const String purchaseInvoices = '/purchase-invoices';

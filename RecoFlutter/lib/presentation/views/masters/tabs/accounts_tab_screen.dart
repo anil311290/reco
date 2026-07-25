@@ -6,6 +6,7 @@ import 'package:get/get.dart';
 import '../../../../data/models/masters/master_entities.dart';
 import '../../../controllers/masters/accounts_controller.dart';
 import '../../../widgets/common/custom_text_field.dart';
+import '../../reports/ledger_report_screen.dart';
 import '../forms/account_form_sheet.dart';
 import '../widgets/masters_ui_components.dart';
 
@@ -39,7 +40,7 @@ class AccountsTabScreen extends GetView<AccountsController> {
                   masterColumn(context, 'Mode', size: ColumnSize.S),
                   masterColumn(context, 'Opening Balance', size: ColumnSize.M),
                   masterColumn(context, 'Status', fixedWidth: 120),
-                  masterColumn(context, 'Actions', fixedWidth: 120),
+                  masterColumn(context, 'Actions', fixedWidth: 170),
                 ],
                 rows: controller.filteredItems.map((item) {
                   return DataRow(
@@ -72,6 +73,19 @@ class AccountsTabScreen extends GetView<AccountsController> {
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: <Widget>[
+                              MasterActionButton(
+                                icon: Icons.assessment_outlined,
+                                tooltip: 'Ledger Report',
+                                color: const Color(0xFF2563EB),
+                                onTap: item.id == null
+                                    ? null
+                                    : () => Get.to(
+                                          () => LedgerReportScreen(
+                                            initialAccountId: item.id,
+                                          ),
+                                        ),
+                              ),
+                              const SizedBox(width: 8),
                               MasterActionButton(
                                 icon: Icons.edit_outlined,
                                 tooltip: 'Edit',

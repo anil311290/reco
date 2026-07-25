@@ -25,12 +25,10 @@ mixin MasterExportMixin on GetxController {
         type: type,
         queryParameters: queryParameters,
       );
-      final launched = await _openExportUrl(response);
-      if (launched) {
-        return;
-      }
+      final handled = await _handleBinaryExport(response, reportName, 'xlsx');
+      if (handled) return;
     } catch (_) {
-      // Fallback to local CSV export.
+      // Fallback to local CSV.
     }
 
     if (fallbackRows.isEmpty) {
@@ -66,61 +64,93 @@ mixin MasterExportMixin on GetxController {
         type: type,
         queryParameters: queryParameters,
       );
-      final launched = await _openExportUrl(response);
-      if (!launched) {
-        await _openLocalPdfFallback(
-          reportName: reportName,
-          fallbackRows: fallbackRows,
-        );
-      }
+      final handled = await _handleBinaryExport(response, reportName ?? type, 'pdf');
+      if (handled) return;
     } catch (_) {
-      await _openLocalPdfFallback(
-        reportName: reportName,
-        fallbackRows: fallbackRows,
+      // Fallback to local PDF.
+    }
+
+    if ((reportName == null || reportName.trim().isEmpty) || fallbackRows.isEmpty) {
+      AppSnackbar.error('PDF export abhi available nahi hai.');
+      return;
+    }
+
+    final directory = await getTemporaryDirectory();
+    final fileName =
+        '${reportName.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]+'), '_')}_${DateTime.now().millisecondsSinceEpoch}.pdf';
+    final file = File(p.join(directory.path, fileName));
+    await file.writeAsBytes(_buildSimplePdf(reportName, fallbackRows));
+
+    await _openOrShare(file.path, reportName);
+  }
+
+  /// Try to decode base64 content from API response, save to temp file,
+  /// and open/share it. Returns true if successful.
+  Future<bool> _handleBinaryExport(
+    Map<String, dynamic> response,
+    String reportName,
+    String extension,
+  ) async {
+    final data = response['data'];
+    if (data is! Map<String, dynamic>) return false;
+
+    final base64 = data['content_base64']?.toString();
+    if (base64 == null || base64.isEmpty) {
+      // Try URL fallback
+      final url = _resolveExportUrl(
+        data['download_url']?.toString(),
+        data['path']?.toString(),
       );
+      if (url.isNotEmpty) {
+        final uri = Uri.tryParse(url);
+        if (uri != null) {
+          final launched = await launchUrl(uri, mode: LaunchMode.externalApplication);
+          if (launched) return true;
+          await Clipboard.setData(ClipboardData(text: url));
+          AppSnackbar.success('Export link copied.');
+          return true;
+        }
+      }
+      return false;
+    }
+
+    try {
+      final bytes = base64Decode(base64);
+      final directory = await getTemporaryDirectory();
+      final safeName = reportName
+          .toLowerCase()
+          .replaceAll(RegExp(r'[^a-z0-9]+'), '_');
+      final fileName = '${safeName}_${DateTime.now().millisecondsSinceEpoch}.$extension';
+      final file = File(p.join(directory.path, fileName));
+      await file.writeAsBytes(bytes);
+      AppSnackbar.success('$reportName exported successfully.');
+      await _openOrShare(file.path, reportName);
+      return true;
+    } catch (_) {
+      return false;
     }
   }
 
-  Future<bool> _openExportUrl(Map<String, dynamic> response) async {
-    final data = response['data'];
-    if (data is! Map<String, dynamic>) {
-      return false;
-    }
-
-    final url = _resolveExportUrl(
-      data['download_url']?.toString(),
-      data['path']?.toString(),
-    );
-    if (url.isEmpty) {
-      return false;
-    }
-
-    final uri = Uri.tryParse(url);
-    if (uri == null) {
-      return false;
-    }
-
-    final launched = await launchUrl(
-      uri,
+  Future<void> _openOrShare(String filePath, String reportName) async {
+    final opened = await launchUrl(
+      Uri.file(filePath),
       mode: LaunchMode.externalApplication,
     );
-    if (launched) {
-      return true;
-    }
+    if (opened) return;
 
-    await Clipboard.setData(ClipboardData(text: url));
-    AppSnackbar.success('Export link copied successfully.');
-    return true;
+    await SharePlus.instance.share(
+      ShareParams(
+        files: <XFile>[XFile(filePath)],
+        subject: '$reportName Export',
+        text: '$reportName exported successfully.',
+      ),
+    );
   }
 
   String _resolveExportUrl(String? downloadUrl, String? path) {
-    if (downloadUrl != null && downloadUrl.isNotEmpty) {
-      return downloadUrl;
-    }
+    if (downloadUrl != null && downloadUrl.isNotEmpty) return downloadUrl;
     if (path != null && path.isNotEmpty) {
-      if (path.startsWith('http://') || path.startsWith('https://')) {
-        return path;
-      }
+      if (path.startsWith('http://') || path.startsWith('https://')) return path;
       return '${AppConfig.origin}$path';
     }
     return '';

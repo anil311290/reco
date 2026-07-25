@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
+import '../../../core/services/network_monitor_service.dart';
+import '../../../core/services/sync_service.dart';
 import '../../../core/utils/app_snackbar.dart';
 import '../../../data/models/masters/master_entities.dart';
 import '../../../data/repositories/masters/item_categories_repository.dart';
@@ -8,10 +10,17 @@ import '../../../data/repositories/masters/masters_export_repository.dart';
 import 'master_export_mixin.dart';
 
 class CategoriesController extends GetxController with MasterExportMixin {
-  CategoriesController(this._repository, this._exportRepository);
+  CategoriesController(
+    this._repository,
+    this._exportRepository,
+    this._syncService,
+    this._networkMonitorService,
+  );
 
   final ItemCategoriesRepository _repository;
   final MastersExportRepository _exportRepository;
+  final SyncService _syncService;
+  final NetworkMonitorService _networkMonitorService;
 
   final searchController = TextEditingController();
   final searchQuery = ''.obs;
@@ -69,10 +78,13 @@ class CategoriesController extends GetxController with MasterExportMixin {
   Future<void> save(ItemCategoryEntity entity) async {
     if (entity.id == null) {
       await _repository.create(entity);
-      AppSnackbar.success('Category saved locally. Sync queue updated.');
+      AppSnackbar.success('Category saved. Syncing to server...');
     } else {
       await _repository.update(entity);
-      AppSnackbar.success('Category update queued successfully.');
+      AppSnackbar.success('Category update queued. Syncing to server...');
+    }
+    if (_networkMonitorService.isOnline.value) {
+      await _syncService.syncPendingMutations(showSuccessMessage: true);
     }
     await refreshData();
   }

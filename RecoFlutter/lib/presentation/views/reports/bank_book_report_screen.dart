@@ -65,7 +65,10 @@ class BankBookReportScreen extends GetView<BankBookReportController> {
                       final name = (item['account_name'] ?? item['text'] ?? 'Bank').toString();
                       return code.isEmpty ? name : '$code - $name';
                     },
-                    onChanged: (value) => controller.accountId.value = value,
+                    onChanged: (value) {
+                      controller.accountId.value = value;
+                      controller.loadReport();
+                    },
                   ),
                   ReportDateRangeRow(
                     fromController: controller.fromDateController,
@@ -110,58 +113,91 @@ class BankBookReportScreen extends GetView<BankBookReportController> {
                 child: Text(message),
               )
             else if (report != null) ...<Widget>[
-              GridView.count(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                crossAxisCount: 2,
-                mainAxisSpacing: 10,
-                crossAxisSpacing: 10,
-                childAspectRatio: 1.35,
+              if (selectedAccount != null) ...<Widget>[
+                Row(
+                  children: <Widget>[
+                    Expanded(
+                      child: ReportStatCard(
+                        label: 'Bank Account',
+                        value: (selectedAccount['account_code'] ?? '-').toString(),
+                        note: (selectedAccount['account_name'] ?? 'Bank Account').toString(),
+                        color: const Color(0xFF0F766E),
+                        icon: FontAwesomeIcons.buildingColumns,
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: ReportStatCard(
+                        label: 'Opening',
+                        value: controller.formatCurrency(
+                          (report['opening_balance'] as Map?)?['balance'],
+                        ),
+                        note: ((report['opening_balance'] as Map?)?['type'] ?? '-')
+                            .toString()
+                            .toUpperCase(),
+                        color: const Color(0xFF2563EB),
+                        icon: FontAwesomeIcons.landmark,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 10),
+              ],
+              Row(
                 children: <Widget>[
-                  if (selectedAccount != null)
-                    ReportStatCard(
-                      label: 'Bank Account',
-                      value: (selectedAccount['account_code'] ?? '-').toString(),
-                      note: (selectedAccount['account_name'] ?? 'Bank Account').toString(),
-                      color: const Color(0xFF0F766E),
-                      icon: FontAwesomeIcons.buildingColumns,
+                  if (selectedAccount == null)
+                    Expanded(
+                      child: ReportStatCard(
+                        label: 'Opening',
+                        value: controller.formatCurrency(
+                          (report['opening_balance'] as Map?)?['balance'],
+                        ),
+                        note: ((report['opening_balance'] as Map?)?['type'] ?? '-')
+                            .toString()
+                            .toUpperCase(),
+                        color: const Color(0xFF2563EB),
+                        icon: FontAwesomeIcons.landmark,
+                      ),
                     ),
-                  ReportStatCard(
-                    label: 'Opening',
-                    value: controller.formatCurrency(
-                      (report['opening_balance'] as Map?)?['balance'],
+                  if (selectedAccount == null) const SizedBox(width: 10),
+                  Expanded(
+                    child: ReportStatCard(
+                      label: 'Receipts',
+                      value: controller.formatCurrency(report['total_debit']),
+                      note: 'Money in',
+                      color: const Color(0xFF16A34A),
+                      icon: FontAwesomeIcons.arrowDownWideShort,
                     ),
-                    note: ((report['opening_balance'] as Map?)?['type'] ?? '-')
-                        .toString()
-                        .toUpperCase(),
-                    color: const Color(0xFF2563EB),
-                    icon: FontAwesomeIcons.landmark,
                   ),
-                  ReportStatCard(
-                    label: 'Receipts',
-                    value: controller.formatCurrency(report['total_debit']),
-                    note: 'Money in',
-                    color: const Color(0xFF16A34A),
-                    icon: FontAwesomeIcons.arrowDownWideShort,
-                  ),
-                  ReportStatCard(
-                    label: 'Payments',
-                    value: controller.formatCurrency(report['total_credit']),
-                    note: 'Money out',
-                    color: const Color(0xFFEF4444),
-                    icon: FontAwesomeIcons.arrowUpWideShort,
-                  ),
-                  ReportStatCard(
-                    label: 'Closing',
-                    value: controller.formatCurrency(
-                      (report['closing_balance'] as Map?)?['balance'],
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: ReportStatCard(
+                      label: 'Payments',
+                      value: controller.formatCurrency(report['total_credit']),
+                      note: 'Money out',
+                      color: const Color(0xFFEF4444),
+                      icon: FontAwesomeIcons.arrowUpWideShort,
                     ),
-                    note: ((report['closing_balance'] as Map?)?['type'] ?? '-')
-                        .toString()
-                        .toUpperCase(),
-                    color: const Color(0xFFF59E0B),
-                    icon: FontAwesomeIcons.fileCircleCheck,
                   ),
+                ],
+              ),
+              const SizedBox(height: 10),
+              Row(
+                children: <Widget>[
+                  Expanded(
+                    child: ReportStatCard(
+                      label: 'Closing',
+                      value: controller.formatCurrency(
+                        (report['closing_balance'] as Map?)?['balance'],
+                      ),
+                      note: ((report['closing_balance'] as Map?)?['type'] ?? '-')
+                          .toString()
+                          .toUpperCase(),
+                      color: const Color(0xFFF59E0B),
+                      icon: FontAwesomeIcons.fileCircleCheck,
+                    ),
+                  ),
+                  const Spacer(),
                 ],
               ),
               const SizedBox(height: 12),
@@ -172,63 +208,7 @@ class BankBookReportScreen extends GetView<BankBookReportController> {
               iconColor: const Color(0xFF2563EB),
               child: entries.isEmpty
                   ? const Text('No entries in this period')
-                  : SingleChildScrollView(
-                      scrollDirection: Axis.horizontal,
-                      child: DataTable2(
-                        minWidth: 980,
-                        columns: <DataColumn2>[
-                          masterColumn(context, 'Date'),
-                          masterColumn(context, 'Voucher #'),
-                          masterColumn(context, 'Particulars', size: ColumnSize.L),
-                          masterColumn(context, 'Party'),
-                          masterColumn(context, 'Receipts'),
-                          masterColumn(context, 'Payments'),
-                          masterColumn(context, 'Balance'),
-                        ],
-                        rows: entries.map((map) {
-                          final voucher = map['voucher'] is Map<String, dynamic>
-                              ? map['voucher'] as Map<String, dynamic>
-                              : <String, dynamic>{};
-                          final party = map['party'] is Map<String, dynamic>
-                              ? map['party'] as Map<String, dynamic>
-                              : <String, dynamic>{};
-                          final debit =
-                              double.tryParse(map['debit']?.toString() ?? '') ?? 0;
-                          final credit =
-                              double.tryParse(map['credit']?.toString() ?? '') ?? 0;
-                          return DataRow(
-                            cells: <DataCell>[
-                              masterTextCell(
-                                controller.formatDate(
-                                  (map['transaction_date'] ?? '').toString(),
-                                ),
-                              ),
-                              masterTextCell(
-                                (voucher['voucher_number'] ?? '-').toString(),
-                              ),
-                              masterTextCell(
-                                (map['description'] ?? voucher['narration'] ?? '-')
-                                    .toString(),
-                              ),
-                              masterTextCell((party['name'] ?? '-').toString()),
-                              masterTextCell(
-                                debit > 0
-                                    ? controller.formatCurrency(debit)
-                                    : '-',
-                              ),
-                              masterTextCell(
-                                credit > 0
-                                    ? controller.formatCurrency(credit)
-                                    : '-',
-                              ),
-                              masterTextCell(
-                                '${controller.formatCurrency(map['running_balance'])} ${(map['balance_type'] ?? '').toString().toUpperCase()}',
-                              ),
-                            ],
-                          );
-                        }).toList(),
-                      ),
-                    ),
+                  : _buildBookTable(context, report, entries),
             ),
           ],
         );
@@ -249,6 +229,69 @@ class BankBookReportScreen extends GetView<BankBookReportController> {
     if (selected != null) {
       controller.text = selected.toIso8601String().substring(0, 10);
     }
+  }
+
+  Widget _buildBookTable(
+    BuildContext context,
+    dynamic reportData,
+    List<Map<String, dynamic>> entries,
+  ) {
+    if (reportData is! Map) {
+      return const Center(
+        child: Padding(
+          padding: EdgeInsets.all(24),
+          child: Text('No entries in this period'),
+        ),
+      );
+    }
+
+    final tableRows = <DataRow>[
+      ...List<DataRow>.generate(entries.length, (index) {
+        final map = entries[index];
+        final voucher = map['voucher'] is Map<String, dynamic>
+            ? map['voucher'] as Map<String, dynamic>
+            : <String, dynamic>{};
+        final party = map['party'] is Map<String, dynamic>
+            ? map['party'] as Map<String, dynamic>
+            : <String, dynamic>{};
+        final debit = double.tryParse(map['debit']?.toString() ?? '') ?? 0;
+        final credit = double.tryParse(map['credit']?.toString() ?? '') ?? 0;
+
+        return DataRow(
+          cells: <DataCell>[
+            masterTextCell(controller.formatDate((map['transaction_date'] ?? '').toString())),
+            masterTextCell((voucher['voucher_number'] ?? '-').toString()),
+            masterTextCell((map['description'] ?? voucher['narration'] ?? '-').toString()),
+            masterTextCell((party['name'] ?? '-').toString()),
+            DataCell(Center(child: Text(debit > 0 ? controller.formatCurrency(debit) : '-', textAlign: TextAlign.center, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)))),
+            DataCell(Center(child: Text(credit > 0 ? controller.formatCurrency(credit) : '-', textAlign: TextAlign.center, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)))),
+            masterTextCell('${controller.formatCurrency(map['running_balance'])} ${(map['balance_type'] ?? '').toString().toUpperCase()}'),
+          ],
+        );
+      }),
+    ];
+
+    final calculatedHeight = 42.0 + (entries.length * 52.0);
+    final tableHeight = calculatedHeight.clamp(160.0, 550.0);
+
+    return SizedBox(
+      height: tableHeight,
+      child: MastersTableShell(
+        isLoading: false,
+        emptyText: 'No entries in this period',
+        minWidth: 980,
+        columns: <DataColumn2>[
+          masterColumn(context, 'Date'),
+          masterColumn(context, 'Voucher #'),
+          masterColumn(context, 'Particulars', size: ColumnSize.L),
+          masterColumn(context, 'Party'),
+          masterColumn(context, 'Receipts'),
+          masterColumn(context, 'Payments'),
+          masterColumn(context, 'Balance'),
+        ],
+        rows: tableRows,
+      ),
+    );
   }
 
   int? _asInt(dynamic value) => int.tryParse(value?.toString() ?? '');

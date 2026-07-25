@@ -83,7 +83,7 @@ class TransactionRecord {
       isDirty: record['is_dirty'] == true,
       number: (payload['invoice_number'] ?? '').toString(),
       type: invoiceType,
-      typeLabel: invoiceType == 'service' ? 'Service Sales' : 'Sales',
+      typeLabel: 'Sales Invoice',
       partyId: _tryParseInt(payload['party_id']),
       partyName: party is Map<String, dynamic>
           ? (party['name'] ?? '').toString()

@@ -18,7 +18,8 @@ class ItemCategoriesRepository extends OfflineFirstRepository {
     Map<String, dynamic>? queryParameters,
   }) async {
     final local = await getLocalModuleRecords(_module);
-    final entities = local.map(ItemCategoryEntity.fromRecord).toList();
+    final entities = local.map(ItemCategoryEntity.fromRecord).toList()
+      ..sort(_sortCategories);
 
     if (entities.isNotEmpty) {
       if (await networkMonitorService.hasInternetNow()) {
@@ -43,7 +44,8 @@ class ItemCategoriesRepository extends OfflineFirstRepository {
     );
     final records = _extractList(response.data?['data']);
     await mergeRemoteRecords(module: _module, records: records);
-    return records.map(ItemCategoryEntity.fromRecord).toList();
+    return records.map(ItemCategoryEntity.fromRecord).toList()
+      ..sort(_sortCategories);
   }
 
   Future<String> create(ItemCategoryEntity entity) {
@@ -131,5 +133,9 @@ class ItemCategoriesRepository extends OfflineFirstRepository {
           .toList();
     }
     return <Map<String, dynamic>>[];
+  }
+
+  int _sortCategories(ItemCategoryEntity a, ItemCategoryEntity b) {
+    return a.name.toLowerCase().compareTo(b.name.toLowerCase());
   }
 }

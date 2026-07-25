@@ -19,7 +19,6 @@ class AdminSettingsController extends GetxController
   final isSavingCompany = false.obs;
   final isSavingTheme = false.obs;
   final isSavingAccounting = false.obs;
-  final isLoadingFinancialYears = false.obs;
 
   final companyNameController = TextEditingController();
   final companyEmailController = TextEditingController();
@@ -48,9 +47,6 @@ class AdminSettingsController extends GetxController
   final selectedTdsLedger = Rxn<LookupOption>();
   final selectedTcsLedger = Rxn<LookupOption>();
   final selectedCessLedger = Rxn<LookupOption>();
-  final financialYears = <Map<String, dynamic>>[].obs;
-  final RxMap<String, dynamic> currentFinancialYear =
-      <String, dynamic>{}.obs;
 
   @override
   void onInit() {
@@ -94,7 +90,6 @@ class AdminSettingsController extends GetxController
       await Future.wait(<Future<void>>[
         _loadSettings(),
         _loadAccounts(),
-        loadFinancialYears(),
       ]);
     } finally {
       isLoading.value = false;
@@ -109,9 +104,6 @@ class AdminSettingsController extends GetxController
         <String, dynamic>{};
     final accounting =
         (data['accounting'] as Map?)?.cast<String, dynamic>() ??
-            <String, dynamic>{};
-    final financialYear =
-        (data['financial_year'] as Map?)?.cast<String, dynamic>() ??
             <String, dynamic>{};
 
     companyNameController.text = (company['name'] ?? '').toString();
@@ -143,8 +135,6 @@ class AdminSettingsController extends GetxController
     headerColorController.text =
         (theme['header_color'] ?? '#ffffff').toString();
     themeDarkMode.value = theme['dark_mode'] == true;
-
-    currentFinancialYear.assignAll(financialYear);
 
     _pendingAccountingIds = <String, dynamic>{
       'sales_tax_ledger_id': accounting['sales_tax_ledger_id'],
@@ -196,19 +186,6 @@ class AdminSettingsController extends GetxController
       }
     }
     return null;
-  }
-
-  Future<void> loadFinancialYears() async {
-    isLoadingFinancialYears.value = true;
-    try {
-      financialYears.assignAll(await _settingsRepository.fetchFinancialYears());
-      currentFinancialYear.assignAll(
-        await _settingsRepository.fetchCurrentFinancialYear() ??
-            <String, dynamic>{},
-      );
-    } finally {
-      isLoadingFinancialYears.value = false;
-    }
   }
 
   Future<void> saveCompany() async {

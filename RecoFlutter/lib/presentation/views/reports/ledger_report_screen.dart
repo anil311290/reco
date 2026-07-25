@@ -75,7 +75,10 @@ class _LedgerReportScreenState extends State<LedgerReportScreen> {
                       final name = (item['account_name'] ?? '').toString();
                       return code.isEmpty ? name : '$code - $name';
                     },
-                    onChanged: (value) => controller.accountId.value = value,
+                    onChanged: (value) {
+                      controller.accountId.value = value;
+                      controller.loadReport();
+                    },
                   ),
                   ReportDateRangeRow(
                     fromController: controller.fromDateController,
@@ -113,35 +116,34 @@ class _LedgerReportScreenState extends State<LedgerReportScreen> {
             ),
             const SizedBox(height: 12),
             if (report is Map<String, dynamic>) ...<Widget>[
-              GridView.count(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                crossAxisCount: 2,
-                mainAxisSpacing: 10,
-                crossAxisSpacing: 10,
-                childAspectRatio: 1.35,
+              Row(
                 children: <Widget>[
-                  ReportStatCard(
-                    label: 'Opening Balance',
-                    value: controller.formatCurrency(
-                      (report['opening_balance'] as Map?)?['balance'],
+                  Expanded(
+                    child: ReportStatCard(
+                      label: 'Opening Balance',
+                      value: controller.formatCurrency(
+                        (report['opening_balance'] as Map?)?['balance'],
+                      ),
+                      note: ((report['opening_balance'] as Map?)?['type'] ?? '-')
+                          .toString()
+                          .toUpperCase(),
+                      color: const Color(0xFF2563EB),
+                      icon: FontAwesomeIcons.circlePlay,
                     ),
-                    note: ((report['opening_balance'] as Map?)?['type'] ?? '-')
-                        .toString()
-                        .toUpperCase(),
-                    color: const Color(0xFF2563EB),
-                    icon: FontAwesomeIcons.circlePlay,
                   ),
-                  ReportStatCard(
-                    label: 'Closing Balance',
-                    value: controller.formatCurrency(
-                      (report['closing_balance'] as Map?)?['balance'],
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: ReportStatCard(
+                      label: 'Closing Balance',
+                      value: controller.formatCurrency(
+                        (report['closing_balance'] as Map?)?['balance'],
+                      ),
+                      note: ((report['closing_balance'] as Map?)?['type'] ?? '-')
+                          .toString()
+                          .toUpperCase(),
+                      color: const Color(0xFF16A34A),
+                      icon: FontAwesomeIcons.circleStop,
                     ),
-                    note: ((report['closing_balance'] as Map?)?['type'] ?? '-')
-                        .toString()
-                        .toUpperCase(),
-                    color: const Color(0xFF16A34A),
-                    icon: FontAwesomeIcons.circleStop,
                   ),
                 ],
               ),
@@ -151,60 +153,102 @@ class _LedgerReportScreenState extends State<LedgerReportScreen> {
               title: 'Ledger Entries',
               icon: FontAwesomeIcons.tableList,
               iconColor: const Color(0xFF475569),
-              child: entries.isEmpty
-                  ? const Text('No entries found')
-                  : SingleChildScrollView(
-                      scrollDirection: Axis.horizontal,
-                      child: DataTable2(
-                        minWidth: 1120,
-                        columns: <DataColumn2>[
-                          masterColumn(context, 'Date'),
-                          masterColumn(context, 'Voucher #'),
-                          masterColumn(context, 'Particulars', size: ColumnSize.L),
-                          masterColumn(context, 'Party'),
-                          masterColumn(context, 'Debit'),
-                          masterColumn(context, 'Credit'),
-                          masterColumn(context, 'Balance'),
-                        ],
-                        rows: entries.map((entry) {
-                          final voucher = entry['voucher'];
-                          final party = entry['party'];
-                          return DataRow(
-                            cells: <DataCell>[
-                              masterTextCell(controller.formatDate((entry['transaction_date'] ?? '').toString())),
-                              masterTextCell(
-                                voucher is Map<String, dynamic>
-                                    ? (voucher['voucher_number'] ?? '-').toString()
-                                    : '-',
-                              ),
-                              masterTextCell((entry['narration'] ?? entry['description'] ?? '-').toString()),
-                              masterTextCell(
-                                party is Map<String, dynamic>
-                                    ? (party['name'] ?? '-').toString()
-                                    : '-',
-                              ),
-                              masterTextCell(
-                                ((entry['debit'] ?? 0) as num) > 0
-                                    ? controller.formatCurrency(entry['debit'])
-                                    : '-',
-                              ),
-                              masterTextCell(
-                                ((entry['credit'] ?? 0) as num) > 0
-                                    ? controller.formatCurrency(entry['credit'])
-                                    : '-',
-                              ),
-                              masterTextCell(
-                                '${controller.formatCurrency(entry['running_balance'])} ${(entry['balance_type'] ?? '').toString().toUpperCase()}',
-                              ),
-                            ],
-                          );
-                        }).toList(),
-                      ),
-                    ),
+              child: entries.isEmpty && report is! Map
+                  ? const Padding(
+                      padding: EdgeInsets.all(24),
+                      child: Center(child: Text('No entries found')),
+                    )
+                  : _buildLedgerTable(context, report, entries),
             ),
           ],
         );
       }),
+    );
+  }
+
+  Widget _buildLedgerTable(
+    BuildContext context,
+    dynamic reportData,
+    List<Map<String, dynamic>> entries,
+  ) {
+    if (reportData is! Map) {
+      return const Center(
+        child: Padding(
+          padding: EdgeInsets.all(24),
+          child: Text('No entries found'),
+        ),
+      );
+    }
+
+    final tableRows = <DataRow>[
+      ...List<DataRow>.generate(entries.length, (index) {
+        final entry = entries[index];
+        final voucher = entry['voucher'] is Map
+            ? Map<String, dynamic>.from(entry['voucher'] as Map)
+            : <String, dynamic>{};
+        final party = entry['party'] is Map
+            ? Map<String, dynamic>.from(entry['party'] as Map)
+            : <String, dynamic>{};
+        final debit =
+            double.tryParse(entry['debit']?.toString() ?? '0') ?? 0;
+        final credit =
+            double.tryParse(entry['credit']?.toString() ?? '0') ?? 0;
+
+        return DataRow(
+          cells: <DataCell>[
+            masterTextCell(controller.formatDate((entry['transaction_date'] ?? '').toString())),
+            masterTextCell((voucher['voucher_number'] ?? '-').toString()),
+            masterTextCell((entry['narration'] ?? entry['description'] ?? '-').toString()),
+            masterTextCell((party['name'] ?? '-').toString()),
+            DataCell(Center(
+              child: Text(
+                debit > 0 ? controller.formatCurrency(debit) : '-',
+                textAlign: TextAlign.center,
+                style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: debit > 0 ? const Color(0xFF2563EB) : null),
+              ),
+            )),
+            DataCell(Center(
+              child: Text(
+                credit > 0 ? controller.formatCurrency(credit) : '-',
+                textAlign: TextAlign.center,
+                style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: credit > 0 ? const Color(0xFFEF4444) : null),
+              ),
+            )),
+            masterTextCell('${controller.formatCurrency(entry['running_balance'])} ${(entry['balance_type'] ?? '').toString().toUpperCase()}'),
+            DataCell(Center(
+              child: MasterActionButton(
+                icon: FontAwesomeIcons.clockRotateLeft,
+                tooltip: 'View Ledger',
+                color: const Color(0xFF475569),
+                onTap: () => Get.to(() => LedgerReportScreen()),
+              ),
+            )),
+          ],
+        );
+      }),
+    ];
+
+    final calculatedHeight = 42.0 + (entries.length * 52.0);
+    final tableHeight = calculatedHeight.clamp(160.0, 550.0);
+
+    return SizedBox(
+      height: tableHeight,
+      child: MastersTableShell(
+        isLoading: false,
+        emptyText: 'No entries found',
+        minWidth: 1120,
+        columns: <DataColumn2>[
+          masterColumn(context, 'Date'),
+          masterColumn(context, 'Voucher #'),
+          masterColumn(context, 'Particulars', size: ColumnSize.L),
+          masterColumn(context, 'Party'),
+          masterColumn(context, 'Debit'),
+          masterColumn(context, 'Credit'),
+          masterColumn(context, 'Balance'),
+          masterColumn(context, 'Actions', fixedWidth: 100),
+        ],
+        rows: tableRows,
+      ),
     );
   }
 
