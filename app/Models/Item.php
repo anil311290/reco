@@ -33,6 +33,7 @@ class Item extends Model
         'barcode',
         'opening_stock',
         'current_stock',
+        'reorder_level',
         'is_active',
         'is_stockable',
         'version',
@@ -50,6 +51,7 @@ class Item extends Model
         'selling_price' => 'decimal:2',
         'opening_stock' => 'decimal:2',
         'current_stock' => 'decimal:2',
+        'reorder_level' => 'decimal:2',
         'is_active' => 'boolean',
         'is_stockable' => 'boolean',
     ];
@@ -147,6 +149,15 @@ class Item extends Model
         }
     }
 
+    public function isLowStock(): bool
+    {
+        if ($this->type !== 'goods' || $this->is_stockable === false) {
+            return false;
+        }
+
+        return (float) $this->current_stock <= (float) ($this->reorder_level ?? 0);
+    }
+
     public function scopeActive($query)
     {
         return $query->where('is_active', true);
@@ -157,5 +168,10 @@ class Item extends Model
         return $query->where('type', $type);
     }
 
-
+    public function scopeLowStock($query)
+    {
+        return $query->where('type', 'goods')
+            ->where('is_stockable', true)
+            ->whereColumn('current_stock', '<=', 'reorder_level');
+    }
 }
