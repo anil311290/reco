@@ -121,6 +121,11 @@ use OpenApi\Annotations as OA;
  * )
  *
  * @OA\Tag(
+ *     name="Audit Logs",
+ *     description="Company audit trail (list + detail). Same as web Admin → Audit Logs."
+ * )
+ *
+ * @OA\Tag(
  *     name="Support",
  *     description="Support ticketing and chat between tenant admin and SuperAdmin"
  * )

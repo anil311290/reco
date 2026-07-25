@@ -2,7 +2,7 @@
     "openapi": "3.0.0",
     "info": {
         "title": "Reco API",
-        "description": "Reco offline-first accounting SaaS API under /api/v1. Payment/receipt/adjustment APIs match web Tally forms (payment_mode + cash_bank_account_id + payment_rows / adjustment_rows). Helpers: GET /accounts/cash-bank, /accounts/payment-particulars, /accounts/adjustment-particulars. Sales invoices are unified (item + service lines) via /sales-invoices; /service-sales-invoices remains a legacy alias. Invoice settlement requires amount + payment_mode + cash_bank_account_id. PATCH /financial-years/{id}/set-current carries forward opening balances. Period lock applies when FY is closed or date is outside FY. Web-only: roles, CMS, audit logs, Excel/CSV export.",
+        "description": "Reco offline-first accounting SaaS API under /api/v1. Payment/receipt/adjustment APIs match web Tally forms (payment_mode + cash_bank_account_id + payment_rows / adjustment_rows). Helpers: GET /accounts/cash-bank, /accounts/payment-particulars, /accounts/adjustment-particulars. Sales invoices are unified (item + service lines) via /sales-invoices; /service-sales-invoices remains a legacy alias. Invoice settlement requires amount + payment_mode + cash_bank_account_id. PATCH /financial-years/{id}/set-current carries forward opening balances. Period lock applies when FY is closed or date is outside FY. Audit logs: GET /audit-logs and GET /audit-logs/{id}. Web-only: roles, CMS, Excel/CSV export.",
         "contact": {
             "name": "Reco Support",
             "url": "https://reco.app/support",
@@ -935,6 +935,230 @@
                     },
                     "404": {
                         "description": "Not found",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/audit-logs": {
+            "get": {
+                "tags": [
+                    "Audit Logs"
+                ],
+                "summary": "List audit logs",
+                "description": "Paginated company audit trail with optional filters. Same data as web Admin → Audit Logs.",
+                "operationId": "getAuditLogs",
+                "parameters": [
+                    {
+                        "name": "search",
+                        "in": "query",
+                        "description": "Search description or module",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "action",
+                        "in": "query",
+                        "description": "Filter by action (create, update, delete, etc.)",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "module",
+                        "in": "query",
+                        "description": "Filter by module name",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "user_id",
+                        "in": "query",
+                        "description": "Filter by user id",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "record_id",
+                        "in": "query",
+                        "description": "Filter by related record id",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "page",
+                        "in": "query",
+                        "schema": {
+                            "type": "integer",
+                            "default": 1
+                        }
+                    },
+                    {
+                        "name": "per_page",
+                        "in": "query",
+                        "schema": {
+                            "type": "integer",
+                            "default": 25,
+                            "maximum": 100
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Audit logs list",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "message": {
+                                            "type": "string"
+                                        },
+                                        "data": {
+                                            "properties": {
+                                                "logs": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "object"
+                                                    }
+                                                },
+                                                "pagination": {
+                                                    "properties": {
+                                                        "current_page": {
+                                                            "type": "integer",
+                                                            "example": 1
+                                                        },
+                                                        "last_page": {
+                                                            "type": "integer",
+                                                            "example": 5
+                                                        },
+                                                        "per_page": {
+                                                            "type": "integer",
+                                                            "example": 25
+                                                        },
+                                                        "total": {
+                                                            "type": "integer",
+                                                            "example": 120
+                                                        },
+                                                        "has_more": {
+                                                            "type": "boolean",
+                                                            "example": true
+                                                        }
+                                                    },
+                                                    "type": "object"
+                                                },
+                                                "statistics": {
+                                                    "type": "object"
+                                                },
+                                                "filters": {
+                                                    "properties": {
+                                                        "actions": {
+                                                            "type": "array",
+                                                            "items": {
+                                                                "type": "string"
+                                                            }
+                                                        },
+                                                        "modules": {
+                                                            "type": "array",
+                                                            "items": {
+                                                                "type": "string"
+                                                            }
+                                                        },
+                                                        "users": {
+                                                            "type": "array",
+                                                            "items": {
+                                                                "type": "object"
+                                                            }
+                                                        }
+                                                    },
+                                                    "type": "object"
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/audit-logs/{id}": {
+            "get": {
+                "tags": [
+                    "Audit Logs"
+                ],
+                "summary": "Get audit log details",
+                "description": "Single audit log record for the authenticated user's company.",
+                "operationId": "getAuditLog",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Audit log detail",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/SuccessResponse"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not found",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -10007,6 +10231,10 @@
         {
             "name": "Notifications",
             "description": "In-app notifications for mobile and web"
+        },
+        {
+            "name": "Audit Logs",
+            "description": "Company audit trail (list + detail). Same as web Admin → Audit Logs."
         },
         {
             "name": "Support",
