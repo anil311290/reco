@@ -66,10 +66,14 @@ class CategoriesController extends GetxController with MasterExportMixin {
     selectedStatus.value = 'All';
   }
 
-  Future<void> refreshData() async {
+  Future<void> refreshData({bool forceRemote = false}) async {
     isLoading.value = true;
     try {
-      items.assignAll(await _repository.getCategories());
+      items.assignAll(
+        forceRemote
+            ? await _repository.refreshCategories()
+            : await _repository.getCategories(),
+      );
     } finally {
       isLoading.value = false;
     }
@@ -106,16 +110,7 @@ class CategoriesController extends GetxController with MasterExportMixin {
       type: 'item-categories',
       reportName: 'item_categories',
       queryParameters: _exportQueryParameters,
-      fallbackRows: filteredItems
-          .map(
-            (item) => <String, dynamic>{
-              'Name': item.name,
-              'Description': item.description,
-              'Sort Order': item.sortOrder,
-              'Status': item.isActive ? 'Active' : 'Inactive',
-            },
-          )
-          .toList(),
+      fallbackRows: _exportRows,
     );
   }
 
@@ -124,8 +119,21 @@ class CategoriesController extends GetxController with MasterExportMixin {
       repository: _exportRepository,
       type: 'item-categories',
       queryParameters: _exportQueryParameters,
+      reportName: 'item_categories',
+      fallbackRows: _exportRows,
     );
   }
+
+  List<Map<String, dynamic>> get _exportRows => filteredItems
+      .map(
+        (item) => <String, dynamic>{
+          'Name': item.name,
+          'Description': item.description,
+          'Sort Order': item.sortOrder,
+          'Status': item.isActive ? 'Active' : 'Inactive',
+        },
+      )
+      .toList();
 
   Map<String, dynamic> get _exportQueryParameters => <String, dynamic>{
         if (searchController.text.trim().isNotEmpty)

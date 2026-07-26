@@ -1,6 +1,19 @@
 import 'package:flutter/material.dart';
 import '../../../widgets/common/custom_text_field.dart';
 
+WidgetStateProperty<Color?> reportTotalRowColor(BuildContext context) {
+  return WidgetStatePropertyAll(
+    Theme.of(context).colorScheme.primary.withValues(alpha: .18),
+  );
+}
+
+TextStyle? reportTotalRowTextStyle(BuildContext context) {
+  return Theme.of(context).textTheme.bodyMedium?.copyWith(
+    fontWeight: FontWeight.w800,
+    color: Theme.of(context).colorScheme.onSurface,
+  );
+}
+
 class ReportFeatureItem {
   const ReportFeatureItem({
     required this.title,
@@ -240,6 +253,20 @@ class ReportSectionCard extends StatelessWidget {
         const SizedBox(height: 10),
         child,
       ],
+    );
+  }
+}
+
+class ReportLoadingView extends StatelessWidget {
+  const ReportLoadingView({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return const Center(
+      child: Padding(
+        padding: EdgeInsets.all(32),
+        child: CircularProgressIndicator(),
+      ),
     );
   }
 }

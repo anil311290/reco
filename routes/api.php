@@ -167,12 +167,23 @@ Route::prefix('v1')->middleware('auth:sanctum')->group(function () {
 
     // Exports
     Route::get('/export/profit-loss/pdf', [ExportApiController::class, 'profitLossPdf']);
+    Route::get('/export/profit-loss/excel', [ExportApiController::class, 'profitLossExcel']);
     Route::get('/export/balance-sheet/pdf', [ExportApiController::class, 'balanceSheetPdf']);
+    Route::get('/export/balance-sheet/excel', [ExportApiController::class, 'balanceSheetExcel']);
     Route::get('/export/trial-balance/pdf', [ExportApiController::class, 'trialBalancePdf']);
+    Route::get('/export/trial-balance/excel', [ExportApiController::class, 'trialBalanceExcel']);
     Route::get('/export/day-book/pdf', [ExportApiController::class, 'dayBookPdf']);
+    Route::get('/export/day-book/excel', [ExportApiController::class, 'dayBookExcel']);
+    Route::get('/export/cash-book/pdf', [ExportApiController::class, 'cashBookPdf']);
+    Route::get('/export/cash-book/excel', [ExportApiController::class, 'cashBookExcel']);
+    Route::get('/export/bank-book/pdf', [ExportApiController::class, 'bankBookPdf']);
+    Route::get('/export/bank-book/excel', [ExportApiController::class, 'bankBookExcel']);
     Route::get('/export/ledger/pdf', [ExportApiController::class, 'ledgerPdf']);
+    Route::get('/export/ledger/excel', [ExportApiController::class, 'ledgerExcel']);
     Route::get('/export/debtors-outstanding/pdf', [ExportApiController::class, 'debtorsOutstandingPdf']);
+    Route::get('/export/debtors-outstanding/excel', [ExportApiController::class, 'debtorsOutstandingExcel']);
     Route::get('/export/creditors-outstanding/pdf', [ExportApiController::class, 'creditorsOutstandingPdf']);
+    Route::get('/export/creditors-outstanding/excel', [ExportApiController::class, 'creditorsOutstandingExcel']);
     Route::get('/export/voucher/{id}/pdf', [ExportApiController::class, 'voucherPdf']);
     Route::get('/export/sales-invoice/{id}/pdf', [ExportApiController::class, 'salesInvoicePdf']);
     Route::get('/export/masters/{type}/excel', [ExportApiController::class, 'masterExcel']);

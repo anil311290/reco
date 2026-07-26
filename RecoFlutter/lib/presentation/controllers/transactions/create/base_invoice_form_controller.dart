@@ -287,8 +287,8 @@ abstract class BaseInvoiceFormController extends GetxController {
         payload: payload,
       );
       await _refreshList();
-      AppSnackbar.success('$title local me save ho gaya. Sync online hone par ho jayega.');
       Get.back<void>();
+      AppSnackbar.success('$title local me save ho gaya. Sync online hone par ho jayega.');
     } catch (error) {
       AppSnackbar.error(error.toString());
     } finally {

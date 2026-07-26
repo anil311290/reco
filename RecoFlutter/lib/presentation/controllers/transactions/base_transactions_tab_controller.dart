@@ -85,14 +85,20 @@ abstract class BaseTransactionsTabController extends GetxController {
     }).toList();
   }
 
-  Future<void> refreshData() async {
+  Future<void> refreshData({bool forceRemote = false}) async {
     isLoading.value = true;
     try {
-      final items = await repository.getCollection(
-        module: module,
-        endpoint: endpoint,
-        queryParameters: queryParameters,
-      );
+      final items = forceRemote
+          ? await repository.refreshCollection(
+              module: module,
+              endpoint: endpoint,
+              queryParameters: queryParameters,
+            )
+          : await repository.getCollection(
+              module: module,
+              endpoint: endpoint,
+              queryParameters: queryParameters,
+            );
       records.assignAll(items.map(mapRecord).toList());
     } finally {
       isLoading.value = false;

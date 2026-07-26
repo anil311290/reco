@@ -22,10 +22,32 @@ class InvoiceCatalogOption {
 
   String get label {
     if (isItem) {
-      return '[Item] ${item?.name ?? ''}';
+      final code = item?.itemCode.trim() ?? '';
+      final name = item?.name ?? '';
+      return code.isEmpty ? '[Item] $name' : '[Item] $code - $name';
     }
     return '[Service] ${account?.label ?? ''}';
   }
+
+  String get identityKey {
+    if (isItem) {
+      return 'item:${item?.id ?? item?.itemCode ?? item?.name ?? ''}';
+    }
+    return 'service:${account?.valueKey ?? account?.id ?? account?.label ?? ''}';
+  }
+
+  @override
+  bool operator ==(Object other) {
+    if (identical(this, other)) {
+      return true;
+    }
+    return other is InvoiceCatalogOption &&
+        other.kind == kind &&
+        other.identityKey == identityKey;
+  }
+
+  @override
+  int get hashCode => Object.hash(kind, identityKey);
 }
 
 class PaymentVoucherRowModel {

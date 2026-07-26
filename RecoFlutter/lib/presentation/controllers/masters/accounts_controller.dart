@@ -75,11 +75,15 @@ class AccountsController extends GetxController with MasterExportMixin {
     selectedStatus.value = 'All';
   }
 
-  Future<void> refreshData() async {
+  Future<void> refreshData({bool forceRemote = false}) async {
     isLoading.value = true;
     try {
       accounts.assignAll(
-        (await _repository.getAccounts()).map(AccountEntity.fromRecord).toList(),
+        (forceRemote
+                ? await _repository.refreshAccounts()
+                : await _repository.getAccounts())
+            .map(AccountEntity.fromRecord)
+            .toList(),
       );
     } finally {
       isLoading.value = false;
@@ -127,20 +131,7 @@ class AccountsController extends GetxController with MasterExportMixin {
       type: 'accounts',
       reportName: 'accounts_master',
       queryParameters: _exportQueryParameters,
-      fallbackRows: filteredItems
-          .map(
-            (item) => <String, dynamic>{
-              'Code': item.accountCode,
-              'Name': item.accountName,
-              'Type': item.accountType,
-              'Mode': item.transactionMode.isEmpty ? '-' : item.transactionMode,
-              'Opening Balance': item.openingBalance.toStringAsFixed(2),
-              'Balance Type': item.balanceType,
-              'Status': item.isActive ? 'Active' : 'Inactive',
-              'Remarks': item.remarks,
-            },
-          )
-          .toList(),
+      fallbackRows: _exportRows,
     );
   }
 
@@ -149,8 +140,25 @@ class AccountsController extends GetxController with MasterExportMixin {
       repository: _exportRepository,
       type: 'accounts',
       queryParameters: _exportQueryParameters,
+      reportName: 'accounts_master',
+      fallbackRows: _exportRows,
     );
   }
+
+  List<Map<String, dynamic>> get _exportRows => filteredItems
+      .map(
+        (item) => <String, dynamic>{
+          'Code': item.accountCode,
+          'Name': item.accountName,
+          'Type': item.accountType,
+          'Mode': item.transactionMode.isEmpty ? '-' : item.transactionMode,
+          'Opening Balance': item.openingBalance.toStringAsFixed(2),
+          'Balance Type': item.balanceType,
+          'Status': item.isActive ? 'Active' : 'Inactive',
+          'Remarks': item.remarks,
+        },
+      )
+      .toList();
 
   Map<String, dynamic> get _exportQueryParameters => <String, dynamic>{
         if (searchController.text.trim().isNotEmpty)

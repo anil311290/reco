@@ -81,10 +81,14 @@ class TaxRatesController extends GetxController with MasterExportMixin {
     selectedStatus.value = 'All';
   }
 
-  Future<void> refreshData() async {
+  Future<void> refreshData({bool forceRemote = false}) async {
     isLoading.value = true;
     try {
-      items.assignAll(await _repository.getTaxRates());
+      items.assignAll(
+        forceRemote
+            ? await _repository.refreshTaxRates()
+            : await _repository.getTaxRates(),
+      );
     } finally {
       isLoading.value = false;
     }
@@ -121,19 +125,7 @@ class TaxRatesController extends GetxController with MasterExportMixin {
       type: 'tax-rates',
       reportName: 'tax_rates',
       queryParameters: _exportQueryParameters,
-      fallbackRows: filteredItems
-          .map(
-            (item) => <String, dynamic>{
-              'Tax Code': item.taxCode,
-              'Tax Name': item.taxName,
-              'Category': item.taxCategory,
-              'Type': item.taxType,
-              'Rate': item.taxRate.toStringAsFixed(2),
-              'Status': item.status,
-              'Notes': item.notes,
-            },
-          )
-          .toList(),
+      fallbackRows: _exportRows,
     );
   }
 
@@ -142,8 +134,24 @@ class TaxRatesController extends GetxController with MasterExportMixin {
       repository: _exportRepository,
       type: 'tax-rates',
       queryParameters: _exportQueryParameters,
+      reportName: 'tax_rates',
+      fallbackRows: _exportRows,
     );
   }
+
+  List<Map<String, dynamic>> get _exportRows => filteredItems
+      .map(
+        (item) => <String, dynamic>{
+          'Tax Code': item.taxCode,
+          'Tax Name': item.taxName,
+          'Category': item.taxCategory,
+          'Type': item.taxType,
+          'Rate': item.taxRate.toStringAsFixed(2),
+          'Status': item.status,
+          'Notes': item.notes,
+        },
+      )
+      .toList();
 
   Map<String, dynamic> get _exportQueryParameters => <String, dynamic>{
         if (searchController.text.trim().isNotEmpty)

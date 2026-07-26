@@ -28,10 +28,10 @@ class SupportTicketCreateScreen extends GetView<SupportTicketCreateController> {
             padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
             children: <Widget>[
               Container(
-                padding: const EdgeInsets.all(16),
+                padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
                   color: theme.colorScheme.primary.withValues(alpha: .08),
-                  borderRadius: BorderRadius.circular(20),
+                  borderRadius: BorderRadius.circular(12),
                   border: Border.all(
                     color: theme.colorScheme.primary.withValues(alpha: .16),
                   ),
@@ -41,21 +41,22 @@ class SupportTicketCreateScreen extends GetView<SupportTicketCreateController> {
                   children: <Widget>[
                     Text(
                       'Describe your issue clearly',
-                      style: theme.textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w600,
+                      style: theme.textTheme.titleSmall?.copyWith(
+                        fontWeight: FontWeight.w700,
                       ),
                     ),
-                    const SizedBox(height: 6),
+                    const SizedBox(height: 4),
                     Text(
                       'Ticket create hone ke baad same thread me support reply karega. Aap yahi se message continue kar paenge.',
-                      style: theme.textTheme.bodyMedium?.copyWith(
+                      style: theme.textTheme.bodySmall?.copyWith(
                         color: theme.colorScheme.onSurfaceVariant,
+                        height: 1.25,
                       ),
                     ),
                   ],
                 ),
               ),
-              const SizedBox(height: 18),
+              const SizedBox(height: 14),
               CustomTextField(
                 label: 'Subject',
                 controller: controller.subjectController,

@@ -153,6 +153,56 @@ class ExportService
     }
 
     /**
+     * Export Cash Book to PDF
+     */
+    public function exportCashBookPdf(
+        int $companyId,
+        ?int $accountId = null,
+        ?string $dateFrom = null,
+        ?string $dateTo = null,
+        ?int $financialYearId = null
+    ): string {
+        $report = $this->reportService->getCashBankBook(
+            $companyId,
+            'cash',
+            $accountId,
+            $dateFrom,
+            $dateTo,
+            $financialYearId ?? FinancialYear::getCurrent($companyId)?->id
+        );
+
+        $title = 'Cash Book';
+        $pdf = Pdf::loadView('exports.cash-bank-book', compact('report', 'title'));
+
+        return $pdf->output();
+    }
+
+    /**
+     * Export Bank Book to PDF
+     */
+    public function exportBankBookPdf(
+        int $companyId,
+        ?int $accountId = null,
+        ?string $dateFrom = null,
+        ?string $dateTo = null,
+        ?int $financialYearId = null
+    ): string {
+        $report = $this->reportService->getCashBankBook(
+            $companyId,
+            'bank',
+            $accountId,
+            $dateFrom,
+            $dateTo,
+            $financialYearId ?? FinancialYear::getCurrent($companyId)?->id
+        );
+
+        $title = 'Bank Book';
+        $pdf = Pdf::loadView('exports.cash-bank-book', compact('report', 'title'));
+
+        return $pdf->output();
+    }
+
+    /**
      * Export master list to PDF.
      */
     public function exportMasterPdf(string $type, int $companyId, array $filters = []): string
@@ -233,6 +283,30 @@ class ExportService
                 $book = $this->reportService->getCashBankBook(
                     $companyId,
                     'cash',
+                    isset($filters['account_id']) ? (int) $filters['account_id'] : null,
+                    $filters['date_from'] ?? null,
+                    $filters['date_to'] ?? null,
+                    $filters['financial_year_id'] ?? FinancialYear::getCurrent($companyId)?->id
+                );
+                $ledger = $book['report'] ?? null;
+                $data = $ledger
+                    ? $ledger['entries']->map(function ($entry) {
+                        return [
+                            'transaction_date' => $entry->transaction_date,
+                            'voucher_number' => $entry->voucher?->voucher_number ?? '',
+                            'particulars' => $entry->description ?: ($entry->voucher?->narration ?? ''),
+                            'receipts' => $entry->debit,
+                            'payments' => $entry->credit,
+                            'balance' => $entry->running_balance,
+                        ];
+                    })->values()->all()
+                    : [];
+                break;
+
+            case 'bank-book':
+                $book = $this->reportService->getCashBankBook(
+                    $companyId,
+                    'bank',
                     isset($filters['account_id']) ? (int) $filters['account_id'] : null,
                     $filters['date_from'] ?? null,
                     $filters['date_to'] ?? null,
@@ -354,6 +428,30 @@ class ExportService
                 $book = $this->reportService->getCashBankBook(
                     $companyId,
                     'cash',
+                    isset($filters['account_id']) ? (int) $filters['account_id'] : null,
+                    $filters['date_from'] ?? null,
+                    $filters['date_to'] ?? null,
+                    $filters['financial_year_id'] ?? FinancialYear::getCurrent($companyId)?->id
+                );
+                $ledger = $book['report'] ?? null;
+                $data = $ledger
+                    ? $ledger['entries']->map(function ($entry) {
+                        return [
+                            'transaction_date' => $entry->transaction_date,
+                            'voucher_number' => $entry->voucher?->voucher_number ?? '',
+                            'particulars' => $entry->description ?: ($entry->voucher?->narration ?? ''),
+                            'receipts' => $entry->debit,
+                            'payments' => $entry->credit,
+                            'balance' => $entry->running_balance,
+                        ];
+                    })->values()->all()
+                    : [];
+                break;
+
+            case 'bank-book':
+                $book = $this->reportService->getCashBankBook(
+                    $companyId,
+                    'bank',
                     isset($filters['account_id']) ? (int) $filters['account_id'] : null,
                     $filters['date_from'] ?? null,
                     $filters['date_to'] ?? null,

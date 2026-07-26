@@ -66,41 +66,53 @@ class _ItemHistoryScreenState extends State<ItemHistoryScreen> {
           children: <Widget>[
             _buildItemDetailCard(theme),
             const SizedBox(height: 16),
-            Row(
-              children: <Widget>[
-                Expanded(
-                  child: CustomTextField(
-                    controller: controller.fromDateController,
-                    label: 'From Date',
-                    hintText: 'YYYY-MM-DD',
-                    readOnly: true,
-                    onTap: () => _pickDate(controller.fromDateController),
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: CustomTextField(
-                    controller: controller.toDateController,
-                    label: 'To Date',
-                    hintText: 'YYYY-MM-DD',
-                    readOnly: true,
-                    onTap: () => _pickDate(controller.toDateController),
-                  ),
-                ),
-                const SizedBox(width: 10),
-                SizedBox(
-                  height: 48,
-                  child: FilledButton(
-                    onPressed: controller.loadHistory,
-                    child: const Text('Apply'),
-                  ),
-                ),
-              ],
-            ),
+            _buildFilterRow(theme),
             const SizedBox(height: 16),
             _buildHistorySection(theme),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildFilterRow(ThemeData theme) {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: theme.cardColor,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: theme.dividerColor.withValues(alpha: .4)),
+      ),
+      child: Row(
+        children: <Widget>[
+          Expanded(
+            child: CustomTextField(
+              controller: controller.fromDateController,
+              label: 'From Date',
+              hintText: 'YYYY-MM-DD',
+              readOnly: true,
+              onTap: () => _pickDate(controller.fromDateController),
+            ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: CustomTextField(
+              controller: controller.toDateController,
+              label: 'To Date',
+              hintText: 'YYYY-MM-DD',
+              readOnly: true,
+              onTap: () => _pickDate(controller.toDateController),
+            ),
+          ),
+          const SizedBox(width: 10),
+          SizedBox(
+            height: 48,
+            child: FilledButton(
+              onPressed: controller.loadHistory,
+              child: const Text('Apply'),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -222,7 +234,34 @@ class _ItemHistoryScreenState extends State<ItemHistoryScreen> {
           style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
         ),
         const SizedBox(height: 12),
+        Wrap(
+          spacing: 10,
+          runSpacing: 10,
+          children: <Widget>[
+            _summaryChip(
+              theme,
+              'Total Purchases',
+              controller.formatCurrency(controller.totalPurchaseAmount.value),
+              const Color(0xFF15803D),
+            ),
+            _summaryChip(
+              theme,
+              'Total Sales',
+              controller.formatCurrency(controller.totalSalesAmount.value),
+              const Color(0xFF2563EB),
+            ),
+            _summaryChip(
+              theme,
+              'Closing Qty',
+              controller.formatQuantity(controller.closingQty.value),
+              const Color(0xFF7C3AED),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
         _buildHistoryTable(theme),
+        const SizedBox(height: 12),
+        _buildPaginationFooter(theme),
       ],
     );
   }
@@ -254,7 +293,7 @@ class _ItemHistoryScreenState extends State<ItemHistoryScreen> {
         return DataRow(
           cells: <DataCell>[
             masterTextCell(controller.formatDate((row['date'] ?? '').toString())),
-            DataCell(Center(child: Text((row['type_label'] ?? '-').toString(), textAlign: TextAlign.center, style: const TextStyle(fontSize: 13)))),
+            DataCell(Center(child: _typeBadge(theme, row))),
             masterTextCell((row['invoice_number'] ?? '-').toString()),
             masterTextCell((row['party_name'] ?? '-').toString()),
             DataCell(Center(child: Text(_fmtQty(row['qty_in']), textAlign: TextAlign.center, style: const TextStyle(fontSize: 13)))),
@@ -303,6 +342,103 @@ class _ItemHistoryScreenState extends State<ItemHistoryScreen> {
           masterColumn(context, 'Balance Qty'),
         ],
         rows: tableRows,
+      ),
+    );
+  }
+
+  Widget _buildPaginationFooter(ThemeData theme) {
+    if (controller.totalRecords.value <= 0) {
+      return const SizedBox.shrink();
+    }
+
+    return Row(
+      children: <Widget>[
+        Expanded(
+          child: Text(
+            'Showing ${controller.firstRecordIndex} to ${controller.lastRecordIndex} of ${controller.totalRecords.value} entries',
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+          ),
+        ),
+        OutlinedButton(
+          onPressed: controller.currentPage.value > 1
+              ? () => controller.loadHistory(page: controller.currentPage.value - 1)
+              : null,
+          child: const Text('Prev'),
+        ),
+        const SizedBox(width: 8),
+        FilledButton.tonal(
+          onPressed: controller.currentPage.value < controller.lastPage.value
+              ? () => controller.loadHistory(page: controller.currentPage.value + 1)
+              : null,
+          child: const Text('Next'),
+        ),
+      ],
+    );
+  }
+
+  Widget _summaryChip(ThemeData theme, String label, String value, Color accent) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: accent.withValues(alpha: .08),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: accent.withValues(alpha: .14)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          Text(
+            label,
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            value,
+            style: theme.textTheme.titleSmall?.copyWith(
+              color: accent,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _typeBadge(ThemeData theme, Map<String, dynamic> row) {
+    final type = (row['type'] ?? '').toString();
+    final label = (row['type_label'] ?? '-').toString();
+    final Color background;
+    final Color foreground;
+    switch (type) {
+      case 'sale':
+        background = const Color(0xFFDBEAFE);
+        foreground = const Color(0xFF1D4ED8);
+        break;
+      case 'purchase':
+        background = const Color(0xFFDCFCE7);
+        foreground = const Color(0xFF15803D);
+        break;
+      default:
+        background = theme.colorScheme.surfaceContainerHighest;
+        foreground = theme.colorScheme.onSurfaceVariant;
+    }
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      decoration: BoxDecoration(
+        color: background,
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Text(
+        label,
+        style: theme.textTheme.bodySmall?.copyWith(
+          color: foreground,
+          fontWeight: FontWeight.w700,
+        ),
       ),
     );
   }

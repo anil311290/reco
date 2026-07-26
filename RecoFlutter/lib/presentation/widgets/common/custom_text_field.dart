@@ -102,6 +102,7 @@ class CustomDropdown<T> extends StatefulWidget {
     this.requiredField = false,
     this.enableSearch = true,
     this.enabled = true,
+    this.isLoading = false,
     this.height = 48,
     this.bottomPadding = 12,
     super.key,
@@ -117,6 +118,7 @@ class CustomDropdown<T> extends StatefulWidget {
   final bool requiredField;
   final bool enableSearch;
   final bool enabled;
+  final bool isLoading;
   final double height;
   final double bottomPadding;
 
@@ -184,7 +186,9 @@ class _CustomDropdownState<T> extends State<CustomDropdown<T>> {
           contentPadding: const EdgeInsets.only(left: 12, right: 10),
         ),
         hint: Text(
-          widget.hint ?? 'Select ${widget.label}',
+          widget.isLoading
+              ? 'Loading ${widget.label}...'
+              : widget.hint ?? 'Select ${widget.label}',
           style: TextStyle(
             color: scheme.onSurfaceVariant,
             fontSize: 14,
@@ -197,7 +201,7 @@ class _CustomDropdownState<T> extends State<CustomDropdown<T>> {
           fontWeight: FontWeight.normal,
         ),
         items: dropdownItems,
-        onChanged: widget.enabled
+        onChanged: (widget.enabled && !widget.isLoading)
             ? (value) {
           _valueNotifier.value = value;
           widget.onChanged(value);
@@ -210,11 +214,20 @@ class _CustomDropdownState<T> extends State<CustomDropdown<T>> {
         ),
 
         iconStyleData: IconStyleData(
-          icon: Icon(
-            Icons.keyboard_arrow_down_rounded,
-            color: scheme.onSurfaceVariant,
-          ),
-          iconSize: 22,
+          icon: widget.isLoading
+              ? SizedBox(
+                  width: 18,
+                  height: 18,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: scheme.primary,
+                  ),
+                )
+              : Icon(
+                  Icons.keyboard_arrow_down_rounded,
+                  color: scheme.onSurfaceVariant,
+                ),
+          iconSize: widget.isLoading ? 18 : 22,
         ),
         dropdownStyleData: DropdownStyleData(
           maxHeight: MediaQuery.sizeOf(context).height * .4,
@@ -272,4 +285,3 @@ class _CustomDropdownState<T> extends State<CustomDropdown<T>> {
     );
   }
 }
-

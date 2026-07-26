@@ -15,27 +15,11 @@ class SupportHeroCard extends StatelessWidget {
     final primary = theme.colorScheme.primary;
 
     return Container(
-      padding: const EdgeInsets.all(22),
+      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: <Color>[
-            primary.withValues(alpha: .17),
-            theme.colorScheme.secondary.withValues(alpha: .08),
-            theme.cardColor,
-          ],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          stops: const <double>[0, .55, 1],
-        ),
-        borderRadius: BorderRadius.circular(30),
+        color: theme.cardColor,
+        borderRadius: BorderRadius.circular(14),
         border: Border.all(color: primary.withValues(alpha: .14)),
-        boxShadow: <BoxShadow>[
-          BoxShadow(
-            color: Colors.black.withValues(alpha: .03),
-            blurRadius: 24,
-            offset: const Offset(0, 10),
-          ),
-        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -43,49 +27,59 @@ class SupportHeroCard extends StatelessWidget {
           Row(
             children: <Widget>[
               Container(
-                width: 42,
-                height: 42,
+                width: 36,
+                height: 36,
                 decoration: BoxDecoration(
-                  color: theme.cardColor.withValues(alpha: .88),
-                  borderRadius: BorderRadius.circular(14),
+                  color: primary.withValues(alpha: .08),
+                  borderRadius: BorderRadius.circular(10),
                 ),
                 child: Icon(
                   Icons.support_agent_rounded,
                   color: primary,
-                  size: 20,
+                  size: 18,
                 ),
               ),
               const SizedBox(width: 10),
-              Text(
-                'Customer Support',
-                style: theme.textTheme.labelLarge?.copyWith(
-                  color: primary,
-                  fontWeight: FontWeight.w800,
+              Expanded(
+                child: Text(
+                  'Customer Support',
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    color: primary,
+                    fontWeight: FontWeight.w700,
+                    fontSize: 14,
+                  ),
+                ),
+              ),
+              FilledButton.tonalIcon(
+                onPressed: onCreateTicket,
+                icon: const Icon(Icons.add_rounded, size: 16),
+                label: const Text('Create'),
+                style: FilledButton.styleFrom(
+                  visualDensity: VisualDensity.compact,
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 18),
+          const SizedBox(height: 10),
           Text(
-            'Raise a ticket and continue the same conversation thread.',
-            style: theme.textTheme.titleLarge?.copyWith(
-              fontWeight: FontWeight.w800,
-              height: 1.08,
+            'Raise a ticket and continue the same thread.',
+            style: theme.textTheme.titleMedium?.copyWith(
+              fontWeight: FontWeight.w700,
+              fontSize: 14,
+              height: 1.15,
             ),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 4),
           Text(
             'Billing, technical issue, feature request ya onboarding help ke liye yahi se ticket create karein.',
-            style: theme.textTheme.bodyMedium?.copyWith(
+            style: theme.textTheme.bodySmall?.copyWith(
               color: theme.colorScheme.onSurfaceVariant,
-              height: 1.38,
+              height: 1.3,
             ),
-          ),
-          const SizedBox(height: 18),
-          FilledButton.icon(
-            onPressed: onCreateTicket,
-            icon: const Icon(Icons.add_circle_outline_rounded),
-            label: const Text('Create Ticket'),
           ),
         ],
       ),
@@ -122,11 +116,11 @@ class SupportStatsRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      height: 108,
+      height: 44,
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
         itemCount: items.length,
-        separatorBuilder: (_, _) => const SizedBox(width: 10),
+        separatorBuilder: (_, _) => const SizedBox(width: 8),
         itemBuilder: (_, index) => _SupportStatCard(item: items[index]),
       ),
     );
@@ -145,16 +139,16 @@ class _SupportStatCard extends StatelessWidget {
 
     return InkWell(
       onTap: item.onTap,
-      borderRadius: BorderRadius.circular(22),
+      borderRadius: BorderRadius.circular(10),
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 180),
-        width: 150,
-        padding: const EdgeInsets.all(16),
+        width: 110,
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
         decoration: BoxDecoration(
           color: item.isActive
               ? color.withValues(alpha: .1)
               : theme.cardColor,
-          borderRadius: BorderRadius.circular(22),
+          borderRadius: BorderRadius.circular(10),
           border: Border.all(
             color: item.isActive
                 ? color.withValues(alpha: .28)
@@ -162,32 +156,36 @@ class _SupportStatCard extends StatelessWidget {
           ),
         ),
         child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: <Widget>[
-            Container(
-              width: 36,
-              height: 36,
-              decoration: BoxDecoration(
-                color: color.withValues(alpha: .12),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Icon(item.icon, size: 16, color: color),
+            Row(
+              children: <Widget>[
+                Icon(item.icon, size: 12, color: color),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Text(
+                    item.label,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: item.isActive
+                          ? color
+                          : theme.colorScheme.onSurfaceVariant,
+                      fontWeight: item.isActive ? FontWeight.w700 : FontWeight.w600,
+                      fontSize: 10.5,
+                    ),
+                  ),
+                ),
+              ],
             ),
-            const Spacer(),
+            const SizedBox(height: 3),
             Text(
               item.value.toString(),
-              style: theme.textTheme.titleLarge?.copyWith(
+              style: theme.textTheme.labelLarge?.copyWith(
                 fontWeight: FontWeight.w800,
-              ),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              item.label,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
-                fontWeight: FontWeight.w600,
+                fontSize: 11.5,
+                color: item.isActive ? color : theme.colorScheme.onSurface,
               ),
             ),
           ],
@@ -218,22 +216,15 @@ class SupportTicketCard extends StatelessWidget {
       color: Colors.transparent,
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(26),
+        borderRadius: BorderRadius.circular(12),
         child: Ink(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
             color: theme.cardColor,
-            borderRadius: BorderRadius.circular(26),
+            borderRadius: BorderRadius.circular(12),
             border: Border.all(
               color: theme.dividerColor.withValues(alpha: .42),
             ),
-            boxShadow: <BoxShadow>[
-              BoxShadow(
-                color: Colors.black.withValues(alpha: .026),
-                blurRadius: 16,
-                offset: const Offset(0, 8),
-              ),
-            ],
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -241,7 +232,7 @@ class SupportTicketCard extends StatelessWidget {
               Row(
                 children: <Widget>[
                   _CategoryAvatar(category: category),
-                  const SizedBox(width: 12),
+                  const SizedBox(width: 10),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -251,9 +242,10 @@ class SupportTicketCard extends StatelessWidget {
                           style: theme.textTheme.bodySmall?.copyWith(
                             color: theme.colorScheme.primary,
                             fontWeight: FontWeight.w700,
+                            fontSize: 11,
                           ),
                         ),
-                        const SizedBox(height: 4),
+                        const SizedBox(height: 2),
                         Text(
                           ticket['subject']?.toString() ?? 'Support Ticket',
                           maxLines: 2,
@@ -261,6 +253,7 @@ class SupportTicketCard extends StatelessWidget {
                           style: theme.textTheme.titleMedium?.copyWith(
                             fontWeight: FontWeight.w700,
                             height: 1.12,
+                            fontSize: 14,
                           ),
                         ),
                       ],
@@ -273,10 +266,10 @@ class SupportTicketCard extends StatelessWidget {
                   ),
                 ],
               ),
-              const SizedBox(height: 14),
+              const SizedBox(height: 10),
               Wrap(
-                spacing: 8,
-                runSpacing: 8,
+                spacing: 6,
+                runSpacing: 6,
                 children: <Widget>[
                   SupportChip(
                     label: _formatLabel(category),
@@ -295,7 +288,7 @@ class SupportTicketCard extends StatelessWidget {
                   ),
                 ],
               ),
-              const SizedBox(height: 14),
+              const SizedBox(height: 10),
               Row(
                 children: <Widget>[
                   Icon(
@@ -347,31 +340,11 @@ class SupportTicketHeader extends StatelessWidget {
     final accent = _statusColor(status);
 
     return Container(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: <Color>[
-            Color.alphaBlend(
-              accent.withValues(alpha: .08),
-              theme.cardColor,
-            ),
-            Color.alphaBlend(
-              scheme.primary.withValues(alpha: .035),
-              theme.cardColor,
-            ),
-          ],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(30),
+        color: theme.cardColor,
+        borderRadius: BorderRadius.circular(12),
         border: Border.all(color: accent.withValues(alpha: .16)),
-        boxShadow: <BoxShadow>[
-          BoxShadow(
-            color: Colors.black.withValues(alpha: .03),
-            blurRadius: 22,
-            offset: const Offset(0, 10),
-          ),
-        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -411,15 +384,16 @@ class SupportTicketHeader extends StatelessWidget {
                         ],
                       ),
                     ),
-                    const SizedBox(height: 12),
+                    const SizedBox(height: 8),
                     Text(
                       ticket['subject']?.toString() ?? 'Support Ticket',
-                      style: theme.textTheme.titleLarge?.copyWith(
+                      style: theme.textTheme.titleMedium?.copyWith(
                         fontWeight: FontWeight.w800,
                         height: 1.08,
+                        fontSize: 15,
                       ),
                     ),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: 5),
                     Text(
                       ticket['ticket_number']?.toString() ?? 'Draft Ticket',
                       style: theme.textTheme.bodyMedium?.copyWith(
@@ -430,23 +404,23 @@ class SupportTicketHeader extends StatelessWidget {
                   ],
                 ),
               ),
-              const SizedBox(width: 14),
+              const SizedBox(width: 10),
               Container(
-                width: 52,
-                height: 52,
+                width: 42,
+                height: 42,
                 decoration: BoxDecoration(
                   color: accent.withValues(alpha: .12),
-                  borderRadius: BorderRadius.circular(18),
+                  borderRadius: BorderRadius.circular(12),
                 ),
                 child: Icon(
                   FontAwesomeIcons.headset,
                   color: accent,
-                  size: 18,
+                  size: 15,
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 10),
           Wrap(
             spacing: 8,
             runSpacing: 8,
@@ -468,7 +442,7 @@ class SupportTicketHeader extends StatelessWidget {
               ),
             ],
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 10),
           Row(
             children: <Widget>[
               Expanded(
@@ -507,23 +481,9 @@ class SupportConversationCard extends StatelessWidget {
     final theme = Theme.of(context);
 
     return Container(
-      padding: const EdgeInsets.fromLTRB(16, 14, 16, 18),
-      decoration: BoxDecoration(
-        color: Color.alphaBlend(
-          theme.colorScheme.surface.withValues(alpha: .72),
-          theme.cardColor,
-        ),
-        borderRadius: BorderRadius.circular(30),
-        border: Border.all(
-          color: theme.dividerColor.withValues(alpha: .42),
-        ),
-        boxShadow: <BoxShadow>[
-          BoxShadow(
-            color: Colors.black.withValues(alpha: .026),
-            blurRadius: 18,
-            offset: const Offset(0, 8),
-          ),
-        ],
+      padding: EdgeInsets.zero,
+      decoration: const BoxDecoration(
+        color: Colors.transparent,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -547,13 +507,14 @@ class SupportConversationCard extends StatelessWidget {
               ]
             : <Widget>[
                 Padding(
-                  padding: const EdgeInsets.only(bottom: 14),
+                  padding: const EdgeInsets.only(bottom: 10, left: 2, right: 2),
                   child: Row(
                     children: <Widget>[
                       Text(
                         'Conversation',
                         style: theme.textTheme.titleMedium?.copyWith(
                           fontWeight: FontWeight.w700,
+                          fontSize: 14,
                         ),
                       ),
                       const Spacer(),
@@ -571,7 +532,7 @@ class SupportConversationCard extends StatelessWidget {
                   final message = messages[index];
                   return Padding(
                     padding: EdgeInsets.only(
-                      bottom: index == messages.length - 1 ? 0 : 14,
+                      bottom: index == messages.length - 1 ? 0 : 10,
                     ),
                     child: _MessageBubble(
                       message: message,
@@ -633,27 +594,20 @@ class _MessageBubble extends StatelessWidget {
                 isMine ? CrossAxisAlignment.end : CrossAxisAlignment.start,
             children: <Widget>[
               Container(
-                padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+                padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
                 decoration: BoxDecoration(
                   color: bubbleColor,
                   borderRadius: BorderRadius.only(
-                    topLeft: const Radius.circular(22),
-                    topRight: const Radius.circular(22),
-                    bottomLeft: Radius.circular(isMine ? 22 : 8),
-                    bottomRight: Radius.circular(isMine ? 8 : 22),
+                    topLeft: const Radius.circular(14),
+                    topRight: const Radius.circular(14),
+                    bottomLeft: Radius.circular(isMine ? 14 : 6),
+                    bottomRight: Radius.circular(isMine ? 6 : 14),
                   ),
                   border: isMine
                       ? null
                       : Border.all(
                           color: theme.dividerColor.withValues(alpha: .26),
                         ),
-                  boxShadow: <BoxShadow>[
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: .02),
-                      blurRadius: 10,
-                      offset: const Offset(0, 6),
-                    ),
-                  ],
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -698,8 +652,9 @@ class _MessageBubble extends StatelessWidget {
                       message['message']?.toString() ?? '',
                       style: theme.textTheme.bodyMedium?.copyWith(
                         color: textColor,
-                        height: 1.42,
-                        fontWeight: FontWeight.w500,
+                        height: 1.35,
+                        fontWeight: FontWeight.w400,
+                        fontSize: 13,
                       ),
                     ),
                   ],
@@ -768,7 +723,7 @@ class SupportReplyComposer extends StatelessWidget {
     final scheme = theme.colorScheme;
 
     return Container(
-      padding: const EdgeInsets.fromLTRB(14, 10, 14, 14),
+      padding: const EdgeInsets.fromLTRB(14, 8, 14, 12),
       decoration: BoxDecoration(
         color: Color.alphaBlend(
           scheme.surface.withValues(alpha: .86),
@@ -806,10 +761,10 @@ class SupportReplyComposer extends StatelessWidget {
               ),
             ),
           Container(
-            padding: const EdgeInsets.fromLTRB(10, 10, 10, 10),
+            padding: const EdgeInsets.fromLTRB(10, 8, 10, 8),
             decoration: BoxDecoration(
               color: theme.cardColor,
-              borderRadius: BorderRadius.circular(24),
+              borderRadius: BorderRadius.circular(12),
               border: Border.all(
                 color: scheme.outlineVariant.withValues(alpha: .5),
               ),

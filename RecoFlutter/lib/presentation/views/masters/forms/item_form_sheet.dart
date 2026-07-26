@@ -37,6 +37,8 @@ class _ItemFormSheetState extends State<ItemFormSheet> {
   bool _isStockable = true;
   bool _isActive = true;
 
+  bool get _isServiceType => type == 'service';
+
   @override
   void initState() {
     super.initState();
@@ -118,8 +120,25 @@ class _ItemFormSheetState extends State<ItemFormSheet> {
                 items: const ['goods', 'service'],
                 value: type,
                 itemLabelBuilder: _capitalize,
-                onChanged: (value) => setState(() => type = value ?? type),
+                onChanged: (value) {
+                  setState(() {
+                    type = value ?? type;
+                    if (_isServiceType) {
+                      _isStockable = false;
+                      _stockController.text = '0';
+                    } else {
+                      _isStockable = true;
+                    }
+                  });
+                },
               ),
+              if (_isServiceType) ...[
+                const SizedBox(height: 12),
+                _InfoNoteCard(
+                  text:
+                      'Service type me stock tracking nahi hota. Isliye opening stock aur stockable controls hide kiye gaye hain.',
+                ),
+              ],
               const SizedBox(height: 12),
               Obx(
                 () => CustomDropdown<int>(
@@ -207,14 +226,16 @@ class _ItemFormSheetState extends State<ItemFormSheet> {
                       onChanged: (v) => setState(() => _unit = v ?? _unit),
                     ),
                   ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: CustomTextField(
-                      controller: _stockController,
-                      label: 'Opening Stock',
-                      hintText: '0',
+                  if (!_isServiceType) ...[
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: CustomTextField(
+                        controller: _stockController,
+                        label: 'Opening Stock',
+                        hintText: '0',
+                      ),
                     ),
-                  ),
+                  ],
                 ],
               ),
               const SizedBox(height: 12),
@@ -230,14 +251,15 @@ class _ItemFormSheetState extends State<ItemFormSheet> {
                 hintText: 'Description',
               ),
               const SizedBox(height: 12),
-              SwitchListTile(
-                contentPadding: EdgeInsets.zero,
-                title: const Text('Stockable Item'),
-                subtitle: const Text('Enable stock tracking for this item'),
-                value: _isStockable,
-                onChanged: (v) => setState(() => _isStockable = v),
-                dense: true,
-              ),
+              if (!_isServiceType)
+                SwitchListTile(
+                  contentPadding: EdgeInsets.zero,
+                  title: const Text('Stockable Item'),
+                  subtitle: const Text('Enable stock tracking for this item'),
+                  value: _isStockable,
+                  onChanged: (v) => setState(() => _isStockable = v),
+                  dense: true,
+                ),
               SwitchListTile(
                 contentPadding: EdgeInsets.zero,
                 title: const Text('Active Item'),
@@ -298,4 +320,47 @@ class _ItemFormSheetState extends State<ItemFormSheet> {
 
   String? _required(String? value) =>
       (value ?? '').trim().isEmpty ? 'Required field' : null;
+}
+
+class _InfoNoteCard extends StatelessWidget {
+  const _InfoNoteCard({required this.text});
+
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.primary.withValues(alpha: .06),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: theme.colorScheme.primary.withValues(alpha: .10),
+        ),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          Icon(
+            Icons.info_outline_rounded,
+            size: 18,
+            color: theme.colorScheme.primary,
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              text,
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+                fontWeight: FontWeight.w500,
+                height: 1.35,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }

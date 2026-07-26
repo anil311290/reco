@@ -6,7 +6,6 @@ import '../../../core/services/network_monitor_service.dart';
 import '../../../core/services/local_storage_service.dart';
 import '../../../core/services/sync_service.dart';
 import '../../../core/theme/app_theme.dart';
-import '../../../core/utils/app_alert_dialog.dart';
 import '../../../core/utils/app_snackbar.dart';
 import '../../../data/repositories/auth/auth_repository.dart';
 import '../../../data/repositories/reports/reports_repository.dart';
@@ -180,24 +179,20 @@ class SettingsController extends GetxController {
     update();
   }
 
-  Future<void> showComingSoon(String title) {
-    return AppAlertDialog.show(
-      title: title,
-      message: '$title next phase me same project flow ke saath wire hoga.',
-    );
-  }
-
   Future<void> confirmLogout() async {
-    final confirmed = await AppAlertDialog.confirm(
+    Get.defaultDialog(
       title: 'Logout',
-      message: 'Current session logout karna hai?',
-      confirmText: 'Logout',
-      isDestructive: true,
+      middleText: 'Current session logout karna hai?',
+      textCancel: 'Cancel',
+      textConfirm: 'Logout',
+      confirmTextColor: Colors.white,
+      buttonColor: Get.theme.colorScheme.error,
+      cancelTextColor: Get.theme.colorScheme.onSurfaceVariant,
+      onConfirm: () {
+        Get.back<void>();
+        logout();
+      },
     );
-    if (!confirmed) {
-      return;
-    }
-    await logout();
   }
 
   Future<void> logout() async {
@@ -216,4 +211,3 @@ class SettingsController extends GetxController {
     Get.offAllNamed('/login');
   }
 }
-

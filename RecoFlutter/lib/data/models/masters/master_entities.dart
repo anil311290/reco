@@ -1,15 +1,43 @@
 class LookupOption {
-  const LookupOption({required this.id, required this.label, this.code});
+  const LookupOption({
+    required this.id,
+    required this.label,
+    this.code,
+    this.rawId,
+    this.group,
+    this.kind,
+    this.transactionMode,
+    this.availableBalance,
+  });
 
   final int id;
   final String label;
   final String? code;
+  final String? rawId;
+  final String? group;
+  final String? kind;
+  final String? transactionMode;
+  final double? availableBalance;
+
+  String get valueKey {
+    final raw = rawId?.trim();
+    if (raw != null && raw.isNotEmpty) {
+      return raw;
+    }
+    return id.toString();
+  }
 
   factory LookupOption.fromJson(Map<String, dynamic> json) {
+    final rawId = json['id']?.toString();
     return LookupOption(
       id: _parseInt(json['id']),
       label: (json['name'] ?? json['label'] ?? '').toString(),
       code: json['code']?.toString(),
+      rawId: rawId,
+      group: json['group']?.toString(),
+      kind: json['kind']?.toString(),
+      transactionMode: json['transaction_mode']?.toString(),
+      availableBalance: _parseNullableDouble(json['available_balance']),
     );
   }
 }
@@ -494,6 +522,19 @@ double _parseDouble(dynamic value) {
     return value.toDouble();
   }
   return double.tryParse(value.toString()) ?? 0;
+}
+
+double? _parseNullableDouble(dynamic value) {
+  if (value == null) {
+    return null;
+  }
+  if (value is double) {
+    return value;
+  }
+  if (value is num) {
+    return value.toDouble();
+  }
+  return double.tryParse(value.toString());
 }
 
 bool _parseBool(dynamic value, {required bool fallback}) {

@@ -78,10 +78,14 @@ class PartiesController extends GetxController with MasterExportMixin {
     selectedStatus.value = 'All';
   }
 
-  Future<void> refreshData() async {
+  Future<void> refreshData({bool forceRemote = false}) async {
     isLoading.value = true;
     try {
-      parties.assignAll(await _repository.getParties());
+      parties.assignAll(
+        forceRemote
+            ? await _repository.refreshParties()
+            : await _repository.getParties(),
+      );
     } finally {
       isLoading.value = false;
     }

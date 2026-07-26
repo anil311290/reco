@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:get/get.dart';
 
+import '../../../core/config/api_endpoints.dart';
 import '../../controllers/reports/debtors_outstanding_report_controller.dart';
 import '../masters/history/party_history_screen.dart';
 import '../masters/widgets/masters_ui_components.dart';
@@ -28,6 +29,9 @@ class DebtorsOutstandingReportScreen
         ),
       ),
       body: Obx(() {
+        if (controller.shouldShowInitialLoader) {
+          return const ReportLoadingView();
+        }
         final report = controller.reportData['data'];
         final rows = _getDebtorRows(report);
 
@@ -57,6 +61,7 @@ class DebtorsOutstandingReportScreen
                     onTap: () {
                       controller.exportExcel(
                         reportName: 'debtors_outstanding',
+                        exportEndpoint: ApiEndpoints.exportDebtorsOutstandingExcel,
                       );
                     },
                   ),
@@ -65,8 +70,7 @@ class DebtorsOutstandingReportScreen
                     icon: FontAwesomeIcons.filePdf,
                     onTap: () {
                       controller.exportPdf(
-                        exportEndpoint:
-                        '/export/debtors-outstanding/pdf',
+                        exportEndpoint: ApiEndpoints.exportDebtorsOutstandingPdf,
                       );
                     },
                   ),
@@ -334,9 +338,7 @@ class DebtorsOutstandingReportScreen
   }) {
     return DataRow(
       color: WidgetStatePropertyAll(
-        theme.colorScheme.surfaceContainerHighest.withValues(
-          alpha: .25,
-        ),
+        theme.colorScheme.primary.withValues(alpha: .18),
       ),
       cells: <DataCell>[
         const DataCell(

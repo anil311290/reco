@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:get/get.dart';
 
+import '../../../core/config/api_endpoints.dart';
 import '../../controllers/reports/day_book_report_controller.dart';
 import '../../controllers/reports/report_lookup_controller.dart';
 import '../../widgets/common/custom_text_field.dart';
@@ -26,6 +27,9 @@ class DayBookReportScreen extends GetView<DayBookReportController> {
       ),
       body: Obx(
         () {
+          if (controller.shouldShowInitialLoader) {
+            return const ReportLoadingView();
+          }
           final report = controller.reportData['data'];
           final rows = report is Map<String, dynamic> && report['rows'] is List
               ? List<Map<String, dynamic>>.from(
@@ -81,13 +85,15 @@ class DayBookReportScreen extends GetView<DayBookReportController> {
                             icon: FontAwesomeIcons.fileExcel,
                             onTap: () => controller.exportExcel(
                               reportName: 'day_book',
+                              exportEndpoint: ApiEndpoints.exportDayBookExcel,
+                              queryParameters: controller.queryParameters,
                             ),
                           ),
                           ReportSecondaryButton(
                             label: 'PDF',
                             icon: FontAwesomeIcons.filePdf,
                             onTap: () => controller.exportPdf(
-                              exportEndpoint: '/export/day-book/pdf',
+                              exportEndpoint: ApiEndpoints.exportDayBookPdf,
                               queryParameters: controller.queryParameters,
                             ),
                           ),
@@ -151,12 +157,21 @@ class DayBookReportScreen extends GetView<DayBookReportController> {
                   ),
                   const SizedBox(height: 12),
                 ],
-                ReportSectionCard(
-                  title: 'Day Book Entries',
-                  icon: FontAwesomeIcons.tableList,
-                  iconColor: const Color(0xFF0891B2),
-                  child: rows.isEmpty
-                      ? const Center(child: Padding(
+            ReportSectionCard(
+              title: 'Day Book Entries',
+              icon: FontAwesomeIcons.tableList,
+              iconColor: const Color(0xFF0891B2),
+              trailing: report is Map<String, dynamic>
+                  ? Text(
+                      'Dr ${controller.formatCurrency(report['total_debit'])} | Cr ${controller.formatCurrency(report['total_credit'])}',
+                      style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                        color: const Color(0xFF0891B2),
+                        fontWeight: FontWeight.w700,
+                      ),
+                    )
+                  : null,
+              child: rows.isEmpty
+                  ? const Center(child: Padding(
                           padding: EdgeInsets.all(16),
                           child: Text('No posted transactions found.'),
                         ))
@@ -220,6 +235,25 @@ class DayBookReportScreen extends GetView<DayBookReportController> {
           ],
         );
       }),
+      DataRow(
+        color: reportTotalRowColor(context),
+        cells: <DataCell>[
+          const DataCell(SizedBox.shrink()),
+          const DataCell(SizedBox.shrink()),
+          const DataCell(SizedBox.shrink()),
+          const DataCell(SizedBox.shrink()),
+          DataCell(
+            Center(
+              child: Text(
+                'Total',
+                style: reportTotalRowTextStyle(context),
+              ),
+            ),
+          ),
+          DataCell(Center(child: Text(controller.formatCurrency(reportData['total_debit']), style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 13)))),
+          DataCell(Center(child: Text(controller.formatCurrency(reportData['total_credit']), style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 13)))),
+        ],
+      ),
     ];
 
     final calculatedHeight = 42.0 + (rows.length * 52.0);

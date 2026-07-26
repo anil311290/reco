@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:get/get.dart';
 
+import '../../../core/config/api_endpoints.dart';
 import '../../controllers/reports/report_lookup_controller.dart';
 import '../../controllers/reports/trial_balance_report_controller.dart';
 import '../../widgets/common/custom_text_field.dart';
@@ -25,6 +26,9 @@ class TrialBalanceReportScreen extends GetView<TrialBalanceReportController> {
         ),
       ),
       body: Obx(() {
+        if (controller.shouldShowInitialLoader) {
+          return const ReportLoadingView();
+        }
         final report = controller.reportData['data'];
         final accounts = report is Map<String, dynamic> && report['accounts'] is List
             ? List<Map<String, dynamic>>.from((report['accounts'] as List).whereType<Map>())
@@ -64,13 +68,15 @@ class TrialBalanceReportScreen extends GetView<TrialBalanceReportController> {
                         icon: FontAwesomeIcons.fileExcel,
                         onTap: () => controller.exportExcel(
                           reportName: 'trial_balance',
+                          exportEndpoint: ApiEndpoints.exportTrialBalanceExcel,
+                          queryParameters: controller.queryParameters,
                         ),
                       ),
                       ReportSecondaryButton(
                         label: 'PDF',
                         icon: FontAwesomeIcons.filePdf,
                         onTap: () => controller.exportPdf(
-                          exportEndpoint: '/export/trial-balance/pdf',
+                          exportEndpoint: ApiEndpoints.exportTrialBalancePdf,
                           queryParameters: controller.queryParameters,
                         ),
                       ),
@@ -135,6 +141,15 @@ class TrialBalanceReportScreen extends GetView<TrialBalanceReportController> {
               title: 'Account Balances',
               icon: FontAwesomeIcons.tableList,
               iconColor: const Color(0xFFD97706),
+              trailing: report is Map<String, dynamic>
+                  ? Text(
+                      'Dr ${controller.formatCurrency(report['total_debit'])} | Cr ${controller.formatCurrency(report['total_credit'])}',
+                      style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                        color: const Color(0xFFD97706),
+                        fontWeight: FontWeight.w700,
+                      ),
+                    )
+                  : null,
               child: accounts.isEmpty
                   ? const Text('No accounts found')
                   : _buildTrialBalanceTable(context, report, accounts),
@@ -183,6 +198,21 @@ class TrialBalanceReportScreen extends GetView<TrialBalanceReportController> {
           ],
         );
       }),
+      DataRow(
+        color: reportTotalRowColor(context),
+        cells: <DataCell>[
+          const DataCell(SizedBox.shrink()),
+          DataCell(
+            Text(
+              'Total',
+              style: reportTotalRowTextStyle(context),
+            ),
+          ),
+          const DataCell(SizedBox.shrink()),
+          DataCell(Center(child: Text(controller.formatCurrency(reportData['total_debit']), style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 13)))),
+          DataCell(Center(child: Text(controller.formatCurrency(reportData['total_credit']), style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 13)))),
+        ],
+      ),
     ];
 
     final calculatedHeight = 42.0 + (accounts.length * 52.0);

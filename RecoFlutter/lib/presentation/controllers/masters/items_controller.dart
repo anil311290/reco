@@ -66,6 +66,8 @@ class ItemsController extends GetxController with MasterExportMixin {
           query.isEmpty ||
           item.name.toLowerCase().contains(query) ||
           item.itemCode.toLowerCase().contains(query) ||
+          item.barcode.toLowerCase().contains(query) ||
+          item.hsnSacCode.toLowerCase().contains(query) ||
           item.categoryName.toLowerCase().contains(query);
       final matchesType =
           selectedType.value == 'All' || item.type == selectedType.value;
@@ -99,11 +101,11 @@ class ItemsController extends GetxController with MasterExportMixin {
     selectedStatus.value = 'All';
   }
 
-  Future<void> refreshData() async {
+  Future<void> refreshData({bool forceRemote = false}) async {
     isLoading.value = true;
     try {
       final results = await Future.wait<dynamic>(<Future<dynamic>>[
-        _repository.getItems(),
+        forceRemote ? _repository.refreshItems() : _repository.getItems(),
         _itemCategoriesRepository.getDropdownOptions(),
         _taxRatesRepository.getDropdownOptions(),
         _accountsRepository.getAccountsByType('income'),
@@ -150,20 +152,7 @@ class ItemsController extends GetxController with MasterExportMixin {
       type: 'items',
       reportName: 'items_master',
       queryParameters: _exportQueryParameters,
-      fallbackRows: filteredItems
-          .map(
-            (item) => <String, dynamic>{
-              'Code': item.itemCode,
-              'Name': item.name,
-              'Category': item.categoryName,
-              'Type': item.type,
-              'HSN/SAC': item.hsnSacCode,
-              'Selling Price': item.sellingPrice.toStringAsFixed(2),
-              'Stock': item.currentStock.toStringAsFixed(2),
-              'Status': item.isActive ? 'Active' : 'Inactive',
-            },
-          )
-          .toList(),
+      fallbackRows: _exportRows,
     );
   }
 
@@ -172,8 +161,25 @@ class ItemsController extends GetxController with MasterExportMixin {
       repository: _exportRepository,
       type: 'items',
       queryParameters: _exportQueryParameters,
+      reportName: 'items_master',
+      fallbackRows: _exportRows,
     );
   }
+
+  List<Map<String, dynamic>> get _exportRows => filteredItems
+      .map(
+        (item) => <String, dynamic>{
+          'Code': item.itemCode,
+          'Name': item.name,
+          'Category': item.categoryName,
+          'Type': item.type,
+          'HSN/SAC': item.hsnSacCode,
+          'Selling Price': item.sellingPrice.toStringAsFixed(2),
+          'Stock': item.currentStock.toStringAsFixed(2),
+          'Status': item.isActive ? 'Active' : 'Inactive',
+        },
+      )
+      .toList();
 
   Map<String, dynamic> get _exportQueryParameters => <String, dynamic>{
         if (searchController.text.trim().isNotEmpty)

@@ -126,6 +126,12 @@ class TransactionsRepository extends OfflineFirstRepository {
           .map((item) => Map<String, dynamic>.from(item))
           .toList();
     }
+    if (data is Map<String, dynamic> && data['data'] is List) {
+      return (data['data'] as List)
+          .whereType<Map>()
+          .map((item) => Map<String, dynamic>.from(item))
+          .toList();
+    }
     return <Map<String, dynamic>>[];
   }
 

@@ -84,4 +84,15 @@ class ReportsRepository extends OfflineFirstRepository {
     );
     return response.data ?? <String, dynamic>{};
   }
+
+  Future<Map<String, dynamic>> exportFile(
+    String endpoint, {
+    Map<String, dynamic>? queryParameters,
+  }) async {
+    final response = await apiClient.get<Map<String, dynamic>>(
+      endpoint,
+      queryParameters: queryParameters,
+    );
+    return response.data ?? <String, dynamic>{};
+  }
 }

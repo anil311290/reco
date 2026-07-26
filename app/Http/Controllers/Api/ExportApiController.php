@@ -58,6 +58,16 @@ class ExportApiController extends Controller
         }
     }
 
+    public function profitLossExcel(Request $request): JsonResponse
+    {
+        return $this->reportExcelResponse($request, 'profit-loss');
+    }
+
+    public function balanceSheetExcel(Request $request): JsonResponse
+    {
+        return $this->reportExcelResponse($request, 'balance-sheet');
+    }
+
     public function trialBalancePdf(Request $request): JsonResponse
     {
         $companyId = $request->user()->company_id;
@@ -74,6 +84,11 @@ class ExportApiController extends Controller
         } catch (\Exception $e) {
             return ResponseHelper::error($e->getMessage());
         }
+    }
+
+    public function trialBalanceExcel(Request $request): JsonResponse
+    {
+        return $this->reportExcelResponse($request, 'trial-balance');
     }
 
     public function dayBookPdf(Request $request): JsonResponse
@@ -97,6 +112,63 @@ class ExportApiController extends Controller
         }
     }
 
+    public function dayBookExcel(Request $request): JsonResponse
+    {
+        $request->validate([
+            'date' => 'required|date',
+        ]);
+
+        return $this->reportExcelResponse($request, 'day-book');
+    }
+
+    public function cashBookPdf(Request $request): JsonResponse
+    {
+        $companyId = $request->user()->company_id;
+
+        try {
+            $pdf = $this->exportService->exportCashBookPdf(
+                $companyId,
+                $request->filled('account_id') ? (int) $request->account_id : null,
+                $request->input('date_from'),
+                $request->input('date_to'),
+                $request->filled('financial_year_id') ? (int) $request->financial_year_id : null
+            );
+
+            return $this->storePdfResponse($pdf, 'cash-book-' . date('Y-m-d') . '.pdf');
+        } catch (\Exception $e) {
+            return ResponseHelper::error($e->getMessage());
+        }
+    }
+
+    public function cashBookExcel(Request $request): JsonResponse
+    {
+        return $this->reportExcelResponse($request, 'cash-book');
+    }
+
+    public function bankBookPdf(Request $request): JsonResponse
+    {
+        $companyId = $request->user()->company_id;
+
+        try {
+            $pdf = $this->exportService->exportBankBookPdf(
+                $companyId,
+                $request->filled('account_id') ? (int) $request->account_id : null,
+                $request->input('date_from'),
+                $request->input('date_to'),
+                $request->filled('financial_year_id') ? (int) $request->financial_year_id : null
+            );
+
+            return $this->storePdfResponse($pdf, 'bank-book-' . date('Y-m-d') . '.pdf');
+        } catch (\Exception $e) {
+            return ResponseHelper::error($e->getMessage());
+        }
+    }
+
+    public function bankBookExcel(Request $request): JsonResponse
+    {
+        return $this->reportExcelResponse($request, 'bank-book');
+    }
+
     public function ledgerPdf(Request $request): JsonResponse
     {
         $request->validate([
@@ -116,6 +188,15 @@ class ExportApiController extends Controller
         }
     }
 
+    public function ledgerExcel(Request $request): JsonResponse
+    {
+        $request->validate([
+            'account_id' => 'required|exists:accounts,id',
+        ]);
+
+        return $this->reportExcelResponse($request, 'ledger');
+    }
+
     public function debtorsOutstandingPdf(Request $request): JsonResponse
     {
         $companyId = $request->user()->company_id;
@@ -129,6 +210,11 @@ class ExportApiController extends Controller
         }
     }
 
+    public function debtorsOutstandingExcel(Request $request): JsonResponse
+    {
+        return $this->reportExcelResponse($request, 'debtors');
+    }
+
     public function creditorsOutstandingPdf(Request $request): JsonResponse
     {
         $companyId = $request->user()->company_id;
@@ -140,6 +226,11 @@ class ExportApiController extends Controller
         } catch (\Exception $e) {
             return ResponseHelper::error($e->getMessage());
         }
+    }
+
+    public function creditorsOutstandingExcel(Request $request): JsonResponse
+    {
+        return $this->reportExcelResponse($request, 'creditors');
     }
 
     public function voucherPdf(Request $request, int $id): JsonResponse
@@ -211,6 +302,23 @@ class ExportApiController extends Controller
     protected function storePdfResponse(string $pdf, string $filename): JsonResponse
     {
         return $this->storeBinaryResponse($pdf, $filename, 'application/pdf');
+    }
+
+    protected function reportExcelResponse(Request $request, string $type): JsonResponse
+    {
+        $companyId = $request->user()->company_id;
+
+        try {
+            $excel = $this->exportService->exportToExcel($type, $companyId, $request->all());
+
+            return $this->storeBinaryResponse(
+                $excel,
+                $type . '-' . date('Y-m-d-H-i-s') . '.xlsx',
+                'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+            );
+        } catch (\Throwable $e) {
+            return ResponseHelper::error($e->getMessage());
+        }
     }
 
     protected function storeBinaryResponse(string $content, string $filename, string $contentType = 'application/pdf'): JsonResponse

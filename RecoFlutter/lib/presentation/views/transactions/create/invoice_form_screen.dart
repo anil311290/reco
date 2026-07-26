@@ -48,10 +48,18 @@ class InvoiceFormScreen<T extends BaseInvoiceFormController> extends GetView<T> 
                                 : 'Customer',
                             value: controller.selectedParty.value,
                             items: controller.parties,
-                            itemLabelBuilder: (item) => item.name,
+                            itemLabelBuilder: (item) {
+                              final code = item.partyCode.trim();
+                              if (code.isEmpty) {
+                                return item.name;
+                              }
+                              return '${item.name} ($code)';
+                            },
                             onChanged: (value) =>
                                 controller.selectedParty.value = value,
                             requiredField: true,
+                            isLoading: controller.lookupController.isPartiesLoading.value,
+                            enabled: !controller.lookupController.isPartiesLoading.value,
                           ),
                         ),
                         if (controller.isPurchaseInvoice)
@@ -210,6 +218,10 @@ class _ItemRowCard<T extends BaseInvoiceFormController> extends GetView<T> {
                   onChanged: (item) => controller.onSalesCatalogChanged(row, item),
                   hint: 'Select item or service',
                   requiredField: true,
+                  isLoading: controller.lookupController.isItemsLoading.value ||
+                      controller.lookupController.isServiceAccountsLoading.value,
+                  enabled: !(controller.lookupController.isItemsLoading.value ||
+                      controller.lookupController.isServiceAccountsLoading.value),
                 );
               }
 
@@ -220,6 +232,8 @@ class _ItemRowCard<T extends BaseInvoiceFormController> extends GetView<T> {
                 itemLabelBuilder: (item) => item.name,
                 onChanged: (item) => controller.onItemChanged(row, item),
                 requiredField: true,
+                isLoading: controller.lookupController.isItemsLoading.value,
+                enabled: !controller.lookupController.isItemsLoading.value,
               );
             },
           ),
@@ -272,6 +286,8 @@ class _ItemRowCard<T extends BaseInvoiceFormController> extends GetView<T> {
                   controller.update();
                 },
                 hint: 'No Tax',
+                isLoading: controller.lookupController.isTaxRatesLoading.value,
+                enabled: !controller.lookupController.isTaxRatesLoading.value,
               );
             },
           ),
@@ -342,6 +358,8 @@ class _ServiceRowCard<T extends BaseInvoiceFormController> extends GetView<T> {
                 onChanged: (account) =>
                     controller.onServiceAccountChanged(row, account),
                 requiredField: true,
+                isLoading: controller.lookupController.isServiceAccountsLoading.value,
+                enabled: !controller.lookupController.isServiceAccountsLoading.value,
               );
             },
           ),
@@ -373,6 +391,8 @@ class _ServiceRowCard<T extends BaseInvoiceFormController> extends GetView<T> {
                   controller.update();
                 },
                 hint: 'No Tax',
+                isLoading: controller.lookupController.isTaxRatesLoading.value,
+                enabled: !controller.lookupController.isTaxRatesLoading.value,
               );
             },
           ),

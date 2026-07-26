@@ -50,6 +50,7 @@ class ApiEndpoints {
   static const String adjustments = '/adjustments';
 
   static const String ledgers = '/ledgers';
+  static String ledgerHistory(Object id) => '/ledgers/$id/history';
   static const String reportsDayBook = '/reports/day-book';
   static const String reportsCashBook = '/reports/cash-book';
   static const String reportsBankBook = '/reports/bank-book';
@@ -60,6 +61,28 @@ class ApiEndpoints {
   static const String reportsDebtorsOutstanding = '/reports/debtors-outstanding';
   static const String reportsCreditorsOutstanding =
       '/reports/creditors-outstanding';
+  static const String exportDayBookPdf = '/export/day-book/pdf';
+  static const String exportDayBookExcel = '/export/day-book/excel';
+  static const String exportCashBookPdf = '/export/cash-book/pdf';
+  static const String exportCashBookExcel = '/export/cash-book/excel';
+  static const String exportBankBookPdf = '/export/bank-book/pdf';
+  static const String exportBankBookExcel = '/export/bank-book/excel';
+  static const String exportLedgerPdf = '/export/ledger/pdf';
+  static const String exportLedgerExcel = '/export/ledger/excel';
+  static const String exportTrialBalancePdf = '/export/trial-balance/pdf';
+  static const String exportTrialBalanceExcel = '/export/trial-balance/excel';
+  static const String exportProfitLossPdf = '/export/profit-loss/pdf';
+  static const String exportProfitLossExcel = '/export/profit-loss/excel';
+  static const String exportBalanceSheetPdf = '/export/balance-sheet/pdf';
+  static const String exportBalanceSheetExcel = '/export/balance-sheet/excel';
+  static const String exportDebtorsOutstandingPdf =
+      '/export/debtors-outstanding/pdf';
+  static const String exportDebtorsOutstandingExcel =
+      '/export/debtors-outstanding/excel';
+  static const String exportCreditorsOutstandingPdf =
+      '/export/creditors-outstanding/pdf';
+  static const String exportCreditorsOutstandingExcel =
+      '/export/creditors-outstanding/excel';
   static String exportMasterExcel(String type) => '/export/masters/$type/excel';
   static String exportMasterPdf(String type) => '/export/masters/$type/pdf';
 

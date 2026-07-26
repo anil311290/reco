@@ -47,6 +47,21 @@ class MastersScreen extends StatelessWidget {
             ),
             centerTitle: false,
             actions: <Widget>[
+              AnimatedRotation(
+                turns: controller.refreshTurns.value,
+                duration: const Duration(milliseconds: 700),
+                child: IconButton(
+                  onPressed: controller.isRefreshing.value
+                      ? null
+                      : controller.refreshAll,
+                  icon: Icon(
+                    Icons.refresh_rounded,
+                    color: controller.isRefreshing.value
+                        ? Theme.of(context).colorScheme.primary
+                        : null,
+                  ),
+                ),
+              ),
               IconButton(
                 onPressed: () {},
                 icon: const Icon(Icons.notifications_none_rounded),

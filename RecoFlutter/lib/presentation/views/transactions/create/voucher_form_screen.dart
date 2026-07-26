@@ -65,18 +65,50 @@ class VoucherFormScreen<T extends BaseVoucherFormController>
                           onChanged: controller.onPaymentModeChanged,
                           hint: 'Select Mode',
                           requiredField: true,
+                          isLoading: controller.lookupController.isLoading.value,
+                          enabled: !controller.lookupController.isLoading.value,
                         ),
                       ),
                     if (controller.isPaymentReceipt)
                       Obx(
-                        () => CustomDropdown<LookupOption>(
-                          label: controller.cashBankLabel,
-                          value: controller.selectedCashBankAccount.value,
-                          items: controller.cashBankAccounts,
-                          itemLabelBuilder: (item) => item.label,
-                          onChanged: (value) =>
-                              controller.selectedCashBankAccount.value = value,
-                          requiredField: true,
+                        () => Column(
+                          children: <Widget>[
+                            CustomDropdown<LookupOption>(
+                              label: controller.cashBankLabel,
+                              value: controller.selectedCashBankAccount.value,
+                              items: controller.cashBankAccounts,
+                              itemLabelBuilder: (item) => item.label,
+                              onChanged: controller.onCashBankAccountChanged,
+                              requiredField: true,
+                              isLoading: controller
+                                  .lookupController.isCashBankAccountsLoading.value,
+                              enabled: !controller
+                                  .lookupController.isCashBankAccountsLoading.value,
+                            ),
+                            if (controller.voucherType == 'payment' &&
+                                controller.paymentBalanceHint.isNotEmpty)
+                              Align(
+                                alignment: Alignment.centerLeft,
+                                child: Padding(
+                                  padding: const EdgeInsets.only(top: 6, left: 4),
+                                  child: Text(
+                                    controller.paymentBalanceHint,
+                                    style: Theme.of(context).textTheme.bodySmall
+                                        ?.copyWith(
+                                          color: controller
+                                                  .isPaymentExceedingAvailableBalance
+                                              ? Theme.of(
+                                                  context,
+                                                ).colorScheme.error
+                                              : Theme.of(context)
+                                                  .colorScheme
+                                                  .onSurfaceVariant,
+                                          fontWeight: FontWeight.w500,
+                                        ),
+                                  ),
+                                ),
+                              ),
+                          ],
                         ),
                       ),
                     CustomTextField(
@@ -117,6 +149,8 @@ class _PaymentRowsSection<T extends BaseVoucherFormController>
               label: 'Total Amount',
               value: 'Rs ${formatAmount(controller.paymentTotal)}',
             ),
+            const SizedBox(height: 10),
+            _VoucherModeNote<T>(),
           ],
         ),
       ),
@@ -148,10 +182,21 @@ class _PaymentRowCard<T extends BaseVoucherFormController> extends GetView<T> {
               return CustomDropdown<LookupOption>(
                 label: 'Particulars',
                 value: value,
-                items: controller.particulars,
-                itemLabelBuilder: (item) => item.label,
-                onChanged: (next) => row.account.value = next,
+                items: controller.availablePaymentParticularsFor(row),
+                itemLabelBuilder: (item) {
+                  final group = item.group?.trim();
+                  if (group == null || group.isEmpty) {
+                    return item.label;
+                  }
+                  return '[$group] ${item.label}';
+                },
+                onChanged: (next) =>
+                    controller.onPaymentParticularChanged(row, next),
                 requiredField: true,
+                isLoading: controller
+                    .lookupController.isPaymentParticularsLoading.value,
+                enabled: !controller
+                    .lookupController.isPaymentParticularsLoading.value,
               );
             },
           ),
@@ -163,7 +208,7 @@ class _PaymentRowCard<T extends BaseVoucherFormController> extends GetView<T> {
               FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d{0,2}')),
             ],
             requiredField: true,
-            onChanged: (_) => controller.update(),
+            onChanged: (_) => controller.refreshPaymentTotals(),
           ),
           CustomTextField(
             label: 'Description',
@@ -190,7 +235,9 @@ class _AdjustmentRowsSection<T extends BaseVoucherFormController>
   @override
   Widget build(BuildContext context) {
     return Obx(
-      () => TransactionFormSectionCard(
+      () {
+        final difference = (controller.totalDebit - controller.totalCredit).abs();
+        return TransactionFormSectionCard(
         title: 'Voucher Lines',
         action: IconButton(
           onPressed: controller.addAdjustmentRow,
@@ -212,9 +259,20 @@ class _AdjustmentRowsSection<T extends BaseVoucherFormController>
               value: 'Rs ${formatAmount(controller.totalCredit)}',
               valueColor: const Color(0xFFF29B38),
             ),
+            const SizedBox(height: 10),
+            TransactionAmountPill(
+              label: 'Difference',
+              value: 'Rs ${formatAmount(difference)}',
+              valueColor: difference <= 0.009
+                  ? const Color(0xFF16A36A)
+                  : Theme.of(context).colorScheme.error,
+            ),
+            const SizedBox(height: 10),
+            _AdjustmentVoucherNote<T>(),
           ],
         ),
-      ),
+      );
+      },
     );
   }
 }
@@ -242,12 +300,23 @@ class _AdjustmentRowCard<T extends BaseVoucherFormController>
             valueListenable: row.account,
             builder: (context, value, _) {
               return CustomDropdown<LookupOption>(
-                label: 'Particulars',
+                label: 'Particulars (Party / Ledger)',
                 value: value,
                 items: controller.particulars,
-                itemLabelBuilder: (item) => item.label,
+                itemLabelBuilder: (item) {
+                  final group = item.group?.trim();
+                  if (group == null || group.isEmpty) {
+                    return item.label;
+                  }
+                  return '[$group] ${item.label}';
+                },
                 onChanged: (next) => row.account.value = next,
+                hint: 'Select Party / Ledger',
                 requiredField: true,
+                isLoading: controller
+                    .lookupController.isAdjustmentParticularsLoading.value,
+                enabled: !controller
+                    .lookupController.isAdjustmentParticularsLoading.value,
               );
             },
           ),
@@ -263,7 +332,7 @@ class _AdjustmentRowCard<T extends BaseVoucherFormController>
                 onChanged: (next) {
                   if (next != null) {
                     row.entryType.value = next;
-                    controller.update();
+                    controller.refreshAdjustmentTotals();
                   }
                 },
                 requiredField: true,
@@ -278,12 +347,7 @@ class _AdjustmentRowCard<T extends BaseVoucherFormController>
               FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d{0,2}')),
             ],
             requiredField: true,
-            onChanged: (_) => controller.update(),
-          ),
-          CustomTextField(
-            label: 'Description',
-            controller: row.descriptionController,
-            hintText: 'Optional remarks',
+            onChanged: (_) => controller.refreshAdjustmentTotals(),
           ),
           if (controller.adjustmentRows.length > 2)
             Align(
@@ -295,6 +359,63 @@ class _AdjustmentRowCard<T extends BaseVoucherFormController>
               ),
             ),
         ],
+      ),
+    );
+  }
+}
+
+class _AdjustmentVoucherNote<T extends BaseVoucherFormController>
+    extends GetView<T> {
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.primary.withValues(alpha: .06),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: theme.colorScheme.primary.withValues(alpha: .10),
+        ),
+      ),
+      child: Text(
+        'Journal (Tally style): add debit and credit lines. Total Debit must equal Total Credit - auto-posted to ledger & journal.',
+        style: theme.textTheme.bodySmall?.copyWith(
+          color: theme.colorScheme.onSurfaceVariant,
+          fontWeight: FontWeight.w500,
+          height: 1.35,
+        ),
+      ),
+    );
+  }
+}
+
+class _VoucherModeNote<T extends BaseVoucherFormController> extends GetView<T> {
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isReceipt = controller.voucherType == 'receipt';
+    final note = isReceipt
+        ? 'Receipt (Tally style): Dr Cash/Bank, Cr Party - auto-posted to ledger & journal.'
+        : 'Payment (Tally style): Dr Party, Cr Cash/Bank - auto-posted to ledger & journal.';
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.primary.withValues(alpha: .06),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: theme.colorScheme.primary.withValues(alpha: .10),
+        ),
+      ),
+      child: Text(
+        note,
+        style: theme.textTheme.bodySmall?.copyWith(
+          color: theme.colorScheme.onSurfaceVariant,
+          fontWeight: FontWeight.w500,
+          height: 1.35,
+        ),
       ),
     );
   }

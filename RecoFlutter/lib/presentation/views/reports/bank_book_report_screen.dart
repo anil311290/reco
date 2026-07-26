@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:get/get.dart';
 
+import '../../../core/config/api_endpoints.dart';
 import '../../controllers/reports/bank_book_report_controller.dart';
 import '../../controllers/reports/report_lookup_controller.dart';
 import '../../widgets/common/custom_text_field.dart';
@@ -24,7 +25,17 @@ class BankBookReportScreen extends GetView<BankBookReportController> {
         ),
       ),
       body: Obx(() {
+        if (controller.shouldShowInitialLoader) {
+          return const ReportLoadingView();
+        }
         final book = controller.reportData['data'];
+        final dropdownAccounts = book is Map<String, dynamic> && book['accounts'] is List
+            ? List<Map<String, dynamic>>.from(
+                (book['accounts'] as List).whereType<Map>().map(
+                      (item) => Map<String, dynamic>.from(item),
+                    ),
+              )
+            : lookup.bankAccounts;
         final report = book is Map<String, dynamic> && book['report'] is Map<String, dynamic>
             ? Map<String, dynamic>.from(book['report'] as Map<String, dynamic>)
             : null;
@@ -52,12 +63,12 @@ class BankBookReportScreen extends GetView<BankBookReportController> {
                   CustomDropdown<int>(
                     label: 'Bank Account',
                     value: controller.accountId.value,
-                    items: lookup.bankAccounts
+                    items: dropdownAccounts
                         .map((item) => _asInt(item['id']))
                         .whereType<int>()
                         .toList(),
                     itemLabelBuilder: (value) {
-                      final item = lookup.bankAccounts.firstWhere(
+                      final item = dropdownAccounts.firstWhere(
                         (row) => _asInt(row['id']) == value,
                         orElse: () => <String, dynamic>{},
                       );
@@ -89,13 +100,15 @@ class BankBookReportScreen extends GetView<BankBookReportController> {
                         icon: FontAwesomeIcons.fileExcel,
                         onTap: () => controller.exportExcel(
                           reportName: 'bank_book',
+                          exportEndpoint: ApiEndpoints.exportBankBookExcel,
+                          queryParameters: controller.queryParameters,
                         ),
                       ),
                       ReportSecondaryButton(
                         label: 'PDF',
                         icon: FontAwesomeIcons.filePdf,
                         onTap: () => controller.exportPdf(
-                          exportEndpoint: '/export/ledger/pdf',
+                          exportEndpoint: ApiEndpoints.exportBankBookPdf,
                           queryParameters: controller.queryParameters,
                         ),
                       ),
@@ -206,6 +219,15 @@ class BankBookReportScreen extends GetView<BankBookReportController> {
               title: 'Bank Book Entries',
               icon: FontAwesomeIcons.tableList,
               iconColor: const Color(0xFF2563EB),
+              trailing: report != null
+                  ? Text(
+                      'In ${controller.formatCurrency(report['total_debit'])} | Out ${controller.formatCurrency(report['total_credit'])}',
+                      style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                        color: const Color(0xFF2563EB),
+                        fontWeight: FontWeight.w700,
+                      ),
+                    )
+                  : null,
               child: entries.isEmpty
                   ? const Text('No entries in this period')
                   : _buildBookTable(context, report, entries),
@@ -269,6 +291,23 @@ class BankBookReportScreen extends GetView<BankBookReportController> {
           ],
         );
       }),
+      DataRow(
+        color: reportTotalRowColor(context),
+        cells: <DataCell>[
+          const DataCell(SizedBox.shrink()),
+          const DataCell(SizedBox.shrink()),
+          DataCell(
+            Text(
+              'Total',
+              style: reportTotalRowTextStyle(context),
+            ),
+          ),
+          const DataCell(SizedBox.shrink()),
+          DataCell(Center(child: Text(controller.formatCurrency(reportData['total_debit']), style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 13)))),
+          DataCell(Center(child: Text(controller.formatCurrency(reportData['total_credit']), style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 13)))),
+          DataCell(Center(child: Text('${controller.formatCurrency((reportData['closing_balance'] as Map?)?['balance'])} ${((reportData['closing_balance'] as Map?)?['type'] ?? '').toString().toUpperCase()}', style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 13)))),
+        ],
+      ),
     ];
 
     final calculatedHeight = 42.0 + (entries.length * 52.0);

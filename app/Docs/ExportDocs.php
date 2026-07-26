@@ -92,6 +92,54 @@ use OpenApi\Annotations as OA;
  *     @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")),
  *     @OA\Response(response=200, description="PDF generated", @OA\JsonContent(ref="#/components/schemas/SuccessResponse"))
  * )
+ *
+ * @OA\Get(
+ *     path="/export/masters/{type}/excel",
+ *     tags={"Export"},
+ *     summary="Export a master list as Excel",
+ *     operationId="exportMasterExcel",
+ *     security={{"bearerAuth":{}}},
+ *     @OA\Parameter(
+ *         name="type",
+ *         in="path",
+ *         required=true,
+ *         description="Supported values: accounts, parties, items, item-categories, tax-rates",
+ *         @OA\Schema(type="string", enum={"accounts","parties","items","item-categories","tax-rates"})
+ *     ),
+ *     @OA\Parameter(name="search", in="query", @OA\Schema(type="string")),
+ *     @OA\Parameter(name="is_active", in="query", @OA\Schema(type="integer", enum={0,1})),
+ *     @OA\Parameter(name="account_type", in="query", description="Accounts only", @OA\Schema(type="string")),
+ *     @OA\Parameter(name="type", in="query", description="Parties/items only", @OA\Schema(type="string")),
+ *     @OA\Parameter(name="category_id", in="query", description="Items only", @OA\Schema(type="integer")),
+ *     @OA\Parameter(name="tax_category", in="query", description="Tax rates only", @OA\Schema(type="string")),
+ *     @OA\Parameter(name="tax_type", in="query", description="Tax rates only", @OA\Schema(type="string")),
+ *     @OA\Parameter(name="status", in="query", description="Tax rates only", @OA\Schema(type="string", enum={"active","inactive"})),
+ *     @OA\Response(response=200, description="Excel generated", @OA\JsonContent(ref="#/components/schemas/SuccessResponse"))
+ * )
+ *
+ * @OA\Get(
+ *     path="/export/masters/{type}/pdf",
+ *     tags={"Export"},
+ *     summary="Export a master list as PDF",
+ *     operationId="exportMasterPdf",
+ *     security={{"bearerAuth":{}}},
+ *     @OA\Parameter(
+ *         name="type",
+ *         in="path",
+ *         required=true,
+ *         description="Supported values: accounts, parties, items, item-categories, tax-rates",
+ *         @OA\Schema(type="string", enum={"accounts","parties","items","item-categories","tax-rates"})
+ *     ),
+ *     @OA\Parameter(name="search", in="query", @OA\Schema(type="string")),
+ *     @OA\Parameter(name="is_active", in="query", @OA\Schema(type="integer", enum={0,1})),
+ *     @OA\Parameter(name="account_type", in="query", description="Accounts only", @OA\Schema(type="string")),
+ *     @OA\Parameter(name="type", in="query", description="Parties/items only", @OA\Schema(type="string")),
+ *     @OA\Parameter(name="category_id", in="query", description="Items only", @OA\Schema(type="integer")),
+ *     @OA\Parameter(name="tax_category", in="query", description="Tax rates only", @OA\Schema(type="string")),
+ *     @OA\Parameter(name="tax_type", in="query", description="Tax rates only", @OA\Schema(type="string")),
+ *     @OA\Parameter(name="status", in="query", description="Tax rates only", @OA\Schema(type="string", enum={"active","inactive"})),
+ *     @OA\Response(response=200, description="PDF generated", @OA\JsonContent(ref="#/components/schemas/SuccessResponse"))
+ * )
  */
 class ExportDocs
 {

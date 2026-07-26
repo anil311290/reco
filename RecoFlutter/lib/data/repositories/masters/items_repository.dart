@@ -100,6 +100,51 @@ class ItemsRepository extends OfflineFirstRepository {
     return getItems();
   }
 
+  Future<Map<String, List<Map<String, dynamic>>>> getSalesLineCatalog() async {
+    final localItems = await getItems();
+    final fallbackItems = localItems
+        .map(
+          (item) => <String, dynamic>{
+            ...item.toPayload(),
+            'id': item.id,
+            'name': item.name,
+            'item_code': item.itemCode,
+            'selling_price': item.sellingPrice,
+            'description': item.description,
+            'tax_rate_id': item.taxRateId,
+            'income_account_id': item.incomeAccountId,
+            'is_active': item.isActive,
+          },
+        )
+        .toList();
+
+    if (!await networkMonitorService.hasInternetNow()) {
+      return <String, List<Map<String, dynamic>>>{
+        'items': fallbackItems,
+        'services': <Map<String, dynamic>>[],
+      };
+    }
+
+    final response = await apiClient.get<Map<String, dynamic>>(
+      ApiEndpoints.itemsDropdown,
+    );
+    final data = response.data?['data'];
+    if (data is! Map<String, dynamic>) {
+      return <String, List<Map<String, dynamic>>>{
+        'items': fallbackItems,
+        'services': <Map<String, dynamic>>[],
+      };
+    }
+
+    final itemRecords = _extractList(data['items']);
+    final serviceRecords = _extractList(data['services']);
+
+    return <String, List<Map<String, dynamic>>>{
+      'items': itemRecords.isNotEmpty ? itemRecords : fallbackItems,
+      'services': serviceRecords,
+    };
+  }
+
   Future<String> create(ItemEntity entity) {
     return queueCreate(
       module: _module,

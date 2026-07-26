@@ -3,10 +3,14 @@ import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:get/get.dart';
 
+import '../../../core/config/api_endpoints.dart';
+import '../../../data/models/transactions/transaction_entities.dart';
 import '../../controllers/reports/ledger_report_controller.dart';
 import '../../controllers/reports/report_lookup_controller.dart';
 import '../../widgets/common/custom_text_field.dart';
 import '../masters/widgets/masters_ui_components.dart';
+import '../transactions/details/transaction_detail_screen.dart';
+import 'ledger_history_screen.dart';
 import 'widgets/report_ui_components.dart';
 
 class LedgerReportScreen extends StatefulWidget {
@@ -43,6 +47,9 @@ class _LedgerReportScreenState extends State<LedgerReportScreen> {
         ),
       ),
       body: Obx(() {
+        if (controller.shouldShowInitialLoader) {
+          return const ReportLoadingView();
+        }
         final report = controller.reportData['data'];
         final entries = report is Map<String, dynamic> && report['entries'] is List
             ? List<Map<String, dynamic>>.from(
@@ -99,13 +106,15 @@ class _LedgerReportScreenState extends State<LedgerReportScreen> {
                         icon: FontAwesomeIcons.fileExcel,
                         onTap: () => controller.exportExcel(
                           reportName: 'ledger',
+                          exportEndpoint: ApiEndpoints.exportLedgerExcel,
+                          queryParameters: controller.queryParameters,
                         ),
                       ),
                       ReportSecondaryButton(
                         label: 'PDF',
                         icon: FontAwesomeIcons.filePdf,
                         onTap: () => controller.exportPdf(
-                          exportEndpoint: '/export/ledger/pdf',
+                          exportEndpoint: ApiEndpoints.exportLedgerPdf,
                           queryParameters: controller.queryParameters,
                         ),
                       ),
@@ -153,6 +162,15 @@ class _LedgerReportScreenState extends State<LedgerReportScreen> {
               title: 'Ledger Entries',
               icon: FontAwesomeIcons.tableList,
               iconColor: const Color(0xFF475569),
+              trailing: report is Map<String, dynamic>
+                  ? Text(
+                      'Dr ${controller.formatCurrency(report['total_debit'])} | Cr ${controller.formatCurrency(report['total_credit'])}',
+                      style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                        color: const Color(0xFF475569),
+                        fontWeight: FontWeight.w700,
+                      ),
+                    )
+                  : null,
               child: entries.isEmpty && report is! Map
                   ? const Padding(
                       padding: EdgeInsets.all(24),
@@ -216,16 +234,58 @@ class _LedgerReportScreenState extends State<LedgerReportScreen> {
             )),
             masterTextCell('${controller.formatCurrency(entry['running_balance'])} ${(entry['balance_type'] ?? '').toString().toUpperCase()}'),
             DataCell(Center(
-              child: MasterActionButton(
-                icon: FontAwesomeIcons.clockRotateLeft,
-                tooltip: 'View Ledger',
-                color: const Color(0xFF475569),
-                onTap: () => Get.to(() => LedgerReportScreen()),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: <Widget>[
+                  if (voucher.isNotEmpty) ...<Widget>[
+                    MasterActionButton(
+                      icon: Icons.remove_red_eye_outlined,
+                      tooltip: 'View Voucher',
+                      color: Theme.of(context).colorScheme.primary,
+                      onTap: () => Get.to(
+                        () => TransactionDetailScreen(
+                          record: _buildVoucherRecord(entry, voucher, party),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                  ],
+                  MasterActionButton(
+                    icon: FontAwesomeIcons.clockRotateLeft,
+                    tooltip: 'Ledger History',
+                    color: const Color(0xFF475569),
+                    onTap: () {
+                      final ledgerId = _asInt(entry['id']);
+                      if (ledgerId == null) {
+                        return;
+                      }
+                      Get.to(() => LedgerHistoryScreen(ledgerEntryId: ledgerId));
+                    },
+                  ),
+                ],
               ),
             )),
           ],
         );
       }),
+      DataRow(
+        color: reportTotalRowColor(context),
+        cells: <DataCell>[
+          const DataCell(SizedBox.shrink()),
+          const DataCell(SizedBox.shrink()),
+          DataCell(
+            Text(
+              'Total',
+              style: reportTotalRowTextStyle(context),
+            ),
+          ),
+          const DataCell(SizedBox.shrink()),
+          DataCell(Center(child: Text(controller.formatCurrency(reportData['total_debit']), style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 13)))),
+          DataCell(Center(child: Text(controller.formatCurrency(reportData['total_credit']), style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 13)))),
+          DataCell(Center(child: Text('${controller.formatCurrency((reportData['closing_balance'] as Map?)?['balance'])} ${((reportData['closing_balance'] as Map?)?['type'] ?? '').toString().toUpperCase()}', style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 13)))),
+          const DataCell(SizedBox.shrink()),
+        ],
+      ),
     ];
 
     final calculatedHeight = 42.0 + (entries.length * 52.0);
@@ -265,4 +325,31 @@ class _LedgerReportScreenState extends State<LedgerReportScreen> {
   }
 
   int? _asInt(dynamic value) => int.tryParse(value?.toString() ?? '');
+
+  TransactionRecord _buildVoucherRecord(
+    Map<String, dynamic> entry,
+    Map<String, dynamic> voucher,
+    Map<String, dynamic> party,
+  ) {
+    final payload = <String, dynamic>{
+      ...voucher,
+      'party': party,
+      'voucher_type': (voucher['voucher_type'] ?? entry['voucher_type'] ?? '').toString(),
+      'voucher_number': (voucher['voucher_number'] ?? '').toString(),
+      'voucher_date': (voucher['voucher_date'] ?? entry['transaction_date'] ?? '').toString(),
+      'status': (voucher['status'] ?? 'posted').toString(),
+      'narration': (entry['narration'] ?? entry['description'] ?? voucher['narration'] ?? '').toString(),
+      'total_debit': _parseAmount(entry['debit']) + _parseAmount(entry['credit']),
+      'party_id': party['id'],
+    };
+
+    return TransactionRecord.fromVoucher(payload);
+  }
+
+  double _parseAmount(dynamic value) {
+    if (value is num) {
+      return value.toDouble();
+    }
+    return double.tryParse(value?.toString() ?? '') ?? 0;
+  }
 }

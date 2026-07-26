@@ -1,6 +1,7 @@
 import 'package:get/get.dart';
 
 import '../controllers/transactions/adjustments_controller.dart';
+import '../controllers/transactions/all_vouchers_controller.dart';
 import '../controllers/transactions/payments_controller.dart';
 import '../controllers/transactions/purchase_invoices_controller.dart';
 import '../controllers/transactions/receipts_controller.dart';
@@ -22,6 +23,10 @@ class TransactionsBinding extends Bindings {
     );
     Get.lazyPut<TransactionOptionsController>(
       () => TransactionOptionsController(),
+      fenix: true,
+    );
+    Get.lazyPut<AllVouchersController>(
+      () => AllVouchersController(Get.find(), Get.find(), Get.find()),
       fenix: true,
     );
     Get.lazyPut<PaymentsController>(

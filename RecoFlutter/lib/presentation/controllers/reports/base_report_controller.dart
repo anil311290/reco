@@ -23,9 +23,12 @@ abstract class BaseReportController extends GetxController {
   final NetworkMonitorService networkMonitorService;
 
   final isLoading = false.obs;
+  final hasLoadedOnce = false.obs;
   final reportData = <String, dynamic>{}.obs;
 
   bool get isOnline => networkMonitorService.isOnline.value;
+  bool get shouldShowInitialLoader =>
+      !hasLoadedOnce.value || (isLoading.value && !_hasRenderableData(reportData));
 
   String get endpoint;
   Map<String, dynamic> get queryParameters;
@@ -62,6 +65,7 @@ abstract class BaseReportController extends GetxController {
         }
       }
     } finally {
+      hasLoadedOnce.value = true;
       isLoading.value = false;
     }
   }
@@ -70,50 +74,37 @@ abstract class BaseReportController extends GetxController {
     required String exportEndpoint,
     Map<String, dynamic>? queryParameters,
   }) async {
-    try {
-      final response = await repository.exportPdf(
-        exportEndpoint,
-        queryParameters: queryParameters,
-      );
-      final data = response['data'];
-      if (data is Map<String, dynamic>) {
-        final base64 = data['content_base64']?.toString();
-        if (base64 != null && base64.isNotEmpty) {
-          final bytes = base64Decode(base64);
-          final directory = await getTemporaryDirectory();
-          final reportName = exportEndpoint
-              .split('/')
-              .last
-              .replaceAll('-', '_');
-          final fileName =
-              '${reportName}_${DateTime.now().millisecondsSinceEpoch}.pdf';
-          final file = File(p.join(directory.path, fileName));
-          await file.writeAsBytes(bytes);
-          AppSnackbar.success('PDF exported successfully.');
-          await _openOrShare(file.path, 'Report PDF');
-          return;
-        }
-
-        final url = _resolveExportUrl(
-          data['download_url']?.toString(),
-          data['path']?.toString(),
-        );
-        if (url != null && url.isNotEmpty) {
-          final uri = Uri.tryParse(url);
-          if (uri != null) {
-            final launched = await launchUrl(uri, mode: LaunchMode.externalApplication);
-            if (launched) return;
-          }
-          await Clipboard.setData(ClipboardData(text: url));
-          AppSnackbar.success('PDF link copied.');
-          return;
-        }
-      }
-    } catch (_) {}
-    AppSnackbar.error('Unable to generate PDF.');
+    await _exportFile(
+      exportEndpoint: exportEndpoint,
+      queryParameters: queryParameters,
+      fallbackExtension: 'pdf',
+      successMessage: 'PDF exported successfully.',
+      errorMessage: 'Unable to generate PDF.',
+      linkCopiedMessage: 'PDF link copied.',
+      label: 'Report PDF',
+    );
   }
 
-  Future<void> exportExcel({required String reportName}) async {
+  Future<void> exportExcel({
+    required String reportName,
+    String? exportEndpoint,
+    Map<String, dynamic>? queryParameters,
+  }) async {
+    if (exportEndpoint != null) {
+      final exported = await _exportFile(
+        exportEndpoint: exportEndpoint,
+        queryParameters: queryParameters,
+        fallbackExtension: 'xlsx',
+        successMessage: 'Excel exported successfully.',
+        errorMessage: 'Unable to generate Excel.',
+        linkCopiedMessage: 'Excel link copied.',
+        label: reportName,
+      );
+      if (exported) {
+        return;
+      }
+    }
+
     final rows = _extractRowsForExport();
     if (rows.isEmpty) {
       AppSnackbar.error('Export ke liye report data available nahi hai.');
@@ -130,6 +121,63 @@ abstract class BaseReportController extends GetxController {
     await _openOrShare(file.path, reportName);
   }
 
+  Future<bool> _exportFile({
+    required String exportEndpoint,
+    Map<String, dynamic>? queryParameters,
+    required String fallbackExtension,
+    required String successMessage,
+    required String errorMessage,
+    required String linkCopiedMessage,
+    required String label,
+  }) async {
+    try {
+      final response = await repository.exportFile(
+        exportEndpoint,
+        queryParameters: queryParameters,
+      );
+      final data = response['data'];
+      if (data is Map<String, dynamic>) {
+        final base64 = data['content_base64']?.toString();
+        if (base64 != null && base64.isNotEmpty) {
+          final bytes = base64Decode(base64);
+          final directory = await getTemporaryDirectory();
+          final reportName = exportEndpoint
+              .split('/')
+              .length > 2
+              ? exportEndpoint.split('/')[2]
+              : exportEndpoint.split('/').last
+              ;
+          final safeName = reportName
+              .replaceAll('-', '_');
+          final fileName =
+              '${safeName}_${DateTime.now().millisecondsSinceEpoch}.$fallbackExtension';
+          final file = File(p.join(directory.path, fileName));
+          await file.writeAsBytes(bytes);
+          AppSnackbar.success(successMessage);
+          await _openOrShare(file.path, label);
+          return true;
+        }
+
+        final url = _resolveExportUrl(
+          data['download_url']?.toString(),
+          data['path']?.toString(),
+        );
+        if (url != null && url.isNotEmpty) {
+          final uri = Uri.tryParse(url);
+          if (uri != null) {
+            final launched = await launchUrl(uri, mode: LaunchMode.externalApplication);
+            if (launched) return true;
+          }
+          await Clipboard.setData(ClipboardData(text: url));
+          AppSnackbar.success(linkCopiedMessage);
+          return true;
+        }
+      }
+    } catch (_) {}
+    AppSnackbar.error(errorMessage);
+    return false;
+  }
+
   Future<void> _openOrShare(String filePath, String reportName) async {
     final opened = await launchUrl(
       Uri.file(filePath),
@@ -144,6 +192,20 @@ abstract class BaseReportController extends GetxController {
         text: '$reportName exported successfully.',
       ),
     );
+  }
+
+  bool _hasRenderableData(Map<String, dynamic> source) {
+    if (source.isEmpty) {
+      return false;
+    }
+    final data = source['data'];
+    if (data is List) {
+      return data.isNotEmpty;
+    }
+    if (data is Map<String, dynamic>) {
+      return data.isNotEmpty;
+    }
+    return data != null;
   }
 
   List<Map<String, dynamic>> _extractRowsForExport() {

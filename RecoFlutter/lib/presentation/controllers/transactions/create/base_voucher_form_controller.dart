@@ -5,6 +5,7 @@ import '../../../../core/config/api_endpoints.dart';
 import '../../../../core/utils/app_snackbar.dart';
 import '../../../../data/models/masters/master_entities.dart';
 import '../../../../data/repositories/transactions/transactions_repository.dart';
+import '../all_vouchers_controller.dart';
 import '../adjustments_controller.dart';
 import '../payments_controller.dart';
 import '../receipts_controller.dart';
@@ -43,8 +44,56 @@ abstract class BaseVoucherFormController extends GetxController {
 
   List<LookupOption> get cashBankAccounts => lookupController.cashBankAccounts;
 
+  List<LookupOption> availablePaymentParticularsFor(PaymentVoucherRowModel row) {
+    final selectedCashBankKey = selectedCashBankAccount.value?.valueKey;
+    final usedKeys = paymentRows
+        .where((item) => item != row)
+        .map((item) => item.account.value?.valueKey)
+        .whereType<String>()
+        .where((item) => item.isNotEmpty)
+        .toSet();
+
+    return particulars.where((item) {
+      if (selectedCashBankKey != null && item.valueKey == selectedCashBankKey) {
+        return false;
+      }
+      return !usedKeys.contains(item.valueKey);
+    }).toList();
+  }
+
   double get paymentTotal =>
       paymentRows.fold<double>(0, (sum, row) => sum + row.amount);
+  double? get selectedCashBankAvailableBalance =>
+      selectedCashBankAccount.value?.availableBalance;
+  bool get isOverdraftCashBankAccount => selectedCashBankAvailableBalance == null;
+  bool get isPaymentExceedingAvailableBalance {
+    final available = selectedCashBankAvailableBalance;
+    if (!isPaymentReceipt || voucherType != 'payment' || available == null) {
+      return false;
+    }
+    return paymentTotal > available + 0.009;
+  }
+  String get paymentBalanceHint {
+    if (voucherType != 'payment') {
+      return '';
+    }
+
+    final account = selectedCashBankAccount.value;
+    if (account == null) {
+      return '';
+    }
+
+    final available = account.availableBalance;
+    if (available == null) {
+      return 'Overdraft account - no balance limit.';
+    }
+
+    final amount = available.toStringAsFixed(2);
+    if (paymentTotal > available + 0.009) {
+      return 'Available balance: Rs $amount - payment exceeds available balance';
+    }
+    return 'Available balance: Rs $amount';
+  }
   double get totalDebit => adjustmentRows.fold<double>(
     0,
     (sum, row) => sum + (row.entryType.value == 'debit' ? row.amount : 0),
@@ -114,7 +163,54 @@ abstract class BaseVoucherFormController extends GetxController {
     await lookupController.refreshCashBankAccounts(value);
   }
 
+  void onCashBankAccountChanged(LookupOption? value) {
+    selectedCashBankAccount.value = value;
+    if (value == null) {
+      paymentRows.refresh();
+      return;
+    }
+    for (final row in paymentRows) {
+      if (row.account.value?.valueKey == value.valueKey) {
+        row.account.value = null;
+      }
+    }
+    paymentRows.refresh();
+  }
+
+  void onPaymentParticularChanged(
+    PaymentVoucherRowModel row,
+    LookupOption? value,
+  ) {
+    if (value == null) {
+      row.account.value = null;
+      paymentRows.refresh();
+      return;
+    }
+
+    if (selectedCashBankAccount.value?.valueKey == value.valueKey) {
+      AppSnackbar.error('Particulars cash/bank account ke same nahi ho sakta.');
+      row.account.value = null;
+      paymentRows.refresh();
+      return;
+    }
+
+    final duplicate = paymentRows.any(
+      (item) => item != row && item.account.value?.valueKey == value.valueKey,
+    );
+    if (duplicate) {
+      AppSnackbar.error('Ye particulars already selected hai. Same row me amount combine karein.');
+      row.account.value = null;
+      paymentRows.refresh();
+      return;
+    }
+
+    row.account.value = value;
+    paymentRows.refresh();
+  }
+
   void addPaymentRow() => paymentRows.add(PaymentVoucherRowModel());
+
+  void refreshPaymentTotals() => paymentRows.refresh();
 
   void removePaymentRow(PaymentVoucherRowModel row) {
     if (paymentRows.length == 1) {
@@ -126,6 +222,8 @@ abstract class BaseVoucherFormController extends GetxController {
 
   void addAdjustmentRow() =>
       adjustmentRows.add(AdjustmentVoucherRowModel(entryType: 'debit'));
+
+  void refreshAdjustmentTotals() => adjustmentRows.refresh();
 
   void removeAdjustmentRow(AdjustmentVoucherRowModel row) {
     if (adjustmentRows.length <= 2) {
@@ -179,8 +277,8 @@ abstract class BaseVoucherFormController extends GetxController {
         payload: payload,
       );
       await _refreshList();
-      AppSnackbar.success('$title local me save ho gaya. Sync available hone par ho jayega.');
       Get.back<void>();
+      AppSnackbar.success('$title local me save ho gaya. Sync available hone par ho jayega.');
     } catch (error) {
       AppSnackbar.error(error.toString());
     } finally {
@@ -195,7 +293,8 @@ abstract class BaseVoucherFormController extends GetxController {
     LookupOption? partyToken;
     for (final row in validRows) {
       final account = row.account.value;
-      if (account != null && account.label.toLowerCase().contains('party')) {
+      if (account != null &&
+          (account.kind == 'party' || account.valueKey.startsWith('party:'))) {
         partyToken = account;
         break;
       }
@@ -212,7 +311,7 @@ abstract class BaseVoucherFormController extends GetxController {
       'payment_rows': validRows
           .map(
             (row) => <String, dynamic>{
-              'account_id': row.account.value?.id.toString(),
+              'account_id': row.account.value?.valueKey,
               'amount': row.amount,
               'description': row.descriptionController.text.trim().isEmpty
                   ? null
@@ -241,7 +340,7 @@ abstract class BaseVoucherFormController extends GetxController {
       'adjustment_rows': validRows
           .map(
             (row) => <String, dynamic>{
-              'account_id': row.account.value?.id.toString(),
+              'account_id': row.account.value?.valueKey,
               'entry_type': row.entryType.value,
               'amount': row.amount,
               'description': row.descriptionController.text.trim().isEmpty
@@ -266,6 +365,9 @@ abstract class BaseVoucherFormController extends GetxController {
     }
     if (module == 'adjustments' && Get.isRegistered<AdjustmentsController>()) {
       await Get.find<AdjustmentsController>().refreshData();
+    }
+    if (Get.isRegistered<AllVouchersController>()) {
+      await Get.find<AllVouchersController>().refreshData();
     }
   }
 }

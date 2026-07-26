@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:get/get.dart';
 
+import '../../../core/config/api_endpoints.dart';
 import '../../controllers/reports/creditors_outstanding_report_controller.dart';
 import '../masters/history/party_history_screen.dart';
 import '../masters/widgets/masters_ui_components.dart';
@@ -28,6 +29,9 @@ class CreditorsOutstandingReportScreen
         ),
       ),
       body: Obx(() {
+        if (controller.shouldShowInitialLoader) {
+          return const ReportLoadingView();
+        }
         final report = controller.reportData['data'];
 
         final rows = _getCreditorRows(report);
@@ -54,6 +58,7 @@ class CreditorsOutstandingReportScreen
                     onTap: () {
                       controller.exportExcel(
                         reportName: 'creditors_outstanding',
+                        exportEndpoint: ApiEndpoints.exportCreditorsOutstandingExcel,
                       );
                     },
                   ),
@@ -62,8 +67,7 @@ class CreditorsOutstandingReportScreen
                     icon: FontAwesomeIcons.filePdf,
                     onTap: () {
                       controller.exportPdf(
-                        exportEndpoint:
-                            '/export/creditors-outstanding/pdf',
+                        exportEndpoint: ApiEndpoints.exportCreditorsOutstandingPdf,
                       );
                     },
                   ),
@@ -238,7 +242,7 @@ class CreditorsOutstandingReportScreen
   }) {
     return DataRow(
       color: WidgetStatePropertyAll(
-        theme.colorScheme.surfaceContainerHighest.withValues(alpha: .25),
+        theme.colorScheme.primary.withValues(alpha: .18),
       ),
       cells: <DataCell>[
         const DataCell(SizedBox.shrink()),

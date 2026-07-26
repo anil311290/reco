@@ -23,6 +23,10 @@ class ItemHistoryController extends GetxController {
   final totalSalesAmount = 0.0.obs;
   final totalPurchaseAmount = 0.0.obs;
   final closingQty = 0.0.obs;
+  final currentPage = 1.obs;
+  final perPage = 15.obs;
+  final totalRecords = 0.obs;
+  final lastPage = 1.obs;
   final fromDateController = TextEditingController();
   final toDateController = TextEditingController();
 
@@ -33,9 +37,15 @@ class ItemHistoryController extends GetxController {
     loadHistory();
   }
 
-  Future<void> loadHistory({bool forceRefresh = false}) async {
+  Future<void> loadHistory({
+    bool forceRefresh = false,
+    int? page,
+  }) async {
     isLoading.value = true;
     try {
+      if (page != null) {
+        currentPage.value = page;
+      }
       final result = forceRefresh
           ? await _repository.refreshItemHistory(
               itemId,
@@ -56,6 +66,13 @@ class ItemHistoryController extends GetxController {
         totalSalesAmount.value = _asDouble(data['total_sales_amount']);
         totalPurchaseAmount.value = _asDouble(data['total_purchase_amount']);
         closingQty.value = _asDouble(data['closing_qty']);
+        final pagination = data['pagination'];
+        if (pagination is Map<String, dynamic>) {
+          currentPage.value = _asInt(pagination['current_page'], fallback: 1);
+          perPage.value = _asInt(pagination['per_page'], fallback: 15);
+          totalRecords.value = _asInt(pagination['total']);
+          lastPage.value = _asInt(pagination['last_page'], fallback: 1);
+        }
         transactions.assignAll(
           (data['transactions'] is List)
               ? (data['transactions'] as List)
@@ -75,12 +92,36 @@ class ItemHistoryController extends GetxController {
           'date_from': fromDateController.text.trim(),
         if (toDateController.text.isNotEmpty)
           'date_to': toDateController.text.trim(),
+        'page': currentPage.value,
+        'per_page': perPage.value,
       };
 
   String formatCurrency(num? value) => '₹ ${_asDouble(value).toStringAsFixed(2)}';
   String formatQuantity(num? value) => _asDouble(value).toStringAsFixed(3);
-  String formatDate(String value) =>
-      value.length >= 10 ? value.substring(0, 10) : value;
+  String formatDate(String value) {
+    if (value.trim().isEmpty) {
+      return '—';
+    }
+    final parsed = DateTime.tryParse(value);
+    if (parsed == null) {
+      return value.length >= 10 ? value.substring(0, 10) : value;
+    }
+    final day = parsed.day.toString().padLeft(2, '0');
+    final month = parsed.month.toString().padLeft(2, '0');
+    return '$day/$month/${parsed.year}';
+  }
+
+  int get firstRecordIndex {
+    if (totalRecords.value == 0) {
+      return 0;
+    }
+    return ((currentPage.value - 1) * perPage.value) + 1;
+  }
+
+  int get lastRecordIndex {
+    final candidate = currentPage.value * perPage.value;
+    return candidate > totalRecords.value ? totalRecords.value : candidate;
+  }
 
   @override
   void onClose() {
@@ -94,5 +135,15 @@ class ItemHistoryController extends GetxController {
       return value.toDouble();
     }
     return double.tryParse(value?.toString() ?? '') ?? 0;
+  }
+
+  int _asInt(dynamic value, {int fallback = 0}) {
+    if (value is int) {
+      return value;
+    }
+    if (value is num) {
+      return value.toInt();
+    }
+    return int.tryParse(value?.toString() ?? '') ?? fallback;
   }
 }

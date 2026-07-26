@@ -21,7 +21,7 @@ class ItemsTabScreen extends GetView<ItemsController> {
           children: <Widget>[
             CompactSearchFilterBar(
               controller: controller.searchController,
-              hint: 'Search by name, code, category...',
+              hint: 'Search by name, code, barcode, HSN...',
               filterTooltip: 'Item filters',
               onFilterTap: () => _openFilters(context),
               onExcelTap: controller.exportExcel,

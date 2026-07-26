@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:get/get.dart';
 
+import '../../../core/config/api_endpoints.dart';
 import '../../controllers/reports/profit_loss_report_controller.dart';
 import '../../controllers/reports/report_lookup_controller.dart';
 import '../../widgets/common/custom_text_field.dart';
@@ -23,6 +24,9 @@ class ProfitLossReportScreen extends GetView<ProfitLossReportController> {
         ),
       ),
       body: Obx(() {
+        if (controller.shouldShowInitialLoader) {
+          return const ReportLoadingView();
+        }
         final report = controller.reportData['data'];
         final income = report is Map<String, dynamic> ? report['income'] : null;
         final expense = report is Map<String, dynamic> ? report['expense'] : null;
@@ -61,13 +65,15 @@ class ProfitLossReportScreen extends GetView<ProfitLossReportController> {
                         icon: FontAwesomeIcons.fileExcel,
                         onTap: () => controller.exportExcel(
                           reportName: 'profit_loss',
+                          exportEndpoint: ApiEndpoints.exportProfitLossExcel,
+                          queryParameters: controller.queryParameters,
                         ),
                       ),
                       ReportSecondaryButton(
                         label: 'PDF',
                         icon: FontAwesomeIcons.filePdf,
                         onTap: () => controller.exportPdf(
-                          exportEndpoint: '/export/profit-loss/pdf',
+                          exportEndpoint: ApiEndpoints.exportProfitLossPdf,
                           queryParameters: controller.queryParameters,
                         ),
                       ),
@@ -173,20 +179,57 @@ class ProfitLossReportScreen extends GetView<ProfitLossReportController> {
       ),
       child: accounts.isEmpty
           ? Text('No $title recorded')
-          : Column(
-              children: accounts.map((item) {
-                final account = item['account'];
-                final id = account is Map<String, dynamic> ? _asInt(account['id']) : null;
-                return ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  title: Text(account is Map<String, dynamic> ? (account['account_name'] ?? '-').toString() : '-'),
-                  trailing: Text(
-                    controller.formatCurrency(item['amount']),
-                    style: TextStyle(color: color, fontWeight: FontWeight.w700),
+          : Container(
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color: Theme.of(context).dividerColor.withValues(alpha: .4),
+                ),
+              ),
+              child: Column(
+                children: <Widget>[
+                  ...accounts.map((item) {
+                    final account = item['account'];
+                    final id = account is Map<String, dynamic> ? _asInt(account['id']) : null;
+                    return ListTile(
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 12),
+                      title: Text(account is Map<String, dynamic> ? (account['account_name'] ?? '-').toString() : '-'),
+                      trailing: Text(
+                        controller.formatCurrency(item['amount']),
+                        style: TextStyle(color: color, fontWeight: FontWeight.w700),
+                      ),
+                      onTap: id == null ? null : () => Get.to(() => LedgerReportScreen(initialAccountId: id)),
+                    );
+                  }),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: .75),
+                      borderRadius: const BorderRadius.vertical(
+                        bottom: Radius.circular(16),
+                      ),
+                    ),
+                    child: Row(
+                      children: <Widget>[
+                        Expanded(
+                          child: Text(
+                            'Total $title',
+                            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                        ),
+                        Text(
+                          controller.formatCurrency(
+                            section is Map<String, dynamic> ? section['total'] : 0,
+                          ),
+                          style: TextStyle(color: color, fontWeight: FontWeight.w800),
+                        ),
+                      ],
+                    ),
                   ),
-                  onTap: id == null ? null : () => Get.to(() => LedgerReportScreen(initialAccountId: id)),
-                );
-              }).toList(),
+                ],
+              ),
             ),
     );
   }

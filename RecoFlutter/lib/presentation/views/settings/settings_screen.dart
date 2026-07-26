@@ -164,12 +164,6 @@ class SettingsScreen extends GetView<SettingsController> {
                     onTap: _openSupportTickets,
                   ),
                   SettingsMenuTile(
-                    icon: Icons.info_outline_rounded,
-                    title: 'About App',
-                    subtitle: 'Reco ERP mobile ERP',
-                    onTap: () => controller.showComingSoon('About App'),
-                  ),
-                  SettingsMenuTile(
                     icon: Icons.logout_rounded,
                     title: controller.isLoggingOut.value
                         ? 'Logging out...'
