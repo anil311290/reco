@@ -16,12 +16,12 @@
     },
     "servers": [
         {
-            "url": "http://127.0.0.1:8002/api/v1",
-            "description": "Local Development Server (XAMPP)"
-        },
-        {
             "url": "http://127.0.0.1:8000/api/v1",
             "description": "Local Development Server (artisan serve)"
+        },
+        {
+            "url": "http://127.0.0.1:8002/api/v1",
+            "description": "Local Development Server (XAMPP)"
         },
         {
             "url": "https://reco.aaochaletaxi.app/api/v1",

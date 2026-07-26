@@ -21,13 +21,13 @@ use OpenApi\Annotations as OA;
  * )
  *
  * @OA\Server(
- *     url="http://127.0.0.1:8002/api/v1",
- *     description="Local Development Server (XAMPP)"
+ *     url="http://127.0.0.1:8000/api/v1",
+ *     description="Local Development Server (artisan serve)"
  * )
  *
  * @OA\Server(
- *     url="http://127.0.0.1:8000/api/v1",
- *     description="Local Development Server (artisan serve)"
+ *     url="http://127.0.0.1:8002/api/v1",
+ *     description="Local Development Server (XAMPP)"
  * )
  *
  * @OA\Server(
