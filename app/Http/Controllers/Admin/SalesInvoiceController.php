@@ -83,12 +83,12 @@ class SalesInvoiceController extends Controller
         $fyId = auth()->user()->company->currentFinancialYear?->id;
 
         $parties = $this->partyService->getAll(['company_id' => $companyId, 'type' => 'debtor']);
-        $items = $this->itemService->getAll($companyId);
+        $goodsItems = $this->itemService->getAll($companyId, ['type' => 'goods']);
+        $serviceItems = $this->itemService->getAll($companyId, ['type' => 'service']);
         $taxRates = $this->taxRateService->getAll($companyId);
-        $serviceAccounts = $this->accountService->getForDropdown($companyId, 'income');
         $invoiceNumber = $fyId ? $this->salesInvoiceService->generateInvoiceNumber($companyId, $fyId) : null;
 
-        return view('admin.sales-invoices.create', compact('parties', 'items', 'taxRates', 'serviceAccounts', 'invoiceNumber'));
+        return view('admin.sales-invoices.create', compact('parties', 'goodsItems', 'serviceItems', 'taxRates', 'invoiceNumber'));
     }
 
     /**
@@ -197,11 +197,11 @@ class SalesInvoiceController extends Controller
         $invoice = $this->salesInvoiceService->getById($id);
         $companyId = auth()->user()->company_id;
         $parties = $this->partyService->getAll(['company_id' => $companyId, 'type' => 'debtor']);
-        $items = $this->itemService->getAll($companyId);
+        $goodsItems = $this->itemService->getAll($companyId, ['type' => 'goods']);
+        $serviceItems = $this->itemService->getAll($companyId, ['type' => 'service']);
         $taxRates = $this->taxRateService->getAll($companyId);
-        $serviceAccounts = $this->accountService->getForDropdown($companyId, 'income');
 
-        return view('admin.sales-invoices.edit', compact('invoice', 'parties', 'items', 'taxRates', 'serviceAccounts'));
+        return view('admin.sales-invoices.edit', compact('invoice', 'parties', 'goodsItems', 'serviceItems', 'taxRates'));
     }
 
     /**

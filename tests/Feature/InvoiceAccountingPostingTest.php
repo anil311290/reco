@@ -223,6 +223,86 @@ class InvoiceAccountingPostingTest extends TestCase
         );
     }
 
+    public function test_sales_invoice_with_service_item_line_posts_balanced_income(): void
+    {
+        $company = Company::factory()->create();
+        $fy = FinancialYear::factory()->create(['company_id' => $company->id, 'is_current' => true]);
+        $accounts = $this->seedCoreAccounts($company, $fy);
+        $taxRate = $this->seedTaxRate($company->id);
+
+        $party = Party::factory()->create([
+            'company_id' => $company->id,
+            'financial_year_id' => $fy->id,
+            'type' => 'debtor',
+        ]);
+
+        /** @var \App\Services\ItemService $itemService */
+        $itemService = app(\App\Services\ItemService::class);
+
+        $serviceItem = $itemService->create([
+            'company_id' => $company->id,
+            'item_code' => 'SVC-CONSULT',
+            'name' => 'Consulting Hours',
+            'type' => 'service',
+            'selling_price' => 500,
+            'unit' => 'hrs',
+            'tax_rate_id' => $taxRate->id,
+            'income_account_id' => $accounts['sales']->id,
+            'is_active' => true,
+        ]);
+
+        $this->assertFalse((bool) $serviceItem->is_stockable);
+        $this->assertSame('service', $serviceItem->type);
+        $this->assertEquals(0.0, (float) $serviceItem->current_stock);
+        $this->assertEquals((int) $accounts['sales']->id, (int) $serviceItem->income_account_id);
+
+        /** @var SalesInvoiceService $service */
+        $service = app(SalesInvoiceService::class);
+
+        $invoice = $service->create([
+            'uuid' => (string) Str::uuid(),
+            'company_id' => $company->id,
+            'financial_year_id' => $fy->id,
+            'party_id' => $party->id,
+            'invoice_number' => 'INV-202627/0099',
+            'invoice_date' => '2026-07-06',
+            'due_date' => '2026-07-13',
+            'status' => 'draft',
+        ], [
+            [
+                'item_id' => $serviceItem->id,
+                'description' => 'Consulting Hours',
+                'quantity' => 2,
+                'unit_price' => 500,
+                'discount_percentage' => 0,
+                'tax_rate_id' => $taxRate->id,
+            ],
+        ]);
+
+        $line = $invoice->lines->first();
+        $this->assertNotNull($line);
+        $this->assertSame('service', $line->line_type);
+        $this->assertEquals((int) $serviceItem->id, (int) $line->item_id);
+        $this->assertEquals((int) $accounts['sales']->id, (int) $line->account_id);
+
+        $voucher = $service->generateVoucher($invoice->fresh());
+        $this->assertNotNull($voucher);
+
+        $voucher->load('lines');
+        $debit = round((float) $voucher->lines->sum('debit'), 2);
+        $credit = round((float) $voucher->lines->sum('credit'), 2);
+        $this->assertEquals($debit, $credit);
+        $this->assertEquals(1180.0, (float) $invoice->fresh()->total);
+
+        $incomeLine = $voucher->lines->first(
+            fn ($voucherLine) => (int) $voucherLine->account_id === (int) $accounts['sales']->id
+        );
+        $this->assertNotNull($incomeLine);
+        $this->assertEquals(1000.0, (float) $incomeLine->credit);
+
+        $this->assertEquals(0.0, (float) $serviceItem->fresh()->current_stock);
+    }
+
     public function test_purchase_invoice_posts_balanced_entries(): void
     {
         $company = Company::factory()->create();

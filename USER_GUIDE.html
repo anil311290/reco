@@ -241,8 +241,8 @@
                 Create customers (debtors) and suppliers (creditors).
             </li>
             <li>
-                <strong>Add goods items (and income ledgers for services)</strong><br>
-                Goods live under <em>Masters → Items</em>. Billable services are <strong>Income</strong> ledgers — pick them on the Sales Invoice line dropdown under Services.
+                <strong>Add goods and service items</strong><br>
+                Both live under <em>Masters → Items</em>. Choose Goods or Service when creating. Services are non-stockable items that post via their income account (default Sales Revenue).
             </li>
             <li>
                 <strong>Create a Sales Invoice</strong><br>
@@ -286,8 +286,8 @@
             <tr><td>OD</td><td>Overdraft — can pay even with low/negative available balance</td></tr>
         </table>
 
-        <h3>Income ledgers = services on sales</h3>
-        <p>Income accounts appear under the <strong>Services</strong> group on the Sales Invoice line picker. Create them from Ledgers (type Income), or choose Service when adding a new item (you are redirected to create an income ledger).</p>
+        <h3>Sales Revenue for goods and services</h3>
+        <p>Goods and service items default to the system <strong>Sales Revenue</strong> income ledger. You can override an item’s income account if needed. Income ledgers are still used for general income vouchers — not as the sales line catalog for services.</p>
 
         <h3>Opening balance</h3>
         <p>Enter opening balance + Debit/Credit when creating a ledger. Reco posts a balanced opening entry so Trial Balance stays clean.</p>
@@ -311,10 +311,10 @@
         <p>Menu: <strong>Masters → Items</strong> and <strong>Item Categories</strong></p>
 
         <h3>Goods items</h3>
-        <p>Used on Sales and Purchase invoice lines (code, name, rate, tax, unit). Categories help organize the list.</p>
+        <p>Stockable products used on Sales and Purchase invoice lines (code, name, rate, tax, unit). Categories help organize the list.</p>
 
-        <h3>Services</h3>
-        <p>Billable services are <strong>not</strong> a second Items menu. They are <strong>Income ledgers</strong>. On Sales Invoice, pick them from the Services group in the line dropdown.</p>
+        <h3>Service items</h3>
+        <p>Create services from the same <strong>Masters → Items</strong> screen (choose Service). They are <strong>non-stockable</strong> items (<code>type=service</code>), billable by quantity (e.g. hours), and posted to accounts via <code>income_account_id</code> (default Sales Revenue). On Sales Invoice, pick them from the Services group in the line dropdown.</p>
 
         <h3>Item history</h3>
         <p>Open an item’s details to see sales / purchase history, export Excel or PDF, and browse pages of transactions.</p>
@@ -345,7 +345,7 @@
 
         <div class="success-box">
             <strong>Unified billing</strong>
-            One invoice can include goods lines, service (income) lines, or both. There is no separate Service Sale Invoices screen.
+            One invoice can include goods item lines, service item lines, or both. There is no separate Service Sale Invoices screen.
         </div>
 
         <ol class="step-list">
@@ -353,12 +353,12 @@
             <li>
                 Add line rows from one dropdown:
                 <ul>
-                    <li><strong>Items</strong> — goods (qty, unit price, discount, tax)</li>
-                    <li><strong>Services</strong> — income ledgers (amount as unit price, qty locked to 1, discount locked)</li>
+                    <li><strong>Goods</strong> — goods items (qty, unit price, discount, tax)</li>
+                    <li><strong>Services</strong> — service items (editable qty for hours/units, unit price, discount, tax) — same <code>item_id</code> line payload</li>
                 </ul>
-                Description fills from the item description / service name and stays read-only on the form.
+                Description fills from the item description and stays read-only on the form.
             </li>
-            <li>Save — Reco creates the invoice and posts an <strong>income voucher</strong> (Dr Party, Cr Sales / service income / tax as mapped).</li>
+            <li>Save — Reco creates the invoice and posts an <strong>income voucher</strong> (Dr Party, Cr Sales Revenue / item income account / tax as mapped).</li>
             <li>Open the invoice → <strong>Record Payment</strong> when money is received (mode + cash/bank + amount + date). A <strong>Receipt</strong> voucher is posted and linked to the invoice.</li>
         </ol>
 
@@ -487,8 +487,8 @@
         <table>
             <tr><th>Area</th><th>Use</th></tr>
             <tr><td><strong>Sales</strong></td><td><code>GET/POST /api/v1/sales-invoices</code> — list all by default; create with <code>lines</code> and/or <code>service_lines</code></td></tr>
-            <tr><td><strong>Line picker</strong></td><td><code>GET /api/v1/items/dropdown</code> returns <code>{ items, services }</code> (services = income accounts)</td></tr>
-            <tr><td><strong>Items master</strong></td><td><code>GET /api/v1/items</code> — paginated goods list (not the sales catalog)</td></tr>
+            <tr><td><strong>Line picker</strong></td><td><code>GET /api/v1/items/dropdown</code> returns <code>{ items, services }</code> (goods items + service-type items)</td></tr>
+            <tr><td><strong>Items master</strong></td><td><code>GET /api/v1/items</code> — paginated items list (filter by type goods/service)</td></tr>
             <tr><td><strong>Purchase</strong></td><td>Item (goods) lines only; supports payment/delivery terms</td></tr>
             <tr><td><strong>Payments / Receipts</strong></td><td>Same Tally fields: <code>payment_mode</code>, cash/bank account, particulars rows</td></tr>
             <tr><td><strong>Theme</strong></td><td><code>GET/PUT /api/v1/settings/theme</code></td></tr>
@@ -518,7 +518,7 @@
         <p>They are merged into <strong>Sales Invoice</strong>. Add service lines from the Services group on the same form. Old bookmarks redirect automatically.</p>
 
         <h3>How do I bill a service?</h3>
-        <p>Create an <strong>Income</strong> ledger (or choose Service when adding an item — you are sent to create an income ledger). On Sales Invoice, pick it under Services.</p>
+        <p>Go to <strong>Masters → Items → Add</strong>, choose <strong>Service</strong>, and save. On Sales Invoice, pick it under the Services group. It posts via the item’s income account (default Sales Revenue).</p>
 
         <h3>Why can’t I save a voucher?</h3>
         <ul>

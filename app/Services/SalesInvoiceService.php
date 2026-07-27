@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\SalesInvoice;
 use App\Models\SalesInvoiceLine;
+use App\Models\Item;
 use App\Models\Voucher;
 use App\Models\TaxRate;
 use App\Models\FinancialYear;
@@ -139,9 +140,15 @@ class SalesInvoiceService
                     $taxRate = null;
                 }
 
+                $item = !empty($line['item_id']) ? Item::find($line['item_id']) : null;
+                $isServiceItem = $item && $item->type === 'service';
+
                 $line['sales_invoice_id'] = $invoice->id;
                 $line['sort_order'] = $index;
-                $line['line_type'] = 'item';
+                $line['line_type'] = $isServiceItem ? 'service' : 'item';
+                if ($isServiceItem && empty($line['account_id']) && $item->income_account_id) {
+                    $line['account_id'] = $item->income_account_id;
+                }
 
                 // Calculate line total
                 $base = ($line['quantity'] ?? 1) * ($line['unit_price'] ?? 0);
@@ -266,9 +273,15 @@ class SalesInvoiceService
             $invoice->lines()->delete();
 
             foreach ($lines as $index => $line) {
+                $item = !empty($line['item_id']) ? Item::find($line['item_id']) : null;
+                $isServiceItem = $item && $item->type === 'service';
+
                 $line['sales_invoice_id'] = $invoice->id;
                 $line['sort_order'] = $index;
-                $line['line_type'] = 'item';
+                $line['line_type'] = $isServiceItem ? 'service' : 'item';
+                if ($isServiceItem && empty($line['account_id']) && $item->income_account_id) {
+                    $line['account_id'] = $item->income_account_id;
+                }
 
                 $base = ($line['quantity'] ?? 1) * ($line['unit_price'] ?? 0);
                 $discount = $base * (($line['discount_percentage'] ?? 0) / 100);
