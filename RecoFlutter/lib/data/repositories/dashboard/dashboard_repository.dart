@@ -1,5 +1,7 @@
 import 'dart:async';
 
+import 'package:dio/dio.dart';
+
 import '../../../core/config/api_endpoints.dart';
 import '../base/offline_first_repository.dart';
 
@@ -47,20 +49,25 @@ class DashboardRepository extends OfflineFirstRepository {
       return await getCachedDashboard(queryParameters: queryParameters);
     }
 
-    final response = await apiClient.get<Map<String, dynamic>>(
-      ApiEndpoints.dashboard,
-      queryParameters: queryParameters,
-    );
+    try {
+      final response = await apiClient.get<Map<String, dynamic>>(
+        ApiEndpoints.dashboard,
+        queryParameters: queryParameters,
+        options: Options(extra: <String, dynamic>{'silentError': true}),
+      );
 
-    final body = response.data ?? <String, dynamic>{};
-    await saveCachedObject(
-      cacheKey: buildCacheKey(ApiEndpoints.dashboard, queryParameters),
-      module: _module,
-      endpoint: ApiEndpoints.dashboard,
-      response: body,
-      queryParameters: queryParameters,
-    );
+      final body = response.data ?? <String, dynamic>{};
+      await saveCachedObject(
+        cacheKey: buildCacheKey(ApiEndpoints.dashboard, queryParameters),
+        module: _module,
+        endpoint: ApiEndpoints.dashboard,
+        response: body,
+        queryParameters: queryParameters,
+      );
 
-    return body;
+      return body;
+    } catch (_) {
+      return await getCachedDashboard(queryParameters: queryParameters);
+    }
   }
 }

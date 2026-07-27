@@ -219,6 +219,10 @@
 @push('scripts')
 <script>
 $(document).ready(function() {
+    function defaultBalanceType(accountType) {
+        return (accountType === 'asset' || accountType === 'expense') ? 'debit' : 'credit';
+    }
+
     function syncTransactionModeState() {
         const isAsset = $('#account_type').val() === 'asset';
         $('#transaction_mode_row').toggleClass('d-none', !isAsset);
@@ -229,6 +233,9 @@ $(document).ready(function() {
 
     $('#account_type').on('change', function() {
         syncTransactionModeState();
+        if (!$('#balance_type').is(':disabled')) {
+            $('#balance_type').val(defaultBalanceType($(this).val()));
+        }
     });
 
     syncTransactionModeState();

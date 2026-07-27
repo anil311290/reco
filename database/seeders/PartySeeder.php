@@ -2,13 +2,13 @@
 
 namespace Database\Seeders;
 
-use App\Models\Account;
 use App\Models\City;
 use App\Models\Company;
 use App\Models\Country;
 use App\Models\FinancialYear;
 use App\Models\Party;
 use App\Models\State;
+use App\Services\PartyService;
 use Illuminate\Database\Seeder;
 
 class PartySeeder extends Seeder
@@ -33,12 +33,7 @@ class PartySeeder extends Seeder
             ? City::where('state_id', $state->id)->where('name', 'Mumbai')->first()
             : null;
 
-        $arAccountId = Account::where('company_id', $company->id)
-            ->where('account_code', Account::CODE_AR)
-            ->value('id');
-        $apAccountId = Account::where('company_id', $company->id)
-            ->where('account_code', Account::CODE_AP)
-            ->value('id');
+        $partyService = app(PartyService::class);
 
         $common = [
             'company_id' => $company->id,
@@ -65,7 +60,6 @@ class PartySeeder extends Seeder
                 'party_code' => 'AR001',
                 'name' => 'Default Customer',
                 'type' => 'debtor',
-                'account_id' => $arAccountId,
                 'opening_balance_type' => 'debit',
                 'mobile' => '+91 9000000001',
                 'email' => 'customer@example.com',
@@ -75,7 +69,6 @@ class PartySeeder extends Seeder
                 'party_code' => 'AP001',
                 'name' => 'Default Supplier',
                 'type' => 'creditor',
-                'account_id' => $apAccountId,
                 'opening_balance_type' => 'credit',
                 'mobile' => '+91 9000000002',
                 'email' => 'supplier@example.com',
@@ -83,11 +76,22 @@ class PartySeeder extends Seeder
             ]),
         ];
 
-        foreach ($parties as $party) {
-            Party::withTrashed()->updateOrCreate(
-                ['party_code' => $party['party_code']],
-                $party
-            );
+        foreach ($parties as $partyData) {
+            $existing = Party::withTrashed()
+                ->where('company_id', $company->id)
+                ->where('party_code', $partyData['party_code'])
+                ->first();
+
+            if ($existing) {
+                if ($existing->trashed()) {
+                    $existing->restore();
+                }
+
+                $partyService->update($existing->id, $partyData);
+                continue;
+            }
+
+            $partyService->create($partyData);
         }
     }
 }

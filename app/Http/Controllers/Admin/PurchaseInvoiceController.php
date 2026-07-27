@@ -80,7 +80,7 @@ class PurchaseInvoiceController extends Controller
         $parties = $this->partyService->getAll(['company_id' => $companyId, 'type' => 'creditor']);
         $items = $this->itemService->getAll($companyId);
         $taxRates = $this->taxRateService->getAll($companyId);
-        $invoiceNumber = $fyId ? $this->purchaseInvoiceService->generateInvoiceNumber($companyId, $fyId) : 'PUR-000001';
+        $invoiceNumber = $fyId ? $this->purchaseInvoiceService->generateInvoiceNumber($companyId, $fyId) : null;
 
         return view('admin.purchase-invoices.create', compact('parties', 'items', 'taxRates', 'invoiceNumber'));
     }

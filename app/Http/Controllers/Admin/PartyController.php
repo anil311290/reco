@@ -116,7 +116,9 @@ class PartyController extends Controller
             return ResponseHelper::notFound('Party not found');
         }
 
-        return view('admin.parties.edit', compact('party'));
+        $typeLocked = $this->partyService->isTransactionallyUsed($party->id);
+
+        return view('admin.parties.edit', compact('party', 'typeLocked'));
     }
 
     /**

@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\Setting;
 use App\Models\Company;
+use App\Models\Account;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
@@ -147,9 +148,12 @@ class SettingsService
         try {
             DB::beginTransaction();
 
+            $salesTaxId = $this->resolveSystemTaxLedgerId($companyId, Account::CODE_SALES_TAX);
+            $purchaseTaxId = $this->resolveSystemTaxLedgerId($companyId, Account::CODE_PURCHASE_TAX);
+
             $settings = [
-                'sales_tax_ledger_id' => $data['sales_tax_ledger_id'] ?? null,
-                'purchase_tax_ledger_id' => $data['purchase_tax_ledger_id'] ?? null,
+                'sales_tax_ledger_id' => $salesTaxId,
+                'purchase_tax_ledger_id' => $purchaseTaxId,
                 'tds_ledger_id' => $data['tds_ledger_id'] ?? null,
                 'tcs_ledger_id' => $data['tcs_ledger_id'] ?? null,
                 'cess_ledger_id' => $data['cess_ledger_id'] ?? null,
@@ -165,6 +169,15 @@ class SettingsService
             DB::rollBack();
             throw $e;
         }
+    }
+
+    protected function resolveSystemTaxLedgerId(int $companyId, string $code): ?string
+    {
+        $account = Account::where('company_id', $companyId)
+            ->where('account_code', $code)
+            ->first();
+
+        return $account ? (string) $account->id : null;
     }
 
     /**

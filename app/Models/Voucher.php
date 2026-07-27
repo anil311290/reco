@@ -147,11 +147,11 @@ class Voucher extends Model
     }
 
     /**
-     * Generate next voucher number
+     * Generate next voucher number (includes soft-deleted rows so unique keys stay free).
      */
     public static function generateNumber(string $type, int $companyId, int $financialYearId): string
     {
-        $prefix = match($type) {
+        $prefix = match ($type) {
             'income' => 'INC',
             'expense' => 'EXP',
             'receipt' => 'RCT',
@@ -161,17 +161,20 @@ class Voucher extends Model
             default => 'VCH',
         };
 
-        $lastVoucher = static::where('company_id', $companyId)
-            ->where('voucher_number', 'like', "{$prefix}%")
-            ->orderBy('voucher_number', 'desc')
-            ->first();
+        $numbers = static::withTrashed()
+            ->where('company_id', $companyId)
+            ->where('voucher_number', 'like', $prefix . '%')
+            ->pluck('voucher_number');
 
-        if ($lastVoucher) {
-            $lastNumber = intval(substr($lastVoucher->voucher_number, 3));
-            return $prefix . str_pad($lastNumber + 1, 6, '0', STR_PAD_LEFT);
+        $max = 0;
+        foreach ($numbers as $number) {
+            $seq = (int) substr((string) $number, strlen($prefix));
+            if ($seq > $max) {
+                $max = $seq;
+            }
         }
 
-        return $prefix . '000001';
+        return $prefix . str_pad((string) ($max + 1), 6, '0', STR_PAD_LEFT);
     }
 
     /**

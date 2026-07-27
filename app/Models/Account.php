@@ -172,19 +172,22 @@ class Account extends Model
     /**
      * Account code ranges:
      *   1000         → Opening Balance Difference (system suspense)
-     *   1001–1249    → Assets  (user)
+     *   1001–1099    → Assets (user)
+     *   1100         → Purchase Tax (system, reserved)
+     *   1101–1249    → Assets (user)
      *   1250         → Accounts Receivable (system, reserved)
-     *   1251–1499    → Liabilities (user)
+     *   1251         → Sales Tax (system, reserved)
+     *   1252–1499    → Liabilities (user)
      *   1500         → Accounts Payable (system, reserved)
-     *   1501         → Sales Revenue / AR Income (system, reserved)
+     *   1501         → Sales Revenue (system, reserved)
      *   1502–1750    → Income (user)
-     *   1751         → Purchases / AP Expense (system, reserved)
+     *   1751         → Purchase Expenses (system, reserved)
      *   1752–2000    → Expenses (user)
      *   2001–2500    → Equity (user)
      */
     public const CODE_RANGES = [
         'asset'     => ['start' => 1001, 'end' => 1249],
-        'liability' => ['start' => 1251, 'end' => 1499],
+        'liability' => ['start' => 1252, 'end' => 1499],
         'income'    => ['start' => 1502, 'end' => 1750],
         'expense'   => ['start' => 1752, 'end' => 2000],
         'equity'    => ['start' => 2001, 'end' => 2500],
@@ -193,17 +196,21 @@ class Account extends Model
     /** Codes reserved for system accounts — cannot be assigned to user accounts */
     public const RESERVED_CODES = [
         '1000' => 'Opening Balance Difference',
+        '1100' => 'Purchase Tax',
         '1250' => 'Accounts Receivable',
+        '1251' => 'Sales Tax',
         '1500' => 'Accounts Payable',
-        '1501' => 'Sales Revenue (AR)',
-        '1751' => 'Purchases (AP)',
+        '1501' => 'Sales Revenue',
+        '1751' => 'Purchase Expenses',
     ];
 
     /** Fixed system account codes */
     public const CODE_SUSPENSE = '1000';
-    public const CODE_AR       = '1250';
-    public const CODE_AP       = '1500';
-    public const CODE_AR_INCOME  = '1501';
+    public const CODE_PURCHASE_TAX = '1100';
+    public const CODE_AR = '1250';
+    public const CODE_SALES_TAX = '1251';
+    public const CODE_AP = '1500';
+    public const CODE_AR_INCOME = '1501';
     public const CODE_AP_EXPENSE = '1751';
 
     /**

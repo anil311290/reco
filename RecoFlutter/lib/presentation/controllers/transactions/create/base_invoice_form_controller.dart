@@ -37,13 +37,9 @@ abstract class BaseInvoiceFormController extends GetxController {
   String get temporaryPrefix;
   bool get supportsItems;
   bool get supportsServices;
-  bool get isServiceInvoice => false;
   bool get isPurchaseInvoice => false;
   bool get usesUnifiedSalesRows =>
-      supportsItems &&
-      supportsServices &&
-      !isPurchaseInvoice &&
-      !isServiceInvoice;
+      supportsItems && supportsServices && !isPurchaseInvoice;
 
   List<PartyEntity> get parties => lookupController.parties;
   List<ItemEntity> get items => lookupController.items;
@@ -324,7 +320,6 @@ abstract class BaseInvoiceFormController extends GetxController {
           ? null
           : notesController.text.trim(),
       'discount_percentage': double.tryParse(discountController.text.trim()) ?? 0,
-      if (isServiceInvoice) 'invoice_type': 'service',
       'lines': validItemRows
           .map(
             (row) => <String, dynamic>{
@@ -419,37 +414,6 @@ class SalesInvoiceFormController extends BaseInvoiceFormController {
 
   @override
   bool get supportsServices => true;
-}
-
-class ServiceSalesInvoiceFormController extends BaseInvoiceFormController {
-  ServiceSalesInvoiceFormController(super.repository, super.lookupController);
-
-  @override
-  String get title => 'Service Sale Invoice';
-
-  @override
-  String get module => 'service_sales_invoices';
-
-  @override
-  String get endpoint => ApiEndpoints.serviceSalesInvoices;
-
-  @override
-  String get partyType => 'debtor';
-
-  @override
-  String get serviceAccountType => 'income';
-
-  @override
-  String get temporaryPrefix => 'SRV';
-
-  @override
-  bool get supportsItems => false;
-
-  @override
-  bool get supportsServices => true;
-
-  @override
-  bool get isServiceInvoice => true;
 }
 
 class PurchaseInvoiceFormController extends BaseInvoiceFormController {

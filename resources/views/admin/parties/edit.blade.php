@@ -33,11 +33,14 @@
             <div class="row g-3">
                 <div class="col-md-6">
                     <label for="type" class="form-label">Party Type <span class="text-danger">*</span></label>
-                    <select class="form-select" id="type" name="type" required>
+                    <select class="form-select" id="type" name="type" required {{ !empty($typeLocked) ? 'disabled' : '' }}>
                         <option value="">Select Type</option>
                         <option value="debtor" {{ old('type', $party->type) === 'debtor' ? 'selected' : '' }}>Debtor (Customer)</option>
                         <option value="creditor" {{ old('type', $party->type) === 'creditor' ? 'selected' : '' }}>Creditor (Supplier)</option>
                     </select>
+                    @if(!empty($typeLocked))
+                        <input type="hidden" name="type" value="{{ $party->type }}">
+                    @endif
                 </div>
 
                 <div class="col-md-6">
@@ -101,14 +104,14 @@
                     <label for="opening_balance" class="form-label">Opening Balance</label>
                     <div class="input-group">
                         <span class="input-group-text">₹</span>
-                        <input type="number" class="form-control" id="opening_balance" name="opening_balance" 
-                               value="{{ old('opening_balance', $party->opening_balance) }}" step="0.01" min="0">
+                        <input type="number" class="form-control" id="opening_balance"
+                               value="{{ old('opening_balance', $party->opening_balance) }}" step="0.01" min="0" readonly>
                     </div>
                 </div>
 
                 <div class="col-md-4">
                     <label for="opening_balance_type" class="form-label">Balance Type</label>
-                    <select class="form-select" id="opening_balance_type" name="opening_balance_type">
+                    <select class="form-select" id="opening_balance_type" disabled>
                         <option value="debit" {{ old('opening_balance_type', $party->opening_balance_type ?? 'debit') === 'debit' ? 'selected' : '' }}>Debit (DR)</option>
                         <option value="credit" {{ old('opening_balance_type', $party->opening_balance_type) === 'credit' ? 'selected' : '' }}>Credit (CR)</option>
                     </select>
@@ -116,9 +119,14 @@
 
                 <div class="col-md-4">
                     <label for="opening_date" class="form-label">Opening Date</label>
-                    <input type="date" class="form-control" id="opening_date" name="opening_date" 
-                           value="{{ old('opening_date', $party->opening_date?->format('Y-m-d')) }}">
+                    <input type="date" class="form-control" id="opening_date"
+                           value="{{ old('opening_date', $party->opening_date?->format('Y-m-d')) }}" readonly>
                 </div>
+            </div>
+
+            <div class="alert alert-warning mt-3 mb-0">
+                <i class="bi bi-shield-lock me-2"></i>
+                Opening balance is locked after create and cannot be changed. Review carefully before saving a new party.
             </div>
 
             <div class="mb-3">

@@ -13,7 +13,6 @@ class SalesInvoiceResource extends JsonResource
             'id' => $this->id,
             'uuid' => $this->uuid,
             'invoice_number' => $this->invoice_number,
-            'invoice_type' => $this->invoice_type ?? 'item',
             'invoice_date' => $this->invoice_date?->toISOString(),
             'due_date' => $this->due_date?->toISOString(),
             'reference_number' => $this->reference_number,

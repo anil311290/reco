@@ -97,7 +97,6 @@ class ApiEndpoints {
   static const String itemsDropdown = '/items/dropdown';
   static String itemHistory(Object id) => '/items/$id/history';
   static const String salesInvoices = '/sales-invoices';
-  static const String serviceSalesInvoices = '/service-sales-invoices';
   static const String purchaseInvoices = '/purchase-invoices';
 
   static const String subscriptionPlans = '/subscriptions/plans';

@@ -103,8 +103,6 @@ $paths = [
     '/admin/sales-invoices/create',
     '/admin/purchase-invoices',
     '/admin/purchase-invoices/create',
-    '/admin/service-sales-invoices',
-    '/admin/service-sales-invoices/create',
     '/admin/financial-years',
     '/admin/settings',
     '/admin/reports',

@@ -110,7 +110,6 @@ class InvoiceAccountingPostingTest extends TestCase
             'company_id' => $company->id,
             'financial_year_id' => $fy->id,
             'party_id' => $party->id,
-            'invoice_type' => 'item',
             'invoice_number' => 'INV-000001',
             'invoice_date' => '2026-07-06',
             'due_date' => '2026-07-13',
@@ -140,7 +139,7 @@ class InvoiceAccountingPostingTest extends TestCase
         $this->assertEquals((float) $invoice->total, $debit);
     }
 
-    public function test_service_sales_invoice_posts_balanced_journal(): void
+    public function test_sales_invoice_with_service_lines_posts_balanced_journal(): void
     {
         $company = Company::factory()->create();
         $fy = FinancialYear::factory()->create(['company_id' => $company->id, 'is_current' => true]);
@@ -169,8 +168,7 @@ class InvoiceAccountingPostingTest extends TestCase
             'company_id' => $company->id,
             'financial_year_id' => $fy->id,
             'party_id' => $party->id,
-            'invoice_type' => 'service',
-            'invoice_number' => 'SRV-000001',
+            'invoice_number' => 'INV-202627/0001',
             'invoice_date' => '2026-07-06',
             'due_date' => '2026-07-13',
             'status' => 'draft',

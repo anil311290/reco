@@ -86,7 +86,7 @@ class SalesInvoiceController extends Controller
         $items = $this->itemService->getAll($companyId);
         $taxRates = $this->taxRateService->getAll($companyId);
         $serviceAccounts = $this->accountService->getForDropdown($companyId, 'income');
-        $invoiceNumber = $fyId ? $this->salesInvoiceService->generateInvoiceNumber($companyId, $fyId) : 'INV-000001';
+        $invoiceNumber = $fyId ? $this->salesInvoiceService->generateInvoiceNumber($companyId, $fyId) : null;
 
         return view('admin.sales-invoices.create', compact('parties', 'items', 'taxRates', 'serviceAccounts', 'invoiceNumber'));
     }

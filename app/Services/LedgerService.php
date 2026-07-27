@@ -118,27 +118,9 @@ class LedgerService
                 $previousBalance = $lastEntry->balance_type === 'credit' ? $magnitude : -$magnitude;
             }
         } else {
-            // First entry in FY: use master opening only when no posted opening rows exist yet.
-            $previousBalance = $financialYearId
-                ? 0.0
-                : (float) ($account->opening_balance ?? 0);
-
-            if ($financialYearId && round((float) ($account->opening_balance ?? 0), 2) > 0) {
-                $hasOpeningRows = Ledger::query()
-                    ->where('company_id', $companyId)
-                    ->where('account_id', $accountId)
-                    ->where('financial_year_id', $financialYearId)
-                    ->whereIn('reference_type', [
-                        'account_opening_balance',
-                        'party_opening_balance',
-                        'fy_opening_balance',
-                    ])
-                    ->exists();
-
-                if (!$hasOpeningRows) {
-                    $previousBalance = (float) $account->opening_balance;
-                }
-            }
+            // First ledger row starts at zero. Opening amounts are posted explicitly
+            // via Adjustment vouchers (account ↔ Opening Balance Difference).
+            $previousBalance = 0.0;
         }
 
         // Calculate new balance on account-normal scale
@@ -207,12 +189,15 @@ class LedgerService
     }
 
     /**
-     * Create ledger entries for party opening balances.
+     * Create balanced opening for a party via Adjustment voucher
+     * (party ledger ↔ Opening Balance Difference).
      */
     public function createOpeningBalanceEntries(Party $party): void
     {
-        $openingBalance = round((float) ($party->opening_balance ?? 0), 2);
+        $this->removeOpeningAdjustment('party', (int) $party->id, (int) $party->company_id);
+        $this->deleteEntriesByReference('party_opening_balance', (int) $party->id);
 
+        $openingBalance = round((float) ($party->opening_balance ?? 0), 2);
         if ($openingBalance <= 0) {
             return;
         }
@@ -227,7 +212,7 @@ class LedgerService
             );
         }
 
-        $openingBalanceAccount = $this->ensureSystemAccount(
+        $suspense = $this->ensureSystemAccount(
             Account::CODE_SUSPENSE,
             $party->company_id,
             $party->financial_year_id,
@@ -235,79 +220,36 @@ class LedgerService
             $party->created_by_ip
         );
 
-        $partyDebit = 0;
-        $partyCredit = 0;
-        $offsetDebit = 0;
-        $offsetCredit = 0;
-
-        if ($party->opening_balance_type === 'debit') {
-            $partyDebit = $openingBalance;
-            $offsetCredit = $openingBalance;
-        } else {
-            $partyCredit = $openingBalance;
-            $offsetDebit = $openingBalance;
-        }
-
-        $description = "Opening balance for party {$party->name}";
-        $referenceType = 'party_opening_balance';
-        $referenceId = $party->id;
+        $isDebit = ($party->opening_balance_type ?? 'debit') === 'debit';
         $transactionDate = $party->opening_date?->format('Y-m-d') ?? now()->format('Y-m-d');
+        $narration = $this->openingAdjustmentNarration('party', (int) $party->id, $party->name);
 
-        $this->createEntry(
-            $party->company_id,
-            $party->financial_year_id,
-            $partyAccount->id,
-            null,
-            $transactionDate,
-            $referenceType,
-            $referenceId,
-            $party->id,
-            $description,
-            $partyDebit,
-            $partyCredit,
-            $party->created_by,
-            $party->created_by_ip
+        $this->postOpeningAdjustmentVoucher(
+            companyId: (int) $party->company_id,
+            financialYearId: $party->financial_year_id ? (int) $party->financial_year_id : null,
+            voucherDate: $transactionDate,
+            narration: $narration,
+            primaryAccountId: (int) $partyAccount->id,
+            suspenseAccountId: (int) $suspense->id,
+            amount: $openingBalance,
+            primaryIsDebit: $isDebit,
+            partyId: (int) $party->id,
+            createdBy: $party->created_by,
+            createdByIp: $party->created_by_ip
         );
-
-        $this->createEntry(
-            $party->company_id,
-            $party->financial_year_id,
-            $openingBalanceAccount->id,
-            null,
-            $transactionDate,
-            $referenceType,
-            $referenceId,
-            null,
-            $description,
-            $offsetDebit,
-            $offsetCredit,
-            $party->created_by,
-            $party->created_by_ip
-        );
-
-        $this->recalculateBalances($partyAccount->id, $party->company_id, $party->financial_year_id);
-        $this->recalculateBalances($openingBalanceAccount->id, $party->company_id, $party->financial_year_id);
     }
 
     /**
-     * Post a balanced opening for a ledger account (account ↔ suspense).
-     * Keeps Trial Balance balanced when opening_balance is set.
+     * Create balanced opening for a ledger via Adjustment voucher
+     * (account ↔ Opening Balance Difference) so Day Book / TB stay Dr = Cr.
      */
     public function createAccountOpeningBalanceEntries(Account $account): void
     {
+        $this->removeOpeningAdjustment('account', (int) $account->id, (int) $account->company_id);
+        $this->deleteEntriesByReference('account_opening_balance', (int) $account->id);
+
         $openingBalance = round((float) ($account->opening_balance ?? 0), 2);
         if ($openingBalance <= 0) {
-            return;
-        }
-
-        $existing = Ledger::query()
-            ->where('company_id', $account->company_id)
-            ->where('account_id', $account->id)
-            ->where('reference_type', 'account_opening_balance')
-            ->where('reference_id', $account->id)
-            ->exists();
-
-        if ($existing) {
             return;
         }
 
@@ -322,49 +264,88 @@ class LedgerService
         $balanceType = $account->balance_type
             ?: (in_array($account->account_type, ['asset', 'expense'], true) ? 'debit' : 'credit');
 
-        $accountDebit = $balanceType === 'debit' ? $openingBalance : 0;
-        $accountCredit = $balanceType === 'credit' ? $openingBalance : 0;
-        $offsetDebit = $balanceType === 'credit' ? $openingBalance : 0;
-        $offsetCredit = $balanceType === 'debit' ? $openingBalance : 0;
-
-        $description = "Opening balance for {$account->account_name}";
         $transactionDate = $account->opening_date?->format('Y-m-d') ?? now()->format('Y-m-d');
-        $referenceType = 'account_opening_balance';
+        $narration = $this->openingAdjustmentNarration('account', (int) $account->id, $account->account_name);
 
-        $this->createEntry(
-            $account->company_id,
-            $account->financial_year_id,
-            $account->id,
-            null,
-            $transactionDate,
-            $referenceType,
-            $account->id,
-            null,
-            $description,
-            $accountDebit,
-            $accountCredit,
-            $account->created_by,
-            $account->created_by_ip
+        $this->postOpeningAdjustmentVoucher(
+            companyId: (int) $account->company_id,
+            financialYearId: $account->financial_year_id ? (int) $account->financial_year_id : null,
+            voucherDate: $transactionDate,
+            narration: $narration,
+            primaryAccountId: (int) $account->id,
+            suspenseAccountId: (int) $suspense->id,
+            amount: $openingBalance,
+            primaryIsDebit: $balanceType === 'debit',
+            partyId: null,
+            createdBy: $account->created_by,
+            createdByIp: $account->created_by_ip
         );
+    }
 
-        $this->createEntry(
-            $account->company_id,
-            $account->financial_year_id,
-            $suspense->id,
-            null,
-            $transactionDate,
-            $referenceType,
-            $account->id,
-            null,
-            $description,
-            $offsetDebit,
-            $offsetCredit,
-            $account->created_by,
-            $account->created_by_ip
-        );
+    protected function openingAdjustmentNarration(string $kind, int $id, string $name): string
+    {
+        return sprintf('[OB:%s:%d] Opening balance for %s', $kind, $id, $name);
+    }
 
-        $this->recalculateBalances($account->id, $account->company_id, $account->financial_year_id);
-        $this->recalculateBalances($suspense->id, $account->company_id, $account->financial_year_id);
+    protected function removeOpeningAdjustment(string $kind, int $id, int $companyId): void
+    {
+        $marker = sprintf('[OB:%s:%d]', $kind, $id);
+
+        $vouchers = Voucher::withTrashed()
+            ->where('company_id', $companyId)
+            ->where('voucher_type', 'adjustment')
+            ->where('narration', 'like', $marker . '%')
+            ->get();
+
+        foreach ($vouchers as $voucher) {
+            $this->deleteEntriesByReference('voucher', (int) $voucher->id);
+            $voucher->lines()->delete();
+            $voucher->forceDelete();
+        }
+    }
+
+    protected function postOpeningAdjustmentVoucher(
+        int $companyId,
+        ?int $financialYearId,
+        string $voucherDate,
+        string $narration,
+        int $primaryAccountId,
+        int $suspenseAccountId,
+        float $amount,
+        bool $primaryIsDebit,
+        ?int $partyId,
+        ?int $createdBy,
+        ?string $createdByIp
+    ): void {
+        $primaryLine = [
+            'account_id' => $primaryAccountId,
+            'party_id' => $partyId,
+            'debit' => $primaryIsDebit ? $amount : 0,
+            'credit' => $primaryIsDebit ? 0 : $amount,
+            'description' => $narration,
+        ];
+
+        $offsetLine = [
+            'account_id' => $suspenseAccountId,
+            'party_id' => null,
+            'debit' => $primaryIsDebit ? 0 : $amount,
+            'credit' => $primaryIsDebit ? $amount : 0,
+            'description' => $narration,
+        ];
+
+        app(VoucherService::class)->create([
+            'company_id' => $companyId,
+            'financial_year_id' => $financialYearId,
+            'voucher_type' => 'adjustment',
+            'voucher_date' => $voucherDate,
+            'narration' => $narration,
+            'status' => 'posted',
+            'created_by' => $createdBy,
+            'updated_by' => $createdBy,
+            'created_by_ip' => $createdByIp,
+            'updated_by_ip' => $createdByIp,
+            'lines' => [$primaryLine, $offsetLine],
+        ]);
     }
 
     public function ensureSystemAccount(
@@ -385,31 +366,43 @@ class LedgerService
                 'account_name' => 'Opening Balance Difference',
                 'account_type' => 'asset',
                 'balance_type' => 'debit',
-                'remarks' => 'System suspense account for opening balance differences.',
+                'remarks' => 'System suspense ledger used for balancing opening entries.',
+            ],
+            Account::CODE_PURCHASE_TAX => [
+                'account_name' => 'Purchase Tax',
+                'account_type' => 'asset',
+                'balance_type' => 'debit',
+                'remarks' => 'Default ledger for tax amount from purchase invoice lines.',
             ],
             Account::CODE_AR => [
                 'account_name' => 'Accounts Receivable',
                 'account_type' => 'asset',
                 'balance_type' => 'debit',
-                'remarks' => 'System account for customer receivables.',
+                'remarks' => 'Control ledger for all debtor (customer) balances.',
+            ],
+            Account::CODE_SALES_TAX => [
+                'account_name' => 'Sales Tax',
+                'account_type' => 'liability',
+                'balance_type' => 'credit',
+                'remarks' => 'Default ledger for tax amount from sales invoice lines.',
             ],
             Account::CODE_AP => [
                 'account_name' => 'Accounts Payable',
                 'account_type' => 'liability',
                 'balance_type' => 'credit',
-                'remarks' => 'System account for vendor payables.',
+                'remarks' => 'Control ledger for all creditor (supplier) balances.',
             ],
             Account::CODE_AR_INCOME => [
-                'account_name' => 'Sales Revenue (AR)',
+                'account_name' => 'Sales Revenue',
                 'account_type' => 'income',
                 'balance_type' => 'credit',
-                'remarks' => 'Reserved default income account for AR transactions.',
+                'remarks' => 'Default income ledger for item totals on sales invoices.',
             ],
             Account::CODE_AP_EXPENSE => [
-                'account_name' => 'Purchases (AP)',
+                'account_name' => 'Purchase Expenses',
                 'account_type' => 'expense',
                 'balance_type' => 'debit',
-                'remarks' => 'Reserved default expense account for AP transactions.',
+                'remarks' => 'Default expense ledger for item totals on purchase invoices.',
             ],
         ];
 
@@ -777,27 +770,11 @@ class LedgerService
         $account = $this->accountRepository->find($accountId);
         $isDebitNormal = in_array($account->account_type, ['asset', 'expense'], true);
 
-        $hasPostedOpening = $entries->contains(function ($entry) {
-            return in_array($entry->reference_type, [
-                'account_opening_balance',
-                'party_opening_balance',
-                'fy_opening_balance',
-            ], true);
-        });
+        // Always replay from zero. Opening balances are ledger-posted
+        // (Adjustment voucher / legacy opening refs), never seeded twice from master.
+        $runningBalance = 0.0;
 
-        if ($financialYearId) {
-            $runningBalance = $hasPostedOpening
-                ? 0.0
-                : (float) ($account->opening_balance ?? 0);
-        } else {
-            $runningBalance = $hasPostedOpening
-                ? 0.0
-                : (float) ($account->opening_balance ?? 0);
-        }
-
-        $balanceType = $runningBalance >= 0
-            ? ($isDebitNormal ? 'debit' : 'credit')
-            : ($isDebitNormal ? 'credit' : 'debit');
+        $balanceType = $isDebitNormal ? 'debit' : 'credit';
 
         foreach ($entries as $entry) {
             if ($isDebitNormal) {

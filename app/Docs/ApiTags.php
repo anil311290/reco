@@ -62,12 +62,7 @@ use OpenApi\Annotations as OA;
 
  * @OA\Tag(
  *     name="Sales Invoices",
- *     description="Unified sales invoices (item lines and/or service/income lines). Prefer /sales-invoices for all app flows."
- * )
- *
- * @OA\Tag(
- *     name="Service Sales Invoices",
- *     description="Legacy alias of /sales-invoices with invoice_type=service. Prefer unified Sales Invoices endpoints."
+ *     description="Unified sales invoices (item lines and/or service/income lines) via /sales-invoices."
  * )
  *
  * @OA\Tag(

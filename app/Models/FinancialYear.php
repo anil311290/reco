@@ -93,6 +93,14 @@ class FinancialYear extends Model
     }
 
     /**
+     * FY code for document numbers (e.g. 202627 for FY 2026-27).
+     */
+    public function code(): string
+    {
+        return $this->start_date->format('Y') . $this->end_date->format('y');
+    }
+
+    /**
      * Close the financial year
      */
     public function close(): bool

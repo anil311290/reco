@@ -6,6 +6,7 @@ use App\Models\SalesInvoice;
 use App\Models\SalesInvoiceLine;
 use App\Models\Voucher;
 use App\Models\TaxRate;
+use App\Models\FinancialYear;
 use App\Interfaces\SalesInvoiceRepositoryInterface;
 use App\Interfaces\AccountRepositoryInterface;
 use App\Services\SettingsService;
@@ -81,9 +82,6 @@ class SalesInvoiceService
         $query = SalesInvoice::with(['party'])
             ->where('company_id', $companyId);
 
-        if (isset($filters['invoice_type'])) {
-            $query->where('invoice_type', $filters['invoice_type']);
-        }
         if (isset($filters['status'])) {
             $query->where('status', $filters['status']);
         }
@@ -476,22 +474,28 @@ class SalesInvoiceService
     }
 
     /**
-     * Generate next invoice number (company-wide sequence; not reset per FY).
+     * Generate next invoice number: INV-202627/0001
      */
-    public function generateInvoiceNumber(int $companyId, int $financialYearId, string $invoiceType = 'item'): string
+    public function generateInvoiceNumber(int $companyId, int $financialYearId): string
     {
-        $prefix = $invoiceType === 'service' ? 'SRV' : 'INV';
+        $fy = FinancialYear::find($financialYearId);
+        $fyCode = $fy?->code() ?? now()->format('Y') . now()->copy()->addYear()->format('y');
+        $needle = 'INV-' . $fyCode . '/';
 
-        $lastInvoice = SalesInvoice::where('company_id', $companyId)
-            ->where('invoice_type', $invoiceType)
-            ->where('invoice_number', 'like', $prefix . '-%')
-            ->orderBy('invoice_number', 'desc')
-            ->first();
+        $numbers = SalesInvoice::where('company_id', $companyId)
+            ->where('financial_year_id', $financialYearId)
+            ->where('invoice_number', 'like', $needle . '%')
+            ->pluck('invoice_number');
 
-        $nextNumber = $lastInvoice
-            ? intval(substr($lastInvoice->invoice_number, -6)) + 1
-            : 1;
+        $max = 0;
+        foreach ($numbers as $number) {
+            $pos = strrpos($number, '/');
+            $seq = $pos === false ? 0 : (int) substr($number, $pos + 1);
+            if ($seq > $max) {
+                $max = $seq;
+            }
+        }
 
-        return $prefix . '-' . str_pad($nextNumber, 6, '0', STR_PAD_LEFT);
+        return $needle . str_pad((string) ($max + 1), 4, '0', STR_PAD_LEFT);
     }
 }

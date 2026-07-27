@@ -228,14 +228,6 @@ Route::prefix('v1')->middleware('auth:sanctum')->group(function () {
     Route::post('/sales-invoices/{id}/payment', [SalesInvoiceApiController::class, 'payment']);
     Route::get('/sales-invoices/{id}/pdf', [SalesInvoiceApiController::class, 'exportPdf']);
 
-    // Legacy service-sales aliases (prefer /sales-invoices)
-    Route::get('/service-sales-invoices', [SalesInvoiceApiController::class, 'indexService']);
-    Route::post('/service-sales-invoices', [SalesInvoiceApiController::class, 'storeService']);
-    Route::get('/service-sales-invoices/{id}', [SalesInvoiceApiController::class, 'showService']);
-    Route::put('/service-sales-invoices/{id}', [SalesInvoiceApiController::class, 'updateService']);
-    Route::delete('/service-sales-invoices/{id}', [SalesInvoiceApiController::class, 'destroyService']);
-    Route::post('/service-sales-invoices/{id}/payment', [SalesInvoiceApiController::class, 'paymentService']);
-
     // Purchase invoices
     Route::get('/purchase-invoices', [PurchaseInvoiceApiController::class, 'index']);
     Route::post('/purchase-invoices', [PurchaseInvoiceApiController::class, 'store']);

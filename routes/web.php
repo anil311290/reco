@@ -467,22 +467,6 @@ Route::prefix('admin')->name('admin.')->group(function () {
 
         /*
         |--------------------------------------------------------------------------
-        | Service Sales Invoice Routes (redirected — unified under Sales Invoice)
-        |--------------------------------------------------------------------------
-        */
-        Route::middleware(CheckPermission::class . ':vouchers.view')->group(function () {
-            Route::get('service-sales-invoices', fn () => redirect()->route('admin.sales-invoices.index'))
-                ->name('service-sales-invoices.index');
-            Route::get('service-sales-invoices/create', fn () => redirect()->route('admin.sales-invoices.create'))
-                ->name('service-sales-invoices.create');
-            Route::get('service-sales-invoices/{id}/edit', fn (int $id) => redirect()->route('admin.sales-invoices.edit', $id))
-                ->name('service-sales-invoices.edit');
-            Route::get('service-sales-invoices/{id}', fn (int $id) => redirect()->route('admin.sales-invoices.show', $id))
-                ->name('service-sales-invoices.show');
-        });
-
-        /*
-        |--------------------------------------------------------------------------
         | Subscription Routes
         |--------------------------------------------------------------------------
         */

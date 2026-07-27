@@ -383,12 +383,12 @@
                 <!-- Vouchers -->
                 @anyrole('admin', 'manager', 'accountant')
                 <li class="nav-item">
-                    <a class="nav-link has-submenu {{ request()->is('admin/vouchers*') || request()->is('admin/sales-invoices*') || request()->is('admin/service-sales-invoices*') || request()->is('admin/purchase-invoices*') ? 'active' : '' }}" href="#vouchersSubmenu" data-bs-toggle="collapse">
+                    <a class="nav-link has-submenu {{ request()->is('admin/vouchers*') || request()->is('admin/sales-invoices*') || request()->is('admin/purchase-invoices*') ? 'active' : '' }}" href="#vouchersSubmenu" data-bs-toggle="collapse">
                         <i class="bi bi-receipt"></i>
                         <span>Vouchers</span>
                         <i class="bi bi-chevron-down ms-auto"></i>
                     </a>
-                    <div class="collapse {{ request()->is('admin/vouchers*') || request()->is('admin/sales-invoices*') || request()->is('admin/service-sales-invoices*') || request()->is('admin/purchase-invoices*') ? 'show' : '' }}" id="vouchersSubmenu">
+                    <div class="collapse {{ request()->is('admin/vouchers*') || request()->is('admin/sales-invoices*') || request()->is('admin/purchase-invoices*') ? 'show' : '' }}" id="vouchersSubmenu">
                         <ul class="nav flex-column">
                             @permission('vouchers.view')
                             <li class="nav-item">
@@ -400,7 +400,7 @@
                             @endpermission
                             @permission('vouchers.view')
                             <li class="nav-item">
-                                <a class="nav-link {{ request()->routeIs('admin.sales-invoices.*') || request()->routeIs('admin.service-sales-invoices.*') ? 'active' : '' }}" href="{{ route('admin.sales-invoices.index') }}">
+                                <a class="nav-link {{ request()->routeIs('admin.sales-invoices.*') ? 'active' : '' }}" href="{{ route('admin.sales-invoices.index') }}">
                                     <i class="bi bi-file-earmark-text"></i>
                                     <span>Sales Invoice</span>
                                 </a>

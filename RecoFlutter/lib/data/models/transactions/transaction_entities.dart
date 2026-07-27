@@ -74,7 +74,7 @@ class TransactionRecord {
   factory TransactionRecord.fromSalesInvoice(Map<String, dynamic> record) {
     final payload = _recordPayload(record);
     final party = payload['party'];
-    final invoiceType = (payload['invoice_type'] ?? 'item').toString();
+    final invoiceType = 'sales';
     return TransactionRecord(
       kind: TransactionRecordKind.salesInvoice,
       id: _tryParseInt(payload['id']),

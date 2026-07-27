@@ -6,6 +6,7 @@ use App\Models\PurchaseInvoice;
 use App\Models\PurchaseInvoiceLine;
 use App\Models\Voucher;
 use App\Models\TaxRate;
+use App\Models\FinancialYear;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\DB;
@@ -353,20 +354,29 @@ class PurchaseInvoiceService
     }
 
     /**
-     * Generate next invoice number (company-wide sequence; not reset per FY).
+     * Generate next invoice number: PUR-202627/0001
      */
     public function generateInvoiceNumber(int $companyId, int $financialYearId): string
     {
-        $lastInvoice = PurchaseInvoice::where('company_id', $companyId)
-            ->where('invoice_number', 'like', 'PUR-%')
-            ->orderBy('invoice_number', 'desc')
-            ->first();
+        $fy = FinancialYear::find($financialYearId);
+        $fyCode = $fy?->code() ?? now()->format('Y') . now()->copy()->addYear()->format('y');
+        $needle = 'PUR-' . $fyCode . '/';
 
-        $nextNumber = $lastInvoice
-            ? intval(substr($lastInvoice->invoice_number, -6)) + 1
-            : 1;
+        $numbers = PurchaseInvoice::where('company_id', $companyId)
+            ->where('financial_year_id', $financialYearId)
+            ->where('invoice_number', 'like', $needle . '%')
+            ->pluck('invoice_number');
 
-        return 'PUR-' . str_pad($nextNumber, 6, '0', STR_PAD_LEFT);
+        $max = 0;
+        foreach ($numbers as $number) {
+            $pos = strrpos($number, '/');
+            $seq = $pos === false ? 0 : (int) substr($number, $pos + 1);
+            if ($seq > $max) {
+                $max = $seq;
+            }
+        }
+
+        return $needle . str_pad((string) ($max + 1), 4, '0', STR_PAD_LEFT);
     }
 
     /**

@@ -145,17 +145,16 @@ class PartyService
             return false;
         }
 
-        $oldOpeningBalance = $party->opening_balance;
+        // Opening balance is set only at create and cannot be changed later.
+        unset(
+            $data['opening_balance'],
+            $data['opening_balance_type'],
+            $data['opening_date']
+        );
 
+        // Debtor/Creditor reclassification is locked once any ledger activity exists.
         if ($this->isPartyTransactionallyUsed($party->id)) {
-            // Party name/contact details may change. Reclassifying Debtor ↔
-            // Creditor or changing opening values would rewrite old books.
-            unset(
-                $data['type'],
-                $data['opening_balance'],
-                $data['opening_balance_type'],
-                $data['opening_date']
-            );
+            unset($data['type']);
         }
 
         try {
@@ -171,16 +170,6 @@ class PartyService
             ])->id;
 
             $updated = $party->update($data);
-
-            if ($updated) {
-                if (!empty($oldOpeningBalance) || !empty($data['opening_balance'])) {
-                    $this->ledgerService->deleteEntriesByReference('party_opening_balance', $party->id);
-
-                    if (!empty($party->opening_balance) && (float) $party->opening_balance > 0) {
-                        $this->ledgerService->createOpeningBalanceEntries($party->fresh());
-                    }
-                }
-            }
 
             DB::commit();
 
@@ -287,6 +276,14 @@ class PartyService
             $partyData['created_by'] ?? null,
             $partyData['created_by_ip'] ?? request()->ip()
         );
+    }
+
+    /**
+     * Whether the party has any ledger rows (including opening-balance adjustments).
+     */
+    public function isTransactionallyUsed(int $partyId): bool
+    {
+        return $this->isPartyTransactionallyUsed($partyId);
     }
 
     /**

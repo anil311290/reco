@@ -180,7 +180,6 @@ class ReportService
                     'party_id' => $line->party_id ?: $voucher->party_id,
                     'party_name' => $line->party?->name ?? $voucher->party?->name,
                     'sales_invoice_id' => $voucher->sales_invoice_id,
-                    'sales_invoice_type' => $voucher->salesInvoice?->invoice_type,
                     'purchase_invoice_id' => $voucher->purchase_invoice_id,
                     'narration' => $line->description ?: $voucher->narration,
                     'debit' => $debit,
