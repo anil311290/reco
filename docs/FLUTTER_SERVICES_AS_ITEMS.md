@@ -1,31 +1,89 @@
-# Flutter App Changes — Services as Items
+# Flutter App Changes — Full Checklist
 
-## Why this change
-
-Web admin now matches Tally-style item invoicing:
-
-| Before (wrong) | After (correct) |
-|----------------|-----------------|
-| Service → create Income ledger | Service → create Item (`type=service`) |
-| Sales dropdown Services = income accounts | Sales dropdown Services = service items |
-| Opening balance on “service” ledger | Opening balance only on real ledgers/parties |
-| Items list had no services | Items master lists Goods + Services |
-
-**Ledgers** = Chart of Accounts (posting).  
-**Items** = billable catalog (goods + services).  
-Service items are **non-stockable** and post income via `income_account_id` (default: Sales Revenue).
-
-Backend is live on web. Flutter must be updated to match or sales-service UX will break / diverge.
+This document covers **every RecoFlutter change already done** on branch `fix/services-as-items-web` / local `main`, plus **everything still pending** so the app matches the new web/backend behavior (unified sales + services-as-items + party OB lock).
 
 ---
 
-## Breaking API behavior
+## Part A — Already done in RecoFlutter (committed)
 
-### `GET /api/v1/items/dropdown` (sales catalog)
+These files were changed/deleted in commit `9fb522d` and are on local `main`.
+
+### A1. Removed separate Service Sale Invoices module
+
+| Action | File |
+|--------|------|
+| Deleted | `lib/presentation/controllers/transactions/service_sales_invoices_controller.dart` |
+| Deleted | `lib/presentation/views/transactions/create/service_sales_invoice_screen.dart` |
+| Deleted | `lib/presentation/views/transactions/tabs/service_sales_invoices_tab_screen.dart` |
+| Removed class | `ServiceSalesInvoiceFormController` from `base_invoice_form_controller.dart` |
+| Removed flag | `isServiceInvoice` and `invoice_type: service` from sales payload |
+| Removed endpoint | `ApiEndpoints.serviceSalesInvoices` from `api_endpoints.dart` |
+
+**Meaning:** App no longer has a separate Service Sale Invoice screen/API. Use the single **Sales Invoice** flow for goods + services.
+
+### A2. Sales invoice entity cleanup
+
+**File:** `lib/data/models/transactions/transaction_entities.dart`
+
+- `TransactionRecord.fromSalesInvoice` no longer reads `invoice_type` from API.
+- Hard-codes display kind as `'sales'` (column `invoice_type` dropped on backend).
+
+### A3. Unified sales form flags
+
+**File:** `lib/presentation/controllers/transactions/create/base_invoice_form_controller.dart`
+
+- `usesUnifiedSalesRows` now = items + services + not purchase (no `isServiceInvoice` check).
+- Payload no longer sends `invoice_type`.
+- Still currently builds **both** `lines` and `service_lines` (see Part B — this must change for services-as-items).
+
+### A4. Dashboard / API error hardening
+
+**File:** `lib/data/repositories/dashboard/dashboard_repository.dart`
+
+- Dashboard refresh uses Dio `extra: { silentError: true }`.
+- On failure, returns **cached** dashboard instead of throwing a toast-breaking error.
+
+**File:** `lib/core/network/api_client.dart`
+
+- Sanitizes raw DB/connection messages (`SQLSTATE`, `Operation not permitted`, `Connection:`) into:
+  - `Unable to reach the server database. Please try again.`
+- Respects `silentError` so dashboard blips do not spam snackbars.
+
+---
+
+## Part B — Still pending (must do to match web)
+
+Web already treats **services as Items**. App still mixes **income ledgers as services**. Complete the items below.
+
+### B1. Masters → Add Item: Service must open Item form (CRITICAL)
+
+**Current (wrong):**  
+`masters_screen.dart` → Service button → `AccountFormSheet()` (ledger create, often defaults to asset).
+
+**Required:**
+
+```dart
+Get.to(() => const ItemFormSheet(/* type: service */));
+```
+
+**Files:**
+- `lib/presentation/views/masters/masters_screen.dart` (Goods/Service dialog ~lines 140–200)
+- `lib/presentation/views/masters/forms/item_form_sheet.dart`
+  - Accept initial `type: 'service' | 'goods'`
+  - For service: `isStockable = false`, hide/zero stock fields, SAC label, unit hours/nos
+  - Do **not** require expense account for services
+- Stop using `AccountFormSheet` for billable services
+
+**Items list:**
+- `items_tab_screen.dart` / `items_controller.dart` — filter All / Goods / Service must show `type=service` rows from `GET /api/v1/items`
+
+### B2. Sales catalog: `services` are Items, not Accounts (BREAKING)
+
+**API:** `GET /api/v1/items/dropdown`
 
 ```json
 {
-  "items": [ /* goods items only */ ],
+  "items": [ /* goods only */ ],
   "services": [
     {
       "id": 12,
@@ -37,62 +95,43 @@ Backend is live on web. Flutter must be updated to match or sales-service UX wil
       "tax_rate_id": 3,
       "income_account_id": 45,
       "text": "SRV-001 - Consulting",
-      "description": "...",
-      "is_active": true,
       "is_stockable": false
     }
   ]
 }
 ```
 
-**Breaking:** `services[].id` is now an **item id**, not an income `account_id`.
+**Breaking:** `services[].id` = **item id**, not income `account_id`.
 
-Do **not** send that id as `service_lines[].account_id`.
-
----
-
-## Required Flutter changes
-
-### 1. Masters → Add Item (Goods / Service)
-
-**Files (approx):**
-- `lib/presentation/views/masters/masters_screen.dart`
-- `lib/presentation/views/masters/forms/item_form_sheet.dart`
-- `lib/presentation/views/masters/forms/account_form_sheet.dart`
-
-**Change:**
-- Choosing **Service** must open **Item form** with `type=service`, `isStockable=false`.
-- Do **not** open Account form / redirect to ledger create.
-- Hide stock fields for service (or force stock = 0).
-- Prefer SAC / hours unit; keep selling price + tax rate.
-- Items tab filter All / Goods / Service must list service items from `GET /api/v1/items?type=service`.
-
-### 2. Sales invoice catalog mapping
-
-**Files (approx):**
+**Files to update:**
 - `lib/data/repositories/masters/items_repository.dart`
+  - Offline: today returns `services: []` — must include local items where `type == service`
+  - Online: map `services` as item-shaped records
 - `lib/presentation/controllers/transactions/create/transaction_form_lookup_controller.dart`
+  - Stop `_loadServiceAccounts('income')` for sales catalog
+  - Build service options from catalog `services` / local service items
+  - Can keep `serviceAccounts` only for true voucher/account pickers if needed elsewhere
 - `lib/presentation/controllers/transactions/create/transaction_form_models.dart`
-- `lib/presentation/controllers/transactions/create/base_invoice_form_controller.dart`
-- `lib/presentation/views/transactions/create/invoice_form_screen.dart`
+  - Change `InvoiceCatalogOption.service` to hold an **`ItemEntity`** (or shared item id), not `LookupOption account`
+  - Update `label` / `identityKey` to `service-item:{id}`
+  - Update `InvoiceLineRowModel.serviceAccount` → item-based field (or reuse item notifier)
 
-**Change:**
-- Treat catalog `services` as **items** (`InvoiceCatalogOption` / item row), not as account options.
-- Map `services[].id` → `item_id`.
-- Use `income_account_id` only for display/posting metadata if needed; posting is resolved on server from the item.
-- Offline cache: include local items with `type=service` in services list (today offline returns `services: []`).
+### B3. Sales invoice payload: put services in `lines[]` (CRITICAL)
 
-### 3. Sales invoice payload
+**Current (wrong):** `base_invoice_form_controller.dart` still sends:
 
-**Stop building income-ledger `service_lines` for new catalog services.**
+```dart
+'service_lines': [
+  { 'account_id': ..., 'amount': ..., 'tax_rate_id': ... }
+]
+```
 
-Preferred payload (same as web):
+from `validServiceRows` + `validMixedServiceRows` / `row.serviceAccount`.
+
+**Required (match web):**
 
 ```json
 {
-  "party_id": 1,
-  "invoice_date": "2026-07-27",
-  "due_date": "2026-08-03",
   "lines": [
     {
       "item_id": 10,
@@ -114,69 +153,143 @@ Preferred payload (same as web):
 }
 ```
 
-Both goods and service rows go in `lines[]` with `item_id`.  
-Qty/discount allowed for services (hours × rate).
+Rules:
+- Goods **and** service catalog picks → `lines[]` with `item_id`
+- Qty / discount allowed for services (hours × rate)
+- Do **not** send new `service_lines` with income `account_id`
+- Optional: still send `account_id` = item’s `incomeAccountId` on the line (backend also resolves from item)
 
-**Legacy only:** keep reading old invoices that have `line_type=service` + `account_id` without `item_id`. Do not create new ones that way.
+**Files:**
+- `lib/presentation/controllers/transactions/create/base_invoice_form_controller.dart`
+  - `buildPayload` / `validServiceRows` / mixed service rows
+  - Prefer one list of item rows for unified sales
+- `lib/presentation/views/transactions/create/invoice_form_screen.dart`
+  - UI: Goods + Services optgroups, both item-based
+  - Remove income-account service amount-only row for new creates
 
-Backend still accepts `service_lines[{account_id, amount, ...}]` for backward compatibility, but the app should not use it for new entries after this update.
+**Legacy edit only:** old invoices with `line_type=service` + `account_id` and no `item_id` may still display; do not create new ones that way.
 
-### 4. Remove / simplify service-row UI split
+### B4. Remove dead account-as-service paths
 
-If `usesUnifiedSalesRows` still splits “item vs service account”:
-- Unify to one picker: Goods optgroup + Services optgroup, both item-based.
-- Remove Account dropdown for billable services on sales create.
-- `validServiceRows` / `serviceAccount` paths that send `service_lines` should be removed or limited to legacy edit.
+After B2–B3:
 
-### 5. Purchase invoices
+| Remove / stop using for sales | Where |
+|-------------------------------|--------|
+| `InvoiceCatalogOption.service(LookupOption account)` | `transaction_form_models.dart` |
+| Loading income ledgers into sales services | `transaction_form_lookup_controller.dart` |
+| `service_lines` for new sales saves | `base_invoice_form_controller.dart` |
+| Mixed row `serviceAccount` for billable services | models + invoice form UI |
 
-No change: purchase remains **goods items only**. Do not offer service items on purchase lines.
+Keep Account form / income ledgers for **real Chart of Accounts** (Sales Revenue, etc.) — just not as the billable service catalog.
 
-### 6. Local DB / sync
+### B5. Purchase invoices
 
-- Ensure local `items` table syncs `type`, `is_stockable`, `income_account_id`.
-- Service items must sync like goods (no stock movements).
-- Re-seed or clear stale “service as account” assumptions in offline catalog builders.
+No functional change:
+- Goods items only
+- Do not list `type=service` items on purchase lines
+
+### B6. Party opening balance (match web lock + confirm)
+
+Web behavior (already live):
+- **Create party:** confirm opening balance before save (cannot edit later)
+- **Edit party:** opening balance / type / date read-only; backend strips OB fields
+
+**App still editable on edit** — update:
+
+**File:** `lib/presentation/views/masters/forms/party_form_sheet.dart`
+
+| Mode | Required UX |
+|------|-------------|
+| Create | Before save, show confirm dialog with amount, Dr/Cr, date; warn it cannot be changed later |
+| Edit | Make opening balance, balance type, opening date read-only / disabled; do not send changed OB (or omit those keys on update) |
+
+Optional: same confirm on any quick-add party sheet if the app has one.
+
+### B7. Local DB / sync
+
+- Sync `items.type`, `items.is_stockable`, `items.income_account_id`
+- Service items sync like goods; **no stock movement** on sale
+- Clear any offline logic that treated income accounts as the services catalog
+- After backend deploy, force refresh of items + sales catalog cache
+
+### B8. Navigation / bindings cleanup (verify)
+
+Confirm no remaining routes/bindings/menu entries for:
+- `ServiceSalesInvoices*`
+- `/service-sales-invoices`
+- `invoice_type=service` filters
+
+(Grep already clean for `serviceSales` / `ServiceSales` after Part A — re-check after your local edits.)
 
 ---
 
-## Suggested implementation order
+## Part C — Suggested implementation order
 
-1. Item create/edit: Service → ItemForm (`type=service`).
-2. Catalog mapper: `services` → item options with `item_id`.
-3. Invoice payload: all billable rows → `lines[]`.
-4. Offline catalog: include service items.
-5. QA checklist below.
-6. Remove dead account-as-service code paths.
-
----
-
-## QA checklist (app)
-
-- [ ] Create Service item from Masters → appears under Items (type Service).
-- [ ] Service item does not change stock on sales.
-- [ ] Sales invoice Services group lists service items (not Sales Revenue / random income ledgers).
-- [ ] Save sales invoice with goods + service items → success; totals/tax correct.
-- [ ] Payload contains only `lines` with `item_id` for services (no `service_lines` for new bills).
-- [ ] Edit old invoice that had ledger-based service line still opens without crash.
-- [ ] Offline: service items available from local cache after sync.
-- [ ] Purchase invoice does not list service items.
+1. **B1** Service → ItemForm  
+2. **B2** Catalog map services → items  
+3. **B3** Payload → all `lines` + `item_id`  
+4. **B4** Delete account-as-service dead code  
+5. **B6** Party OB lock + create confirm  
+6. **B7** Offline/sync  
+7. QA checklist (Part D)
 
 ---
 
-## Backend reference (already done on web)
+## Part D — QA checklist
+
+### Already done (Part A)
+
+- [x] No Service Sale Invoices tab/screen/endpoint in app code
+- [x] Sales invoice records do not depend on `invoice_type`
+- [x] Dashboard failure falls back to cache without SQLSTATE toast spam
+
+### Still pending
+
+- [ ] Create Service from Masters → Item form (`type=service`), appears in Items list
+- [ ] Service item does **not** open Account/ledger form
+- [ ] Sales Services group lists **service items** (not Sales Revenue / income ledgers)
+- [ ] New sales invoice with goods + service → payload only `lines` with `item_id`
+- [ ] Service qty/rate/tax calculate correctly; stock unchanged for service
+- [ ] Offline: service items available after sync
+- [ ] Purchase does not list service items
+- [ ] Edit old ledger-based service line does not crash
+- [ ] Party create: OB confirmation dialog
+- [ ] Party edit: OB fields read-only
+
+---
+
+## Part E — Backend / web reference (already shipped)
 
 | Area | Behavior |
 |------|----------|
-| `Item` create | `type=service` → `is_stockable=false`, default `income_account_id` = Sales Revenue |
-| Sales create UI | Goods + Services from `items` table |
-| `SalesInvoiceService` | Service item line → `line_type=service`, `account_id` from item income account |
+| Items create | Service stays on item form; `is_stockable=false`; default income = Sales Revenue |
+| Items list | Goods + Services |
+| Sales invoice UI | Goods + Services from `items`; submit `lines[]` |
+| `GET /items/dropdown` | `services` = service-type items |
+| `SalesInvoiceService` | Service item → `line_type=service`, `account_id` from item income |
 | Stock | Skips non-goods / non-stockable |
-| Legacy | `service_lines` with `account_id` still accepted |
+| Legacy | `service_lines[{account_id}]` still accepted for old data |
+| Party | OB locked after create; create-time confirm on web |
+| API | `/service-sales-invoices` removed; no `invoice_type` on sales |
 
 ---
 
-## Out of scope for this doc
+## Part F — Out of scope
 
-- Creating a new income ledger per service (not required; share Sales Revenue or pick a dedicated income ledger on the item later if UI adds account picker).
-- Purchase of services (still via Payment voucher / expense ledgers).
+- Creating one income ledger per service name (not required; share Sales Revenue or optional income picker on item later)
+- Purchasing services as items (use Payment / expense ledgers)
+- Pushing local `main` to origin (ask before push)
+
+---
+
+## Quick file map
+
+| Topic | Primary files |
+|-------|----------------|
+| Done: remove service sales module | deleted controllers/screens; `api_endpoints.dart`; `base_invoice_form_controller.dart` |
+| Done: dashboard errors | `dashboard_repository.dart`; `api_client.dart` |
+| Done: invoice_type | `transaction_entities.dart` |
+| Pending: Service → Item | `masters_screen.dart`; `item_form_sheet.dart` |
+| Pending: catalog | `items_repository.dart`; `transaction_form_lookup_controller.dart`; `transaction_form_models.dart` |
+| Pending: payload/UI | `base_invoice_form_controller.dart`; `invoice_form_screen.dart` |
+| Pending: party OB | `party_form_sheet.dart` |
