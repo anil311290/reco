@@ -35,17 +35,23 @@ class SupportTicketsScreen extends GetView<SupportTicketsController> {
           ),
         ),
         actions: <Widget>[
-          IconButton(
-            onPressed: controller.loadTickets,
-            icon: const Icon(Icons.refresh_rounded),
+          AnimatedRotation(
+            turns: controller.refreshTurns.value,
+            duration: const Duration(milliseconds: 700),
+            child: IconButton(
+              onPressed: controller.isRefreshing.value
+                  ? null
+                  : controller.loadTickets,
+              icon: Icon(
+                Icons.refresh_rounded,
+                color: controller.isRefreshing.value
+                    ? theme.colorScheme.primary
+                    : null,
+              ),
+            ),
           ),
           const SizedBox(width: 4),
         ],
-      ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: _openCreateTicket,
-        icon: const Icon(Icons.add_rounded),
-        label: const Text('New Ticket'),
       ),
       body: Obx(
         () => RefreshIndicator(
@@ -116,6 +122,32 @@ class SupportTicketsScreen extends GetView<SupportTicketsController> {
                 ),
               ),
               SliverPadding(
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 2),
+                sliver: SliverToBoxAdapter(
+                  child: Row(
+                    children: <Widget>[
+                      Expanded(
+                        child: Obx(
+                          () => Text(
+                            '${controller.visibleTickets.length} ticket${controller.visibleTickets.length == 1 ? '' : 's'}'
+                            '${controller.selectedStatus.value.isEmpty ? '' : ' • ${_statusHeading(controller.selectedStatus.value)}'}',
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: theme.colorScheme.onSurfaceVariant,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                      ),
+                      if (controller.selectedStatus.value.isNotEmpty)
+                        TextButton(
+                          onPressed: () => controller.applyStatus(''),
+                          child: const Text('Reset'),
+                        ),
+                    ],
+                  ),
+                ),
+              ),
+              SliverPadding(
                 padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
                 sliver: SliverToBoxAdapter(
                   child: Row(
@@ -138,7 +170,8 @@ class SupportTicketsScreen extends GetView<SupportTicketsController> {
                           items: _statuses,
                           hint: 'All',
                           enableSearch: false,
-                          itemLabelBuilder: _statusLabel,
+                          itemLabelBuilder: (status) =>
+                              _statusLabel(status, controller.stats),
                           onChanged: (value) =>
                               controller.applyStatus(value ?? ''),
                         ),
@@ -220,15 +253,32 @@ class SupportTicketsScreen extends GetView<SupportTicketsController> {
     );
   }
 
-  static String _statusLabel(String status) {
+  static String _statusLabel(String status, Map<String, int> stats) {
     if (status.isEmpty) {
-      return 'All statuses';
+      return 'All statuses (${stats['total'] ?? 0})';
     }
-    return status.replaceAll('_', ' ').split(' ').map((word) {
+    final label = status.replaceAll('_', ' ').split(' ').map((word) {
       if (word.isEmpty) {
         return word;
       }
       return '${word[0].toUpperCase()}${word.substring(1)}';
     }).join(' ');
+    final count = switch (status) {
+      'open' => stats['open'] ?? 0,
+      'in_progress' => stats['in_progress'] ?? 0,
+      'waiting_on_customer' => stats['waiting_on_customer'] ?? 0,
+      'resolved' || 'closed' => stats['resolved'] ?? 0,
+      _ => 0,
+    };
+    return '$label ($count)';
+  }
+
+  static String _statusHeading(String status) {
+    return status
+        .replaceAll('_', ' ')
+        .split(' ')
+        .where((word) => word.isNotEmpty)
+        .map((word) => '${word[0].toUpperCase()}${word.substring(1)}')
+        .join(' ');
   }
 }

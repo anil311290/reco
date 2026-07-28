@@ -4,10 +4,13 @@ import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:get/get.dart';
 
 import '../../../core/config/api_endpoints.dart';
+import '../../../data/models/transactions/transaction_entities.dart';
 import '../../controllers/reports/cash_book_report_controller.dart';
 import '../../controllers/reports/report_lookup_controller.dart';
 import '../../widgets/common/custom_text_field.dart';
 import '../masters/widgets/masters_ui_components.dart';
+import '../masters/history/party_history_screen.dart';
+import '../transactions/details/transaction_detail_screen.dart';
 import 'widgets/report_ui_components.dart';
 
 class CashBookReportScreen extends GetView<CashBookReportController> {
@@ -39,9 +42,12 @@ class CashBookReportScreen extends GetView<CashBookReportController> {
         final report = book is Map<String, dynamic> && book['report'] is Map<String, dynamic>
             ? Map<String, dynamic>.from(book['report'] as Map<String, dynamic>)
             : null;
-        final selectedAccount = book is Map<String, dynamic> && book['account'] is Map<String, dynamic>
-            ? Map<String, dynamic>.from(book['account'] as Map<String, dynamic>)
-            : null;
+        final selectedAccount =
+            report is Map<String, dynamic> && report['account'] is Map<String, dynamic>
+                ? Map<String, dynamic>.from(report['account'] as Map<String, dynamic>)
+                : book is Map<String, dynamic> && book['account'] is Map<String, dynamic>
+                    ? Map<String, dynamic>.from(book['account'] as Map<String, dynamic>)
+                    : null;
         final message = book is Map<String, dynamic> ? book['message']?.toString() : null;
         final entries = report is Map<String, dynamic> && report['entries'] is List
             ? List<Map<String, dynamic>>.from(
@@ -92,7 +98,7 @@ class CashBookReportScreen extends GetView<CashBookReportController> {
                     children: <Widget>[
                       ReportPrimaryButton(
                         label: 'Filter',
-                        icon: FontAwesomeIcons.filter,
+                        icon: FontAwesomeIcons.sliders,
                         onTap: controller.loadReport,
                       ),
                       ReportSecondaryButton(
@@ -267,7 +273,42 @@ class CashBookReportScreen extends GetView<CashBookReportController> {
       );
     }
 
+    final openingBalance = reportData['opening_balance'] is Map
+        ? Map<String, dynamic>.from(reportData['opening_balance'] as Map)
+        : <String, dynamic>{};
+
     final tableRows = <DataRow>[
+      DataRow(
+        color: WidgetStatePropertyAll(
+          Theme.of(context).colorScheme.primary.withValues(alpha: .06),
+        ),
+        cells: <DataCell>[
+          const DataCell(SizedBox.shrink()),
+          const DataCell(SizedBox.shrink()),
+          DataCell(
+            Text(
+              'Opening Balance',
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+          const DataCell(SizedBox.shrink()),
+          const DataCell(Center(child: Text('-'))),
+          const DataCell(Center(child: Text('-'))),
+          DataCell(
+            Center(
+              child: Text(
+                '${controller.formatCurrency(openingBalance['balance'])} ${(openingBalance['type'] ?? '').toString().toUpperCase()}',
+                textAlign: TextAlign.center,
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
       ...List<DataRow>.generate(entries.length, (index) {
         final map = entries[index];
         final voucher = map['voucher'] is Map<String, dynamic>
@@ -282,11 +323,37 @@ class CashBookReportScreen extends GetView<CashBookReportController> {
         return DataRow(
           cells: <DataCell>[
             masterTextCell(controller.formatDate((map['transaction_date'] ?? '').toString())),
-            masterTextCell((voucher['voucher_number'] ?? '-').toString()),
+            DataCell(
+              Center(
+                child: ReportLinkText(
+                  (voucher['voucher_number'] ?? '-').toString(),
+                  onTap: _asInt(voucher['id']) == null
+                      ? null
+                      : () => Get.to(
+                            () => TransactionDetailScreen(
+                              record: _buildVoucherRecord(map, voucher, party),
+                            ),
+                          ),
+                ),
+              ),
+            ),
             masterTextCell((map['description'] ?? voucher['narration'] ?? '-').toString()),
-            masterTextCell((party['name'] ?? '-').toString()),
-            DataCell(Center(child: Text(debit > 0 ? controller.formatCurrency(debit) : '-', textAlign: TextAlign.center, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)))),
-            DataCell(Center(child: Text(credit > 0 ? controller.formatCurrency(credit) : '-', textAlign: TextAlign.center, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)))),
+            DataCell(
+              Center(
+                child: ReportLinkText(
+                  (party['name'] ?? '-').toString(),
+                  onTap: _asInt(map['party_id']) == null
+                      ? null
+                      : () => Get.to(
+                            () => PartyHistoryScreen(
+                              partyId: _asInt(map['party_id'])!,
+                            ),
+                          ),
+                ),
+              ),
+            ),
+            DataCell(Center(child: Text(debit > 0 ? controller.formatCurrency(debit) : '-', textAlign: TextAlign.center, style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: debit > 0 ? const Color(0xFF16A34A) : null)))),
+            DataCell(Center(child: Text(credit > 0 ? controller.formatCurrency(credit) : '-', textAlign: TextAlign.center, style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: credit > 0 ? const Color(0xFFEF4444) : null)))),
             masterTextCell('${controller.formatCurrency(map['running_balance'])} ${(map['balance_type'] ?? '').toString().toUpperCase()}'),
           ],
         );
@@ -303,9 +370,9 @@ class CashBookReportScreen extends GetView<CashBookReportController> {
             ),
           ),
           const DataCell(SizedBox.shrink()),
-          DataCell(Center(child: Text(controller.formatCurrency(reportData['total_debit']), style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 13)))),
-          DataCell(Center(child: Text(controller.formatCurrency(reportData['total_credit']), style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 13)))),
-          DataCell(Center(child: Text('${controller.formatCurrency((reportData['closing_balance'] as Map?)?['balance'])} ${((reportData['closing_balance'] as Map?)?['type'] ?? '').toString().toUpperCase()}', style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 13)))),
+          DataCell(Center(child: Text(controller.formatCurrency(reportData['total_debit']), style: reportTotalRowTextStyle(context)?.copyWith(fontSize: 13)))),
+          DataCell(Center(child: Text(controller.formatCurrency(reportData['total_credit']), style: reportTotalRowTextStyle(context)?.copyWith(fontSize: 13)))),
+          DataCell(Center(child: Text('${controller.formatCurrency((reportData['closing_balance'] as Map?)?['balance'])} ${((reportData['closing_balance'] as Map?)?['type'] ?? '').toString().toUpperCase()}', style: reportTotalRowTextStyle(context)?.copyWith(fontSize: 13)))),
         ],
       ),
     ];
@@ -334,4 +401,24 @@ class CashBookReportScreen extends GetView<CashBookReportController> {
   }
 
   int? _asInt(dynamic value) => int.tryParse(value?.toString() ?? '');
+
+  TransactionRecord _buildVoucherRecord(
+    Map<String, dynamic> entry,
+    Map<String, dynamic> voucher,
+    Map<String, dynamic> party,
+  ) {
+    final payload = <String, dynamic>{
+      ...voucher,
+      'party': party,
+      'party_id': entry['party_id'],
+      'voucher_type': voucher['voucher_type'] ?? entry['voucher_type'],
+      'voucher_number': voucher['voucher_number'],
+      'voucher_date': voucher['voucher_date'] ?? entry['transaction_date'],
+      'status': voucher['status'] ?? 'posted',
+      'narration': entry['description'] ?? voucher['narration'],
+      'total_debit': entry['debit'] ?? entry['credit'] ?? 0,
+    };
+
+    return TransactionRecord.fromVoucher(payload);
+  }
 }

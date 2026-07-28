@@ -26,10 +26,21 @@ class AuditLogsScreen extends GetView<AuditLogsController> {
           ),
         ),
         actions: <Widget>[
-          IconButton(
-            onPressed: controller.loadLogs,
-            icon: const Icon(Icons.refresh_rounded),
-            tooltip: 'Refresh',
+          AnimatedRotation(
+            turns: controller.refreshTurns.value,
+            duration: const Duration(milliseconds: 700),
+            child: IconButton(
+              onPressed: controller.isRefreshing.value
+                  ? null
+                  : controller.loadLogs,
+              icon: Icon(
+                Icons.refresh_rounded,
+                color: controller.isRefreshing.value
+                    ? theme.colorScheme.primary
+                    : null,
+              ),
+              tooltip: 'Refresh',
+            ),
           ),
           const SizedBox(width: 4),
         ],
@@ -60,10 +71,10 @@ class AuditLogsScreen extends GetView<AuditLogsController> {
                         color: primary.withValues(alpha: .18),
                       ),
                     ),
-                    child: Row(
-                      children: <Widget>[
-                        Icon(
-                          FontAwesomeIcons.clockRotateLeft,
+                      child: Row(
+                        children: <Widget>[
+                          Icon(
+                            FontAwesomeIcons.clockRotateLeft,
                           size: 18,
                           color: primary,
                         ),
@@ -89,6 +100,14 @@ class AuditLogsScreen extends GetView<AuditLogsController> {
                             value:
                                 '${controller.statistics['month_logs']}',
                             color: Colors.green,
+                          ),
+                        const SizedBox(width: 12),
+                        if (controller.statistics['by_module'] is Map)
+                          _MiniStat(
+                            label: 'Modules',
+                            value:
+                                '${(controller.statistics['by_module'] as Map).length}',
+                            color: Colors.indigo,
                           ),
                       ],
                     ),
@@ -304,7 +323,7 @@ class AuditLogsScreen extends GetView<AuditLogsController> {
                   sliver: SliverList.separated(
                     itemCount:
                         controller.logs.length + (controller.hasMore ? 1 : 0),
-                    separatorBuilder: (_, __) => const SizedBox(height: 8),
+                    separatorBuilder: (_, _) => const SizedBox(height: 8),
                     itemBuilder: (_, index) {
                       if (index == controller.logs.length) {
                         return Padding(
@@ -402,4 +421,3 @@ class _MiniStat extends StatelessWidget {
 extension _Let<T> on T {
   R let<R>(R Function(T it) block) => block(this);
 }
-

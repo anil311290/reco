@@ -5,6 +5,7 @@ import 'package:get/get.dart';
 import '../../../controllers/transactions/sales_invoices_controller.dart';
 import '../../masters/widgets/masters_ui_components.dart';
 import '../details/transaction_detail_screen.dart';
+import '../utils/invoice_transaction_actions.dart';
 import '../widgets/transaction_tab_content.dart';
 import '../widgets/transactions_ui_components.dart';
 
@@ -24,7 +25,7 @@ class SalesInvoicesTabScreen extends GetView<SalesInvoicesController> {
         masterColumn(context, 'Balance', size: ColumnSize.M),
         masterColumn(context, 'Due Date', size: ColumnSize.M),
         masterColumn(context, 'Status', fixedWidth: 120),
-        masterColumn(context, 'Actions', fixedWidth: 96),
+        masterColumn(context, 'Actions', fixedWidth: 80),
       ],
       rowBuilder: (context, item, index) => DataRow(
         cells: <DataCell>[
@@ -38,13 +39,77 @@ class SalesInvoicesTabScreen extends GetView<SalesInvoicesController> {
           DataCell(Center(child: TransactionStatusChip(status: item.status))),
           DataCell(
             Center(
-              child: MasterActionButton(
-                icon: Icons.remove_red_eye_outlined,
-                tooltip: 'View',
-                color: Theme.of(context).colorScheme.primary,
-                onTap: () => Get.to(
-                  () => TransactionDetailScreen(record: item),
+              child: PopupMenuButton<String>(
+                icon: Icon(
+                  Icons.more_horiz_rounded,
+                  color: Theme.of(context).colorScheme.primary,
                 ),
+                onSelected: (value) async {
+                  switch (value) {
+                    case 'view':
+                      final detailRecord = await resolveTransactionDetailRecord(item);
+                      await Get.to(
+                        () => TransactionDetailScreen(
+                          record: detailRecord,
+                          onEdit: item.status != 'paid'
+                              ? () => openInvoiceEditor(item)
+                              : null,
+                          onRecordPayment:
+                              item.balanceDue > 0 && item.status != 'paid'
+                              ? () async {
+                                  final updated = await recordInvoicePayment(item);
+                                  if (updated) {
+                                    Get.back<void>();
+                                  }
+                                }
+                              : null,
+                          onDelete: item.status == 'draft'
+                              ? () => deleteTransactionRecord(
+                                  controller: controller,
+                                  record: item,
+                                  closeAfterDelete: true,
+                                )
+                              : null,
+                          onPrint: () => printSalesInvoice(item),
+                        ),
+                      );
+                      await controller.refreshData(forceRemote: true);
+                      break;
+                    case 'edit':
+                      await openInvoiceEditor(item);
+                      await controller.refreshData(forceRemote: true);
+                      break;
+                    case 'delete':
+                      await deleteTransactionRecord(
+                        controller: controller,
+                        record: item,
+                      );
+                      break;
+                    case 'print':
+                      await printSalesInvoice(item);
+                      break;
+                  }
+                },
+                itemBuilder: (context) => <PopupMenuEntry<String>>[
+                  const PopupMenuItem<String>(
+                    value: 'view',
+                    child: Text('View'),
+                  ),
+                  if (item.status != 'paid')
+                    const PopupMenuItem<String>(
+                      value: 'edit',
+                      child: Text('Edit'),
+                    ),
+                  const PopupMenuItem<String>(
+                    value: 'print',
+                    child: Text('Invoice PDF'),
+                  ),
+                  if (item.status == 'draft')
+                    const PopupMenuItem<String>(
+                      value: 'delete',
+                      child: Text('Delete'),
+                    ),
+                ],
               ),
             ),
           ),

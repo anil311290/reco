@@ -3,6 +3,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
+import '../../../../core/utils/app_alert_dialog.dart';
 import '../../../../data/models/masters/master_entities.dart';
 import '../../../controllers/masters/parties_controller.dart';
 import '../../../widgets/common/custom_text_field.dart';
@@ -105,7 +106,7 @@ class PartiesTabScreen extends GetView<PartiesController> {
                                 icon: Icons.delete_outline_rounded,
                                 tooltip: 'Delete',
                                 color: Theme.of(context).colorScheme.error,
-                                onTap: () => controller.deleteItem(item),
+                                onTap: () => _confirmDelete(item),
                               ),
                             ],
                           ),
@@ -124,6 +125,16 @@ class PartiesTabScreen extends GetView<PartiesController> {
 
   Future<void> _openForm(BuildContext context, {PartyEntity? entity}) async {
     await Get.to(() => PartyFormSheet(entity: entity));
+  }
+
+  Future<void> _confirmDelete(PartyEntity item) async {
+    final confirmed = await AppAlertDialog.confirmDelete(
+      title: 'Delete Party',
+      message: 'Are you sure you want to delete "${item.name}"?',
+    );
+    if (confirmed) {
+      await controller.deleteItem(item);
+    }
   }
 
   void _openFilters(BuildContext context) {

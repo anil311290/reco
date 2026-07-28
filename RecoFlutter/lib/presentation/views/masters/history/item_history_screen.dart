@@ -62,12 +62,12 @@ class _ItemHistoryScreenState extends State<ItemHistoryScreen> {
       ),
       body: Obx(
         () => ListView(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.all(10),
           children: <Widget>[
             _buildItemDetailCard(theme),
-            const SizedBox(height: 16),
+            const SizedBox(height: 12),
             _buildFilterRow(theme),
-            const SizedBox(height: 16),
+            const SizedBox(height: 12),
             _buildHistorySection(theme),
           ],
         ),
@@ -76,40 +76,95 @@ class _ItemHistoryScreenState extends State<ItemHistoryScreen> {
   }
 
   Widget _buildFilterRow(ThemeData theme) {
+    final accent = theme.colorScheme.primary;
     return Container(
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: theme.cardColor,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: theme.dividerColor.withValues(alpha: .4)),
+        borderRadius: BorderRadius.circular(12),
+        gradient: LinearGradient(
+          colors: <Color>[
+            accent.withValues(alpha: .06),
+            theme.colorScheme.surface,
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        border: Border.all(color: accent.withValues(alpha: .12)),
       ),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
-          Expanded(
-            child: CustomTextField(
-              controller: controller.fromDateController,
-              label: 'From Date',
-              hintText: 'YYYY-MM-DD',
-              readOnly: true,
-              onTap: () => _pickDate(controller.fromDateController),
+          Row(
+            children: <Widget>[
+              Icon(Icons.tune_rounded, size: 16, color: accent),
+              const SizedBox(width: 8),
+              Text(
+                'Filters',
+                style: theme.textTheme.titleSmall?.copyWith(
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'Select date range to review item movement history.',
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+              fontSize: 11.5,
             ),
           ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: CustomTextField(
-              controller: controller.toDateController,
-              label: 'To Date',
-              hintText: 'YYYY-MM-DD',
-              readOnly: true,
-              onTap: () => _pickDate(controller.toDateController),
-            ),
+          const SizedBox(height: 12),
+          Row(
+            children: <Widget>[
+              Expanded(
+                child: CustomTextField(
+                  controller: controller.fromDateController,
+                  label: 'From Date',
+                  hintText: 'YYYY-MM-DD',
+                  readOnly: true,
+                  suffixIcon: Icons.calendar_today_outlined,
+                  bottomPadding: 0,
+                  onTap: () => _pickDate(controller.fromDateController),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: CustomTextField(
+                  controller: controller.toDateController,
+                  label: 'To Date',
+                  hintText: 'YYYY-MM-DD',
+                  readOnly: true,
+                  suffixIcon: Icons.calendar_today_outlined,
+                  bottomPadding: 0,
+                  onTap: () => _pickDate(controller.toDateController),
+                ),
+              ),
+            ],
           ),
-          const SizedBox(width: 10),
-          SizedBox(
-            height: 48,
-            child: FilledButton(
-              onPressed: controller.loadHistory,
-              child: const Text('Apply'),
+          const SizedBox(height: 12),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: SizedBox(
+              height: 38,
+              child: FilledButton.icon(
+                onPressed: controller.loadHistory,
+                style: FilledButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 8,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  textStyle: theme.textTheme.labelLarge?.copyWith(
+                    fontWeight: FontWeight.w700,
+                    fontSize: 12.5,
+                  ),
+                ),
+                icon: const Icon(Icons.filter_alt_rounded, size: 15),
+                label: const Text('Apply'),
+              ),
             ),
           ),
         ],
@@ -129,11 +184,27 @@ class _ItemHistoryScreenState extends State<ItemHistoryScreen> {
 
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(
-        color: theme.cardColor,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: theme.dividerColor.withValues(alpha: .4)),
+        borderRadius: BorderRadius.circular(12),
+        gradient: LinearGradient(
+          colors: <Color>[
+            theme.cardColor,
+            theme.colorScheme.primary.withValues(alpha: .03),
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        border: Border.all(
+          color: theme.colorScheme.primary.withValues(alpha: .10),
+        ),
+        boxShadow: <BoxShadow>[
+          BoxShadow(
+            color: theme.colorScheme.shadow.withValues(alpha: .04),
+            blurRadius: 14,
+            offset: const Offset(0, 6),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -146,39 +217,56 @@ class _ItemHistoryScreenState extends State<ItemHistoryScreen> {
                   children: <Widget>[
                     Text(
                       item.name,
-                      style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
-                    const SizedBox(height: 2),
+                    const SizedBox(height: 4),
                     Text(
                       '${item.itemCode} • ${item.type.toUpperCase()}',
                       style: theme.textTheme.bodySmall?.copyWith(
                         color: theme.colorScheme.onSurfaceVariant,
+                        fontSize: 11.5,
                       ),
                     ),
                   ],
                 ),
               ),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 5,
+                ),
                 decoration: BoxDecoration(
-                  color: item.isActive ? Colors.green.withValues(alpha: .12) : Colors.grey.withValues(alpha: .12),
-                  borderRadius: BorderRadius.circular(20),
+                  color: item.isActive
+                      ? const Color(0xFFDCFCE7)
+                      : theme.colorScheme.surfaceContainerHighest,
+                  borderRadius: BorderRadius.circular(999),
+                  border: Border.all(
+                    color: item.isActive
+                        ? const Color(0xFF86EFAC)
+                        : theme.dividerColor.withValues(alpha: .55),
+                  ),
                 ),
                 child: Text(
                   item.isActive ? 'Active' : 'Inactive',
                   style: TextStyle(
-                    fontSize: 12,
+                    fontSize: 11.5,
                     fontWeight: FontWeight.w600,
-                    color: item.isActive ? Colors.green : Colors.grey,
+                    color: item.isActive
+                        ? const Color(0xFF15803D)
+                        : theme.colorScheme.onSurfaceVariant,
                   ),
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 12),
           Wrap(
-            spacing: 16,
-            runSpacing: 12,
+            alignment: WrapAlignment.center,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            spacing: 5,
+            runSpacing: 5,
             children: <Widget>[
               _detailTile(theme, 'Code', item.itemCode),
               _detailTile(theme, 'Type', item.type.toUpperCase()),
@@ -203,14 +291,38 @@ class _ItemHistoryScreenState extends State<ItemHistoryScreen> {
 
   Widget _detailTile(ThemeData theme, String label, String value) {
     return SizedBox(
-      width: 140,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: <Widget>[
-          Text(label, style: TextStyle(fontSize: 11, color: theme.colorScheme.onSurfaceVariant, fontWeight: FontWeight.w500)),
-          const SizedBox(height: 2),
-          Text(value, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
-        ],
+      width: Get.width *0.43,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+        decoration: BoxDecoration(
+          color: theme.colorScheme.surfaceContainerLowest,
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: theme.dividerColor.withValues(alpha: .35)),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 10.5,
+                color: theme.colorScheme.onSurfaceVariant,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(height: 2),
+            Text(
+              value,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                fontSize: 13.5,
+                fontWeight: FontWeight.w600,
+                height: 1.2,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -224,14 +336,19 @@ class _ItemHistoryScreenState extends State<ItemHistoryScreen> {
       children: <Widget>[
         Text(
           'Stock & Transaction History',
-          style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700),
+          style: theme.textTheme.titleSmall?.copyWith(
+            fontWeight: FontWeight.w700,
+          ),
         ),
         const SizedBox(height: 4),
         Text(
           'Qty In ${controller.formatQuantity(controller.totalIn.value)}'
           ' • Qty Out ${controller.formatQuantity(controller.totalOut.value)}'
           ' • Closing ${controller.formatQuantity(controller.closingQty.value)}',
-          style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+          style: theme.textTheme.bodySmall?.copyWith(
+            color: theme.colorScheme.onSurfaceVariant,
+            fontSize: 11.5,
+          ),
         ),
         const SizedBox(height: 12),
         Wrap(
@@ -275,7 +392,7 @@ class _ItemHistoryScreenState extends State<ItemHistoryScreen> {
         padding: const EdgeInsets.all(32),
         decoration: BoxDecoration(
           color: theme.cardColor,
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(18),
           border: Border.all(color: theme.dividerColor.withValues(alpha: .4)),
         ),
         child: Center(
@@ -324,24 +441,38 @@ class _ItemHistoryScreenState extends State<ItemHistoryScreen> {
     final calculatedHeight = 42.0 + ((rows.length + 1) * 52.0);
     final tableHeight = calculatedHeight.clamp(200.0, 550.0);
 
-    return SizedBox(
-      height: tableHeight,
-      child: MastersTableShell(
-        isLoading: controller.isLoading.value,
-        emptyText: 'No related invoice rows found',
-        minWidth: 1180,
-        columns: <DataColumn2>[
-          masterColumn(context, 'Date'),
-          masterColumn(context, 'Type', fixedWidth: 90),
-          masterColumn(context, 'Invoice #'),
-          masterColumn(context, 'Party', size: ColumnSize.M),
-          masterColumn(context, 'Qty In'),
-          masterColumn(context, 'Qty Out'),
-          masterColumn(context, 'Rate'),
-          masterColumn(context, 'Amount'),
-          masterColumn(context, 'Balance Qty'),
+    return Container(
+      decoration: BoxDecoration(
+        color: theme.cardColor,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: theme.dividerColor.withValues(alpha: .35)),
+        boxShadow: <BoxShadow>[
+          BoxShadow(
+            color: theme.colorScheme.shadow.withValues(alpha: .03),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
         ],
-        rows: tableRows,
+      ),
+      child: SizedBox(
+        height: tableHeight,
+        child: MastersTableShell(
+          isLoading: controller.isLoading.value,
+          emptyText: 'No related invoice rows found',
+          minWidth: 1180,
+          columns: <DataColumn2>[
+            masterColumn(context, 'Date'),
+            masterColumn(context, 'Type', fixedWidth: 100),
+            masterColumn(context, 'Invoice #'),
+            masterColumn(context, 'Party', size: ColumnSize.M),
+            masterColumn(context, 'Qty In'),
+            masterColumn(context, 'Qty Out'),
+            masterColumn(context, 'Rate'),
+            masterColumn(context, 'Amount'),
+            masterColumn(context, 'Balance Qty'),
+          ],
+          rows: tableRows,
+        ),
       ),
     );
   }
@@ -365,6 +496,11 @@ class _ItemHistoryScreenState extends State<ItemHistoryScreen> {
           onPressed: controller.currentPage.value > 1
               ? () => controller.loadHistory(page: controller.currentPage.value - 1)
               : null,
+          style: OutlinedButton.styleFrom(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+          ),
           child: const Text('Prev'),
         ),
         const SizedBox(width: 8),
@@ -372,6 +508,11 @@ class _ItemHistoryScreenState extends State<ItemHistoryScreen> {
           onPressed: controller.currentPage.value < controller.lastPage.value
               ? () => controller.loadHistory(page: controller.currentPage.value + 1)
               : null,
+          style: FilledButton.styleFrom(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+          ),
           child: const Text('Next'),
         ),
       ],
@@ -402,6 +543,7 @@ class _ItemHistoryScreenState extends State<ItemHistoryScreen> {
             style: theme.textTheme.titleSmall?.copyWith(
               color: accent,
               fontWeight: FontWeight.w700,
+              fontSize: 15,
             ),
           ),
         ],
@@ -414,30 +556,41 @@ class _ItemHistoryScreenState extends State<ItemHistoryScreen> {
     final label = (row['type_label'] ?? '-').toString();
     final Color background;
     final Color foreground;
+    final Color border;
     switch (type) {
       case 'sale':
-        background = const Color(0xFFDBEAFE);
-        foreground = const Color(0xFF1D4ED8);
+        background = const Color(0xFFE0F2FE);
+        foreground = const Color(0xFF0369A1);
+        border = const Color(0xFF7DD3FC);
         break;
       case 'purchase':
         background = const Color(0xFFDCFCE7);
         foreground = const Color(0xFF15803D);
+        border = const Color(0xFF86EFAC);
+        break;
+      case 'opening':
+        background = const Color(0xFFF3E8FF);
+        foreground = const Color(0xFF7E22CE);
+        border = const Color(0xFFD8B4FE);
         break;
       default:
         background = theme.colorScheme.surfaceContainerHighest;
         foreground = theme.colorScheme.onSurfaceVariant;
+        border = theme.dividerColor.withValues(alpha: .45);
     }
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
         color: background,
         borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: border),
       ),
       child: Text(
         label,
         style: theme.textTheme.bodySmall?.copyWith(
           color: foreground,
           fontWeight: FontWeight.w700,
+          fontSize: 11,
         ),
       ),
     );

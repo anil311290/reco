@@ -13,10 +13,15 @@ import 'transaction_form_lookup_controller.dart';
 import 'transaction_form_models.dart';
 
 abstract class BaseVoucherFormController extends GetxController {
-  BaseVoucherFormController(this.repository, this.lookupController);
+  BaseVoucherFormController(
+    this.repository,
+    this.lookupController, {
+    this.initialPayload,
+  });
 
   final TransactionsRepository repository;
   final TransactionFormLookupController lookupController;
+  final Map<String, dynamic>? initialPayload;
 
   final formKey = GlobalKey<FormState>();
   final dateController = TextEditingController();
@@ -26,6 +31,7 @@ abstract class BaseVoucherFormController extends GetxController {
   final selectedCashBankAccount = Rxn<LookupOption>();
   final paymentRows = <PaymentVoucherRowModel>[].obs;
   final adjustmentRows = <AdjustmentVoucherRowModel>[].obs;
+  Map<String, dynamic>? _editingPayload;
 
   String get title;
   String get voucherType;
@@ -35,6 +41,7 @@ abstract class BaseVoucherFormController extends GetxController {
   bool get isPaymentReceipt =>
       voucherType == 'payment' || voucherType == 'receipt';
   bool get isAdjustment => !isPaymentReceipt;
+  bool get isEditing => initialPayload != null;
   String get cashBankLabel => voucherType == 'receipt' ? 'Received In' : 'Paid From';
   String get temporaryPrefix;
 
@@ -106,10 +113,23 @@ abstract class BaseVoucherFormController extends GetxController {
   @override
   void onInit() {
     super.onInit();
+    _initializeForm();
+  }
+
+  Future<void> _initializeForm() async {
     final now = DateTime.now();
     dateController.text =
         '${now.year.toString().padLeft(4, '0')}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
-    if (isPaymentReceipt) {
+    if (isPaymentReceipt && initialPayload != null) {
+      final initialMode = initialPayload?['payment_mode']?.toString().trim() ?? '';
+      if (initialMode.isNotEmpty) {
+        paymentMode.value = initialMode;
+      }
+    }
+    await _loadLookups();
+    if (initialPayload != null) {
+      _applyInitialPayload(initialPayload!);
+    } else if (isPaymentReceipt) {
       paymentRows.add(PaymentVoucherRowModel());
     } else {
       adjustmentRows.addAll(<AdjustmentVoucherRowModel>[
@@ -117,7 +137,7 @@ abstract class BaseVoucherFormController extends GetxController {
         AdjustmentVoucherRowModel(entryType: 'credit'),
       ]);
     }
-    _loadLookups();
+    update();
   }
 
   @override
@@ -138,6 +158,92 @@ abstract class BaseVoucherFormController extends GetxController {
       voucherType: voucherType,
       paymentMode: paymentMode.value.trim().isEmpty ? null : paymentMode.value,
     );
+  }
+
+  void _applyInitialPayload(Map<String, dynamic> payload) {
+    _editingPayload = Map<String, dynamic>.from(payload);
+    dateController.text = _shortDate(payload['voucher_date']?.toString());
+    narrationController.text = (payload['narration'] ?? '').toString();
+
+    for (final row in paymentRows) {
+      row.dispose();
+    }
+    for (final row in adjustmentRows) {
+      row.dispose();
+    }
+    paymentRows.clear();
+    adjustmentRows.clear();
+
+    final rawLines = payload['lines'];
+    final lines = rawLines is List
+        ? rawLines
+              .whereType<Map>()
+              .map((item) => Map<String, dynamic>.from(item))
+              .toList()
+        : <Map<String, dynamic>>[];
+
+    if (isPaymentReceipt) {
+      final selectedMode = (payload['payment_mode'] ?? '').toString().trim();
+      if (selectedMode.isNotEmpty) {
+        paymentMode.value = selectedMode;
+      }
+
+      LookupOption? cashBank;
+      for (final line in lines) {
+        final accountId = _lookupInt(line['account_id']);
+        final matchedCashBank = _matchLookup(cashBankAccounts, accountId);
+        if (matchedCashBank != null) {
+          cashBank = matchedCashBank;
+          paymentMode.value =
+              paymentMode.value.trim().isNotEmpty
+                  ? paymentMode.value
+                  : (matchedCashBank.transactionMode ?? '');
+          continue;
+        }
+
+        final amount = _lookupDouble(line['debit']) > 0
+            ? _lookupDouble(line['debit'])
+            : _lookupDouble(line['credit']);
+        paymentRows.add(
+          PaymentVoucherRowModel(
+            account: _matchLookup(particulars, accountId),
+            amount: amount > 0 ? amount.toStringAsFixed(2) : '',
+            description: (line['description'] ?? '').toString(),
+          ),
+        );
+      }
+
+      selectedCashBankAccount.value = cashBank;
+      if (paymentRows.isEmpty) {
+        paymentRows.add(PaymentVoucherRowModel());
+      }
+      paymentRows.refresh();
+      return;
+    }
+
+    for (final line in lines) {
+      final debit = _lookupDouble(line['debit']);
+      final credit = _lookupDouble(line['credit']);
+      adjustmentRows.add(
+        AdjustmentVoucherRowModel(
+          account: _matchLookup(
+            lookupController.adjustmentParticulars,
+            _lookupInt(line['account_id']),
+          ),
+          entryType: debit > 0 ? 'debit' : 'credit',
+          amount: (debit > 0 ? debit : credit).toStringAsFixed(2),
+          description: (line['description'] ?? '').toString(),
+        ),
+      );
+    }
+
+    if (adjustmentRows.length < 2) {
+      adjustmentRows.addAll(<AdjustmentVoucherRowModel>[
+        AdjustmentVoucherRowModel(entryType: 'debit'),
+        AdjustmentVoucherRowModel(entryType: 'credit'),
+      ]);
+    }
+    adjustmentRows.refresh();
   }
 
   Future<void> pickDate(BuildContext context) async {
@@ -161,12 +267,14 @@ abstract class BaseVoucherFormController extends GetxController {
     paymentMode.value = value;
     selectedCashBankAccount.value = null;
     await lookupController.refreshCashBankAccounts(value);
+    update();
   }
 
   void onCashBankAccountChanged(LookupOption? value) {
     selectedCashBankAccount.value = value;
     if (value == null) {
       paymentRows.refresh();
+      update();
       return;
     }
     for (final row in paymentRows) {
@@ -175,6 +283,7 @@ abstract class BaseVoucherFormController extends GetxController {
       }
     }
     paymentRows.refresh();
+    update();
   }
 
   void onPaymentParticularChanged(
@@ -184,13 +293,15 @@ abstract class BaseVoucherFormController extends GetxController {
     if (value == null) {
       row.account.value = null;
       paymentRows.refresh();
+      update();
       return;
     }
 
     if (selectedCashBankAccount.value?.valueKey == value.valueKey) {
-      AppSnackbar.error('Particulars cash/bank account ke same nahi ho sakta.');
+      AppSnackbar.error('Particulars cannot be the same as the cash/bank account.');
       row.account.value = null;
       paymentRows.refresh();
+      update();
       return;
     }
 
@@ -198,19 +309,28 @@ abstract class BaseVoucherFormController extends GetxController {
       (item) => item != row && item.account.value?.valueKey == value.valueKey,
     );
     if (duplicate) {
-      AppSnackbar.error('Ye particulars already selected hai. Same row me amount combine karein.');
+      AppSnackbar.error('This particular is already selected. Combine the amount in the same row.');
       row.account.value = null;
       paymentRows.refresh();
+      update();
       return;
     }
 
     row.account.value = value;
     paymentRows.refresh();
+    update();
   }
 
-  void addPaymentRow() => paymentRows.add(PaymentVoucherRowModel());
+  void addPaymentRow() {
+    paymentRows.add(PaymentVoucherRowModel());
+    paymentRows.refresh();
+    update();
+  }
 
-  void refreshPaymentTotals() => paymentRows.refresh();
+  void refreshPaymentTotals() {
+    paymentRows.refresh();
+    update();
+  }
 
   void removePaymentRow(PaymentVoucherRowModel row) {
     if (paymentRows.length == 1) {
@@ -218,12 +338,20 @@ abstract class BaseVoucherFormController extends GetxController {
     }
     paymentRows.remove(row);
     row.dispose();
+    paymentRows.refresh();
+    update();
   }
 
-  void addAdjustmentRow() =>
-      adjustmentRows.add(AdjustmentVoucherRowModel(entryType: 'debit'));
+  void addAdjustmentRow() {
+    adjustmentRows.add(AdjustmentVoucherRowModel(entryType: 'debit'));
+    adjustmentRows.refresh();
+    update();
+  }
 
-  void refreshAdjustmentTotals() => adjustmentRows.refresh();
+  void refreshAdjustmentTotals() {
+    adjustmentRows.refresh();
+    update();
+  }
 
   void removeAdjustmentRow(AdjustmentVoucherRowModel row) {
     if (adjustmentRows.length <= 2) {
@@ -231,6 +359,8 @@ abstract class BaseVoucherFormController extends GetxController {
     }
     adjustmentRows.remove(row);
     row.dispose();
+    adjustmentRows.refresh();
+    update();
   }
 
   Future<void> submit() async {
@@ -240,18 +370,18 @@ abstract class BaseVoucherFormController extends GetxController {
     }
     if (isPaymentReceipt) {
       if (paymentMode.value.trim().isEmpty) {
-        AppSnackbar.error('Payment mode select karein.');
+        AppSnackbar.error('Please select a payment mode.');
         return;
       }
       if (selectedCashBankAccount.value == null) {
-        AppSnackbar.error('Cash/Bank account select karein.');
+        AppSnackbar.error('Please select a cash/bank account.');
         return;
       }
       final validRows = paymentRows
           .where((row) => row.account.value != null && row.amount > 0)
           .toList();
       if (validRows.isEmpty) {
-        AppSnackbar.error('Kam se kam ek particulars row add karein.');
+        AppSnackbar.error('Please add at least one particulars row.');
         return;
       }
     } else {
@@ -259,11 +389,11 @@ abstract class BaseVoucherFormController extends GetxController {
           .where((row) => row.account.value != null && row.amount > 0)
           .toList();
       if (validRows.length < 2) {
-        AppSnackbar.error('Adjustment me kam se kam 2 valid lines chahiye.');
+        AppSnackbar.error('Adjustment requires at least 2 valid lines.');
         return;
       }
       if ((totalDebit - totalCredit).abs() > 0.01) {
-        AppSnackbar.error('Total debit aur credit same hona chahiye.');
+      AppSnackbar.error('Total debit and credit must be equal.');
         return;
       }
     }
@@ -271,14 +401,33 @@ abstract class BaseVoucherFormController extends GetxController {
     isSubmitting.value = true;
     try {
       final payload = isPaymentReceipt ? _buildPaymentPayload() : _buildAdjustmentPayload();
-      await repository.createRecord(
-        module: module,
-        endpoint: endpoint,
-        payload: payload,
-      );
+      if (isEditing) {
+        final recordId = _lookupInt(_editingPayload?['id']);
+        final localId = recordId == null ? null : 'remote-$module-$recordId';
+        if (recordId == null || localId == null) {
+          throw Exception('Unable to edit this voucher right now.');
+        }
+        await repository.updateRecord(
+          module: module,
+          endpoint: '$endpoint/$recordId',
+          localId: localId,
+          serverId: recordId.toString(),
+          payload: payload,
+        );
+      } else {
+        await repository.createRecord(
+          module: module,
+          endpoint: endpoint,
+          payload: payload,
+        );
+      }
       await _refreshList();
       Get.back<void>();
-      AppSnackbar.success('$title local me save ho gaya. Sync available hone par ho jayega.');
+      AppSnackbar.success(
+        isEditing
+            ? '$title was updated locally and will sync when available.'
+            : '$title was saved locally and will sync when available.',
+      );
     } catch (error) {
       AppSnackbar.error(error.toString());
     } finally {
@@ -290,6 +439,7 @@ abstract class BaseVoucherFormController extends GetxController {
     final validRows = paymentRows
         .where((row) => row.account.value != null && row.amount > 0)
         .toList();
+    final recordId = _lookupInt(_editingPayload?['id']);
     LookupOption? partyToken;
     for (final row in validRows) {
       final account = row.account.value;
@@ -301,6 +451,7 @@ abstract class BaseVoucherFormController extends GetxController {
     }
 
     return <String, dynamic>{
+      if (recordId case final currentRecordId?) 'id': currentRecordId,
       'voucher_type': voucherType,
       'voucher_date': dateController.text.trim(),
       'payment_mode': paymentMode.value,
@@ -331,7 +482,9 @@ abstract class BaseVoucherFormController extends GetxController {
     final validRows = adjustmentRows
         .where((row) => row.account.value != null && row.amount > 0)
         .toList();
+    final recordId = _lookupInt(_editingPayload?['id']);
     return <String, dynamic>{
+      if (recordId case final currentRecordId?) 'id': currentRecordId,
       'voucher_type': 'journal',
       'voucher_date': dateController.text.trim(),
       'narration': narrationController.text.trim().isEmpty
@@ -370,10 +523,52 @@ abstract class BaseVoucherFormController extends GetxController {
       await Get.find<AllVouchersController>().refreshData();
     }
   }
+
+  LookupOption? _matchLookup(List<LookupOption> source, int? id) {
+    if (id == null) {
+      return null;
+    }
+    final idText = id.toString();
+    return source.firstWhereOrNull(
+      (item) =>
+          item.id == id ||
+          item.rawId == idText ||
+          item.valueKey == idText ||
+          item.valueKey.endsWith(':$idText'),
+    );
+  }
+
+  int? _lookupInt(dynamic value) {
+    if (value == null) {
+      return null;
+    }
+    if (value is int) {
+      return value;
+    }
+    return int.tryParse(value.toString());
+  }
+
+  double _lookupDouble(dynamic value) {
+    if (value is num) {
+      return value.toDouble();
+    }
+    return double.tryParse(value?.toString() ?? '') ?? 0;
+  }
+
+  String _shortDate(String? value) {
+    if (value == null || value.trim().isEmpty) {
+      return '';
+    }
+    return value.length >= 10 ? value.substring(0, 10) : value;
+  }
 }
 
 class PaymentVoucherFormController extends BaseVoucherFormController {
-  PaymentVoucherFormController(super.repository, super.lookupController);
+  PaymentVoucherFormController(
+    super.repository,
+    super.lookupController, {
+    super.initialPayload,
+  });
 
   @override
   String get title => 'Payment Voucher';
@@ -392,7 +587,11 @@ class PaymentVoucherFormController extends BaseVoucherFormController {
 }
 
 class ReceiptVoucherFormController extends BaseVoucherFormController {
-  ReceiptVoucherFormController(super.repository, super.lookupController);
+  ReceiptVoucherFormController(
+    super.repository,
+    super.lookupController, {
+    super.initialPayload,
+  });
 
   @override
   String get title => 'Receipt Voucher';
@@ -411,7 +610,11 @@ class ReceiptVoucherFormController extends BaseVoucherFormController {
 }
 
 class AdjustmentVoucherFormController extends BaseVoucherFormController {
-  AdjustmentVoucherFormController(super.repository, super.lookupController);
+  AdjustmentVoucherFormController(
+    super.repository,
+    super.lookupController, {
+    super.initialPayload,
+  });
 
   @override
   String get title => 'Adjustment Voucher';

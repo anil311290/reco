@@ -145,7 +145,7 @@ class SupportTicketsRepository extends OfflineFirstRepository {
     final serverId = ticket['id']?.toString();
     if (serverId == null || serverId.isEmpty) {
       throw StateError(
-        'Draft ticket abhi sync nahi hua. Internet aane ke baad dobara try karein.',
+        'The draft ticket has not synced yet. Please try again when the internet is available.',
       );
     }
 

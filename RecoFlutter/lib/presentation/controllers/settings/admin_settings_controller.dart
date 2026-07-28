@@ -51,8 +51,9 @@ class AdminSettingsController extends GetxController
   @override
   void onInit() {
     super.onInit();
-    final initialTab = (Get.arguments is int) ? Get.arguments as int : 0;
-    tabController = TabController(length: 4, vsync: this, initialIndex: initialTab);
+    final rawInitialTab = (Get.arguments is int) ? Get.arguments as int : 0;
+    final initialTab = rawInitialTab.clamp(0, 4);
+    tabController = TabController(length: 5, vsync: this, initialIndex: initialTab);
     loadData();
   }
 

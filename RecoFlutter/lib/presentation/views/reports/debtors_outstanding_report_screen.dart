@@ -4,6 +4,7 @@ import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:get/get.dart';
 
 import '../../../core/config/api_endpoints.dart';
+import '../../../core/utils/app_snackbar.dart';
 import '../../controllers/reports/debtors_outstanding_report_controller.dart';
 import '../masters/history/party_history_screen.dart';
 import '../masters/widgets/masters_ui_components.dart';
@@ -115,11 +116,11 @@ class DebtorsOutstandingReportScreen
               child: rows.isEmpty
                   ? _buildEmptyState(theme)
                   : _buildDebtorsTable(
-                context: context,
-                theme: theme,
-                rows: rows,
-                total: total,
-              ),
+                      context: context,
+                      theme: theme,
+                      rows: rows,
+                      total: total,
+                    ),
             ),
           ],
         );
@@ -171,9 +172,15 @@ class DebtorsOutstandingReportScreen
           return DataRow(
             cells: <DataCell>[
               masterTextCell('${index + 1}'),
-
-              masterTextCell(
-                _getValue(party['name']),
+              DataCell(
+                Center(
+                  child: ReportLinkText(
+                    _getValue(party['name']),
+                    onTap: party['id'] == null
+                        ? null
+                        : () => _openPartyHistory(party),
+                  ),
+                ),
               ),
 
               masterTextCell(
@@ -232,6 +239,7 @@ class DebtorsOutstandingReportScreen
       ),
 
       _buildTotalRow(
+        context: context,
         theme: theme,
         total: total,
       ),
@@ -321,11 +329,7 @@ class DebtorsOutstandingReportScreen
 
     if (partyId == null ||
         partyId.toString().trim().isEmpty) {
-      Get.snackbar(
-        'Unable to open history',
-        'Party information is not available.',
-        snackPosition: SnackPosition.BOTTOM,
-      );
+      AppSnackbar.error('Party information is not available.');
       return;
     }
 
@@ -333,13 +337,12 @@ class DebtorsOutstandingReportScreen
   }
 
   DataRow _buildTotalRow({
+    required BuildContext context,
     required ThemeData theme,
     required double total,
   }) {
     return DataRow(
-      color: WidgetStatePropertyAll(
-        theme.colorScheme.primary.withValues(alpha: .18),
-      ),
+      color: reportTotalRowColor(context),
       cells: <DataCell>[
         const DataCell(
           SizedBox.shrink(),
@@ -357,10 +360,8 @@ class DebtorsOutstandingReportScreen
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               textAlign: TextAlign.center,
-              style: TextStyle(
-                fontWeight: FontWeight.w800,
+              style: reportTotalRowTextStyle(context)?.copyWith(
                 fontSize: 13,
-                color: theme.colorScheme.onSurface,
               ),
             ),
           ),
@@ -372,10 +373,8 @@ class DebtorsOutstandingReportScreen
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               textAlign: TextAlign.center,
-              style: const TextStyle(
-                fontWeight: FontWeight.w800,
+              style: reportTotalRowTextStyle(context)?.copyWith(
                 fontSize: 13,
-                color: _primaryColor,
               ),
             ),
           ),

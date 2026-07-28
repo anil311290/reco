@@ -3,6 +3,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
+import '../../../../core/utils/app_alert_dialog.dart';
 import '../../../../data/models/masters/master_entities.dart';
 import '../../../controllers/masters/items_controller.dart';
 import '../../../widgets/common/custom_text_field.dart';
@@ -121,7 +122,7 @@ class ItemsTabScreen extends GetView<ItemsController> {
                                 icon: Icons.delete_outline_rounded,
                                 tooltip: 'Delete',
                                 color: Theme.of(context).colorScheme.error,
-                                onTap: () => controller.deleteItem(item),
+                                onTap: () => _confirmDelete(item),
                               ),
                             ],
                           ),
@@ -140,6 +141,16 @@ class ItemsTabScreen extends GetView<ItemsController> {
 
   Future<void> _openForm(BuildContext context, {ItemEntity? entity}) async {
     await Get.to(() => ItemFormSheet(entity: entity));
+  }
+
+  Future<void> _confirmDelete(ItemEntity item) async {
+    final confirmed = await AppAlertDialog.confirmDelete(
+      title: 'Delete Item',
+      message: 'Are you sure you want to delete "${item.name}"?',
+    );
+    if (confirmed) {
+      await controller.deleteItem(item);
+    }
   }
 
   void _openFilters(BuildContext context) {

@@ -20,7 +20,10 @@ class LoginScreen extends GetView<LoginController> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: <Widget>[
+            // SizedBox(height: MediaQuery.sizeOf(context).height * .06),
+            Image.asset('assets/icons/logo.png', height: 34),
             SizedBox(height: MediaQuery.sizeOf(context).height * .06),
+
             Text(
               'Welcome Back',
               textAlign: TextAlign.center,

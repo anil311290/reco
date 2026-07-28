@@ -16,7 +16,8 @@ class AuthScaffold extends StatelessWidget {
         foregroundColor: Theme.of(context).colorScheme.onSurface,
         surfaceTintColor: Colors.transparent,
         centerTitle: true,
-        title: Image.asset('assets/icons/logo.png', height: 34),
+
+        // title: Image.asset('assets/icons/logo.png', height: 34),
       ),
       body: SafeArea(
         child: Center(

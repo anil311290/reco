@@ -25,15 +25,16 @@ class ForgotPasswordScreen extends GetView<ForgotPasswordController> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: <Widget>[
-              SizedBox(height: MediaQuery.sizeOf(context).height * .04),
-              Icon(
-                controller.emailSent.value
-                    ? Icons.lock_reset_rounded
-                    : Icons.email_outlined,
-                size: 56,
-                color: theme.colorScheme.primary,
-              ),
-              const SizedBox(height: 16),
+              Image.asset('assets/icons/logo.png', height: 34),
+              SizedBox(height: MediaQuery.sizeOf(context).height * .06),
+              // Icon(
+              //   controller.emailSent.value
+              //       ? Icons.lock_reset_rounded
+              //       : Icons.email_outlined,
+              //   size: 56,
+              //   color: theme.colorScheme.primary,
+              // ),
+              // const SizedBox(height: 16),
               Text(
                 controller.emailSent.value ? 'Reset Password' : 'Forgot Password',
                 textAlign: TextAlign.center,

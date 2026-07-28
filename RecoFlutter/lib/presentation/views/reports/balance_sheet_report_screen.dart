@@ -12,6 +12,10 @@ import 'widgets/report_ui_components.dart';
 class BalanceSheetReportScreen extends GetView<BalanceSheetReportController> {
   const BalanceSheetReportScreen({super.key});
 
+  static const Color _assetColor = Color(0xFF2563EB);
+  static const Color _liabilityColor = Color(0xFFEF4444);
+  static const Color _equityColor = Color(0xFF16A34A);
+
   @override
   Widget build(BuildContext context) {
     final lookup = Get.find<ReportLookupController>();
@@ -55,7 +59,7 @@ class BalanceSheetReportScreen extends GetView<BalanceSheetReportController> {
                     children: <Widget>[
                       ReportPrimaryButton(
                         label: 'Filter',
-                        icon: FontAwesomeIcons.filter,
+                        icon: FontAwesomeIcons.sliders,
                         onTap: controller.loadReport,
                       ),
                       ReportSecondaryButton(
@@ -82,6 +86,23 @@ class BalanceSheetReportScreen extends GetView<BalanceSheetReportController> {
             ),
             const SizedBox(height: 12),
             if (report is Map<String, dynamic>) ...<Widget>[
+              _BalanceHeadlineCard(
+                assetTotal: controller.formatCurrency(
+                  (report['assets'] as Map?)?['total'],
+                ),
+                sourceTotal: controller.formatCurrency(
+                  report['total_liabilities_equity'],
+                ),
+                isBalanced: report['is_balanced'] == true,
+                difference: ((report['total_assets'] ?? 0) is num &&
+                        (report['total_liabilities_equity'] ?? 0) is num)
+                    ? (((report['total_assets'] ?? 0) as num).toDouble() -
+                            ((report['total_liabilities_equity'] ?? 0) as num)
+                                .toDouble())
+                        .abs()
+                    : 0,
+              ),
+              const SizedBox(height: 14),
               Column(
                 children: <Widget>[
                   Row(
@@ -93,7 +114,7 @@ class BalanceSheetReportScreen extends GetView<BalanceSheetReportController> {
                             (report['assets'] as Map?)?['total'],
                           ),
                           note: 'Asset side total',
-                          color: const Color(0xFF2563EB),
+                          color: _assetColor,
                           icon: FontAwesomeIcons.buildingCircleCheck,
                         ),
                       ),
@@ -103,7 +124,7 @@ class BalanceSheetReportScreen extends GetView<BalanceSheetReportController> {
                           label: 'Liabilities + Equity',
                           value: controller.formatCurrency(report['total_liabilities_equity']),
                           note: 'Source side total',
-                          color: const Color(0xFFEF4444),
+                          color: _liabilityColor,
                           icon: FontAwesomeIcons.scaleBalanced,
                         ),
                       ),
@@ -120,7 +141,7 @@ class BalanceSheetReportScreen extends GetView<BalanceSheetReportController> {
                               ? 'Assets match liabilities and equity.'
                               : 'Difference exists',
                           color: (report['is_balanced'] == true)
-                              ? const Color(0xFF16A34A)
+                              ? _equityColor
                               : const Color(0xFFF59E0B),
                           icon: (report['is_balanced'] == true)
                               ? FontAwesomeIcons.circleCheck
@@ -134,11 +155,11 @@ class BalanceSheetReportScreen extends GetView<BalanceSheetReportController> {
               ),
               const SizedBox(height: 12),
             ],
-            _section(context, 'Assets', report is Map<String, dynamic> ? report['assets'] : null, const Color(0xFF2563EB)),
+            _section(context, 'Assets', report is Map<String, dynamic> ? report['assets'] : null, _assetColor),
             const SizedBox(height: 12),
-            _section(context, 'Liabilities', report is Map<String, dynamic> ? report['liabilities'] : null, const Color(0xFFEF4444)),
+            _section(context, 'Liabilities', report is Map<String, dynamic> ? report['liabilities'] : null, _liabilityColor),
             const SizedBox(height: 12),
-            _section(context, 'Equity', report is Map<String, dynamic> ? report['equity'] : null, const Color(0xFF16A34A)),
+            _section(context, 'Equity', report is Map<String, dynamic> ? report['equity'] : null, _equityColor),
           ],
         );
       }),
@@ -165,36 +186,227 @@ class BalanceSheetReportScreen extends GetView<BalanceSheetReportController> {
         ),
       ),
       child: accounts.isEmpty
-          ? Text('No $title accounts found')
+          ? _EmptyBalanceSection(
+              title: title,
+              color: color,
+            )
           : Container(
               decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(16),
+                color: Theme.of(context).cardColor,
+                borderRadius: BorderRadius.circular(22),
                 border: Border.all(
-                  color: Theme.of(context).dividerColor.withValues(alpha: .4),
+                  color: color.withValues(alpha: .16),
                 ),
+                boxShadow: <BoxShadow>[
+                  BoxShadow(
+                    color: color.withValues(alpha: .05),
+                    blurRadius: 18,
+                    offset: const Offset(0, 8),
+                  ),
+                ],
               ),
               child: Column(
                 children: <Widget>[
+                  Container(
+                    padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: <Color>[
+                          color.withValues(alpha: .10),
+                          color.withValues(alpha: .03),
+                        ],
+                      ),
+                      borderRadius: const BorderRadius.vertical(
+                        top: Radius.circular(21),
+                      ),
+                    ),
+                    child: Row(
+                      children: <Widget>[
+                        Container(
+                          width: 34,
+                          height: 34,
+                          decoration: BoxDecoration(
+                            color: color.withValues(alpha: .12),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Icon(
+                            title == 'Assets'
+                                ? FontAwesomeIcons.building
+                                : title == 'Liabilities'
+                                    ? FontAwesomeIcons.fileCircleMinus
+                                    : FontAwesomeIcons.chartPie,
+                            size: 15,
+                            color: color,
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: <Widget>[
+                              Text(
+                                '$title Ledger Group',
+                                style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                '${accounts.length} account${accounts.length == 1 ? '' : 's'} linked',
+                                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                                ),
+                              ),
+                              if (accounts.isNotEmpty) ...<Widget>[
+                                const SizedBox(height: 2),
+                                Text(
+                                  'Tap any account to open its ledger report.',
+                                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                    color: color.withValues(alpha: .88),
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ],
+                            ],
+                          ),
+                        ),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 7,
+                          ),
+                          decoration: BoxDecoration(
+                            color: color.withValues(alpha: .10),
+                            borderRadius: BorderRadius.circular(999),
+                          ),
+                          child: Text(
+                            controller.formatCurrency(
+                              section is Map<String, dynamic> ? section['total'] : 0,
+                            ),
+                            style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                              color: color,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                   ...accounts.map((item) {
                     final account = item['account'];
                     final id = account is Map<String, dynamic> ? _asInt(account['id']) : null;
-                    return ListTile(
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 12),
-                      title: Text(account is Map<String, dynamic> ? (account['account_name'] ?? '-').toString() : '-'),
-                      trailing: Text(
-                        controller.formatCurrency(item['amount']),
-                        style: TextStyle(color: color, fontWeight: FontWeight.w700),
+                    final amount = controller.formatCurrency(item['amount']);
+                    final accountName = account is Map<String, dynamic>
+                        ? (account['account_name'] ?? '-').toString()
+                        : '-';
+                    final accountType = account is Map<String, dynamic>
+                        ? (account['account_type'] ?? title).toString()
+                        : title;
+                    return Container(
+                      margin: const EdgeInsets.fromLTRB(12, 0, 12, 10),
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).colorScheme.surface.withValues(alpha: .82),
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(
+                          color: Theme.of(context).dividerColor.withValues(alpha: .16),
+                        ),
                       ),
-                      onTap: id == null ? null : () => Get.to(() => LedgerReportScreen(initialAccountId: id)),
+                      child: ListTile(
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 14,
+                          vertical: 2,
+                        ),
+                        title: Row(
+                          children: <Widget>[
+                            Expanded(
+                              child: Text(
+                                accountName,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                                  fontWeight: FontWeight.w700,
+                                  color: id == null ? null : color,
+                                  decoration: id == null
+                                      ? null
+                                      : TextDecoration.underline,
+                                  decorationColor: id == null
+                                      ? null
+                                      : color.withValues(alpha: .45),
+                                ),
+                              ),
+                            ),
+                            if (id != null) ...<Widget>[
+                              const SizedBox(width: 8),
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical: 4,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: color.withValues(alpha: .10),
+                                  borderRadius: BorderRadius.circular(999),
+                                ),
+                                child: Text(
+                                  'Open',
+                                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                                    color: color,
+                                    fontWeight: FontWeight.w800,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ],
+                        ),
+                        subtitle: Padding(
+                          padding: const EdgeInsets.only(top: 4),
+                          child: Row(
+                            children: <Widget>[
+                              Expanded(
+                                child: Text(
+                                  id == null
+                                      ? '${accountType[0].toUpperCase()}${accountType.substring(1)} ledger'
+                                      : 'Tap to open ${accountType[0].toUpperCase()}${accountType.substring(1)} ledger',
+                                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        trailing: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          crossAxisAlignment: CrossAxisAlignment.end,
+                          children: <Widget>[
+                            Text(
+                              amount,
+                              style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                                color: color,
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Icon(
+                              Icons.arrow_outward_rounded,
+                              size: 14,
+                              color: color.withValues(alpha: .75),
+                            ),
+                          ],
+                        ),
+                        onTap: id == null
+                            ? null
+                            : () => Get.to(
+                                  () => LedgerReportScreen(initialAccountId: id),
+                                ),
+                      ),
                     );
                   }),
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                    margin: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                     decoration: BoxDecoration(
-                      color: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: .75),
-                      borderRadius: const BorderRadius.vertical(
-                        bottom: Radius.circular(16),
-                      ),
+                      color: color.withValues(alpha: .08),
+                      borderRadius: BorderRadius.circular(16),
                     ),
                     child: Row(
                       children: <Widget>[
@@ -221,5 +433,229 @@ class BalanceSheetReportScreen extends GetView<BalanceSheetReportController> {
     );
   }
 
-  int? _asInt(dynamic value) => int.tryParse(value?.toString() ?? '');
+int? _asInt(dynamic value) => int.tryParse(value?.toString() ?? '');
+}
+
+class _BalanceHeadlineCard extends StatelessWidget {
+  const _BalanceHeadlineCard({
+    required this.assetTotal,
+    required this.sourceTotal,
+    required this.isBalanced,
+    required this.difference,
+  });
+
+  final String assetTotal;
+  final String sourceTotal;
+  final bool isBalanced;
+  final double difference;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final accent = isBalanced
+        ? const Color(0xFF16A34A)
+        : const Color(0xFFF59E0B);
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(24),
+        gradient: LinearGradient(
+          colors: <Color>[
+            const Color(0xFFEEF4FF),
+            accent.withValues(alpha: .08),
+            Colors.white,
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        border: Border.all(color: accent.withValues(alpha: .18)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          Row(
+            children: <Widget>[
+              Container(
+                width: 42,
+                height: 42,
+                decoration: BoxDecoration(
+                  color: accent.withValues(alpha: .12),
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: Icon(
+                  isBalanced
+                      ? FontAwesomeIcons.shieldHeart
+                      : FontAwesomeIcons.scaleBalanced,
+                  size: 18,
+                  color: accent,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: <Widget>[
+                    Text(
+                      'Statement Overview',
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      isBalanced
+                          ? 'Assets and source side are aligned cleanly.'
+                          : 'There is a mismatch between both sides.',
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: theme.colorScheme.onSurfaceVariant,
+                        height: 1.3,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                decoration: BoxDecoration(
+                  color: accent.withValues(alpha: .11),
+                  borderRadius: BorderRadius.circular(999),
+                ),
+                child: Text(
+                  isBalanced ? 'Balanced' : 'Review',
+                  style: theme.textTheme.labelLarge?.copyWith(
+                    color: accent,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Row(
+            children: <Widget>[
+              Expanded(
+                child: _MiniMetricCard(
+                  label: 'Asset Side',
+                  value: assetTotal,
+                  color: const Color(0xFF2563EB),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: _MiniMetricCard(
+                  label: 'Source Side',
+                  value: sourceTotal,
+                  color: const Color(0xFFEF4444),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Text(
+            isBalanced
+                ? 'Difference: 0.00'
+                : 'Mismatch detected. Please review linked ledgers.',
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: accent,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _MiniMetricCard extends StatelessWidget {
+  const _MiniMetricCard({
+    required this.label,
+    required this.value,
+    required this.color,
+  });
+
+  final String label;
+  final String value;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: .06),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: color.withValues(alpha: .14)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          Text(
+            label,
+            style: Theme.of(context).textTheme.labelLarge?.copyWith(
+              color: color,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            value,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _EmptyBalanceSection extends StatelessWidget {
+  const _EmptyBalanceSection({
+    required this.title,
+    required this.color,
+  });
+
+  final String title;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: .05),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: color.withValues(alpha: .14)),
+      ),
+      child: Column(
+        children: <Widget>[
+          Icon(
+            Icons.inbox_outlined,
+            color: color,
+            size: 22,
+          ),
+          const SizedBox(height: 10),
+          Text(
+            'No $title accounts found',
+            style: Theme.of(context).textTheme.titleSmall?.copyWith(
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'This section will populate when related ledger accounts are available.',
+            textAlign: TextAlign.center,
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+              height: 1.35,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }

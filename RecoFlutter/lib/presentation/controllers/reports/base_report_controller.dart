@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
+import 'package:open_filex/open_filex.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
@@ -10,6 +11,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/config/app_config.dart';
 import '../../../core/services/network_monitor_service.dart';
+import '../../../core/utils/app_action_loader.dart';
 import '../../../core/utils/app_snackbar.dart';
 import '../../../data/repositories/reports/reports_repository.dart';
 
@@ -74,14 +76,17 @@ abstract class BaseReportController extends GetxController {
     required String exportEndpoint,
     Map<String, dynamic>? queryParameters,
   }) async {
-    await _exportFile(
-      exportEndpoint: exportEndpoint,
-      queryParameters: queryParameters,
-      fallbackExtension: 'pdf',
-      successMessage: 'PDF exported successfully.',
-      errorMessage: 'Unable to generate PDF.',
-      linkCopiedMessage: 'PDF link copied.',
-      label: 'Report PDF',
+    await AppActionLoader.run(
+      () => _exportFile(
+        exportEndpoint: exportEndpoint,
+        queryParameters: queryParameters,
+        fallbackExtension: 'pdf',
+        successMessage: 'PDF exported successfully.',
+        errorMessage: 'Unable to generate PDF.',
+        linkCopiedMessage: 'PDF link copied.',
+        label: 'Report PDF',
+      ),
+      message: 'Preparing PDF...',
     );
   }
 
@@ -90,35 +95,44 @@ abstract class BaseReportController extends GetxController {
     String? exportEndpoint,
     Map<String, dynamic>? queryParameters,
   }) async {
-    if (exportEndpoint != null) {
-      final exported = await _exportFile(
-        exportEndpoint: exportEndpoint,
-        queryParameters: queryParameters,
-        fallbackExtension: 'xlsx',
-        successMessage: 'Excel exported successfully.',
-        errorMessage: 'Unable to generate Excel.',
-        linkCopiedMessage: 'Excel link copied.',
-        label: reportName,
-      );
-      if (exported) {
-        return;
-      }
-    }
+    await AppActionLoader.run(
+      () async {
+        if (exportEndpoint != null) {
+          final exported = await _exportFile(
+            exportEndpoint: exportEndpoint,
+            queryParameters: queryParameters,
+            fallbackExtension: 'xlsx',
+            successMessage: 'Excel exported successfully.',
+            errorMessage: 'Unable to generate Excel.',
+            linkCopiedMessage: 'Excel link copied.',
+            label: reportName,
+          );
+          if (exported) {
+            return;
+          }
+        }
 
-    final rows = _extractRowsForExport();
-    if (rows.isEmpty) {
-      AppSnackbar.error('Export ke liye report data available nahi hai.');
-      return;
-    }
+        final rows = _extractRowsForExport();
+        if (rows.isEmpty) {
+          AppSnackbar.error('No report data available for export.');
+          return;
+        }
 
-    final csv = _buildCsv(rows);
-    final directory = await getTemporaryDirectory();
-    final fileName =
-        '${reportName.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]+'), '_')}_${DateTime.now().millisecondsSinceEpoch}.csv';
-    final file = File(p.join(directory.path, fileName));
-    await file.writeAsString(csv);
+        final csv = _buildCsv(rows);
+        final directory = await getTemporaryDirectory();
+        final fileName =
+            '${reportName.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]+'), '_')}_${DateTime.now().millisecondsSinceEpoch}.csv';
+        final file = File(p.join(directory.path, fileName));
+        await file.writeAsString(csv);
 
-    await _openOrShare(file.path, reportName);
+        await _openOrShare(
+          filePath: file.path,
+          reportName: reportName,
+          successMessage: '$reportName exported successfully.',
+        );
+      },
+      message: 'Preparing file...',
+    );
   }
 
   Future<bool> _exportFile({
@@ -153,8 +167,11 @@ abstract class BaseReportController extends GetxController {
               '${safeName}_${DateTime.now().millisecondsSinceEpoch}.$fallbackExtension';
           final file = File(p.join(directory.path, fileName));
           await file.writeAsBytes(bytes);
-          AppSnackbar.success(successMessage);
-          await _openOrShare(file.path, label);
+          await _openOrShare(
+            filePath: file.path,
+            reportName: label,
+            successMessage: successMessage,
+          );
           return true;
         }
 
@@ -178,20 +195,31 @@ abstract class BaseReportController extends GetxController {
     return false;
   }
 
-  Future<void> _openOrShare(String filePath, String reportName) async {
-    final opened = await launchUrl(
-      Uri.file(filePath),
-      mode: LaunchMode.externalApplication,
-    );
-    if (opened) return;
+  Future<void> _openOrShare({
+    required String filePath,
+    required String reportName,
+    required String successMessage,
+  }) async {
+    final openResult = await OpenFilex.open(filePath);
+    if (openResult.type == ResultType.done) {
+      AppSnackbar.success(successMessage);
+      return;
+    }
 
-    await SharePlus.instance.share(
+    final shareResult = await SharePlus.instance.share(
       ShareParams(
         files: <XFile>[XFile(filePath)],
         subject: '$reportName Export',
         text: '$reportName exported successfully.',
       ),
     );
+    if (shareResult.status == ShareResultStatus.success ||
+        shareResult.status == ShareResultStatus.dismissed) {
+      AppSnackbar.success(successMessage);
+      return;
+    }
+
+    AppSnackbar.error('Unable to open the file.');
   }
 
   bool _hasRenderableData(Map<String, dynamic> source) {

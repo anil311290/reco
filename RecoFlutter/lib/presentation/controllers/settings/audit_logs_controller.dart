@@ -9,6 +9,8 @@ class AuditLogsController extends GetxController {
   final AuditLogsRepository _repository;
 
   final isLoading = false.obs;
+  final isRefreshing = false.obs;
+  final refreshTurns = 0.0.obs;
   final isLoadingMore = false.obs;
   final logs = <Map<String, dynamic>>[].obs;
   final statistics = <String, dynamic>{}.obs;
@@ -40,6 +42,10 @@ class AuditLogsController extends GetxController {
   }
 
   Future<void> loadLogs({bool reset = true}) async {
+    if (reset && !isLoading.value) {
+      isRefreshing.value = true;
+      refreshTurns.value += 1;
+    }
     if (reset) {
       isLoading.value = true;
       currentPage.value = 1;
@@ -117,6 +123,9 @@ class AuditLogsController extends GetxController {
     } finally {
       isLoading.value = false;
       isLoadingMore.value = false;
+      if (reset) {
+        isRefreshing.value = false;
+      }
     }
   }
 

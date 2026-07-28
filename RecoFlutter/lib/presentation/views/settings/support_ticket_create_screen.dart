@@ -22,122 +22,184 @@ class SupportTicketCreateScreen extends GetView<SupportTicketCreateController> {
         ),
       ),
       body: SafeArea(
-        child: Form(
-          key: controller.formKey,
-          child: ListView(
-            padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
+        child: Obx(
+          () => Stack(
             children: <Widget>[
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: theme.colorScheme.primary.withValues(alpha: .08),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(
-                    color: theme.colorScheme.primary.withValues(alpha: .16),
-                  ),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+              Form(
+                key: controller.formKey,
+                child: ListView(
+                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
                   children: <Widget>[
-                    Text(
-                      'Describe your issue clearly',
-                      style: theme.textTheme.titleSmall?.copyWith(
-                        fontWeight: FontWeight.w700,
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: theme.colorScheme.primary.withValues(alpha: .08),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: theme.colorScheme.primary.withValues(alpha: .16),
+                        ),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: <Widget>[
+                          Text(
+                            'Describe your issue clearly',
+                            style: theme.textTheme.titleSmall?.copyWith(
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            'Once the ticket is created, support will reply in the same thread. You can continue the conversation here.',
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: theme.colorScheme.onSurfaceVariant,
+                              height: 1.25,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
+                    const SizedBox(height: 14),
+                    CustomTextField(
+                      label: 'Subject',
+                      controller: controller.subjectController,
+                      hintText: 'Briefly describe the issue',
+                      requiredField: true,
+                      validator: (value) {
+                        if ((value ?? '').trim().isEmpty) {
+                          return 'Subject is required';
+                        }
+                        return null;
+                      },
+                    ),
+                    Row(
+                      children: <Widget>[
+                        Expanded(
+                          child: CustomDropdown<String>(
+                            label: 'Category',
+                            value: controller.selectedCategory.value,
+                            items: const <String>[
+                              'general',
+                              'billing',
+                              'technical',
+                              'feature',
+                              'other',
+                            ],
+                            enableSearch: false,
+                            itemLabelBuilder: _capitalize,
+                            onChanged: (value) {
+                              if (value != null) {
+                                controller.selectedCategory.value = value;
+                              }
+                            },
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: CustomDropdown<String>(
+                            label: 'Priority',
+                            value: controller.selectedPriority.value,
+                            items: const <String>[
+                              'low',
+                              'normal',
+                              'high',
+                              'urgent',
+                            ],
+                            enableSearch: false,
+                            itemLabelBuilder: _capitalize,
+                            onChanged: (value) {
+                              if (value != null) {
+                                controller.selectedPriority.value = value;
+                              }
+                            },
+                          ),
+                        ),
+                      ],
+                    ),
+                    CustomTextField(
+                      label: 'Message',
+                      controller: controller.messageController,
+                      hintText: 'Explain the issue, expected result and current problem',
+                      maxLines: 7,
+                      requiredField: true,
+                      validator: (value) {
+                        if ((value ?? '').trim().isEmpty) {
+                          return 'Message is required';
+                        }
+                        return null;
+                      },
+                    ),
                     const SizedBox(height: 4),
-                    Text(
-                      'Ticket create hone ke baad same thread me support reply karega. Aap yahi se message continue kar paenge.',
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: theme.colorScheme.onSurfaceVariant,
-                        height: 1.25,
-                      ),
+                    AnimatedSwitcher(
+                      duration: const Duration(milliseconds: 180),
+                      child: controller.isSubmitting.value
+                          ? Container(
+                              key: const ValueKey('submitting_hint'),
+                              margin: const EdgeInsets.only(bottom: 10),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 10,
+                              ),
+                              decoration: BoxDecoration(
+                                color: theme.colorScheme.primary.withValues(alpha: .08),
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(
+                                  color: theme.colorScheme.primary.withValues(alpha: .14),
+                                ),
+                              ),
+                              child: Row(
+                                children: <Widget>[
+                                  SizedBox(
+                                    width: 16,
+                                    height: 16,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      color: theme.colorScheme.primary,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 10),
+                                  Expanded(
+                                    child: Text(
+                                      'Creating ticket and opening chat...',
+                                      style: theme.textTheme.bodySmall?.copyWith(
+                                        color: theme.colorScheme.primary,
+                                        fontWeight: FontWeight.w700,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            )
+                          : Container(
+                              key: const ValueKey('idle_hint'),
+                              margin: const EdgeInsets.only(bottom: 10),
+                              padding: const EdgeInsets.symmetric(horizontal: 2),
+                              child: Text(
+                                'After save, the ticket thread will open automatically.',
+                                style: theme.textTheme.bodySmall?.copyWith(
+                                  color: theme.colorScheme.onSurfaceVariant,
+                                ),
+                              ),
+                            ),
+                    ),
+                    CommonButton(
+                      text: controller.isSubmitting.value
+                          ? 'Creating Ticket...'
+                          : 'Submit Ticket',
+                      isLoading: controller.isSubmitting.value,
+                      onPressed: controller.submit,
                     ),
                   ],
                 ),
               ),
-              const SizedBox(height: 14),
-              CustomTextField(
-                label: 'Subject',
-                controller: controller.subjectController,
-                hintText: 'Briefly describe the issue',
-                requiredField: true,
-                validator: (value) {
-                  if ((value ?? '').trim().isEmpty) {
-                    return 'Subject is required';
-                  }
-                  return null;
-                },
-              ),
-              Row(
-                children: <Widget>[
-                  Expanded(
-                    child: Obx(
-                      () => CustomDropdown<String>(
-                        label: 'Category',
-                        value: controller.selectedCategory.value,
-                        items: const <String>[
-                          'general',
-                          'billing',
-                          'technical',
-                          'feature',
-                          'other',
-                        ],
-                        enableSearch: false,
-                        itemLabelBuilder: _capitalize,
-                        onChanged: (value) {
-                          if (value != null) {
-                            controller.selectedCategory.value = value;
-                          }
-                        },
-                      ),
+              if (controller.isSubmitting.value)
+                Positioned.fill(
+                  child: AbsorbPointer(
+                    child: Container(
+                      color: Colors.black.withValues(alpha: .05),
                     ),
                   ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Obx(
-                      () => CustomDropdown<String>(
-                        label: 'Priority',
-                        value: controller.selectedPriority.value,
-                        items: const <String>[
-                          'low',
-                          'normal',
-                          'high',
-                          'urgent',
-                        ],
-                        enableSearch: false,
-                        itemLabelBuilder: _capitalize,
-                        onChanged: (value) {
-                          if (value != null) {
-                            controller.selectedPriority.value = value;
-                          }
-                        },
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              CustomTextField(
-                label: 'Message',
-                controller: controller.messageController,
-                hintText: 'Explain the issue, expected result and current problem',
-                maxLines: 7,
-                requiredField: true,
-                validator: (value) {
-                  if ((value ?? '').trim().isEmpty) {
-                    return 'Message is required';
-                  }
-                  return null;
-                },
-              ),
-              const SizedBox(height: 8),
-              Obx(
-                () => CommonButton(
-                  text: 'Submit Ticket',
-                  isLoading: controller.isSubmitting.value,
-                  onPressed: controller.submit,
                 ),
-              ),
             ],
           ),
         ),

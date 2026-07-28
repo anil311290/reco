@@ -136,7 +136,7 @@ class _ItemFormSheetState extends State<ItemFormSheet> {
                 const SizedBox(height: 12),
                 _InfoNoteCard(
                   text:
-                      'Service type me stock tracking nahi hota. Isliye opening stock aur stockable controls hide kiye gaye hain.',
+                      'Stock tracking is not available for service items, so opening stock and stockable controls are hidden.',
                 ),
               ],
               const SizedBox(height: 12),

@@ -51,9 +51,20 @@ class _SupportTicketChatScreenState extends State<SupportTicketChatScreen> {
           ),
         ),
         actions: <Widget>[
-          IconButton(
-            onPressed: controller.refreshTicket,
-            icon: const Icon(Icons.refresh_rounded),
+          AnimatedRotation(
+            turns: controller.refreshTurns.value,
+            duration: const Duration(milliseconds: 700),
+            child: IconButton(
+              onPressed: controller.isRefreshing.value
+                  ? null
+                  : controller.refreshTicket,
+              icon: Icon(
+                Icons.refresh_rounded,
+                color: controller.isRefreshing.value
+                    ? theme.colorScheme.primary
+                    : null,
+              ),
+            ),
           ),
           const SizedBox(width: 4),
         ],
@@ -84,13 +95,7 @@ class _SupportTicketChatScreenState extends State<SupportTicketChatScreen> {
                   physics: const AlwaysScrollableScrollPhysics(),
                   slivers: <Widget>[
                     SliverPadding(
-                      padding: const EdgeInsets.fromLTRB(16, 14, 16, 10),
-                      sliver: SliverToBoxAdapter(
-                        child: SupportTicketHeader(ticket: ticket),
-                      ),
-                    ),
-                    SliverPadding(
-                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 18),
+                      padding: const EdgeInsets.fromLTRB(16, 14, 16, 18),
                       sliver: SliverToBoxAdapter(
                         child: SupportConversationCard(messages: messages),
                       ),

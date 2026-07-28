@@ -5,6 +5,7 @@ import 'package:get/get.dart';
 import '../bindings/initial_binding.dart';
 import '../theme/app_theme.dart';
 import '../theme/theme_controller.dart';
+import '../utils/toast_service.dart';
 import '../../presentation/views/splash/splash_screen.dart';
 
 class RecoApp extends StatelessWidget {
@@ -22,6 +23,7 @@ class RecoApp extends StatelessWidget {
             return GetMaterialApp(
               debugShowCheckedModeBanner: false,
               title: 'Reco ERP',
+              navigatorKey: navigatorKey,
               initialBinding: InitialBinding(),
               theme: AppTheme.light(),
               darkTheme: AppTheme.dark(),

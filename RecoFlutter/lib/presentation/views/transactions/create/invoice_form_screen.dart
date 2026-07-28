@@ -16,7 +16,7 @@ class InvoiceFormScreen<T extends BaseInvoiceFormController> extends GetView<T> 
     return Scaffold(
       appBar: AppBar(
         title: Text(
-          controller.title,
+          controller.isEditing ? 'Edit ${controller.title}' : controller.title,
           style: Theme.of(context).textTheme.titleMedium?.copyWith(
             fontWeight: FontWeight.w600,
           ),
@@ -24,7 +24,9 @@ class InvoiceFormScreen<T extends BaseInvoiceFormController> extends GetView<T> 
       ),
       bottomNavigationBar: Obx(
         () => TransactionSubmitBar(
-          text: 'Save ${controller.title}',
+          text: controller.isEditing
+              ? 'Update ${controller.title}'
+              : 'Save ${controller.title}',
           isLoading: controller.isSubmitting.value,
           onPressed: controller.submit,
         ),
@@ -41,26 +43,31 @@ class InvoiceFormScreen<T extends BaseInvoiceFormController> extends GetView<T> 
                     title: 'Invoice Details',
                     child: Column(
                       children: <Widget>[
-                        Obx(
-                          () => CustomDropdown<PartyEntity>(
-                            label: controller.isPurchaseInvoice
-                                ? 'Supplier'
-                                : 'Customer',
-                            value: controller.selectedParty.value,
-                            items: controller.parties,
-                            itemLabelBuilder: (item) {
-                              final code = item.partyCode.trim();
-                              if (code.isEmpty) {
-                                return item.name;
-                              }
-                              return '${item.name} ($code)';
-                            },
-                            onChanged: (value) =>
-                                controller.selectedParty.value = value,
-                            requiredField: true,
-                            isLoading: controller.lookupController.isPartiesLoading.value,
-                            enabled: !controller.lookupController.isPartiesLoading.value,
-                          ),
+                        CustomTextField(
+                          label: 'Invoice Number',
+                          controller: controller.invoiceNumberController,
+                          readOnly: true,
+                        ),
+                        CustomDropdown<PartyEntity>(
+                          label: controller.isPurchaseInvoice
+                              ? 'Supplier'
+                              : 'Customer',
+                          value: controller.selectedParty.value,
+                          items: controller.parties,
+                          itemLabelBuilder: (item) {
+                            final code = item.partyCode.trim();
+                            if (code.isEmpty) {
+                              return item.name;
+                            }
+                            return '${item.name} ($code)';
+                          },
+                          onChanged: (value) {
+                            controller.selectedParty.value = value;
+                            controller.update();
+                          },
+                          requiredField: true,
+                          isLoading: controller.lookupController.isPartiesLoading.value,
+                          enabled: !controller.lookupController.isPartiesLoading.value,
                         ),
                         if (controller.isPurchaseInvoice)
                           CustomTextField(
@@ -237,12 +244,14 @@ class _ItemRowCard<T extends BaseInvoiceFormController> extends GetView<T> {
               );
             },
           ),
-          if (!row.isServiceSelection)
-            CustomTextField(
-              label: 'Description',
-              controller: row.descriptionController,
-              hintText: 'Item description',
-            ),
+          CustomTextField(
+            label: 'Description',
+            controller: row.descriptionController,
+            hintText: row.isServiceSelection
+                ? 'Service description'
+                : 'Item description',
+            readOnly: row.isServiceSelection,
+          ),
           if (!row.isServiceSelection)
             CustomTextField(
               label: 'Quantity',

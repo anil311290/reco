@@ -50,7 +50,7 @@ class SupportHeroCard extends StatelessWidget {
                   ),
                 ),
               ),
-              FilledButton.tonalIcon(
+              FilledButton.icon(
                 onPressed: onCreateTicket,
                 icon: const Icon(Icons.add_rounded, size: 16),
                 label: const Text('Create'),
@@ -73,14 +73,14 @@ class SupportHeroCard extends StatelessWidget {
               height: 1.15,
             ),
           ),
-          const SizedBox(height: 4),
-          Text(
-            'Billing, technical issue, feature request ya onboarding help ke liye yahi se ticket create karein.',
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: theme.colorScheme.onSurfaceVariant,
-              height: 1.3,
-            ),
-          ),
+          // const SizedBox(height: 4),
+          // Text(
+          //   'Create a ticket here for billing, technical issues, feature requests, or onboarding help.',
+          //   style: theme.textTheme.bodySmall?.copyWith(
+          //     color: theme.colorScheme.onSurfaceVariant,
+          //     height: 1.3,
+          //   ),
+          // ),
         ],
       ),
     );
@@ -116,7 +116,7 @@ class SupportStatsRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      height: 44,
+      height: 40,
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
         itemCount: items.length,
@@ -142,8 +142,8 @@ class _SupportStatCard extends StatelessWidget {
       borderRadius: BorderRadius.circular(10),
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 180),
-        width: 110,
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        width: 120,
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
         decoration: BoxDecoration(
           color: item.isActive
               ? color.withValues(alpha: .1)
@@ -177,17 +177,20 @@ class _SupportStatCard extends StatelessWidget {
                     ),
                   ),
                 ),
+
+                Text(
+                  item.value.toString(),
+                  style: theme.textTheme.labelLarge?.copyWith(
+                    fontWeight: FontWeight.w800,
+                    fontSize: 16.5,
+                    color: item.isActive ? color : theme.colorScheme.onSurface,
+                  ),
+                ),
+                const SizedBox(width: 6),
               ],
             ),
-            const SizedBox(height: 3),
-            Text(
-              item.value.toString(),
-              style: theme.textTheme.labelLarge?.copyWith(
-                fontWeight: FontWeight.w800,
-                fontSize: 11.5,
-                color: item.isActive ? color : theme.colorScheme.onSurface,
-              ),
-            ),
+
+
           ],
         ),
       ),
@@ -925,7 +928,7 @@ class SupportEmptyState extends StatelessWidget {
           ),
           const SizedBox(height: 8),
           Text(
-            'Aapne abhi tak koi ticket raise nahi kiya hai. New ticket create karke same thread me conversation continue karein.',
+            'You have not created any tickets yet. Create a new ticket to continue the conversation in the same thread.',
             textAlign: TextAlign.center,
             style: theme.textTheme.bodyMedium?.copyWith(
               color: theme.colorScheme.onSurfaceVariant,

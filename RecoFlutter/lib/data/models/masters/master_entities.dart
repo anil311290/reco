@@ -27,6 +27,20 @@ class LookupOption {
     return id.toString();
   }
 
+  @override
+  bool operator ==(Object other) {
+    if (identical(this, other)) {
+      return true;
+    }
+    return other is LookupOption &&
+        other.valueKey == valueKey &&
+        other.kind == kind &&
+        other.label == label;
+  }
+
+  @override
+  int get hashCode => Object.hash(valueKey, kind, label);
+
   factory LookupOption.fromJson(Map<String, dynamic> json) {
     final rawId = json['id']?.toString();
     return LookupOption(

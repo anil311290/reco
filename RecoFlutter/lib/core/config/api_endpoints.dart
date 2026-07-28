@@ -45,6 +45,7 @@ class ApiEndpoints {
   static String stateCities(int stateId) => '/states/$stateId/cities';
 
   static const String vouchers = '/vouchers';
+  static String voucherDetail(Object id) => '/vouchers/$id';
   static const String payments = '/payments';
   static const String receipts = '/receipts';
   static const String adjustments = '/adjustments';
@@ -97,8 +98,12 @@ class ApiEndpoints {
   static const String itemsDropdown = '/items/dropdown';
   static String itemHistory(Object id) => '/items/$id/history';
   static const String salesInvoices = '/sales-invoices';
+  static String salesInvoiceDetail(Object id) => '/sales-invoices/$id';
+  static String salesInvoicePdf(Object id) => '/sales-invoices/$id/pdf';
+  static String exportSalesInvoicePdf(Object id) => '/export/sales-invoice/$id/pdf';
   static const String serviceSalesInvoices = '/service-sales-invoices';
   static const String purchaseInvoices = '/purchase-invoices';
+  static String purchaseInvoiceDetail(Object id) => '/purchase-invoices/$id';
 
   static const String subscriptionPlans = '/subscriptions/plans';
   static const String currentSubscription = '/subscriptions/current';

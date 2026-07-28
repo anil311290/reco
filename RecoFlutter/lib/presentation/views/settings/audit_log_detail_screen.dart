@@ -61,6 +61,11 @@ class _AuditLogDetailScreenState extends State<AuditLogDetailScreen> {
         final user = log['user'] is Map
             ? (log['user']['name'] ?? 'System').toString()
             : 'System';
+        final module = (log['module'] ?? '').toString();
+        final action = (log['action'] ?? '').toString();
+        final recordId = (log['record_id'] ?? '-').toString();
+        final ipAddress = (log['ip_address'] ?? '-').toString();
+        final createdAt = _formatDateTime(log['created_at']);
 
         return RefreshIndicator(
           onRefresh: () => controller.load(widget.logId, initialLog: log),
@@ -91,14 +96,14 @@ class _AuditLogDetailScreenState extends State<AuditLogDetailScreen> {
                       runSpacing: 8,
                       children: <Widget>[
                         _AuditDetailChip(
-                          label: auditLabelize((log['action'] ?? '').toString()),
+                          label: auditLabelize(action),
                         ),
                         _AuditDetailChip(
-                          label: auditLabelize((log['module'] ?? '').toString()),
+                          label: auditLabelize(module),
                         ),
                         _AuditDetailChip(label: user),
                         _AuditDetailChip(
-                          label: 'Record ID: ${log['record_id'] ?? '-'}',
+                          label: 'Record ID: $recordId',
                         ),
                       ],
                     ),
@@ -109,6 +114,24 @@ class _AuditLogDetailScreenState extends State<AuditLogDetailScreen> {
                       style: theme.textTheme.bodyMedium?.copyWith(
                         color: theme.colorScheme.onSurfaceVariant,
                       ),
+                    ),
+                    const SizedBox(height: 14),
+                    Row(
+                      children: <Widget>[
+                        Expanded(
+                          child: _AuditMetaCard(
+                            label: 'Date',
+                            value: createdAt,
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: _AuditMetaCard(
+                            label: 'IP Address',
+                            value: ipAddress,
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ),
@@ -147,4 +170,57 @@ class _AuditDetailChip extends StatelessWidget {
       ),
     );
   }
+}
+
+class _AuditMetaCard extends StatelessWidget {
+  const _AuditMetaCard({
+    required this.label,
+    required this.value,
+  });
+
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surfaceContainerLowest,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: theme.dividerColor.withValues(alpha: .35),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          Text(
+            label,
+            style: theme.textTheme.labelSmall?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            value.isEmpty ? '-' : value,
+            style: theme.textTheme.bodyMedium?.copyWith(
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+String _formatDateTime(dynamic value) {
+  final raw = (value ?? '').toString().trim();
+  if (raw.isEmpty) {
+    return '-';
+  }
+  final normalized = raw.replaceFirst('T', ' ');
+  return normalized.length > 19 ? normalized.substring(0, 19) : normalized;
 }

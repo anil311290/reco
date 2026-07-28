@@ -159,7 +159,18 @@ class CreditorsOutstandingReportScreen
         return DataRow(
           cells: <DataCell>[
             masterTextCell('${index + 1}'),
-            masterTextCell(_getValue(party['name'])),
+            DataCell(
+              Center(
+                child: ReportLinkText(
+                  _getValue(party['name']),
+                  onTap: party['id'] == null
+                      ? null
+                      : () => Get.to(
+                            () => PartyHistoryScreen(partyId: party['id'] as int),
+                          ),
+                ),
+              ),
+            ),
             masterTextCell(_getValue(party['mobile'])),
             DataCell(
               Center(
@@ -211,7 +222,7 @@ class CreditorsOutstandingReportScreen
           ],
         );
       }),
-      _buildTotalRow(theme: theme, total: total),
+      _buildTotalRow(context: context, theme: theme, total: total),
     ];
 
     final calculatedHeight = 42.0 + ((rows.length + 1) * 52.0);
@@ -237,13 +248,12 @@ class CreditorsOutstandingReportScreen
   }
 
   DataRow _buildTotalRow({
+    required BuildContext context,
     required ThemeData theme,
     required double total,
   }) {
     return DataRow(
-      color: WidgetStatePropertyAll(
-        theme.colorScheme.primary.withValues(alpha: .18),
-      ),
+      color: reportTotalRowColor(context),
       cells: <DataCell>[
         const DataCell(SizedBox.shrink()),
         const DataCell(SizedBox.shrink()),
@@ -252,9 +262,7 @@ class CreditorsOutstandingReportScreen
           Center(
             child: Text(
               'Total Outstanding',
-              style: TextStyle(
-                fontWeight: FontWeight.w800,
-                color: theme.colorScheme.onSurface,
+              style: reportTotalRowTextStyle(context)?.copyWith(
                 fontSize: 13,
               ),
             ),
@@ -264,9 +272,7 @@ class CreditorsOutstandingReportScreen
           Center(
             child: Text(
               controller.formatCurrency(total),
-              style: const TextStyle(
-                fontWeight: FontWeight.w800,
-                color: _primaryColor,
+              style: reportTotalRowTextStyle(context)?.copyWith(
                 fontSize: 13,
               ),
             ),

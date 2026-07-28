@@ -22,7 +22,7 @@ class RegisterScreen extends GetView<RegisterController> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: <Widget>[
-            const SizedBox(height: AppSpacing.lg),
+
             Text(
               'Create Account',
               textAlign: TextAlign.center,
@@ -36,14 +36,14 @@ class RegisterScreen extends GetView<RegisterController> {
                 color: Theme.of(context).colorScheme.onSurfaceVariant,
               ),
             ),
-            const SizedBox(height: 34),
+            const SizedBox(height: 20),
             Text(
               'Owner Details',
               style: Theme.of(
                 context,
               ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
             ),
-            const SizedBox(height: AppSpacing.md),
+            const SizedBox(height: AppSpacing.sm),
             CustomTextField(
               controller: controller.nameController,
               hintText: 'Enter full name',
@@ -57,7 +57,7 @@ class RegisterScreen extends GetView<RegisterController> {
                 return null;
               },
             ),
-            const SizedBox(height: AppSpacing.md),
+
             CustomTextField(
               controller: controller.emailController,
               hintText: 'Enter email address',
@@ -76,7 +76,7 @@ class RegisterScreen extends GetView<RegisterController> {
                 return null;
               },
             ),
-            const SizedBox(height: AppSpacing.md),
+
             CustomTextField(
               controller: controller.phoneController,
               hintText: 'Optional phone number',
@@ -85,14 +85,14 @@ class RegisterScreen extends GetView<RegisterController> {
               textInputAction: TextInputAction.next,
               prefixIcon: Icons.phone_outlined,
             ),
-            const SizedBox(height: AppSpacing.xl),
+
             Text(
               'Company Details',
               style: Theme.of(
                 context,
               ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
             ),
-            const SizedBox(height: AppSpacing.md),
+            const SizedBox(height: AppSpacing.sm),
             CustomTextField(
               controller: controller.companyNameController,
               hintText: 'Enter company name',
@@ -106,7 +106,7 @@ class RegisterScreen extends GetView<RegisterController> {
                 return null;
               },
             ),
-            const SizedBox(height: AppSpacing.md),
+
             CustomTextField(
               controller: controller.companyEmailController,
               hintText: 'Optional company email',
@@ -122,14 +122,13 @@ class RegisterScreen extends GetView<RegisterController> {
                 return null;
               },
             ),
-            const SizedBox(height: AppSpacing.xl),
             Text(
               'Security',
               style: Theme.of(
                 context,
               ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
             ),
-            const SizedBox(height: AppSpacing.md),
+            const SizedBox(height: AppSpacing.sm),
             Obx(
               () => CustomTextField(
                 controller: controller.passwordController,
@@ -153,7 +152,7 @@ class RegisterScreen extends GetView<RegisterController> {
                 },
               ),
             ),
-            const SizedBox(height: AppSpacing.md),
+
             Obx(
               () => CustomTextField(
                 controller: controller.confirmPasswordController,
@@ -178,7 +177,7 @@ class RegisterScreen extends GetView<RegisterController> {
                 },
               ),
             ),
-            const SizedBox(height: 28),
+            const SizedBox(height: 20),
             Obx(
               () => CommonButton(
                 text: controller.isLoading.value
@@ -188,7 +187,7 @@ class RegisterScreen extends GetView<RegisterController> {
                 onPressed: controller.register,
               ),
             ),
-            const SizedBox(height: AppSpacing.lg),
+
             AuthSwitchPrompt(
               message: 'Already have an account?',
               actionLabel: 'Login',

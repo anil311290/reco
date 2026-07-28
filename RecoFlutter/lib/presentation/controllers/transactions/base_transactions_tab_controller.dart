@@ -88,18 +88,31 @@ abstract class BaseTransactionsTabController extends GetxController {
   Future<void> refreshData({bool forceRemote = false}) async {
     isLoading.value = true;
     try {
-      final items = forceRemote
-          ? await repository.refreshCollection(
-              module: module,
-              endpoint: endpoint,
-              queryParameters: queryParameters,
-            )
-          : await repository.getCollection(
-              module: module,
-              endpoint: endpoint,
-              queryParameters: queryParameters,
-            );
-      records.assignAll(items.map(mapRecord).toList());
+      if (forceRemote) {
+        final remoteItems = await repository.refreshCollection(
+          module: module,
+          endpoint: endpoint,
+          queryParameters: queryParameters,
+        );
+        records.assignAll(remoteItems.map(mapRecord).toList());
+        return;
+      }
+
+      final localItems = await repository.getCollection(
+        module: module,
+        endpoint: endpoint,
+        queryParameters: queryParameters,
+      );
+      records.assignAll(localItems.map(mapRecord).toList());
+
+      if (await networkMonitorService.hasInternetNow()) {
+        final remoteItems = await repository.refreshCollection(
+          module: module,
+          endpoint: endpoint,
+          queryParameters: queryParameters,
+        );
+        records.assignAll(remoteItems.map(mapRecord).toList());
+      }
     } finally {
       isLoading.value = false;
     }

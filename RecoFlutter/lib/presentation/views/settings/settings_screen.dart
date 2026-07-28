@@ -5,23 +5,20 @@ import '../../../core/services/network_monitor_service.dart';
 import '../../../core/services/sync_service.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../data/repositories/accounts/accounts_repository.dart';
-import '../../../data/repositories/settings/notifications_repository.dart';
 import '../../../data/repositories/settings/audit_logs_repository.dart';
-import '../../../data/repositories/settings/security_repository.dart';
+import '../../../data/repositories/settings/notifications_repository.dart';
 import '../../../data/repositories/settings/settings_repository.dart';
 import '../../../data/repositories/settings/subscriptions_repository.dart';
 import '../../../data/repositories/settings/support_tickets_repository.dart';
 import '../../controllers/settings/admin_settings_controller.dart';
-import '../../controllers/settings/notifications_center_controller.dart';
 import '../../controllers/settings/audit_logs_controller.dart';
-import '../../controllers/settings/security_settings_controller.dart';
+import '../../controllers/settings/notifications_center_controller.dart';
 import '../../controllers/settings/settings_controller.dart';
 import '../../controllers/settings/subscription_controller.dart';
 import '../../controllers/settings/support_tickets_controller.dart';
 import 'admin_settings_screen.dart';
-import 'notifications_center_screen.dart';
 import 'audit_logs_screen.dart';
-import 'security_settings_screen.dart';
+import 'notifications_center_screen.dart';
 import 'subscription_screen.dart';
 import 'support_tickets_screen.dart';
 import 'widgets/settings_ui_components.dart';
@@ -44,9 +41,20 @@ class SettingsScreen extends GetView<SettingsController> {
           ),
         ),
         actions: <Widget>[
-          IconButton(
-            onPressed: controller.refreshAll,
-            icon: const Icon(Icons.refresh_rounded),
+          AnimatedRotation(
+            turns: controller.refreshTurns.value,
+            duration: const Duration(milliseconds: 700),
+            child: IconButton(
+              onPressed: controller.isRefreshing.value
+                  ? null
+                  : controller.refreshAll,
+              icon: Icon(
+                Icons.refresh_rounded,
+                color: controller.isRefreshing.value
+                    ? theme.colorScheme.primary
+                    : null,
+              ),
+            ),
           ),
           const SizedBox(width: 4),
         ],
@@ -86,18 +94,12 @@ class SettingsScreen extends GetView<SettingsController> {
                     subtitle: 'Track create, update, delete and login activity',
                     onTap: _openAuditLogs,
                   ),
-                  SettingsMenuTile(
-                    icon: Icons.support_agent_outlined,
-                    title: 'Support Tickets',
-                    subtitle: 'Raise tickets and review support history',
-                    onTap: _openSupportTickets,
-                  ),
-                  SettingsMenuTile(
-                    icon: Icons.lock_outline_rounded,
-                    title: 'Security Settings',
-                    subtitle: 'PIN, app lock, biometric and auto lock',
-                    onTap: _openSecuritySettings,
-                  ),
+                  // SettingsMenuTile(
+                  //   icon: Icons.lock_outline_rounded,
+                  //   title: 'Security Settings',
+                  //   subtitle: 'PIN, app lock, biometric and auto lock',
+                  //   onTap: _openSecuritySettings,
+                  // ),
                 ],
               ),
               SettingsGroupCard(
@@ -286,19 +288,6 @@ class SettingsScreen extends GetView<SettingsController> {
         () {
           Get.put(
             SubscriptionController(Get.find<SubscriptionsRepository>()),
-          );
-        },
-      ),
-    );
-  }
-
-  void _openSecuritySettings() {
-    Get.to(
-      () => const SecuritySettingsScreen(),
-      binding: BindingsBuilder(
-        () {
-          Get.put(
-            SecuritySettingsController(Get.find<SecurityRepository>()),
           );
         },
       ),

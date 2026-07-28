@@ -9,6 +9,8 @@ class SupportTicketsController extends GetxController {
   final SupportTicketsRepository _repository;
 
   final isLoading = false.obs;
+  final isRefreshing = false.obs;
+  final refreshTurns = 0.0.obs;
   final selectedStatus = ''.obs;
   final tickets = <Map<String, dynamic>>[].obs;
   final searchController = TextEditingController();
@@ -34,6 +36,11 @@ class SupportTicketsController extends GetxController {
   }
 
   Future<void> loadTickets() async {
+    final isManualRefresh = !isLoading.value;
+    if (isManualRefresh) {
+      isRefreshing.value = true;
+      refreshTurns.value += 1;
+    }
     isLoading.value = true;
     try {
       tickets.assignAll(
@@ -44,6 +51,9 @@ class SupportTicketsController extends GetxController {
       _recomputeState();
     } finally {
       isLoading.value = false;
+      if (isManualRefresh) {
+        isRefreshing.value = false;
+      }
     }
   }
 

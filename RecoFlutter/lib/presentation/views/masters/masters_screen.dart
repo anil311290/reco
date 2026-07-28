@@ -59,12 +59,8 @@ class MastersScreen extends StatelessWidget {
                     color: controller.isRefreshing.value
                         ? Theme.of(context).colorScheme.primary
                         : null,
-                  ),
+                    ),
                 ),
-              ),
-              IconButton(
-                onPressed: () {},
-                icon: const Icon(Icons.notifications_none_rounded),
               ),
               const SizedBox(width: 4),
             ],

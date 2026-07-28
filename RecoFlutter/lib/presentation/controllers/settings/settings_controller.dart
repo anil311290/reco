@@ -28,6 +28,8 @@ class SettingsController extends GetxController {
   final NetworkMonitorService _networkMonitorService;
 
   final isLoading = false.obs;
+  final isRefreshing = false.obs;
+  final refreshTurns = 0.0.obs;
   final isRefreshingProfile = false.obs;
   final isSyncTriggering = false.obs;
   final isLoggingOut = false.obs;
@@ -166,7 +168,16 @@ class SettingsController extends GetxController {
   }
 
   Future<void> refreshAll() async {
-    await loadSettingsData();
+    if (isRefreshing.value) {
+      return;
+    }
+    isRefreshing.value = true;
+    refreshTurns.value += 1;
+    try {
+      await loadSettingsData();
+    } finally {
+      isRefreshing.value = false;
+    }
   }
 
   void toggleTheme() {
@@ -180,18 +191,95 @@ class SettingsController extends GetxController {
   }
 
   Future<void> confirmLogout() async {
-    Get.defaultDialog(
-      title: 'Logout',
-      middleText: 'Current session logout karna hai?',
-      textCancel: 'Cancel',
-      textConfirm: 'Logout',
-      confirmTextColor: Colors.white,
-      buttonColor: Get.theme.colorScheme.error,
-      cancelTextColor: Get.theme.colorScheme.onSurfaceVariant,
-      onConfirm: () {
-        Get.back<void>();
-        logout();
-      },
+    final theme = Get.theme;
+    final scheme = theme.colorScheme;
+
+    await Get.dialog<void>(
+      Dialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(10),
+        ),
+        insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              Row(
+                children: <Widget>[
+                  Container(
+                    width: 40,
+                    height: 40,
+                    decoration: BoxDecoration(
+                      color: scheme.error.withValues(alpha: .10),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Icon(
+                      Icons.logout_rounded,
+                      color: scheme.error,
+                      size: 20,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      'Logout',
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'Do you want to log out of the current session?',
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: scheme.onSurfaceVariant,
+                  height: 1.35,
+                ),
+              ),
+              const SizedBox(height: 20),
+              Row(
+                children: <Widget>[
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: () => Get.back<void>(),
+                      style: OutlinedButton.styleFrom(
+                        minimumSize: const Size.fromHeight(46),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                      ),
+                      child: const Text('Cancel'),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: FilledButton(
+                      onPressed: () {
+                        Get.back<void>();
+                        logout();
+                      },
+                      style: FilledButton.styleFrom(
+                        backgroundColor: scheme.error,
+                        foregroundColor: scheme.onError,
+                        minimumSize: const Size.fromHeight(46),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                      ),
+                      child: const Text('Logout'),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+      barrierDismissible: true,
     );
   }
 

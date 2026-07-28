@@ -99,13 +99,6 @@ class ReportsScreen extends StatelessWidget {
             fontSize: 15,
           ),
         ),
-        actions: <Widget>[
-          IconButton(
-            onPressed: () {},
-            icon: const Icon(Icons.notifications_none_rounded),
-          ),
-          const SizedBox(width: 4),
-        ],
       ),
       body: LayoutBuilder(
         builder: (context, constraints) {
@@ -115,22 +108,135 @@ class ReportsScreen extends StatelessWidget {
               : width >= 760
                   ? 3
                   : width >= 440
-                      ? 2
-                      : 1;
+                  ? 2
+                  : 1;
           final double mainAxisExtent = crossAxisCount == 1 ? 130 : 186;
-          return GridView.builder(
+          return ListView(
             padding: const EdgeInsets.all(14),
-            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: crossAxisCount,
-              crossAxisSpacing: 10,
-              mainAxisSpacing: 10,
-              mainAxisExtent: mainAxisExtent,
-
-            ),
-            itemCount: items.length,
-            itemBuilder: (context, index) => ReportFeatureCard(item: items[index]),
+            children: <Widget>[
+              _ReportsHeroCard(reportCount: items.length),
+              const SizedBox(height: 14),
+              GridView.builder(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: crossAxisCount,
+                  crossAxisSpacing: 10,
+                  mainAxisSpacing: 10,
+                  mainAxisExtent: mainAxisExtent,
+                ),
+                itemCount: items.length,
+                itemBuilder: (context, index) =>
+                    ReportFeatureCard(item: items[index]),
+              ),
+            ],
           );
         },
+      ),
+    );
+  }
+}
+
+class _ReportsHeroCard extends StatelessWidget {
+  const _ReportsHeroCard({required this.reportCount});
+
+  final int reportCount;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final primary = theme.colorScheme.primary;
+
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: <Color>[
+            primary.withValues(alpha: .12),
+            primary.withValues(alpha: .05),
+            theme.cardColor,
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(
+          color: primary.withValues(alpha: .16),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            decoration: BoxDecoration(
+              color: primary.withValues(alpha: .10),
+              borderRadius: BorderRadius.circular(999),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: <Widget>[
+                Icon(
+                  FontAwesomeIcons.chartSimple,
+                  size: 13,
+                  color: primary,
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  'Books & Statements',
+                  style: theme.textTheme.labelLarge?.copyWith(
+                    color: primary,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 14),
+          Text(
+            'Financial Reports',
+            style: theme.textTheme.titleLarge?.copyWith(
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            'Tally-style sequence: books first, then trial balance and statutory statements, then receivables and payables.',
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+              height: 1.4,
+            ),
+          ),
+          const SizedBox(height: 14),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+            decoration: BoxDecoration(
+              color: theme.cardColor,
+              borderRadius: BorderRadius.circular(999),
+              border: Border.all(
+                color: theme.dividerColor.withValues(alpha: .35),
+              ),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: <Widget>[
+                Icon(
+                  FontAwesomeIcons.tableCellsLarge,
+                  size: 13,
+                  color: const Color(0xFF2563EB),
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  '$reportCount report views',
+                  style: theme.textTheme.labelLarge?.copyWith(
+                    fontWeight: FontWeight.w700,
+                    color: const Color(0xFF2563EB),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }

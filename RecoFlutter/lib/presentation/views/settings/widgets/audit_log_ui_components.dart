@@ -170,35 +170,63 @@ class AuditLogCard extends StatelessWidget {
               // ── Bottom info row ──
               const SizedBox(height: 8),
               Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: <Widget>[
-                  Icon(
-                    Icons.person_outline_rounded,
-                    size: 13,
-                    color: theme.colorScheme.onSurfaceVariant.withValues(alpha: .6),
-                  ),
-                  const SizedBox(width: 3),
-                  Text(
-                    user,
-                    style: theme.textTheme.labelSmall?.copyWith(
-                      color: theme.colorScheme.onSurfaceVariant,
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: <Widget>[
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: <Widget>[
+                            Icon(
+                              Icons.person_outline_rounded,
+                              size: 13,
+                              color: theme.colorScheme.onSurfaceVariant.withValues(alpha: .6),
+                            ),
+                            const SizedBox(width: 3),
+                            Expanded(
+                              child: Text(
+                                user,
+                                maxLines: 2,
+                                softWrap: true,
+                                overflow: TextOverflow.visible,
+                                style: theme.textTheme.labelSmall?.copyWith(
+                                  color: theme.colorScheme.onSurfaceVariant,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        if (ip.isNotEmpty) ...<Widget>[
+                          const SizedBox(height: 4),
+                          Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: <Widget>[
+                              Icon(
+                                Icons.lan_rounded,
+                                size: 13,
+                                color: theme.colorScheme.onSurfaceVariant.withValues(alpha: .6),
+                              ),
+                              const SizedBox(width: 3),
+                              Expanded(
+                                child: Text(
+                                  ip,
+                                  maxLines: 2,
+                                  softWrap: true,
+                                  overflow: TextOverflow.visible,
+                                  style: theme.textTheme.labelSmall?.copyWith(
+                                    color: theme.colorScheme.onSurfaceVariant,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ],
                     ),
                   ),
-                  if (ip.isNotEmpty) ...[
-                    const SizedBox(width: 10),
-                    Icon(
-                      Icons.lan_rounded,
-                      size: 13,
-                      color: theme.colorScheme.onSurfaceVariant.withValues(alpha: .6),
-                    ),
-                    const SizedBox(width: 3),
-                    Text(
-                      ip,
-                      style: theme.textTheme.labelSmall?.copyWith(
-                        color: theme.colorScheme.onSurfaceVariant,
-                      ),
-                    ),
-                  ],
-                  const Spacer(),
+                  const SizedBox(width: 8),
                   Icon(
                     Icons.chevron_right_rounded,
                     size: 18,

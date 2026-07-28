@@ -57,7 +57,7 @@ class ProfitLossReportScreen extends GetView<ProfitLossReportController> {
                     children: <Widget>[
                       ReportPrimaryButton(
                         label: 'Filter',
-                        icon: FontAwesomeIcons.filter,
+                        icon: FontAwesomeIcons.sliders,
                         onTap: controller.loadReport,
                       ),
                       ReportSecondaryButton(
@@ -193,7 +193,39 @@ class ProfitLossReportScreen extends GetView<ProfitLossReportController> {
                     final id = account is Map<String, dynamic> ? _asInt(account['id']) : null;
                     return ListTile(
                       contentPadding: const EdgeInsets.symmetric(horizontal: 12),
-                      title: Text(account is Map<String, dynamic> ? (account['account_name'] ?? '-').toString() : '-'),
+                      title: Row(
+                        children: <Widget>[
+                          Expanded(
+                            child: Text(
+                              account is Map<String, dynamic>
+                                  ? (account['account_name'] ?? '-').toString()
+                                  : '-',
+                              style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                                fontWeight: FontWeight.w700,
+                                color: id == null ? null : color,
+                                decoration: id == null ? null : TextDecoration.underline,
+                                decorationColor: id == null ? null : color.withValues(alpha: .45),
+                              ),
+                            ),
+                          ),
+                          if (id != null) ...<Widget>[
+                            const SizedBox(width: 8),
+                            Icon(
+                              Icons.arrow_outward_rounded,
+                              size: 14,
+                              color: color.withValues(alpha: .75),
+                            ),
+                          ],
+                        ],
+                      ),
+                      subtitle: id == null
+                          ? null
+                          : Text(
+                              'Tap to open ledger',
+                              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                color: Theme.of(context).colorScheme.onSurfaceVariant,
+                              ),
+                            ),
                       trailing: Text(
                         controller.formatCurrency(item['amount']),
                         style: TextStyle(color: color, fontWeight: FontWeight.w700),

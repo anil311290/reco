@@ -51,118 +51,464 @@ class _PartyHistoryScreenState extends State<PartyHistoryScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
     return Scaffold(
       appBar: AppBar(
         title: Text(
           'AR / AP History',
-          style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.w600,
-              ),
+          style: theme.textTheme.titleMedium?.copyWith(
+            fontWeight: FontWeight.w600,
+          ),
         ),
       ),
       body: Obx(
-        () => Column(
+        () => ListView(
+          padding: const EdgeInsets.all(10),
           children: <Widget>[
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-              child: Column(
-                children: <Widget>[
-                  _HeaderCard(controller: controller),
-                  const SizedBox(height: 12),
-                  Row(
-                    children: <Widget>[
-                      Expanded(
-                        child: CustomTextField(
-                          controller: controller.fromDateController,
-                          label: 'From Date',
-                          hintText: 'YYYY-MM-DD',
-                          readOnly: true,
-                          onTap: () => _pickDate(controller.fromDateController),
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: CustomTextField(
-                          controller: controller.toDateController,
-                          label: 'To Date',
-                          hintText: 'YYYY-MM-DD',
-                          readOnly: true,
-                          onTap: () => _pickDate(controller.toDateController),
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      SizedBox(
-                        height: 48,
-                        child: FilledButton(
-                          onPressed: controller.loadHistory,
-                          child: const Text('Apply'),
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
+            _buildPartyDetailCard(theme),
             const SizedBox(height: 12),
-            Expanded(
-              child: MasterSectionPadding(
-                child: MastersTableShell(
-                  isLoading: controller.isLoading.value,
-                  emptyText: 'No voucher relation found',
-                  minWidth: 1040,
-                  columns: <DataColumn2>[
-                    masterColumn(context, 'Date'),
-                    masterColumn(context, 'Voucher #'),
-                    masterColumn(context, 'Type'),
-                    masterColumn(context, 'Description', size: ColumnSize.L),
-                    masterColumn(context, 'Debit'),
-                    masterColumn(context, 'Credit'),
-                    masterColumn(context, 'Balance'),
-                  ],
-                  rows: controller.transactions.map((row) {
-                    return DataRow(
-                      cells: <DataCell>[
-                        masterTextCell(
-                          controller.formatDate((row['date'] ?? '').toString()),
-                        ),
-                        DataCell(
-                          InkWell(
-                            onTap: () => _openVoucher(row),
-                            child: Text(
-                              (row['voucher_number'] ?? '-').toString(),
-                              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                    color: Theme.of(context).colorScheme.primary,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                            ),
-                          ),
-                        ),
-                        masterTextCell((row['voucher_type'] ?? '-').toString()),
-                        masterTextCell((row['description'] ?? '-').toString()),
-                        masterTextCell(
-                          _cellAmount(controller, row['debit']),
-                        ),
-                        masterTextCell(
-                          _cellAmount(controller, row['credit']),
-                        ),
-                        masterTextCell(
-                          '${controller.formatCurrency(row['running_balance'])} ${(row['running_type'] ?? '').toString().toUpperCase()}',
-                        ),
-                      ],
-                    );
-                  }).toList(),
-                ),
-              ),
-            ),
+            _buildFilterRow(theme),
+            const SizedBox(height: 12),
+            _buildHistorySection(theme),
           ],
         ),
       ),
     );
   }
 
-  String _cellAmount(PartyHistoryController controller, dynamic value) {
-    final amount = value is num ? value.toDouble() : double.tryParse('$value') ?? 0;
-    return amount > 0 ? controller.formatCurrency(amount) : '-';
+  Widget _buildPartyDetailCard(ThemeData theme) {
+    final party = controller.party.value;
+
+    if (party == null) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    final isReceivable = party.type.toLowerCase() == 'customer' ||
+        party.type.toLowerCase() == 'both';
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(12),
+        gradient: LinearGradient(
+          colors: <Color>[
+            theme.cardColor,
+            theme.colorScheme.primary.withValues(alpha: .03),
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        border: Border.all(
+          color: theme.colorScheme.primary.withValues(alpha: .10),
+        ),
+        boxShadow: <BoxShadow>[
+          BoxShadow(
+            color: theme.colorScheme.shadow.withValues(alpha: .04),
+            blurRadius: 14,
+            offset: const Offset(0, 6),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          Row(
+            children: <Widget>[
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: <Widget>[
+                    Text(
+                      party.name,
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      '${party.partyCode} • ${party.type.toUpperCase()}',
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: theme.colorScheme.onSurfaceVariant,
+                        fontSize: 11.5,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 5,
+                ),
+                decoration: BoxDecoration(
+                  color: party.isActive
+                      ? const Color(0xFFDCFCE7)
+                      : theme.colorScheme.surfaceContainerHighest,
+                  borderRadius: BorderRadius.circular(999),
+                  border: Border.all(
+                    color: party.isActive
+                        ? const Color(0xFF86EFAC)
+                        : theme.dividerColor.withValues(alpha: .55),
+                  ),
+                ),
+                child: Text(
+                  party.isActive ? 'Active' : 'Inactive',
+                  style: TextStyle(
+                    fontSize: 11.5,
+                    fontWeight: FontWeight.w600,
+                    color: party.isActive
+                        ? const Color(0xFF15803D)
+                        : theme.colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          GridView.count(
+            crossAxisCount: 2,
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            mainAxisSpacing: 8,
+            crossAxisSpacing: 8,
+            childAspectRatio: 1.9,
+            children: <Widget>[
+              _detailTile(theme, 'Code', party.partyCode),
+              _detailTile(theme, 'Type', party.type.toUpperCase()),
+              _detailTile(theme, 'Mobile', party.mobile.isEmpty ? '-' : party.mobile),
+              _detailTile(theme, 'Email', party.email.isEmpty ? '-' : party.email),
+              _detailTile(theme, 'City', party.city.isEmpty ? '-' : party.city),
+              _detailTile(theme, 'State', party.state.isEmpty ? '-' : party.state),
+              _detailTile(
+                theme,
+                isReceivable ? 'Total Debit' : 'Debit',
+                controller.formatCurrency(controller.totalDebit.value),
+              ),
+              _detailTile(
+                theme,
+                isReceivable ? 'Total Credit' : 'Credit',
+                controller.formatCurrency(controller.totalCredit.value),
+              ),
+              _detailTile(
+                theme,
+                'Closing',
+                '${controller.formatCurrency(controller.closingBalance.value)} ${controller.closingType.value.toUpperCase()}',
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFilterRow(ThemeData theme) {
+    final accent = theme.colorScheme.primary;
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(12),
+        gradient: LinearGradient(
+          colors: <Color>[
+            accent.withValues(alpha: .06),
+            theme.colorScheme.surface,
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        border: Border.all(color: accent.withValues(alpha: .12)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          Row(
+            children: <Widget>[
+              Icon(Icons.tune_rounded, size: 16, color: accent),
+              const SizedBox(width: 8),
+              Text(
+                'Filters',
+                style: theme.textTheme.titleSmall?.copyWith(
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'Select date range to review linked voucher movement.',
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+              fontSize: 11.5,
+            ),
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: <Widget>[
+              Expanded(
+                child: CustomTextField(
+                  controller: controller.fromDateController,
+                  label: 'From Date',
+                  hintText: 'YYYY-MM-DD',
+                  readOnly: true,
+                  suffixIcon: Icons.calendar_today_outlined,
+                  bottomPadding: 0,
+                  onTap: () => _pickDate(controller.fromDateController),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: CustomTextField(
+                  controller: controller.toDateController,
+                  label: 'To Date',
+                  hintText: 'YYYY-MM-DD',
+                  readOnly: true,
+                  suffixIcon: Icons.calendar_today_outlined,
+                  bottomPadding: 0,
+                  onTap: () => _pickDate(controller.toDateController),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: SizedBox(
+              height: 38,
+              child: FilledButton.icon(
+                onPressed: controller.loadHistory,
+                style: FilledButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 8,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  textStyle: theme.textTheme.labelLarge?.copyWith(
+                    fontWeight: FontWeight.w700,
+                    fontSize: 12.5,
+                  ),
+                ),
+                icon: const Icon(Icons.filter_alt_rounded, size: 15),
+                label: const Text('Apply'),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildHistorySection(ThemeData theme) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(12),
+        color: theme.cardColor,
+        border: Border.all(
+          color: theme.dividerColor.withValues(alpha: .18),
+        ),
+        boxShadow: <BoxShadow>[
+          BoxShadow(
+            color: theme.colorScheme.shadow.withValues(alpha: .03),
+            blurRadius: 12,
+            offset: const Offset(0, 5),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          Row(
+            children: <Widget>[
+              Icon(
+                Icons.history_rounded,
+                size: 18,
+                color: theme.colorScheme.primary,
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'Voucher Movement',
+                  style: theme.textTheme.titleSmall?.copyWith(
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 5,
+                ),
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.primary.withValues(alpha: .08),
+                  borderRadius: BorderRadius.circular(999),
+                ),
+                child: Text(
+                  '${controller.transactions.length} entries',
+                  style: theme.textTheme.labelSmall?.copyWith(
+                    color: theme.colorScheme.primary,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'Voucher links, running balance, debit, and credit movement.',
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+              fontSize: 11.5,
+            ),
+          ),
+          const SizedBox(height: 10),
+          MastersTableShell(
+            isLoading: controller.isLoading.value,
+            emptyText: 'No voucher relation found',
+            minWidth: 1040,
+            columns: <DataColumn2>[
+              masterColumn(context, 'Date'),
+              masterColumn(context, 'Voucher #'),
+              masterColumn(context, 'Type'),
+              masterColumn(context, 'Description', size: ColumnSize.L),
+              masterColumn(context, 'Debit'),
+              masterColumn(context, 'Credit'),
+              masterColumn(context, 'Balance'),
+            ],
+            rows: controller.transactions.map((row) {
+              final debit = _amount(row['debit']);
+              final credit = _amount(row['credit']);
+              return DataRow(
+                cells: <DataCell>[
+                  masterTextCell(
+                    controller.formatDate((row['date'] ?? '').toString()),
+                  ),
+                  DataCell(
+                    InkWell(
+                      onTap: () => _openVoucher(row),
+                      borderRadius: BorderRadius.circular(8),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 2),
+                        child: Text(
+                          (row['voucher_number'] ?? '-').toString(),
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            color: theme.colorScheme.primary,
+                            fontWeight: FontWeight.w700,
+                            decoration: TextDecoration.underline,
+                            decorationColor: theme.colorScheme.primary.withValues(alpha: .45),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  DataCell(
+                    Center(
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 4,
+                        ),
+                        decoration: BoxDecoration(
+                          color: theme.colorScheme.primary.withValues(alpha: .08),
+                          borderRadius: BorderRadius.circular(999),
+                        ),
+                        child: Text(
+                          _titleCase((row['voucher_type'] ?? '-').toString()),
+                          style: theme.textTheme.labelSmall?.copyWith(
+                            color: theme.colorScheme.primary,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  masterTextCell((row['description'] ?? '-').toString()),
+                  DataCell(
+                    Center(
+                      child: Text(
+                        debit > 0 ? controller.formatCurrency(debit) : '-',
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          fontWeight: FontWeight.w700,
+                          color: debit > 0 ? const Color(0xFF2563EB) : null,
+                        ),
+                      ),
+                    ),
+                  ),
+                  DataCell(
+                    Center(
+                      child: Text(
+                        credit > 0 ? controller.formatCurrency(credit) : '-',
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          fontWeight: FontWeight.w700,
+                          color: credit > 0 ? const Color(0xFFF59E0B) : null,
+                        ),
+                      ),
+                    ),
+                  ),
+                  masterTextCell(
+                    '${controller.formatCurrency(row['running_balance'])} ${(row['running_type'] ?? '').toString().toUpperCase()}',
+                  ),
+                ],
+              );
+            }).toList(),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _detailTile(ThemeData theme, String label, String value) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      decoration: BoxDecoration(
+        color: theme.cardColor,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: theme.dividerColor.withValues(alpha: .18),
+        ),
+        boxShadow: <BoxShadow>[
+          BoxShadow(
+            color: theme.colorScheme.shadow.withValues(alpha: .025),
+            blurRadius: 8,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: <Widget>[
+          Text(
+            label,
+            style: theme.textTheme.labelSmall?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+              fontWeight: FontWeight.w600,
+              fontSize: 10.5,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            value,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: theme.textTheme.bodyMedium?.copyWith(
+              fontWeight: FontWeight.w700,
+              fontSize: 12.5,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  double _amount(dynamic value) {
+    if (value is num) {
+      return value.toDouble();
+    }
+    return double.tryParse(value?.toString() ?? '') ?? 0;
   }
 
   void _openVoucher(Map<String, dynamic> row) {
@@ -178,7 +524,7 @@ class _PartyHistoryScreenState extends State<PartyHistoryScreen> {
           partyName: controller.party.value?.name ?? '',
           date: (row['date'] ?? '').toString(),
           statusLabel: 'Posted',
-          amount: (row['debit'] is num ? row['debit'] : row['credit'] ?? 0).toDouble(),
+          amount: _amount(row['debit']) > 0 ? _amount(row['debit']) : _amount(row['credit']),
           narration: (row['description'] ?? '').toString(),
         ),
       ),
@@ -186,9 +532,10 @@ class _PartyHistoryScreenState extends State<PartyHistoryScreen> {
   }
 
   Future<void> _pickDate(TextEditingController target) async {
+    final current = DateTime.tryParse(target.text) ?? DateTime.now();
     final selected = await showDatePicker(
       context: context,
-      initialDate: DateTime.now(),
+      initialDate: current,
       firstDate: DateTime(2000),
       lastDate: DateTime(2100),
     );
@@ -202,99 +549,4 @@ class _PartyHistoryScreenState extends State<PartyHistoryScreen> {
       .where((part) => part.isNotEmpty)
       .map((part) => '${part[0].toUpperCase()}${part.substring(1)}')
       .join(' ');
-}
-
-class _HeaderCard extends StatelessWidget {
-  const _HeaderCard({required this.controller});
-
-  final PartyHistoryController controller;
-
-  @override
-  Widget build(BuildContext context) {
-    final party = controller.party.value;
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: Theme.of(context).cardColor,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Theme.of(context).dividerColor.withValues(alpha: .4)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: <Widget>[
-          Text(
-            party?.name ?? 'Party',
-            style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.w700,
-                ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            '${party?.partyCode ?? '-'} • ${(party?.type ?? '').toUpperCase()}',
-            style: Theme.of(context).textTheme.bodySmall,
-          ),
-          const SizedBox(height: 12),
-          Row(
-            children: <Widget>[
-              Expanded(
-                child: _StatTile(
-                  label: 'Debit',
-                  value: controller.formatCurrency(controller.totalDebit.value),
-                ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: _StatTile(
-                  label: 'Credit',
-                  value: controller.formatCurrency(controller.totalCredit.value),
-                ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: _StatTile(
-                  label: 'Closing',
-                  value:
-                      '${controller.formatCurrency(controller.closingBalance.value)} ${controller.closingType.value.toUpperCase()}',
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _StatTile extends StatelessWidget {
-  const _StatTile({required this.label, required this.value});
-
-  final String label;
-  final String value;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(10),
-      decoration: BoxDecoration(
-        color: Theme.of(context).scaffoldBackgroundColor,
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: <Widget>[
-          Text(label, style: Theme.of(context).textTheme.bodySmall),
-          const SizedBox(height: 4),
-          Text(
-            value,
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-            style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                  fontWeight: FontWeight.w700,
-                ),
-          ),
-        ],
-      ),
-    );
-  }
 }

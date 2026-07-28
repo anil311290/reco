@@ -3,6 +3,7 @@ import 'package:get/get.dart';
 
 import '../../../core/config/api_endpoints.dart';
 import 'base_report_controller.dart';
+import 'report_lookup_controller.dart';
 
 class LedgerReportController extends BaseReportController {
   LedgerReportController(super.repository, super.networkMonitorService);
@@ -24,9 +25,33 @@ class LedgerReportController extends BaseReportController {
   @override
   void onInit() {
     super.onInit();
-    if (accountId.value != null) {
-      loadReport();
+    _initialize();
+  }
+
+  Future<void> _initialize() async {
+    final lookup = Get.find<ReportLookupController>();
+    if (lookup.ledgerAccounts.isEmpty) {
+      await lookup.loadLedgerAccounts();
     }
+    if (accountId.value == null && lookup.ledgerAccounts.isNotEmpty) {
+      accountId.value = _asInt(lookup.ledgerAccounts.first['id']);
+    }
+    if (accountId.value != null) {
+      await loadReport();
+    }
+  }
+
+  Future<void> openLinkedLedger(int accountIdValue) async {
+    final lookup = Get.find<ReportLookupController>();
+    if (lookup.ledgerAccounts.isEmpty) {
+      await lookup.loadLedgerAccounts();
+    }
+    accountId.value = accountIdValue;
+    fromDateController.clear();
+    toDateController.clear();
+    reportData.clear();
+    hasLoadedOnce.value = false;
+    await loadReport();
   }
 
   @override
@@ -35,4 +60,6 @@ class LedgerReportController extends BaseReportController {
     toDateController.dispose();
     super.onClose();
   }
+
+  int? _asInt(dynamic value) => int.tryParse(value?.toString() ?? '');
 }

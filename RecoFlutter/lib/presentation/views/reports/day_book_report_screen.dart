@@ -4,11 +4,14 @@ import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:get/get.dart';
 
 import '../../../core/config/api_endpoints.dart';
+import '../../../data/models/transactions/transaction_entities.dart';
 import '../../controllers/reports/day_book_report_controller.dart';
 import '../../controllers/reports/report_lookup_controller.dart';
 import '../../widgets/common/custom_text_field.dart';
 import '../masters/widgets/masters_ui_components.dart';
+import '../masters/history/party_history_screen.dart';
 import 'ledger_report_screen.dart';
+import '../transactions/details/transaction_detail_screen.dart';
 import 'widgets/report_ui_components.dart';
 
 class DayBookReportScreen extends GetView<DayBookReportController> {
@@ -36,6 +39,9 @@ class DayBookReportScreen extends GetView<DayBookReportController> {
                   (report['rows'] as List).whereType<Map>(),
                 )
               : <Map<String, dynamic>>[];
+          final voucherCount = report is Map<String, dynamic> && report['vouchers'] is List
+              ? (report['vouchers'] as List).length
+              : rows.length;
           return RefreshIndicator(
             onRefresh: controller.loadReport,
             child: ListView(
@@ -77,7 +83,7 @@ class DayBookReportScreen extends GetView<DayBookReportController> {
                         children: <Widget>[
                           ReportPrimaryButton(
                             label: 'Filter',
-                            icon: FontAwesomeIcons.filter,
+                            icon: FontAwesomeIcons.sliders,
                             onTap: controller.loadReport,
                           ),
                           ReportSecondaryButton(
@@ -121,8 +127,8 @@ class DayBookReportScreen extends GetView<DayBookReportController> {
                           Expanded(
                             child: ReportStatCard(
                               label: 'Vouchers',
-                              value: '${rows.length}',
-                              note: 'Posted voucher lines',
+                              value: '$voucherCount',
+                              note: 'Posted vouchers for the day',
                               color: const Color(0xFF2563EB),
                               icon: FontAwesomeIcons.receipt,
                             ),
@@ -218,20 +224,50 @@ class DayBookReportScreen extends GetView<DayBookReportController> {
         final accountId = _asInt(row['account_id']);
         return DataRow(
           cells: <DataCell>[
-            masterTextCell((row['voucher_number'] ?? '-').toString()),
-            masterTextCell((row['voucher_type'] ?? '-').toString()),
-            DataCell(Center(
-              child: InkWell(
-                onTap: accountId == null
-                    ? null
-                    : () => Get.to(() => LedgerReportScreen(initialAccountId: accountId)),
-                child: Text((row['account_name'] ?? '-').toString(), textAlign: TextAlign.center, style: const TextStyle(fontSize: 13)),
+            DataCell(
+              Center(
+                child: ReportLinkText(
+                  (row['voucher_number'] ?? '-').toString(),
+                  onTap: _asInt(row['voucher_id']) == null
+                      ? null
+                      : () => Get.to(
+                            () => TransactionDetailScreen(
+                              record: _buildVoucherRecord(row),
+                            ),
+                          ),
+                ),
               ),
-            )),
-            masterTextCell((row['party_name'] ?? '-').toString()),
+            ),
+            masterTextCell((row['voucher_type'] ?? '-').toString()),
+            DataCell(
+              Center(
+                child: ReportLinkText(
+                  (row['account_name'] ?? '-').toString(),
+                  onTap: accountId == null
+                      ? null
+                      : () => Get.to(
+                            () => LedgerReportScreen(initialAccountId: accountId),
+                          ),
+                ),
+              ),
+            ),
+            DataCell(
+              Center(
+                child: ReportLinkText(
+                  (row['party_name'] ?? '-').toString(),
+                  onTap: _asInt(row['party_id']) == null
+                      ? null
+                      : () => Get.to(
+                            () => PartyHistoryScreen(
+                              partyId: _asInt(row['party_id'])!,
+                            ),
+                          ),
+                ),
+              ),
+            ),
             masterTextCell((row['narration'] ?? '-').toString()),
-            DataCell(Center(child: Text(controller.formatCurrency(row['debit']), textAlign: TextAlign.center, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)))),
-            DataCell(Center(child: Text(controller.formatCurrency(row['credit']), textAlign: TextAlign.center, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)))),
+            DataCell(Center(child: Text(controller.formatCurrency(row['debit']), textAlign: TextAlign.center, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: Color(0xFF16A34A))))),
+            DataCell(Center(child: Text(controller.formatCurrency(row['credit']), textAlign: TextAlign.center, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: Color(0xFFEF4444))))),
           ],
         );
       }),
@@ -250,8 +286,8 @@ class DayBookReportScreen extends GetView<DayBookReportController> {
               ),
             ),
           ),
-          DataCell(Center(child: Text(controller.formatCurrency(reportData['total_debit']), style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 13)))),
-          DataCell(Center(child: Text(controller.formatCurrency(reportData['total_credit']), style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 13)))),
+          DataCell(Center(child: Text(controller.formatCurrency(reportData['total_debit']), style: reportTotalRowTextStyle(context)?.copyWith(fontSize: 13)))),
+          DataCell(Center(child: Text(controller.formatCurrency(reportData['total_credit']), style: reportTotalRowTextStyle(context)?.copyWith(fontSize: 13)))),
         ],
       ),
     ];
@@ -280,4 +316,26 @@ class DayBookReportScreen extends GetView<DayBookReportController> {
   }
 
   int? _asInt(dynamic value) => int.tryParse(value?.toString() ?? '');
+
+  TransactionRecord _buildVoucherRecord(Map<String, dynamic> row) {
+    final payload = <String, dynamic>{
+      'id': row['voucher_id'],
+      'voucher_number': row['voucher_number'],
+      'voucher_type': row['voucher_type'],
+      'type_label': (row['voucher_type'] ?? '').toString(),
+      'voucher_date': row['date'] ?? controller.dateController.text,
+      'status': 'posted',
+      'party_id': row['party_id'],
+      'party': row['party_id'] == null
+          ? null
+          : <String, dynamic>{
+              'id': row['party_id'],
+              'name': row['party_name'],
+            },
+      'narration': row['narration'],
+      'total_debit': row['debit'] ?? row['credit'] ?? 0,
+    };
+
+    return TransactionRecord.fromVoucher(payload);
+  }
 }

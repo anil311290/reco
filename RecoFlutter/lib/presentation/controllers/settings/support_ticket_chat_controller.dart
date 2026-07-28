@@ -10,6 +10,8 @@ class SupportTicketChatController extends GetxController {
   final SupportTicketsRepository _repository;
 
   final isLoading = false.obs;
+  final isRefreshing = false.obs;
+  final refreshTurns = 0.0.obs;
   final isSending = false.obs;
   final currentTicket = Rxn<Map<String, dynamic>>();
   final replyController = TextEditingController();
@@ -50,7 +52,13 @@ class SupportTicketChatController extends GetxController {
     if (currentTicket.value == null) {
       return;
     }
-    await loadTicket(initialTicket: currentTicket.value!);
+    isRefreshing.value = true;
+    refreshTurns.value += 1;
+    try {
+      await loadTicket(initialTicket: currentTicket.value!);
+    } finally {
+      isRefreshing.value = false;
+    }
   }
 
   Future<void> sendReply() async {

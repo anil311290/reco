@@ -22,15 +22,6 @@ class TransactionsRepository extends OfflineFirstRepository {
       ..sort(_sortTransactions);
 
     if (localPayloads.isNotEmpty) {
-      if (await networkMonitorService.hasInternetNow()) {
-        unawaited(
-          refreshCollection(
-            module: module,
-            endpoint: endpoint,
-            queryParameters: queryParameters,
-          ),
-        );
-      }
       return localPayloads;
     }
 
@@ -102,6 +93,22 @@ class TransactionsRepository extends OfflineFirstRepository {
     }
   }
 
+  Future<void> updateRecord({
+    required String module,
+    required String endpoint,
+    required String localId,
+    String? serverId,
+    required Map<String, dynamic> payload,
+  }) async {
+    await queueUpdate(
+      module: module,
+      endpoint: endpoint,
+      payload: payload,
+      localId: localId,
+      serverId: serverId,
+    );
+  }
+
   Future<void> deleteRecord({
     required String module,
     required String endpoint,
@@ -117,6 +124,28 @@ class TransactionsRepository extends OfflineFirstRepository {
       serverId: serverId,
     );
     await invalidateRelatedCaches(module: module);
+  }
+
+  Future<Map<String, dynamic>> fetchRecordDetail({
+    required String endpoint,
+    Map<String, dynamic>? queryParameters,
+  }) async {
+    final response = await apiClient.get<Map<String, dynamic>>(
+      endpoint,
+      queryParameters: queryParameters,
+    );
+    return response.data ?? <String, dynamic>{};
+  }
+
+  Future<Map<String, dynamic>> exportFile({
+    required String endpoint,
+    Map<String, dynamic>? queryParameters,
+  }) async {
+    final response = await apiClient.get<Map<String, dynamic>>(
+      endpoint,
+      queryParameters: queryParameters,
+    );
+    return response.data ?? <String, dynamic>{};
   }
 
   List<Map<String, dynamic>> _extractList(dynamic data) {

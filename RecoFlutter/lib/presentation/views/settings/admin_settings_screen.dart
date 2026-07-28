@@ -1,13 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
+import '../../../core/utils/app_alert_dialog.dart';
 import '../../../data/models/masters/master_entities.dart';
+import '../../../data/repositories/settings/subscriptions_repository.dart';
 import '../../controllers/settings/admin_settings_controller.dart';
 import '../../controllers/settings/financial_years_controller.dart';
+import '../../controllers/settings/subscription_controller.dart';
 import '../../widgets/common/common_button.dart';
 import '../../widgets/common/custom_text_field.dart';
 import '../../../data/repositories/masters/financial_years_repository.dart';
 import 'forms/financial_year_form_sheet.dart';
+import 'subscription_screen.dart';
 
 class AdminSettingsScreen extends GetView<AdminSettingsController> {
   const AdminSettingsScreen({super.key});
@@ -18,7 +22,7 @@ class AdminSettingsScreen extends GetView<AdminSettingsController> {
     return Scaffold(
       appBar: AppBar(
         title: Text(
-          'Admin Settings',
+          'Settings',
           style: theme.textTheme.titleMedium?.copyWith(
             fontWeight: FontWeight.w600,
           ),
@@ -45,6 +49,7 @@ class AdminSettingsScreen extends GetView<AdminSettingsController> {
             Tab(text: 'Theme'),
             Tab(text: 'Accounting'),
             Tab(text: 'Financial Year'),
+            Tab(text: 'Subscription'),
           ],
         ),
       ),
@@ -58,13 +63,19 @@ class AdminSettingsScreen extends GetView<AdminSettingsController> {
                   _ThemeTab(controller: controller),
                   _AccountingTab(controller: controller),
                   _FinancialYearTab(controller: controller),
+                  _SubscriptionTab(),
                 ],
               ),
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => Get.to(() => const FinancialYearFormSheet()),
-        icon: const Icon(Icons.add_rounded),
-        label: const Text('Add FY'),
+      floatingActionButton: AnimatedBuilder(
+        animation: controller.tabController,
+        builder: (context, _) => controller.tabController.index == 3
+            ? FloatingActionButton.extended(
+                onPressed: () => Get.to(() => const FinancialYearFormSheet()),
+                icon: const Icon(Icons.add_rounded),
+                label: const Text('Add FY'),
+              )
+            : const SizedBox.shrink(),
       ),
     );
   }
@@ -352,37 +363,6 @@ class _ThreeColumnRow extends StatelessWidget {
   }
 }
 
-class _ThemeTab extends StatelessWidget {
-  const _ThemeTab({required this.controller});
-  final AdminSettingsController controller;
-  @override
-  Widget build(BuildContext context) {
-    return ListView(
-      padding: const EdgeInsets.all(16),
-      children: <Widget>[
-        CustomTextField(label: 'Primary Color', controller: controller.primaryColorController),
-        CustomTextField(label: 'Secondary Color', controller: controller.secondaryColorController),
-        CustomTextField(label: 'Sidebar Color', controller: controller.sidebarColorController),
-        CustomTextField(label: 'Header Color', controller: controller.headerColorController),
-        Obx(
-          () => SwitchListTile(
-            value: controller.themeDarkMode.value,
-            title: const Text('Dark Mode'),
-            onChanged: (value) => controller.themeDarkMode.value = value,
-          ),
-        ),
-        Obx(
-          () => CommonButton(
-            text: 'Save Theme Settings',
-            isLoading: controller.isSavingTheme.value,
-            onPressed: controller.saveTheme,
-          ),
-        ),
-      ],
-    );
-  }
-}
-
 class _AccountingTab extends StatelessWidget {
   const _AccountingTab({required this.controller});
   final AdminSettingsController controller;
@@ -448,6 +428,297 @@ class _AccountingTab extends StatelessWidget {
   }
 }
 
+class _ThemeTab extends StatelessWidget {
+  const _ThemeTab({required this.controller});
+
+  final AdminSettingsController controller;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Obx(
+      () => ListView(
+        padding: const EdgeInsets.all(16),
+        children: <Widget>[
+          Container(
+            margin: const EdgeInsets.only(bottom: 16),
+            padding: const EdgeInsets.all(18),
+            decoration: BoxDecoration(
+              color: theme.cardColor,
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(
+                color: theme.dividerColor.withValues(alpha: .45),
+              ),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                Text(
+                  'Theme Customization',
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'Same flow as web settings. Update colors and save them permanently.',
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                _TwoColumnRow(
+                  left: CustomTextField(
+                    label: 'Primary Color',
+                    controller: controller.primaryColorController,
+                    hintText: '#1f6feb',
+                  ),
+                  right: CustomTextField(
+                    label: 'Secondary Color',
+                    controller: controller.secondaryColorController,
+                    hintText: '#6b7280',
+                  ),
+                ),
+                _TwoColumnRow(
+                  left: CustomTextField(
+                    label: 'Sidebar Color',
+                    controller: controller.sidebarColorController,
+                    hintText: '#ffffff',
+                  ),
+                  right: CustomTextField(
+                    label: 'Header Color',
+                    controller: controller.headerColorController,
+                    hintText: '#ffffff',
+                  ),
+                ),
+                SwitchListTile(
+                  contentPadding: EdgeInsets.zero,
+                  value: controller.themeDarkMode.value,
+                  onChanged: (value) => controller.themeDarkMode.value = value,
+                  title: Text(
+                    'Dark Mode',
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  subtitle: const Text('Save theme preference for your company'),
+                ),
+                const SizedBox(height: 8),
+                _ThemePreviewCard(controller: controller),
+                const SizedBox(height: 16),
+                CommonButton(
+                  text: 'Save Theme Settings',
+                  isLoading: controller.isSavingTheme.value,
+                  onPressed: controller.saveTheme,
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ThemePreviewCard extends StatelessWidget {
+  const _ThemePreviewCard({required this.controller});
+
+  final AdminSettingsController controller;
+
+  Color _parseColor(String value, Color fallback) {
+    final hex = value.trim().replaceFirst('#', '');
+    if (hex.length != 6) {
+      return fallback;
+    }
+    final parsed = int.tryParse(hex, radix: 16);
+    if (parsed == null) {
+      return fallback;
+    }
+    return Color(0xFF000000 | parsed);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final primary = _parseColor(
+      controller.primaryColorController.text,
+      theme.colorScheme.primary,
+    );
+    final secondary = _parseColor(
+      controller.secondaryColorController.text,
+      theme.colorScheme.secondary,
+    );
+    final sidebar = _parseColor(
+      controller.sidebarColorController.text,
+      theme.colorScheme.surfaceContainerLowest,
+    );
+    final header = _parseColor(
+      controller.headerColorController.text,
+      theme.colorScheme.surface,
+    );
+
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(
+          color: theme.dividerColor.withValues(alpha: .45),
+        ),
+      ),
+      child: Column(
+        children: <Widget>[
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            decoration: BoxDecoration(
+              color: header,
+              borderRadius: const BorderRadius.vertical(
+                top: Radius.circular(18),
+              ),
+            ),
+            child: Text(
+              'Live Preview',
+              style: theme.textTheme.bodyMedium?.copyWith(
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+          SizedBox(
+            height: 154,
+            child: Row(
+              children: <Widget>[
+                Container(
+                  width: 92,
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: sidebar,
+                    borderRadius: const BorderRadius.only(
+                      bottomLeft: Radius.circular(18),
+                    ),
+                  ),
+                  child: Column(
+                    children: <Widget>[
+                      Container(
+                        height: 10,
+                        decoration: BoxDecoration(
+                          color: primary,
+                          borderRadius: BorderRadius.circular(999),
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      Container(
+                        height: 10,
+                        decoration: BoxDecoration(
+                          color: secondary.withValues(alpha: .65),
+                          borderRadius: BorderRadius.circular(999),
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      Container(
+                        height: 10,
+                        decoration: BoxDecoration(
+                          color: secondary.withValues(alpha: .35),
+                          borderRadius: BorderRadius.circular(999),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.all(14),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: <Widget>[
+                        Container(
+                          height: 52,
+                          decoration: BoxDecoration(
+                            color: theme.colorScheme.surfaceContainerLowest,
+                            borderRadius: BorderRadius.circular(14),
+                            border: Border.all(
+                              color: theme.dividerColor.withValues(alpha: .35),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 10),
+                        Container(
+                          width: 110,
+                          height: 34,
+                          decoration: BoxDecoration(
+                            color: primary,
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _SubscriptionTab extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return ListView(
+      padding: const EdgeInsets.all(16),
+      children: <Widget>[
+        Container(
+          padding: const EdgeInsets.all(18),
+          decoration: BoxDecoration(
+            color: theme.cardColor,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+              color: theme.dividerColor.withValues(alpha: .45),
+            ),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              Text(
+                'Subscription',
+                style: theme.textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                'Review active plan, available plans, invoices and payments.',
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+              ),
+              const SizedBox(height: 16),
+              CommonButton(
+                text: 'Open Subscription Module',
+                onPressed: () {
+                  Get.to(
+                    () => const SubscriptionScreen(),
+                    binding: BindingsBuilder(
+                      () {
+                        Get.put(
+                          SubscriptionController(
+                            Get.find<SubscriptionsRepository>(),
+                          ),
+                        );
+                      },
+                    ),
+                  );
+                },
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
 class _FinancialYearTab extends StatefulWidget {
   const _FinancialYearTab({required this.controller});
   final AdminSettingsController controller;
@@ -477,24 +748,11 @@ class _FinancialYearTabState extends State<_FinancialYearTab> {
   }
 
   Future<bool> _confirmAction(String title, String message) async {
-    final result = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(title),
-        content: Text(message),
-        actions: <Widget>[
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Confirm'),
-          ),
-        ],
-      ),
+    return AppAlertDialog.confirm(
+      title: title,
+      message: message,
+      confirmText: 'Confirm',
     );
-    return result == true;
   }
 
   @override

@@ -1,4 +1,5 @@
 import 'package:data_table_2/data_table_2.dart';
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:get/get.dart';
@@ -8,6 +9,7 @@ import '../../../data/models/transactions/transaction_entities.dart';
 import '../../controllers/reports/ledger_report_controller.dart';
 import '../../controllers/reports/report_lookup_controller.dart';
 import '../../widgets/common/custom_text_field.dart';
+import '../masters/history/party_history_screen.dart';
 import '../masters/widgets/masters_ui_components.dart';
 import '../transactions/details/transaction_detail_screen.dart';
 import 'ledger_history_screen.dart';
@@ -30,8 +32,7 @@ class _LedgerReportScreenState extends State<LedgerReportScreen> {
     super.initState();
     controller = Get.find<LedgerReportController>();
     if (widget.initialAccountId != null) {
-      controller.accountId.value = widget.initialAccountId;
-      controller.loadReport();
+      unawaited(controller.openLinkedLedger(widget.initialAccountId!));
     }
   }
 
@@ -51,6 +52,10 @@ class _LedgerReportScreenState extends State<LedgerReportScreen> {
           return const ReportLoadingView();
         }
         final report = controller.reportData['data'];
+        final selectedAccount =
+            report is Map<String, dynamic> && report['account'] is Map<String, dynamic>
+                ? Map<String, dynamic>.from(report['account'] as Map<String, dynamic>)
+                : null;
         final entries = report is Map<String, dynamic> && report['entries'] is List
             ? List<Map<String, dynamic>>.from(
                 (report['entries'] as List).whereType<Map>(),
@@ -98,7 +103,7 @@ class _LedgerReportScreenState extends State<LedgerReportScreen> {
                     children: <Widget>[
                       ReportPrimaryButton(
                         label: 'Filter',
-                        icon: FontAwesomeIcons.filter,
+                        icon: FontAwesomeIcons.sliders,
                         onTap: controller.loadReport,
                       ),
                       ReportSecondaryButton(
@@ -124,23 +129,75 @@ class _LedgerReportScreenState extends State<LedgerReportScreen> {
               ),
             ),
             const SizedBox(height: 12),
-            if (report is Map<String, dynamic>) ...<Widget>[
-              Row(
-                children: <Widget>[
-                  Expanded(
-                    child: ReportStatCard(
-                      label: 'Opening Balance',
-                      value: controller.formatCurrency(
-                        (report['opening_balance'] as Map?)?['balance'],
-                      ),
-                      note: ((report['opening_balance'] as Map?)?['type'] ?? '-')
-                          .toString()
-                          .toUpperCase(),
-                      color: const Color(0xFF2563EB),
-                      icon: FontAwesomeIcons.circlePlay,
+            if (report is! Map<String, dynamic>)
+              ReportSectionCard(
+                title: 'Select an account',
+                icon: FontAwesomeIcons.bookOpenReader,
+                iconColor: const Color(0xFF475569),
+                child: Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).cardColor,
+                    borderRadius: BorderRadius.circular(18),
+                    border: Border.all(
+                      color: Theme.of(context).dividerColor.withValues(alpha: .18),
                     ),
                   ),
-                  const SizedBox(width: 10),
+                  child: Text(
+                    'Choose a ledger and date range to view voucher-wise movement and running balance.',
+                    style: Theme.of(context).textTheme.bodyMedium,
+                  ),
+                ),
+              )
+            else ...<Widget>[
+              if (selectedAccount != null) ...<Widget>[
+                Row(
+                  children: <Widget>[
+                    Expanded(
+                      child: ReportStatCard(
+                        label: 'Account',
+                        value: (selectedAccount['account_code'] ?? '-').toString(),
+                        note: (selectedAccount['account_name'] ?? 'Ledger Account').toString(),
+                        color: const Color(0xFF0F766E),
+                        icon: FontAwesomeIcons.bookBookmark,
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: ReportStatCard(
+                        label: 'Opening Balance',
+                        value: controller.formatCurrency(
+                          (report['opening_balance'] as Map?)?['balance'],
+                        ),
+                        note: ((report['opening_balance'] as Map?)?['type'] ?? '-')
+                            .toString()
+                            .toUpperCase(),
+                        color: const Color(0xFF2563EB),
+                        icon: FontAwesomeIcons.circlePlay,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 10),
+              ],
+              Row(
+                children: <Widget>[
+                  if (selectedAccount == null)
+                    Expanded(
+                      child: ReportStatCard(
+                        label: 'Opening Balance',
+                        value: controller.formatCurrency(
+                          (report['opening_balance'] as Map?)?['balance'],
+                        ),
+                        note: ((report['opening_balance'] as Map?)?['type'] ?? '-')
+                            .toString()
+                            .toUpperCase(),
+                        color: const Color(0xFF2563EB),
+                        icon: FontAwesomeIcons.circlePlay,
+                      ),
+                    ),
+                  if (selectedAccount == null) const SizedBox(width: 10),
                   Expanded(
                     child: ReportStatCard(
                       label: 'Closing Balance',
@@ -198,7 +255,43 @@ class _LedgerReportScreenState extends State<LedgerReportScreen> {
       );
     }
 
+    final openingBalance = reportData['opening_balance'] is Map
+        ? Map<String, dynamic>.from(reportData['opening_balance'] as Map)
+        : <String, dynamic>{};
+
     final tableRows = <DataRow>[
+      DataRow(
+        color: WidgetStatePropertyAll(
+          Theme.of(context).colorScheme.primary.withValues(alpha: .06),
+        ),
+        cells: <DataCell>[
+          const DataCell(SizedBox.shrink()),
+          const DataCell(SizedBox.shrink()),
+          DataCell(
+            Text(
+              'Opening Balance',
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+          const DataCell(SizedBox.shrink()),
+          const DataCell(Center(child: Text('-'))),
+          const DataCell(Center(child: Text('-'))),
+          DataCell(
+            Center(
+              child: Text(
+                '${controller.formatCurrency(openingBalance['balance'])} ${(openingBalance['type'] ?? '').toString().toUpperCase()}',
+                textAlign: TextAlign.center,
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ),
+          ),
+          const DataCell(SizedBox.shrink()),
+        ],
+      ),
       ...List<DataRow>.generate(entries.length, (index) {
         final entry = entries[index];
         final voucher = entry['voucher'] is Map
@@ -215,9 +308,35 @@ class _LedgerReportScreenState extends State<LedgerReportScreen> {
         return DataRow(
           cells: <DataCell>[
             masterTextCell(controller.formatDate((entry['transaction_date'] ?? '').toString())),
-            masterTextCell((voucher['voucher_number'] ?? '-').toString()),
+            DataCell(
+              Center(
+                child: ReportLinkText(
+                  (voucher['voucher_number'] ?? '-').toString(),
+                  onTap: voucher.isEmpty
+                      ? null
+                      : () => Get.to(
+                            () => TransactionDetailScreen(
+                              record: _buildVoucherRecord(entry, voucher, party),
+                            ),
+                          ),
+                ),
+              ),
+            ),
             masterTextCell((entry['narration'] ?? entry['description'] ?? '-').toString()),
-            masterTextCell((party['name'] ?? '-').toString()),
+            DataCell(
+              Center(
+                child: ReportLinkText(
+                  (party['name'] ?? '-').toString(),
+                  onTap: _asInt(entry['party_id']) == null
+                      ? null
+                      : () => Get.to(
+                            () => PartyHistoryScreen(
+                              partyId: _asInt(entry['party_id'])!,
+                            ),
+                          ),
+                ),
+              ),
+            ),
             DataCell(Center(
               child: Text(
                 debit > 0 ? controller.formatCurrency(debit) : '-',
@@ -280,9 +399,9 @@ class _LedgerReportScreenState extends State<LedgerReportScreen> {
             ),
           ),
           const DataCell(SizedBox.shrink()),
-          DataCell(Center(child: Text(controller.formatCurrency(reportData['total_debit']), style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 13)))),
-          DataCell(Center(child: Text(controller.formatCurrency(reportData['total_credit']), style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 13)))),
-          DataCell(Center(child: Text('${controller.formatCurrency((reportData['closing_balance'] as Map?)?['balance'])} ${((reportData['closing_balance'] as Map?)?['type'] ?? '').toString().toUpperCase()}', style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 13)))),
+          DataCell(Center(child: Text(controller.formatCurrency(reportData['total_debit']), style: reportTotalRowTextStyle(context)?.copyWith(fontSize: 13)))),
+          DataCell(Center(child: Text(controller.formatCurrency(reportData['total_credit']), style: reportTotalRowTextStyle(context)?.copyWith(fontSize: 13)))),
+          DataCell(Center(child: Text('${controller.formatCurrency((reportData['closing_balance'] as Map?)?['balance'])} ${((reportData['closing_balance'] as Map?)?['type'] ?? '').toString().toUpperCase()}', style: reportTotalRowTextStyle(context)?.copyWith(fontSize: 13)))),
           const DataCell(SizedBox.shrink()),
         ],
       ),

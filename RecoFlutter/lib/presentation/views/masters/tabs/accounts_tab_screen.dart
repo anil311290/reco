@@ -3,6 +3,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
+import '../../../../core/utils/app_alert_dialog.dart';
 import '../../../../data/models/masters/master_entities.dart';
 import '../../../controllers/masters/accounts_controller.dart';
 import '../../../widgets/common/custom_text_field.dart';
@@ -97,7 +98,7 @@ class AccountsTabScreen extends GetView<AccountsController> {
                                 icon: Icons.delete_outline_rounded,
                                 tooltip: 'Delete',
                                 color: Theme.of(context).colorScheme.error,
-                                onTap: () => controller.deleteItem(item),
+                                onTap: () => _confirmDelete(item),
                               ),
                             ],
                           ),
@@ -116,6 +117,17 @@ class AccountsTabScreen extends GetView<AccountsController> {
 
   Future<void> _openForm(BuildContext context, {AccountEntity? entity}) async {
     await Get.to(() => AccountFormSheet(entity: entity));
+  }
+
+  Future<void> _confirmDelete(AccountEntity item) async {
+    final confirmed = await AppAlertDialog.confirmDelete(
+      title: 'Delete Ledger',
+      message:
+          'Are you sure you want to delete "${item.accountName}"?',
+    );
+    if (confirmed) {
+      await controller.deleteItem(item);
+    }
   }
 
   void _openFilters(BuildContext context) {

@@ -60,7 +60,7 @@ class TrialBalanceReportScreen extends GetView<TrialBalanceReportController> {
                     children: <Widget>[
                       ReportPrimaryButton(
                         label: 'Filter',
-                        icon: FontAwesomeIcons.filter,
+                        icon: FontAwesomeIcons.sliders,
                         onTap: controller.loadReport,
                       ),
                       ReportSecondaryButton(
@@ -181,20 +181,37 @@ class TrialBalanceReportScreen extends GetView<TrialBalanceReportController> {
         final accountId = account is Map<String, dynamic> ? _asInt(account['id']) : null;
         return DataRow(
           cells: <DataCell>[
-            DataCell(Center(
-              child: InkWell(
-                onTap: accountId == null ? null : () => Get.to(() => LedgerReportScreen(initialAccountId: accountId)),
-                child: Text(
-                  account is Map<String, dynamic> ? (account['account_code'] ?? '-').toString() : '-',
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(fontSize: 13),
+            DataCell(
+              Center(
+                child: ReportLinkText(
+                  account is Map<String, dynamic>
+                      ? (account['account_code'] ?? '-').toString()
+                      : '-',
+                  onTap: accountId == null
+                      ? null
+                      : () => Get.to(
+                            () => LedgerReportScreen(initialAccountId: accountId),
+                          ),
                 ),
               ),
-            )),
-            masterTextCell(account is Map<String, dynamic> ? (account['account_name'] ?? '-').toString() : '-'),
+            ),
+            DataCell(
+              Center(
+                child: ReportLinkText(
+                  account is Map<String, dynamic>
+                      ? (account['account_name'] ?? '-').toString()
+                      : '-',
+                  onTap: accountId == null
+                      ? null
+                      : () => Get.to(
+                            () => LedgerReportScreen(initialAccountId: accountId),
+                          ),
+                ),
+              ),
+            ),
             masterTextCell(account is Map<String, dynamic> ? (account['account_type'] ?? '-').toString() : '-'),
-            DataCell(Center(child: Text(controller.formatCurrency(item['debit']), textAlign: TextAlign.center, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)))),
-            DataCell(Center(child: Text(controller.formatCurrency(item['credit']), textAlign: TextAlign.center, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)))),
+            DataCell(Center(child: Text(controller.formatCurrency(item['debit']), textAlign: TextAlign.center, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: Color(0xFF2563EB))))),
+            DataCell(Center(child: Text(controller.formatCurrency(item['credit']), textAlign: TextAlign.center, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: Color(0xFFF59E0B))))),
           ],
         );
       }),
@@ -209,8 +226,8 @@ class TrialBalanceReportScreen extends GetView<TrialBalanceReportController> {
             ),
           ),
           const DataCell(SizedBox.shrink()),
-          DataCell(Center(child: Text(controller.formatCurrency(reportData['total_debit']), style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 13)))),
-          DataCell(Center(child: Text(controller.formatCurrency(reportData['total_credit']), style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 13)))),
+          DataCell(Center(child: Text(controller.formatCurrency(reportData['total_debit']), style: reportTotalRowTextStyle(context)?.copyWith(fontSize: 13)))),
+          DataCell(Center(child: Text(controller.formatCurrency(reportData['total_credit']), style: reportTotalRowTextStyle(context)?.copyWith(fontSize: 13)))),
         ],
       ),
     ];

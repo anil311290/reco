@@ -17,7 +17,7 @@ class VoucherFormScreen<T extends BaseVoucherFormController>
     return Scaffold(
       appBar: AppBar(
         title: Text(
-          controller.title,
+          controller.isEditing ? 'Edit ${controller.title}' : controller.title,
           style: Theme.of(context).textTheme.titleMedium?.copyWith(
             fontWeight: FontWeight.w600,
           ),
@@ -25,36 +25,38 @@ class VoucherFormScreen<T extends BaseVoucherFormController>
       ),
       bottomNavigationBar: Obx(
         () => TransactionSubmitBar(
-          text: 'Save ${controller.title}',
+          text: controller.isEditing
+              ? 'Update ${controller.title}'
+              : 'Save ${controller.title}',
           isLoading: controller.isSubmitting.value,
           onPressed: controller.submit,
         ),
       ),
       body: Form(
         key: controller.formKey,
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            children: <Widget>[
-              TransactionFormSectionCard(
-                title: 'Voucher Details',
-                child: Column(
-                  children: <Widget>[
-                    CustomTextField(
-                      label: 'Voucher Date',
-                      controller: controller.dateController,
-                      readOnly: true,
-                      requiredField: true,
-                      suffixIcon: Icons.calendar_today_outlined,
-                      onSuffixTap: () => controller.pickDate(context),
-                      onTap: () => controller.pickDate(context),
-                      validator: (value) => (value == null || value.trim().isEmpty)
-                          ? 'Voucher date required'
-                          : null,
-                    ),
-                    if (controller.isPaymentReceipt)
-                      Obx(
-                        () => CustomDropdown<String>(
+        child: GetBuilder<T>(
+          builder: (_) => SingleChildScrollView(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              children: <Widget>[
+                TransactionFormSectionCard(
+                  title: 'Voucher Details',
+                  child: Column(
+                    children: <Widget>[
+                      CustomTextField(
+                        label: 'Voucher Date',
+                        controller: controller.dateController,
+                        readOnly: true,
+                        requiredField: true,
+                        suffixIcon: Icons.calendar_today_outlined,
+                        onSuffixTap: () => controller.pickDate(context),
+                        onTap: () => controller.pickDate(context),
+                        validator: (value) => (value == null || value.trim().isEmpty)
+                            ? 'Voucher date required'
+                            : null,
+                      ),
+                      if (controller.isPaymentReceipt)
+                        CustomDropdown<String>(
                           label: 'Payment Mode',
                           value: controller.paymentMode.value.isEmpty
                               ? null
@@ -68,10 +70,8 @@ class VoucherFormScreen<T extends BaseVoucherFormController>
                           isLoading: controller.lookupController.isLoading.value,
                           enabled: !controller.lookupController.isLoading.value,
                         ),
-                      ),
-                    if (controller.isPaymentReceipt)
-                      Obx(
-                        () => Column(
+                      if (controller.isPaymentReceipt)
+                        Column(
                           children: <Widget>[
                             CustomDropdown<LookupOption>(
                               label: controller.cashBankLabel,
@@ -110,19 +110,19 @@ class VoucherFormScreen<T extends BaseVoucherFormController>
                               ),
                           ],
                         ),
+                      CustomTextField(
+                        label: 'Narration',
+                        controller: controller.narrationController,
+                        maxLines: 3,
+                        hintText: 'Brief description',
                       ),
-                    CustomTextField(
-                      label: 'Narration',
-                      controller: controller.narrationController,
-                      maxLines: 3,
-                      hintText: 'Brief description',
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
-              ),
-              if (controller.isPaymentReceipt) _PaymentRowsSection<T>(),
-              if (controller.isAdjustment) _AdjustmentRowsSection<T>(),
-            ],
+                if (controller.isPaymentReceipt) _PaymentRowsSection<T>(),
+                if (controller.isAdjustment) _AdjustmentRowsSection<T>(),
+              ],
+            ),
           ),
         ),
       ),
@@ -134,25 +134,23 @@ class _PaymentRowsSection<T extends BaseVoucherFormController>
     extends GetView<T> {
   @override
   Widget build(BuildContext context) {
-    return Obx(
-      () => TransactionFormSectionCard(
-        title: 'Particulars',
-        action: IconButton(
-          onPressed: controller.addPaymentRow,
-          icon: const Icon(Icons.add_circle_outline_rounded),
-        ),
-        child: Column(
-          children: <Widget>[
-            for (final row in controller.paymentRows) _PaymentRowCard<T>(row: row),
-            const SizedBox(height: 8),
-            TransactionAmountPill(
-              label: 'Total Amount',
-              value: 'Rs ${formatAmount(controller.paymentTotal)}',
-            ),
-            const SizedBox(height: 10),
-            _VoucherModeNote<T>(),
-          ],
-        ),
+    return TransactionFormSectionCard(
+      title: 'Particulars',
+      action: IconButton(
+        onPressed: controller.addPaymentRow,
+        icon: const Icon(Icons.add_circle_outline_rounded),
+      ),
+      child: Column(
+        children: <Widget>[
+          for (final row in controller.paymentRows) _PaymentRowCard<T>(row: row),
+          const SizedBox(height: 8),
+          TransactionAmountPill(
+            label: 'Total Amount',
+            value: 'Rs ${formatAmount(controller.paymentTotal)}',
+          ),
+          const SizedBox(height: 10),
+          _VoucherModeNote<T>(),
+        ],
       ),
     );
   }
@@ -234,10 +232,8 @@ class _AdjustmentRowsSection<T extends BaseVoucherFormController>
     extends GetView<T> {
   @override
   Widget build(BuildContext context) {
-    return Obx(
-      () {
-        final difference = (controller.totalDebit - controller.totalCredit).abs();
-        return TransactionFormSectionCard(
+    final difference = (controller.totalDebit - controller.totalCredit).abs();
+    return TransactionFormSectionCard(
         title: 'Voucher Lines',
         action: IconButton(
           onPressed: controller.addAdjustmentRow,
@@ -271,8 +267,6 @@ class _AdjustmentRowsSection<T extends BaseVoucherFormController>
             _AdjustmentVoucherNote<T>(),
           ],
         ),
-      );
-      },
     );
   }
 }

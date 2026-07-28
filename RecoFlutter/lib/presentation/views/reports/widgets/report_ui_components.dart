@@ -2,15 +2,13 @@ import 'package:flutter/material.dart';
 import '../../../widgets/common/custom_text_field.dart';
 
 WidgetStateProperty<Color?> reportTotalRowColor(BuildContext context) {
-  return WidgetStatePropertyAll(
-    Theme.of(context).colorScheme.primary.withValues(alpha: .18),
-  );
+  return const WidgetStatePropertyAll(Color(0xFF23263A));
 }
 
 TextStyle? reportTotalRowTextStyle(BuildContext context) {
   return Theme.of(context).textTheme.bodyMedium?.copyWith(
     fontWeight: FontWeight.w800,
-    color: Theme.of(context).colorScheme.onSurface,
+    color: Colors.white,
   );
 }
 
@@ -443,23 +441,27 @@ class ReportPrimaryButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return FilledButton.icon(
-      onPressed: onTap,
-      style: FilledButton.styleFrom(
-        backgroundColor: const Color(0xFF2563EB),
-        foregroundColor: Colors.white,
-        elevation: 0,
-        minimumSize: const Size(0, 40),
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
+    return SizedBox(
+      height: 38,
+      child: FilledButton.icon(
+        onPressed: onTap,
+        style: FilledButton.styleFrom(
+          backgroundColor: const Color(0xFF2563EB),
+          foregroundColor: Colors.white,
+          elevation: 0,
+          minimumSize: const Size(0, 38),
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+          textStyle: Theme.of(context).textTheme.labelLarge?.copyWith(
+            fontWeight: FontWeight.w700,
+            fontSize: 12,
+          ),
         ),
-        textStyle: Theme.of(context).textTheme.labelLarge?.copyWith(
-          fontWeight: FontWeight.w700,
-        ),
+        icon: Icon(icon, size: 15),
+        label: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis),
       ),
-      icon: Icon(icon, size: 16),
-      label: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis),
     );
   }
 }
@@ -482,24 +484,28 @@ class ReportSecondaryButton extends StatelessWidget {
     final Color accent = isPdf
         ? const Color(0xFFDC2626)
         : const Color(0xFF16A34A);
-    return OutlinedButton.icon(
-      onPressed: onTap,
-      style: OutlinedButton.styleFrom(
-        foregroundColor: accent,
-        backgroundColor: accent.withValues(alpha: .08),
-        side: BorderSide(color: accent.withValues(alpha: .22)),
-        elevation: 0,
-        minimumSize: const Size(0, 40),
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
+    return SizedBox(
+      height: 38,
+      child: OutlinedButton.icon(
+        onPressed: onTap,
+        style: OutlinedButton.styleFrom(
+          foregroundColor: accent,
+          backgroundColor: accent.withValues(alpha: .08),
+          side: BorderSide(color: accent.withValues(alpha: .22)),
+          elevation: 0,
+          minimumSize: const Size(0, 38),
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+          textStyle: Theme.of(context).textTheme.labelLarge?.copyWith(
+            fontWeight: FontWeight.w700,
+            fontSize: 12,
+          ),
         ),
-        textStyle: Theme.of(context).textTheme.labelLarge?.copyWith(
-          fontWeight: FontWeight.w700,
-        ),
+        icon: Icon(icon, size: 15),
+        label: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis),
       ),
-      icon: Icon(icon, size: 16),
-      label: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis),
     );
   }
 }
@@ -514,17 +520,69 @@ class ReportActionBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Wrap(
-      spacing: 8,
-      runSpacing: 8,
-      children: children
-          .map(
-            (child) => ConstrainedBox(
-              constraints: const BoxConstraints(minWidth: 92),
-              child: child,
+    return Row(
+      children: List<Widget>.generate(children.length, (index) {
+        return Expanded(
+          child: Padding(
+            padding: EdgeInsets.only(
+              right: index == children.length - 1 ? 0 : 8,
             ),
-          )
-          .toList(),
+            child: children[index],
+          ),
+        );
+      }),
+    );
+  }
+}
+
+class ReportLinkText extends StatelessWidget {
+  const ReportLinkText(
+    this.label, {
+    this.onTap,
+    this.textAlign = TextAlign.center,
+    this.maxLines = 1,
+    super.key,
+  });
+
+  final String label;
+  final VoidCallback? onTap;
+  final TextAlign textAlign;
+  final int maxLines;
+
+  @override
+  Widget build(BuildContext context) {
+    final style = Theme.of(context).textTheme.bodyMedium?.copyWith(
+      color: onTap == null ? null : Theme.of(context).colorScheme.primary,
+      fontWeight: onTap == null ? FontWeight.w500 : FontWeight.w700,
+      decoration: onTap == null ? null : TextDecoration.underline,
+      decorationColor: onTap == null
+          ? null
+          : Theme.of(context).colorScheme.primary.withValues(alpha: .55),
+    );
+
+    if (onTap == null) {
+      return Text(
+        label,
+        maxLines: maxLines,
+        overflow: TextOverflow.ellipsis,
+        textAlign: textAlign,
+        style: style,
+      );
+    }
+
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(6),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 2),
+        child: Text(
+          label,
+          maxLines: maxLines,
+          overflow: TextOverflow.ellipsis,
+          textAlign: textAlign,
+          style: style,
+        ),
+      ),
     );
   }
 }

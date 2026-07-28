@@ -1,27 +1,17 @@
-import 'package:flutter/material.dart';
-import 'package:get/get.dart';
+import 'toast_service.dart';
 
 class AppSnackbar {
   AppSnackbar._();
 
   static void success(String message) {
-    _show(message, 'Success');
+    showSuccessMessage(message);
   }
 
   static void error(String message) {
-    _show(message, 'Error');
+    showErrorMessage(message);
   }
 
-  static void _show(String message, String title) {
-    if (!Get.isSnackbarOpen) {
-      Get.snackbar(
-        title,
-        message,
-        snackPosition: SnackPosition.BOTTOM,
-        margin: const EdgeInsets.all(16),
-        backgroundColor: Get.theme.colorScheme.surface,
-        colorText: Get.theme.colorScheme.onSurface,
-      );
-    }
+  static void warning(String message) {
+    showWarningMessage(message);
   }
 }
