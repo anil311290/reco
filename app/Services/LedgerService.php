@@ -430,7 +430,7 @@ class LedgerService
     }
 
     /**
-     * Get ledger entries for an account
+     * Get ledger entries for an account (Tally ledger / cash / bank book source).
      */
     public function getAccountLedger(
         int $accountId,
@@ -459,17 +459,21 @@ class LedgerService
             ->orderBy('id', 'asc')
             ->get();
 
-        // Get opening balance
+        $this->attachContraParticulars($entries);
+
         $openingBalance = $this->getOpeningBalance($accountId, $companyId, $financialYearId, $dateFrom);
 
-        // Calculate totals
-        $totalDebit = $entries->sum('debit');
-        $totalCredit = $entries->sum('credit');
+        $totalDebit = round((float) $entries->sum('debit'), 2);
+        $totalCredit = round((float) $entries->sum('credit'), 2);
 
-        // Get closing balance
         $lastEntry = $entries->last();
-        $closingBalance = $lastEntry ? $lastEntry->running_balance : $openingBalance['balance'];
-        $closingBalanceType = $lastEntry ? $lastEntry->balance_type : $openingBalance['type'];
+        if ($lastEntry) {
+            $closingBalance = (float) $lastEntry->running_balance;
+            $closingBalanceType = $lastEntry->balance_type;
+        } else {
+            $closingBalance = (float) $openingBalance['balance'];
+            $closingBalanceType = $openingBalance['type'];
+        }
 
         return [
             'account' => $this->accountRepository->find($accountId),
@@ -604,7 +608,11 @@ class LedgerService
     }
 
     /**
-     * Get opening balance for an account
+     * Opening balance for a ledger report.
+     *
+     * - With $asOfDate: balance strictly before that date (period opening).
+     * - Without $asOfDate in an FY: 0 — opening adjustments appear as first transactions
+     *   (matches OB-via-Adjustment voucher flow; avoids using closing as opening).
      */
     public function getOpeningBalance(
         int $accountId,
@@ -613,80 +621,137 @@ class LedgerService
         ?string $asOfDate = null
     ): array {
         $account = $this->accountRepository->find($accountId);
-        
+
         if (!$account) {
-            return ['balance' => 0, 'type' => 'debit'];
+            return ['balance' => 0.0, 'type' => 'debit'];
         }
 
-        $query = Ledger::where('company_id', $companyId)
-            ->where('account_id', $accountId);
-
-        if ($financialYearId) {
-            $financialYear = FinancialYear::find($financialYearId);
-            if ($financialYear && $asOfDate) {
-                $query->where('transaction_date', '<', $asOfDate);
-            }
-        }
-
-        $lastEntry = $query->orderBy('transaction_date', 'desc')
-            ->orderBy('id', 'desc')
-            ->first();
-
-        if ($lastEntry) {
-            return [
-                'balance' => $lastEntry->running_balance,
-                'type' => $lastEntry->balance_type,
-            ];
-        }
-
-        // Return account opening balance if no entries
         $isDebitNormal = in_array($account->account_type, ['asset', 'expense'], true);
-        $normalType = $account->balance_type
+        $defaultType = $account->balance_type
             ?: ($isDebitNormal ? 'debit' : 'credit');
 
+        if ($asOfDate) {
+            $query = Ledger::where('company_id', $companyId)
+                ->where('account_id', $accountId)
+                ->where('transaction_date', '<', $asOfDate);
+
+            if ($financialYearId) {
+                $query->where('financial_year_id', $financialYearId);
+            }
+
+            $lastEntry = $query->orderBy('transaction_date', 'desc')
+                ->orderBy('id', 'desc')
+                ->first();
+
+            if ($lastEntry) {
+                return [
+                    'balance' => round((float) $lastEntry->running_balance, 2),
+                    'type' => $lastEntry->balance_type,
+                ];
+            }
+
+            return ['balance' => 0.0, 'type' => $defaultType];
+        }
+
+        if ($financialYearId) {
+            return ['balance' => 0.0, 'type' => $defaultType];
+        }
+
         return [
-            'balance' => abs((float) ($account->opening_balance ?? 0)),
-            'type' => $normalType,
+            'balance' => abs(round((float) ($account->opening_balance ?? 0), 2)),
+            'type' => $defaultType,
         ];
     }
 
     /**
-     * Get trial balance
+     * Trial Balance (Tally / client Excel style):
+     * Opening + period transactions + Closing, with BS/PL destination.
+     * `debit` / `credit` remain closing balances for API/app backward compatibility.
      */
     public function getTrialBalance(int $companyId, int $financialYearId): array
     {
-        // Inactive ledgers must remain visible when they carry historical
-        // balances; deactivation only prevents new postings.
         $accounts = Account::where('company_id', $companyId)
             ->orderBy('account_code')
             ->get();
 
+        $periodSums = Ledger::query()
+            ->where('company_id', $companyId)
+            ->where('financial_year_id', $financialYearId)
+            ->selectRaw('account_id, COALESCE(SUM(debit), 0) as transaction_debit, COALESCE(SUM(credit), 0) as transaction_credit')
+            ->groupBy('account_id')
+            ->get()
+            ->keyBy('account_id');
+
         $trialBalance = [];
-        $totalDebit = 0;
-        $totalCredit = 0;
+        $totalDebit = 0.0;
+        $totalCredit = 0.0;
+        $totalOpeningDebit = 0.0;
+        $totalOpeningCredit = 0.0;
+        $totalTransactionDebit = 0.0;
+        $totalTransactionCredit = 0.0;
 
         foreach ($accounts as $account) {
-            $balance = $this->getAccountBalance($account->id, $companyId, $financialYearId);
-            
-            if ($balance['balance'] > 0) {
-                $trialBalance[] = [
-                    'account' => $account,
-                    'debit' => $balance['type'] === 'debit' ? $balance['balance'] : 0,
-                    'credit' => $balance['type'] === 'credit' ? $balance['balance'] : 0,
-                ];
+            $closing = $this->getAccountBalance($account->id, $companyId, $financialYearId);
+            $sumRow = $periodSums->get($account->id);
 
-                if ($balance['type'] === 'debit') {
-                    $totalDebit += $balance['balance'];
-                } else {
-                    $totalCredit += $balance['balance'];
-                }
+            $transactionDebit = round((float) ($sumRow->transaction_debit ?? 0), 2);
+            $transactionCredit = round((float) ($sumRow->transaction_credit ?? 0), 2);
+
+            $closingBalance = round((float) $closing['balance'], 2);
+            $closingType = $closing['type'];
+            $closingSigned = $closingType === 'debit' ? $closingBalance : -$closingBalance;
+            $openingSigned = round($closingSigned - $transactionDebit + $transactionCredit, 2);
+            $openingBalance = abs($openingSigned);
+            $openingType = $openingSigned >= 0 ? 'debit' : 'credit';
+
+            $openingDebit = $openingType === 'debit' ? $openingBalance : 0.0;
+            $openingCredit = $openingType === 'credit' ? $openingBalance : 0.0;
+            $closingDebit = $closingType === 'debit' ? $closingBalance : 0.0;
+            $closingCredit = $closingType === 'credit' ? $closingBalance : 0.0;
+
+            $hasMovement = $openingBalance > 0.001
+                || $transactionDebit > 0.001
+                || $transactionCredit > 0.001
+                || $closingBalance > 0.001;
+
+            if (!$hasMovement) {
+                continue;
             }
+
+            $destination = in_array($account->account_type, ['income', 'expense'], true) ? 'PL' : 'BS';
+
+            $trialBalance[] = [
+                'account' => $account,
+                'type' => $account->account_type,
+                'destination' => $destination,
+                'opening_debit' => $openingDebit,
+                'opening_credit' => $openingCredit,
+                'opening_balance' => $openingBalance,
+                'opening_type' => $openingType,
+                'transaction_debit' => $transactionDebit,
+                'transaction_credit' => $transactionCredit,
+                'closing_debit' => $closingDebit,
+                'closing_credit' => $closingCredit,
+                'debit' => $closingDebit,
+                'credit' => $closingCredit,
+            ];
+
+            $totalOpeningDebit += $openingDebit;
+            $totalOpeningCredit += $openingCredit;
+            $totalTransactionDebit += $transactionDebit;
+            $totalTransactionCredit += $transactionCredit;
+            $totalDebit += $closingDebit;
+            $totalCredit += $closingCredit;
         }
 
         return [
             'accounts' => $trialBalance,
-            'total_debit' => $totalDebit,
-            'total_credit' => $totalCredit,
+            'total_opening_debit' => round($totalOpeningDebit, 2),
+            'total_opening_credit' => round($totalOpeningCredit, 2),
+            'total_transaction_debit' => round($totalTransactionDebit, 2),
+            'total_transaction_credit' => round($totalTransactionCredit, 2),
+            'total_debit' => round($totalDebit, 2),
+            'total_credit' => round($totalCredit, 2),
             'is_balanced' => abs($totalDebit - $totalCredit) < 0.01,
         ];
     }
@@ -792,5 +857,67 @@ class LedgerService
                 'balance_type' => $balanceType,
             ]);
         }
+    }
+
+    /**
+     * Attach Tally-style particulars (contra ledger names) onto ledger rows.
+     *
+     * @param  \Illuminate\Support\Collection<int, Ledger>  $entries
+     */
+    protected function attachContraParticulars($entries): void
+    {
+        $voucherIds = $entries->pluck('voucher_id')->filter()->unique()->values();
+
+        $linesByVoucher = $voucherIds->isEmpty()
+            ? collect()
+            : Ledger::query()
+                ->whereIn('voucher_id', $voucherIds)
+                ->with(['account:id,account_name,account_code'])
+                ->get(['id', 'voucher_id', 'account_id'])
+                ->groupBy('voucher_id');
+
+        foreach ($entries as $entry) {
+            $entry->setAttribute('particulars', $this->resolveContraParticulars($entry, $linesByVoucher));
+        }
+    }
+
+    /**
+     * @param  \Illuminate\Support\Collection<int|string, \Illuminate\Support\Collection<int, Ledger>>  $linesByVoucher
+     */
+    protected function resolveContraParticulars(Ledger $entry, $linesByVoucher): string
+    {
+        if ($entry->voucher_id) {
+            $siblings = ($linesByVoucher->get($entry->voucher_id) ?? collect())
+                ->where('account_id', '!=', $entry->account_id);
+
+            $names = $siblings
+                ->map(static fn (Ledger $line) => $line->account?->account_name)
+                ->filter()
+                ->unique()
+                ->values();
+
+            if ($names->isNotEmpty()) {
+                $label = $names->take(3)->implode(', ');
+                if ($names->count() > 3) {
+                    $label .= ' +' . ($names->count() - 3);
+                }
+
+                return $label;
+            }
+        }
+
+        if ($entry->party?->name) {
+            return $entry->party->name;
+        }
+
+        if (!empty($entry->description)) {
+            return (string) $entry->description;
+        }
+
+        if (!empty($entry->voucher?->narration)) {
+            return (string) $entry->voucher->narration;
+        }
+
+        return '-';
     }
 }

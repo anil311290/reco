@@ -121,8 +121,8 @@
             </div>
 
             <div class="mb-3">
-                <label for="remarks" class="form-label">Remarks</label>
-                <textarea class="form-control" id="remarks" name="remarks" rows="2" 
+                <label for="remarks" class="form-label">Notes</label>
+                <textarea class="form-control" id="remarks" name="remarks" rows="2"
                           placeholder="Enter any additional notes">{{ old('remarks') }}</textarea>
             </div>
 

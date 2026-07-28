@@ -127,7 +127,7 @@
                                 -
                             @endif
                         </td>
-                        <td>{{ $entry->narration ?? $entry->description ?? '-' }}</td>
+                        <td>{{ $entry->particulars ?? ($entry->narration ?? $entry->description ?? '-') }}</td>
                         <td>
                             @if($entry->party_id && $entry->party)
                                 <a href="{{ route('admin.parties.show', $entry->party_id) }}" class="report-detail-link" title="View party history">

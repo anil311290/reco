@@ -74,13 +74,20 @@
                         <option value="pcs" {{ $item->unit == 'pcs' ? 'selected' : '' }}>Pieces (Pcs)</option>
                     </select>
                 </div>
+                @unless($isService)
                 <div class="col-md-4">
                     <label for="purchase_price" class="form-label">Purchase Price</label>
                     <input type="number" class="form-control" id="purchase_price" name="purchase_price" step="0.01" min="0" value="{{ $item->purchase_price }}">
                 </div>
+                @else
+                <input type="hidden" name="purchase_price" value="0">
+                @endunless
                 <div class="col-md-4">
-                    <label for="selling_price" class="form-label">Selling Price</label>
+                    <label for="selling_price" class="form-label">{{ $isService ? 'Default Rate' : 'Selling Price' }}</label>
                     <input type="number" class="form-control" id="selling_price" name="selling_price" step="0.01" min="0" value="{{ $item->selling_price }}">
+                    @if($isService)
+                    <div class="form-text">Optional default rate for sales invoice; amount can still be changed per bill.</div>
+                    @endif
                 </div>
                 @unless($isService)
                 <div class="col-md-4">

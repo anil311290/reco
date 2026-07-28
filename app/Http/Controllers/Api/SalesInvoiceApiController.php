@@ -188,6 +188,23 @@ class SalesInvoiceApiController extends Controller
         }
     }
 
+    public function cancel(int $id): JsonResponse
+    {
+        $invoice = $this->salesInvoiceService->getById($id);
+
+        if (!$invoice || $invoice->company_id !== request()->user()->company_id) {
+            return ResponseHelper::notFound('Invoice not found');
+        }
+
+        try {
+            $invoice = $this->salesInvoiceService->cancel($id);
+
+            return ResponseHelper::success(new SalesInvoiceResource($invoice), 'Invoice cancelled successfully');
+        } catch (\Exception $e) {
+            return ResponseHelper::error($e->getMessage());
+        }
+    }
+
     public function exportPdf(int $id): JsonResponse
     {
         $invoice = $this->salesInvoiceService->getById($id);

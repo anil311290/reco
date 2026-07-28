@@ -82,7 +82,10 @@ class Voucher extends Model
      */
     public function lines()
     {
-        return $this->hasMany(VoucherLine::class);
+        return $this->hasMany(VoucherLine::class)
+            ->orderBy('sort_order')
+            ->orderByRaw('CASE WHEN debit > 0 THEN 0 ELSE 1 END')
+            ->orderBy('id');
     }
 
     /**

@@ -130,7 +130,7 @@
             </div>
 
             <div class="mb-3">
-                <label for="remarks" class="form-label">Remarks</label>
+                <label for="remarks" class="form-label">Notes</label>
                 <textarea class="form-control" id="remarks" name="remarks" rows="2">{{ old('remarks', $party->remarks) }}</textarea>
             </div>
 

@@ -89,13 +89,14 @@
                         <option value="set">Set</option>
                     </select>
                 </div>
-                <div class="col-md-4">
+                <div class="col-md-4" id="purchasePriceField">
                     <label for="purchase_price" class="form-label">Purchase Price</label>
                     <input type="number" class="form-control" id="purchase_price" name="purchase_price" step="0.01" min="0" value="0">
                 </div>
                 <div class="col-md-4">
-                    <label for="selling_price" class="form-label">Selling Price</label>
+                    <label for="selling_price" class="form-label" id="sellingPriceLabel">Selling Price</label>
                     <input type="number" class="form-control" id="selling_price" name="selling_price" step="0.01" min="0" value="0">
+                    <div class="form-text" id="sellingPriceHint" style="display:none;">Optional default rate for sales invoice; amount can still be changed per bill.</div>
                 </div>
                 <div class="col-md-4" id="barcodeField">
                     <label for="barcode" class="form-label">Barcode</label>
@@ -129,8 +130,12 @@ function applyItemTypeUi(type) {
     $('#pageTitleText').text(isService ? 'Add Service' : 'Add Item');
     $('#hsnSacLabel').text(isService ? 'SAC Code' : 'HSN/SAC Code');
     $('#barcodeField').toggle(!isService);
+    $('#purchasePriceField').toggle(!isService);
+    $('#sellingPriceLabel').text(isService ? 'Default Rate' : 'Selling Price');
+    $('#sellingPriceHint').toggle(isService);
     if (isService) {
         $('#barcode').val('');
+        $('#purchase_price').val('0');
         const unit = $('#unit');
         if (!['hrs', 'nos'].includes(unit.val())) {
             unit.val('hrs');

@@ -221,7 +221,9 @@ class SalesInvoiceService
                 'financial_year_id' => $invoice->financial_year_id,
                 'party_id' => $invoice->party_id,
                 'voucher_date' => $invoice->invoice_date,
-                'narration' => "Sales Invoice #{$invoice->invoice_number}",
+                'narration' => filled($invoice->notes)
+                    ? (string) $invoice->notes
+                    : "Sales Invoice #{$invoice->invoice_number}",
                 'total' => $invoice->total,
                 'sales_invoice_id' => $invoice->id,
                 'created_by' => $invoice->created_by,
@@ -457,6 +459,55 @@ class SalesInvoiceService
     }
 
     /**
+     * Cancel a sales invoice: reverse settlements, cancel posting voucher, restore stock.
+     */
+    public function cancel(int $id): SalesInvoice
+    {
+        return DB::transaction(function () use ($id) {
+            $invoice = SalesInvoice::query()
+                ->whereKey($id)
+                ->lockForUpdate()
+                ->first();
+
+            if (!$invoice) {
+                throw new \RuntimeException('Sales invoice not found.');
+            }
+
+            if ($invoice->status === 'cancelled') {
+                throw new \RuntimeException('This sales invoice is already cancelled.');
+            }
+
+            $this->periodLockService->assertWritable(
+                (int) $invoice->company_id,
+                $invoice->invoice_date,
+                $invoice->financial_year_id ? (int) $invoice->financial_year_id : null
+            );
+
+            $vouchers = Voucher::query()
+                ->where('sales_invoice_id', $invoice->id)
+                ->where('status', 'posted')
+                ->orderByRaw("CASE WHEN voucher_type = 'receipt' THEN 0 ELSE 1 END")
+                ->orderBy('id')
+                ->get();
+
+            foreach ($vouchers as $voucher) {
+                $this->voucherService->cancel((int) $voucher->id, true);
+            }
+
+            $itemLines = $invoice->lines()->where('line_type', 'item')->get();
+            $this->itemService->applyStockFromLines($itemLines, 'in');
+
+            $invoice->update([
+                'status' => 'cancelled',
+                'amount_paid' => 0,
+                'balance_due' => 0,
+            ]);
+
+            return $invoice->fresh(['party', 'financialYear', 'lines.item', 'lines.taxRate', 'lines.account']);
+        });
+    }
+
+    /**
      * Delete a sales invoice.
      */
     public function delete(int $id): bool
@@ -467,7 +518,7 @@ class SalesInvoiceService
         }
         if ($invoice->vouchers()->exists() || in_array($invoice->status, ['sent', 'paid', 'partial', 'cancelled'], true)) {
             throw new \RuntimeException(
-                'A posted sales invoice cannot be deleted because accounting entries exist. Cancel/reverse it instead.'
+                'A posted sales invoice cannot be deleted because accounting entries exist. Cancel it instead.'
             );
         }
 

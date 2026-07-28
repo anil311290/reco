@@ -98,8 +98,8 @@
                         </div>
 
                         <div class="mb-4">
-                            <label for="remarks" class="form-label fw-semibold">Remarks</label>
-                            <textarea class="form-control" id="remarks" name="remarks" rows="4" placeholder="Add notes, usage hints, or internal remarks">{{ old('remarks') }}</textarea>
+                            <label for="remarks" class="form-label fw-semibold">Notes</label>
+                            <textarea class="form-control" id="remarks" name="remarks" rows="4" placeholder="Add usage hints or internal notes">{{ old('remarks') }}</textarea>
                         </div>
 
                         <div class="d-flex align-items-center justify-content-between flex-wrap gap-3">

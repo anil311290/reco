@@ -1,295 +1,472 @@
-# Flutter App Changes — Full Checklist
+# Flutter App Changes — Match Web / Backend
 
-This document covers **every RecoFlutter change already done** on branch `fix/services-as-items-web` / local `main`, plus **everything still pending** so the app matches the new web/backend behavior (unified sales + services-as-items + party OB lock).
+Thorough checklist for **RecoFlutter** vs Laravel web API (local `main`).  
+Covers: services-as-items, invoice cancel/payment, masters locks, UI parity, bugs, reports, sync.
+
+**App root:** `RecoFlutter/`  
+**Last deep audit:** code-verified against `RecoFlutter/lib/**`, `resources/views/admin/**`, `routes/api.php`.
 
 ---
 
-## Part A — Already done in RecoFlutter (committed)
+## Status summary
 
-These files were changed/deleted in commit `9fb522d` and are on local `main`.
+| Area | Web | Flutter |
+|------|-----|---------|
+| Separate Service Sale Invoices module removed | Done | Done |
+| Dashboard silent refresh / SQLSTATE sanitizing | Done | Done |
+| Notes / Narration labels (one field per context) | Done | Mostly done (detail nit) |
+| Services as Items (catalog + sales `lines[]`) | Done | **Critical bug** |
+| Masters → Service opens Item form | Done | **Wrong** → Account form |
+| Item service form (hide purchase/barcode, Default Rate) | Done | **Partial** |
+| Purchase = goods only | Done | **Wrong** (still has services) |
+| Party OB confirm + edit lock | Done | **Missing** |
+| Party type lock when used | Done | **Missing** |
+| Account OB / type / mode lock when in use | Done | **Missing** |
+| Quick-add party from invoice | Done | **Missing** |
+| Invoice cancel (`POST .../cancel`) | Done | **Missing** |
+| Invoice record payment | Done | **Missing** |
+| Invoice edit / PDF / detail lines | Done | **Missing** |
+| Trial Balance Opening/Txn/Closing + BS/PL | Done | Optional |
+| Bank/Cash/Ledger `particulars` | Done | **Bug** (wrong field) |
+| Day book serial `#` | Done | Optional |
+| Client period lock | Done (server) | **Missing** client preview |
+| English-only UI copy | Done | **Hindi/Hinglish** leftovers |
+
+---
+
+## Part A — Already done in RecoFlutter
 
 ### A1. Removed separate Service Sale Invoices module
 
 | Action | File |
 |--------|------|
-| Deleted | `lib/presentation/controllers/transactions/service_sales_invoices_controller.dart` |
-| Deleted | `lib/presentation/views/transactions/create/service_sales_invoice_screen.dart` |
-| Deleted | `lib/presentation/views/transactions/tabs/service_sales_invoices_tab_screen.dart` |
-| Removed class | `ServiceSalesInvoiceFormController` from `base_invoice_form_controller.dart` |
-| Removed flag | `isServiceInvoice` and `invoice_type: service` from sales payload |
-| Removed endpoint | `ApiEndpoints.serviceSalesInvoices` from `api_endpoints.dart` |
+| Deleted | service sales controllers / screens / tabs |
+| Removed | `ServiceSalesInvoiceFormController`, `isServiceInvoice`, `invoice_type` |
+| Removed | `ApiEndpoints.serviceSalesInvoices` |
 
-**Meaning:** App no longer has a separate Service Sale Invoice screen/API. Use the single **Sales Invoice** flow for goods + services.
+Use single **Sales Invoice** for goods + services.
 
 ### A2. Sales invoice entity cleanup
 
-**File:** `lib/data/models/transactions/transaction_entities.dart`
+`lib/data/models/transactions/transaction_entities.dart` — `fromSalesInvoice` hard-codes kind `'sales'`.
 
-- `TransactionRecord.fromSalesInvoice` no longer reads `invoice_type` from API.
-- Hard-codes display kind as `'sales'` (column `invoice_type` dropped on backend).
+### A3. Unified sales form flag (scaffold only)
 
-### A3. Unified sales form flags
-
-**File:** `lib/presentation/controllers/transactions/create/base_invoice_form_controller.dart`
-
-- `usesUnifiedSalesRows` now = items + services + not purchase (no `isServiceInvoice` check).
-- Payload no longer sends `invoice_type`.
-- Still currently builds **both** `lines` and `service_lines` (see Part B — this must change for services-as-items).
+`base_invoice_form_controller.dart` — `usesUnifiedSalesRows` exists, but payload still wrong (see **Bugs** / **B3**).
 
 ### A4. Dashboard / API error hardening
 
-**File:** `lib/data/repositories/dashboard/dashboard_repository.dart`
+- `dashboard_repository.dart` — `silentError: true`; cache on fail  
+- `api_client.dart` — sanitizes SQLSTATE / connection errors  
 
-- Dashboard refresh uses Dio `extra: { silentError: true }`.
-- On failure, returns **cached** dashboard instead of throwing a toast-breaking error.
+### A5. Notes / Narration labels (mostly done)
 
-**File:** `lib/core/network/api_client.dart`
+| Context | UI label | API field | Status |
+|---------|----------|-----------|--------|
+| Invoices | Notes | `notes` | Done |
+| Vouchers | Narration | `narration` | Done |
+| Parties (full form) | Notes | `remarks` | Done |
+| Accounts | Notes | `remarks` | Done |
+| Invoice detail field | should be Notes | — | **Nit:** still “Narration / Notes” (`transaction_detail_screen.dart` ~L91) |
+| Party quick-add (web) | Remarks | `remarks` | N/A until quick-add built |
 
-- Sanitizes raw DB/connection messages (`SQLSTATE`, `Operation not permitted`, `Connection:`) into:
-  - `Unable to reach the server database. Please try again.`
-- Respects `silentError` so dashboard blips do not spam snackbars.
+### A6. Partial item form for `type=service`
+
+`item_form_sheet.dart` — type dropdown + hide stock for service.  
+Still missing vs web: purchase price, barcode, expense account, Default Rate label, SAC label, `hrs` unit, English info text. See **B1** / **Part I**.
+
+### A7. Voucher cancel (manual vouchers only)
+
+Payments / receipts / adjustments can cancel.  
+**Not** invoice cancel — see **Part F**.  
+All-vouchers tab can still try cancel on invoice-linked income/expense → API error (see **Part M**).
 
 ---
 
-## Part B — Still pending (must do to match web)
+## Critical bugs (wrong behavior — fix first)
 
-Web already treats **services as Items**. App still mixes **income ledgers as services**. Complete the items below.
+| # | Bug | Where | Correct behavior |
+|---|-----|--------|------------------|
+| 1 | Masters → Service opens **Account** form | `masters_screen.dart` ~L183 | `ItemFormSheet(initialType: 'service')` |
+| 2 | Catalog maps `services[]` → income **accounts**; fallback `_loadServiceAccounts('income')` | `transaction_form_lookup_controller.dart` ~L128–132 | `services[].id` = **item id** |
+| 3 | Sales payload sends `service_lines[{account_id, amount}]` | `base_invoice_form_controller.dart` ~L341–364 | `lines[{item_id, quantity, unit_price, …}]` |
+| 4 | Purchase `supportsServices => true` + Service Lines UI | `base_invoice_form_controller.dart` ~L443–444; `invoice_form_screen.dart` ~L130–131 | Goods only; no service lines |
+| 5 | Offline catalog `'services': []` | `items_repository.dart` ~L121–125 | Local `type==service` items in `services` |
+| 6 | Service rows hide Qty/Discount; discount forced 0; totals use amount-only | `invoice_form_screen.dart` ~L240–274; `transaction_form_models.dart` ~L141–142 | Qty × rate + disc % like goods |
+| 7 | `delivery_terms` copied from same `paymentTermsController` as `payment_terms` | `base_invoice_form_controller.dart` ~L313–318 | Separate field or omit unused key |
+| 8 | Header `discount_percentage` sent with **no UI** | `discountController` in controller, no form field | Expose UI or stop sending |
+| 9 | Purchase status filter omits `cancelled` | `purchase_invoices_controller.dart` ~L31–38 | Include `cancelled` |
+| 10 | Invoice cancel (if enabled) would use **PATCH** voucher cancel | `base_transactions_tab_controller.dart` ~L179–186 | `POST /sales-invoices/{id}/cancel` (and purchase) |
+| 11 | Ledger / Bank / Cash “Particulars” bind narration/description | `ledger_report_screen.dart` ~L219; bank/cash ~L286 | Prefer API `particulars` |
+| 12 | Service item form still shows Purchase Price + Expense Account + Barcode; label “Selling Price” | `item_form_sheet.dart` | Match web conditionals (Part I) |
 
-### B1. Masters → Add Item: Service must open Item form (CRITICAL)
+---
 
-**Current (wrong):**  
-`masters_screen.dart` → Service button → `AccountFormSheet()` (ledger create, often defaults to asset).
+## Part B — Services as items (pending)
 
-**Required:**
+### B1. Masters → Service → Item form + service form polish
 
-```dart
-Get.to(() => const ItemFormSheet(/* type: service */));
-```
+**Files:** `masters_screen.dart`, `item_form_sheet.dart`
 
-**Files:**
-- `lib/presentation/views/masters/masters_screen.dart` (Goods/Service dialog ~lines 140–200)
-- `lib/presentation/views/masters/forms/item_form_sheet.dart`
-  - Accept initial `type: 'service' | 'goods'`
-  - For service: `isStockable = false`, hide/zero stock fields, SAC label, unit hours/nos
-  - Do **not** require expense account for services
-- Stop using `AccountFormSheet` for billable services
+| Web rule | Flutter action |
+|----------|----------------|
+| Service opens item form | Fix Masters button |
+| Hide Purchase Price (force 0) | Hide for service |
+| Hide Barcode | Hide for service |
+| Selling Price → **Default Rate** + helper | Rename + hint |
+| HSN/SAC → **SAC Code** for service | Conditional label |
+| Unit default `hrs` for service | Add `hrs` to unit list; auto-set |
+| No expense account on service | Hide expense account |
+| Info: non-stockable, posts via income | English alert (remove Hindi card) |
+| Type locked on edit | Match web (hidden type + badge) |
 
-**Items list:**
-- `items_tab_screen.dart` / `items_controller.dart` — filter All / Goods / Service must show `type=service` rows from `GET /api/v1/items`
+### B2. Catalog: services are Items (BREAKING)
 
-### B2. Sales catalog: `services` are Items, not Accounts (BREAKING)
+**API:** `GET /api/v1/items/dropdown` — `services[].id` = item id.
 
-**API:** `GET /api/v1/items/dropdown`
+Update:
+- `items_repository.dart` — offline split goods/services  
+- `transaction_form_lookup_controller.dart` — stop income-ledger fallback for sales  
+- `transaction_form_models.dart` — `InvoiceCatalogOption.service` → item, not account  
 
-```json
-{
-  "items": [ /* goods only */ ],
-  "services": [
-    {
-      "id": 12,
-      "kind": "service",
-      "type": "service",
-      "name": "Consulting",
-      "item_code": "SRV-001",
-      "selling_price": 1500,
-      "tax_rate_id": 3,
-      "income_account_id": 45,
-      "text": "SRV-001 - Consulting",
-      "is_stockable": false
-    }
-  ]
-}
-```
-
-**Breaking:** `services[].id` = **item id**, not income `account_id`.
-
-**Files to update:**
-- `lib/data/repositories/masters/items_repository.dart`
-  - Offline: today returns `services: []` — must include local items where `type == service`
-  - Online: map `services` as item-shaped records
-- `lib/presentation/controllers/transactions/create/transaction_form_lookup_controller.dart`
-  - Stop `_loadServiceAccounts('income')` for sales catalog
-  - Build service options from catalog `services` / local service items
-  - Can keep `serviceAccounts` only for true voucher/account pickers if needed elsewhere
-- `lib/presentation/controllers/transactions/create/transaction_form_models.dart`
-  - Change `InvoiceCatalogOption.service` to hold an **`ItemEntity`** (or shared item id), not `LookupOption account`
-  - Update `label` / `identityKey` to `service-item:{id}`
-  - Update `InvoiceLineRowModel.serviceAccount` → item-based field (or reuse item notifier)
-
-### B3. Sales invoice payload: put services in `lines[]` (CRITICAL)
-
-**Current (wrong):** `base_invoice_form_controller.dart` still sends:
-
-```dart
-'service_lines': [
-  { 'account_id': ..., 'amount': ..., 'tax_rate_id': ... }
-]
-```
-
-from `validServiceRows` + `validMixedServiceRows` / `row.serviceAccount`.
-
-**Required (match web):**
+### B3. Sales payload → all `lines[]` + `item_id`
 
 ```json
 {
   "lines": [
-    {
-      "item_id": 10,
-      "quantity": 2,
-      "unit_price": 500,
-      "discount_percentage": 0,
-      "tax_rate_id": 3,
-      "description": "Widget"
-    },
-    {
-      "item_id": 12,
-      "quantity": 3,
-      "unit_price": 1500,
-      "discount_percentage": 0,
-      "tax_rate_id": 3,
-      "description": "Consulting hours"
-    }
+    { "item_id": 10, "quantity": 2, "unit_price": 500, "discount_percentage": 0, "tax_rate_id": 3 },
+    { "item_id": 12, "quantity": 3, "unit_price": 1500, "discount_percentage": 0, "tax_rate_id": 3 }
   ]
 }
 ```
 
-Rules:
-- Goods **and** service catalog picks → `lines[]` with `item_id`
-- Qty / discount allowed for services (hours × rate)
-- Do **not** send new `service_lines` with income `account_id`
-- Optional: still send `account_id` = item’s `incomeAccountId` on the line (backend also resolves from item)
+- No new `service_lines` with income `account_id`  
+- Qty / discount for services  
+- UI: Goods / Services optgroups (web uses `<optgroup>`; app today uses `[Item]` / `[Service]` prefixes — upgrade preferred)
 
-**Files:**
-- `lib/presentation/controllers/transactions/create/base_invoice_form_controller.dart`
-  - `buildPayload` / `validServiceRows` / mixed service rows
-  - Prefer one list of item rows for unified sales
-- `lib/presentation/views/transactions/create/invoice_form_screen.dart`
-  - UI: Goods + Services optgroups, both item-based
-  - Remove income-account service amount-only row for new creates
+**Line calc (match web exactly):**
 
-**Legacy edit only:** old invoices with `line_type=service` + `account_id` and no `item_id` may still display; do not create new ones that way.
+```
+base = qty × unit_price
+discount = base × (disc% / 100)
+afterDisc = base − discount
+tax = afterDisc × (taxRate / 100)
+line_total = afterDisc + tax
+```
 
-### B4. Remove dead account-as-service paths
+**Legacy edit only:** old `line_type=service` + `account_id` without `item_id` — show as `(legacy)`; qty/disc readonly.
 
-After B2–B3:
+### B4. Remove account-as-service dead code
 
-| Remove / stop using for sales | Where |
-|-------------------------------|--------|
-| `InvoiceCatalogOption.service(LookupOption account)` | `transaction_form_models.dart` |
-| Loading income ledgers into sales services | `transaction_form_lookup_controller.dart` |
-| `service_lines` for new sales saves | `base_invoice_form_controller.dart` |
-| Mixed row `serviceAccount` for billable services | models + invoice form UI |
+Stop: `serviceAccounts` for sales, `InvoiceServiceRowModel`, `_ServiceLinesSection`, `service_lines` in new saves.  
+Keep Account form for Chart of Accounts only.
 
-Keep Account form / income ledgers for **real Chart of Accounts** (Sales Revenue, etc.) — just not as the billable service catalog.
+### B5. Purchase — goods only
 
-### B5. Purchase invoices
+- `supportsServices => false`  
+- Item picker: `type=goods` only  
+- No Service Lines section  
+- Server already rejects services — app must not offer them  
 
-No functional change:
-- Goods items only
-- Do not list `type=service` items on purchase lines
+### B6. Party opening balance
 
-### B6. Party opening balance (match web lock + confirm)
+| Mode | Required |
+|------|----------|
+| Create | SweetAlert-style confirm (see Part I dialogs) |
+| Edit | OB amount / type / date **read-only**; omit OB keys on update |
 
-Web behavior (already live):
-- **Create party:** confirm opening balance before save (cannot edit later)
-- **Edit party:** opening balance / type / date read-only; backend strips OB fields
+### B7. Offline / sync
 
-**App still editable on edit** — update:
+- Cache `items.type`, `is_stockable`, `income_account_id`  
+- Offline `services` must list local service items  
+- No stock movement for service sales  
+- Force refresh catalog after backend deploy  
 
-**File:** `lib/presentation/views/masters/forms/party_form_sheet.dart`
+### B8. Navigation cleanup
 
-| Mode | Required UX |
-|------|-------------|
-| Create | Before save, show confirm dialog with amount, Dr/Cr, date; warn it cannot be changed later |
-| Edit | Make opening balance, balance type, opening date read-only / disabled; do not send changed OB (or omit those keys on update) |
-
-Optional: same confirm on any quick-add party sheet if the app has one.
-
-### B7. Local DB / sync
-
-- Sync `items.type`, `items.is_stockable`, `items.income_account_id`
-- Service items sync like goods; **no stock movement** on sale
-- Clear any offline logic that treated income accounts as the services catalog
-- After backend deploy, force refresh of items + sales catalog cache
-
-### B8. Navigation / bindings cleanup (verify)
-
-Confirm no remaining routes/bindings/menu entries for:
-- `ServiceSalesInvoices*`
-- `/service-sales-invoices`
-- `invoice_type=service` filters
-
-(Grep already clean for `serviceSales` / `ServiceSales` after Part A — re-check after your local edits.)
+Re-grep: no `ServiceSales*`, `/service-sales-invoices`, `invoice_type=service`.
 
 ---
 
-## Part C — Suggested implementation order
+## Part C — Implementation order
 
-1. **B1** Service → ItemForm  
-2. **B2** Catalog map services → items  
-3. **B3** Payload → all `lines` + `item_id`  
-4. **B4** Delete account-as-service dead code  
-5. **B6** Party OB lock + create confirm  
-6. **B7** Offline/sync  
-7. QA checklist (Part D)
+1. Fix **Critical bugs 1–6, 12** (B1–B5)  
+2. Fix payload bugs **7–8**  
+3. **Part F** invoice cancel + status filter (**9–10**)  
+4. **Part I** party/account locks + quick-add  
+5. **Part J** payment, edit, detail, PDF  
+6. **Part K** reports (`particulars`, TB, day book)  
+7. **Part L** period lock + sync notes  
+8. **Part M** voucher cancel UX + English copy  
+9. QA (Part D)
 
 ---
 
 ## Part D — QA checklist
 
-### Already done (Part A)
+### Done
+- [x] No Service Sale Invoices module  
+- [x] No `invoice_type` dependency  
+- [x] Dashboard cache / silent errors  
+- [x] Notes / Narration labels on create forms  
 
-- [x] No Service Sale Invoices tab/screen/endpoint in app code
-- [x] Sales invoice records do not depend on `invoice_type`
-- [x] Dashboard failure falls back to cache without SQLSTATE toast spam
+### Critical / services
+- [ ] Masters Service → Item form  
+- [ ] Service form: no purchase price / barcode / expense; Default Rate; SAC; `hrs`  
+- [ ] Sales catalog = service **items** (not income ledgers)  
+- [ ] Sales payload only `lines` + `item_id`  
+- [ ] Service qty / rate / discount; stock unchanged  
+- [ ] Offline service items in catalog  
+- [ ] Purchase: no services  
+- [ ] Legacy service line edit does not crash  
 
-### Still pending
+### Invoice workflows
+- [ ] Cancel sales / purchase (`POST`) + confirm copy  
+- [ ] Purchase filter includes `cancelled`  
+- [ ] Record payment (Received In / Paid From)  
+- [ ] Edit invoice (block paid / partial / cancelled)  
+- [ ] Detail: lines, Notes, terms, FY, overdue text  
+- [ ] Sales PDF  
 
-- [ ] Create Service from Masters → Item form (`type=service`), appears in Items list
-- [ ] Service item does **not** open Account/ledger form
-- [ ] Sales Services group lists **service items** (not Sales Revenue / income ledgers)
-- [ ] New sales invoice with goods + service → payload only `lines` with `item_id`
-- [ ] Service qty/rate/tax calculate correctly; stock unchanged for service
-- [ ] Offline: service items available after sync
-- [ ] Purchase does not list service items
-- [ ] Edit old ledger-based service line does not crash
-- [ ] Party create: OB confirmation dialog
-- [ ] Party edit: OB fields read-only
+### Masters locks / UI
+- [ ] Party create OB confirm  
+- [ ] Party edit OB readonly + type lock when used  
+- [ ] Account locks when in use / system  
+- [ ] Transaction mode only for asset accounts  
+- [ ] Quick-add party on invoice (debtor/creditor)  
+- [ ] English-only user-facing strings  
+
+### Reports / other
+- [ ] Prefer `particulars` on ledger / bank / cash  
+- [ ] TB Opening / Transaction / Closing + destination  
+- [ ] Day book `#` serial  
+- [ ] Fix `delivery_terms` / header discount  
+- [ ] Hide cancel on invoice-linked income/expense vouchers  
+- [ ] Period-lock friendly date errors  
 
 ---
 
-## Part E — Backend / web reference (already shipped)
+## Part E — Backend / web reference (shipped)
 
 | Area | Behavior |
 |------|----------|
-| Items create | Service stays on item form; `is_stockable=false`; default income = Sales Revenue |
-| Items list | Goods + Services |
-| Sales invoice UI | Goods + Services from `items`; submit `lines[]` |
-| `GET /items/dropdown` | `services` = service-type items |
-| `SalesInvoiceService` | Service item → `line_type=service`, `account_id` from item income |
-| Stock | Skips non-goods / non-stockable |
-| Legacy | `service_lines[{account_id}]` still accepted for old data |
-| Party | OB locked after create; create-time confirm on web |
-| API | `/service-sales-invoices` removed; no `invoice_type` on sales |
+| Items | Service on item form; non-stockable; Default Rate; hide purchase/barcode |
+| `GET /items/dropdown` | `services` = service items (`id` = item id) |
+| Sales | Goods + Services → `lines[]` |
+| Purchase | Goods only; validates `type=goods` |
+| Party | OB confirm + lock; type lock when used |
+| Account | Lock type/mode/OB when in use or system |
+| Invoice cancel | `POST .../cancel` — reverses vouchers, ledger, stock |
+| Invoice payment | `POST .../payment` — bill-wise receipt/payment |
+| Sales PDF | `GET /sales-invoices/{id}/pdf` (web show has PDF; purchase show does not) |
+| Labels | Invoice Notes; voucher Narration; party/account Notes → `remarks` |
+| Period lock | Server `PeriodLockService` on writes |
 
 ---
 
-## Part F — Out of scope
+## Part F — Invoice cancel (web done, Flutter missing)
 
-- Creating one income ledger per service name (not required; share Sales Revenue or optional income picker on item later)
-- Purchasing services as items (use Payment / expense ledgers)
-- Pushing local `main` to origin (ask before push)
+| Method | Endpoint |
+|--------|----------|
+| `POST` | `/api/v1/sales-invoices/{id}/cancel` |
+| `POST` | `/api/v1/purchase-invoices/{id}/cancel` |
+
+**Server:** cancel linked receipts/payments → cancel income/expense posting → delete ledger → reverse stock → `status=cancelled`, paid/due = 0.
+
+**Flutter needs:**
+- Endpoints in `lib/core/config/api_endpoints.dart`  
+- **POST** helper (do not reuse voucher PATCH cancel)  
+- List + detail Cancel when `status ≠ cancelled`  
+- Confirm copy (exact):
+
+| Type | Dialog text |
+|------|-------------|
+| Sales | “Linked receipts and sales posting will be cancelled, ledgers reversed, and stock restored.” |
+| Purchase | “Linked payments and purchase posting will be cancelled, ledgers reversed, and stock adjusted.” |
+
+Title: “Cancel this invoice?” / Confirm: “Yes, cancel it”
+
+---
+
+## Part G — Reports (web shipped, Flutter partial)
+
+| Report | Web | Flutter gap |
+|--------|-----|-------------|
+| Trial Balance | Opening / Transaction / Closing + `destination` (BS/PL) | Closing only |
+| Day book | Serial `#`, chronological, invoice links | No `#` / links |
+| Bank / Cash / Ledger | Column Particulars = API `particulars` | Uses narration/description (**bug**) |
+| Report PDF/Excel | Available | Largely wired |
+| Invoice PDF | Sales API + web | Not in app endpoints/UI |
+
+Additive TB fields keep `debit`/`credit` as closing for BC.
+
+---
+
+## Part H — Secondary invoice features
+
+| Feature | Web | Flutter |
+|---------|-----|---------|
+| Record payment | Show modal → POST payment | Missing |
+| Edit invoice | Edit for draft/sent/verified | Create-only |
+| Detail lines | Full table | Header/amounts only |
+| Detail extras | Terms, FY, Bill To address/GSTIN, overdue days (sales) | Missing |
+| Sales PDF | Show button | Missing |
+| Purchase PDF | Not on web show | Optional |
+
+**Payment modal parity**
+
+| | Sales | Purchase |
+|---|-------|----------|
+| Account label | Received In | Paid From |
+| Helper | Posts Receipt (Dr Cash/Bank, Cr Party) | Posts Payment (Dr Party, Cr Cash/Bank) |
+| Fields | Date *, Mode (cash/bank/od) *, account filtered by mode *, amount ≤ balance_due * | Same |
+
+---
+
+## Part I — Masters locks & UI (missing from earlier doc)
+
+### Party (`party_form_sheet.dart` vs `parties/create|edit.blade.php`)
+
+**Create confirm (must mirror):**
+- Title: “Confirm Opening Balance”
+- Amount > 0: “Opening balance of **₹{amount}** ({Dr/Cr}) dated **{date}** will be posted and **cannot be edited later**.”
+- Amount = 0: “No opening balance will be posted. Opening balance **cannot be set later** after the party is created.”
+- Confirm: “Yes, create party” / Cancel: “Review again”
+- Helper under OB field: “Cannot be edited after create.”
+
+**Edit:**
+- OB amount / type / date readonly  
+- Party type disabled when transactionally used (web: `typeLocked` from API — app needs this flag)  
+- Warning: opening balance locked after create  
+
+**Fields parity:** Name*, Type*, Address*, State*, City*, Pincode*, Mobile, Email, GSTIN, PAN, Notes→`remarks`, Active.
+
+### Account (`account_form_sheet.dart` vs `accounts/create|edit.blade.php`)
+
+| Rule | Flutter |
+|------|---------|
+| Transaction mode **only if** `account_type == asset` | Always shown today — hide otherwise |
+| When in use / system: lock type, mode, OB | Always editable — need `is_system` / in-use from API |
+| Name + Notes + Active editable when in use | Match web |
+| System banner | “This is a system account…” |
+| In-use banner | Classification + OB locked; rename/notes/active OK |
+
+### Item service UI checklist (full)
+
+- [ ] Blocking type pick (Goods/Service) like web modal — or Masters already chooses type  
+- [ ] Hide purchase price, barcode  
+- [ ] Default Rate label + helper  
+- [ ] SAC Code label for service  
+- [ ] Unit list includes `hrs`; default hrs for service  
+- [ ] Hide expense account for service  
+- [ ] English info (no Hindi)  
+- [ ] Edit: type locked + Goods/Service badge  
+
+### Quick-add party (web has; Flutter missing)
+
+- On sales/purchase invoice party field  
+- Prefill type debtor / creditor  
+- Fields: Name*, Mobile, Email, GSTIN, Address*, State*, City*, Pincode*, OB, Balance Type, **Remarks**  
+- Same OB confirm as full party create  
+- No PAN / opening date / Active (server defaults date)  
+- On success: select new party in dropdown  
+
+### English UI
+
+Replace Hindi/Hinglish snackbars / info cards (item form, invoice/voucher validation, export mixins, support copy) with English to match web admin.
+
+---
+
+## Part J — Invoice UI parity checklist
+
+### Index
+- Filters: search + status (sales includes cancelled; purchase includes **verified** + cancelled, not “sent”)  
+- Edit button only if status ∉ {cancelled, paid, partial}  
+- Status badge colors: draft=secondary, sent/verified=info, partial=warning, paid=success, overdue=danger, cancelled=dark  
+
+### Create / Edit header
+- Invoice # readonly auto  
+- Date *, Due * (due ≥ invoice date)  
+- Party * (debtor / creditor)  
+- Reference # (sales) / Supplier Invoice # (purchase)  
+- Payment/Delivery Terms (single combined field OK — but don’t duplicate wrong keys)  
+- Notes  
+
+### Lines
+- Sales: Goods + Services optgroups; all columns Qty, Unit Price, Disc %, Tax, Total  
+- Purchase: Goods only; default unit price from `purchase_price`  
+- Cannot remove last row  
+- Live summary: Subtotal, Discount, Tax, Total  
+
+### Show / Detail
+- Bill To / Supplier block with address + GST  
+- Line table  
+- Notes (label **Notes**, not Narration/Notes)  
+- Paid + Balance Due  
+- Actions: Payment / Cancel / PDF (sales) per conditions above  
+
+---
+
+## Part K — Reports parity checklist
+
+- [ ] TB: `opening_*`, `transaction_*`, closing `debit`/`credit`, `destination`  
+- [ ] Day book: `#` column  
+- [ ] Ledger / bank / cash: `particulars` first  
+- [ ] Optional: invoice PDF via `GET /sales-invoices/{id}/pdf`  
+
+---
+
+## Part L — Period lock & sync
+
+### Period lock
+- Server enforces (`PeriodLockService`)  
+- Flutter: **no client checks** — add FY/date validation + clear error message before queue/save  
+
+### Sync / offline (current)
+Modules in local cache (`offline_first_repository.dart`): accounts, parties, items, categories, tax rates, FY, vouchers, sales/purchase invoices.
+
+Declared but unused: `/sync/bootstrap`, `/sync/download`, `/sync/upload`, `/sync/run` in `api_endpoints.dart`.
+
+**Risk:** Offline sales with services queues wrong `service_lines` until B2–B3 fixed; API auto-posts voucher on create.
+
+---
+
+## Part M — Vouchers
+
+| Topic | Action |
+|-------|--------|
+| Narration only | Already OK |
+| Cancel invoice-linked income/expense | Hide/disable in All Vouchers; message: “Cancel the invoice instead.” |
+| Bill-wise settlement | Use invoice **payment** endpoint — standalone receipt/payment forms do **not** set `sales_invoice_id` / `purchase_invoice_id` |
+| Voucher cancel confirm (manual) | “Cancel Voucher?” / “This action cannot be undone.” / “Yes, cancel it” |
+
+---
+
+## Dialog / copy reference (mirror web)
+
+| Action | Title | Body |
+|--------|-------|------|
+| Party create OB | Confirm Opening Balance | See Part I |
+| Cancel sales invoice | Cancel this invoice? | Linked receipts and sales posting will be cancelled, ledgers reversed, and stock restored. |
+| Cancel purchase invoice | Cancel this invoice? | Linked payments and purchase posting will be cancelled, ledgers reversed, and stock adjusted. |
+| Cancel voucher | Cancel Voucher? | This action cannot be undone. |
+| Post voucher | Post Voucher? | This will mark the voucher as posted and it cannot be edited. |
 
 ---
 
 ## Quick file map
 
-| Topic | Primary files |
-|-------|----------------|
-| Done: remove service sales module | deleted controllers/screens; `api_endpoints.dart`; `base_invoice_form_controller.dart` |
-| Done: dashboard errors | `dashboard_repository.dart`; `api_client.dart` |
-| Done: invoice_type | `transaction_entities.dart` |
-| Pending: Service → Item | `masters_screen.dart`; `item_form_sheet.dart` |
-| Pending: catalog | `items_repository.dart`; `transaction_form_lookup_controller.dart`; `transaction_form_models.dart` |
-| Pending: payload/UI | `base_invoice_form_controller.dart`; `invoice_form_screen.dart` |
-| Pending: party OB | `party_form_sheet.dart` |
+| Topic | Path | Status |
+|-------|------|--------|
+| Service → Account bug | `presentation/views/masters/masters_screen.dart` | Critical |
+| Item service UI | `presentation/views/masters/forms/item_form_sheet.dart` | Partial |
+| Catalog / income fallback | `.../transaction_form_lookup_controller.dart` | Critical |
+| Payload `service_lines` / delivery_terms | `.../base_invoice_form_controller.dart` | Critical |
+| Service row UX | `.../invoice_form_screen.dart`, `transaction_form_models.dart` | Critical |
+| Offline services | `data/repositories/masters/items_repository.dart` | Critical |
+| Party / account locks | `party_form_sheet.dart`, `account_form_sheet.dart` | Pending |
+| Invoice cancel HTTP | `base_transactions_tab_controller.dart`, `api_endpoints.dart` | Missing |
+| Purchase cancelled filter | `purchase_invoices_controller.dart` | Bug |
+| Detail gaps | `transaction_detail_screen.dart` | Pending |
+| Particulars bug | ledger / bank / cash report screens | Bug |
+| Endpoints | `lib/core/config/api_endpoints.dart` | Add cancel/payment/pdf |

@@ -147,11 +147,20 @@ class ReportService
      */
     public function getDayBook(int $companyId, string $date, ?int $financialYearId = null): array
     {
+        // Tally Day Book sequence: chronological voucher entry order for the day,
+        // then each voucher's lines (sort_order → debit lines → credit lines → id).
         $query = Voucher::where('company_id', $companyId)
             ->whereDate('voucher_date', $date)
             ->where('status', 'posted')
-            ->with(['party', 'lines.account', 'lines.party', 'salesInvoice', 'purchaseInvoice'])
-            ->orderBy('voucher_number');
+            ->with([
+                'party',
+                'lines.account',
+                'lines.party',
+                'salesInvoice',
+                'purchaseInvoice',
+            ])
+            ->orderBy('created_at')
+            ->orderBy('id');
 
         if ($financialYearId) {
             $query->where('financial_year_id', $financialYearId);
@@ -162,15 +171,26 @@ class ReportService
         $rows = [];
         $totalDebit = 0;
         $totalCredit = 0;
+        $serial = 0;
 
         foreach ($vouchers as $voucher) {
-            foreach ($voucher->lines as $line) {
+            $lines = $voucher->lines
+                ->sortBy([
+                    ['sort_order', 'asc'],
+                    fn ($line) => ((float) $line->debit > 0 ? 0 : 1),
+                    ['id', 'asc'],
+                ])
+                ->values();
+
+            foreach ($lines as $line) {
                 $debit = (float) $line->debit;
                 $credit = (float) $line->credit;
                 $totalDebit += $debit;
                 $totalCredit += $credit;
+                $serial++;
 
                 $rows[] = [
+                    'serial' => $serial,
                     'voucher' => $voucher,
                     'voucher_id' => $voucher->id,
                     'voucher_number' => $voucher->voucher_number,
@@ -192,8 +212,8 @@ class ReportService
             'date' => $date,
             'vouchers' => $vouchers,
             'rows' => $rows,
-            'total_debit' => $totalDebit,
-            'total_credit' => $totalCredit,
+            'total_debit' => round($totalDebit, 2),
+            'total_credit' => round($totalCredit, 2),
         ];
     }
 

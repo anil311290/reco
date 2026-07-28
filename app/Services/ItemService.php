@@ -82,6 +82,7 @@ class ItemService
             $data['is_stockable'] = false;
             $data['opening_stock'] = 0;
             $data['current_stock'] = 0;
+            $data['purchase_price'] = 0;
         } else {
             $data['current_stock'] = $data['opening_stock'] ?? 0;
             if (!array_key_exists('is_stockable', $data)) {
@@ -97,7 +98,16 @@ class ItemService
      */
     public function update(int $id, array $data): bool
     {
-        return Item::findOrFail($id)->update($data);
+        $item = Item::findOrFail($id);
+        $type = $data['type'] ?? $item->type;
+
+        if ($type === 'service') {
+            $data['is_stockable'] = false;
+            $data['purchase_price'] = 0;
+            unset($data['opening_stock'], $data['current_stock']);
+        }
+
+        return $item->update($data);
     }
 
     /**

@@ -32,6 +32,7 @@
                     <option value="partial">Partial</option>
                     <option value="paid">Paid</option>
                     <option value="overdue">Overdue</option>
+                    <option value="cancelled">Cancelled</option>
                 </select>
             </div>
             <div class="col-md-2 d-flex align-items-end">
@@ -102,14 +103,15 @@ $(document).ready(function() {
                 return val > 0 ? `<span class="text-danger">₹${val.toFixed(2)}</span>` : `₹${val.toFixed(2)}`;
             }},
             { data: 'status', render: function(data) {
-                let colors = {draft:'secondary',verified:'info',partial:'warning',paid:'success',overdue:'danger'};
+                let colors = {draft:'secondary',verified:'info',partial:'warning',paid:'success',overdue:'danger',cancelled:'dark'};
                 return `<span class="badge bg-${colors[data]||'secondary'}">${data.charAt(0).toUpperCase()+data.slice(1)}</span>`;
             }},
             { data: null, orderable: false, render: function(data) {
-                return `<div class="d-flex gap-1">
-                    <a href="/admin/purchase-invoices/${data.id}" class="btn btn-sm btn-outline-info"><i class="bi bi-eye"></i></a>
-                    <a href="/admin/purchase-invoices/${data.id}/edit" class="btn btn-sm btn-outline-primary"><i class="bi bi-pencil"></i></a>
-                </div>`;
+                let buttons = `<a href="/admin/purchase-invoices/${data.id}" class="btn btn-sm btn-outline-info"><i class="bi bi-eye"></i></a>`;
+                if (data.status !== 'cancelled' && data.status !== 'paid' && data.status !== 'partial') {
+                    buttons += ` <a href="/admin/purchase-invoices/${data.id}/edit" class="btn btn-sm btn-outline-primary"><i class="bi bi-pencil"></i></a>`;
+                }
+                return `<div class="d-flex gap-1">${buttons}</div>`;
             }}
         ],
         order: [[2, 'desc']]

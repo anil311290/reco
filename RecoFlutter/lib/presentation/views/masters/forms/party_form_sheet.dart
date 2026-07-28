@@ -257,8 +257,8 @@ class _PartyFormSheetState extends State<PartyFormSheet> {
               const SizedBox(height: 12),
               CustomTextField(
                 controller: _remarksController,
-                label: 'Remarks',
-                hintText: 'Remarks',
+                label: 'Notes',
+                hintText: 'Notes',
               ),
               const SizedBox(height: 12),
               SwitchListTile(

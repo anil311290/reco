@@ -310,6 +310,79 @@ class InvoiceSettlementAndPeriodLockTest extends TestCase
         ]);
     }
 
+    public function test_sales_invoice_cancel_reverses_receipt_income_and_marks_cancelled(): void
+    {
+        [$company, $fy, $cash, $debtor] = $this->seedCompanyWithCashAndDebtor(0);
+
+        $salesService = app(SalesInvoiceService::class);
+        $invoice = $salesService->create([
+            'uuid' => (string) Str::uuid(),
+            'company_id' => $company->id,
+            'financial_year_id' => $fy->id,
+            'party_id' => $debtor->id,
+            'invoice_number' => 'INV-000014',
+            'invoice_date' => '2026-07-10',
+            'due_date' => '2026-07-20',
+            'notes' => 'Delivery against PO-9',
+            'status' => 'draft',
+        ], [
+            ['description' => 'Widget', 'quantity' => 1, 'unit_price' => 100, 'discount_percentage' => 0, 'tax_amount' => 0],
+        ]);
+
+        $voucher = $salesService->generateVoucher($invoice);
+        $this->assertEquals('Delivery against PO-9', $voucher->narration);
+
+        $salesService->recordPayment($invoice->id, [
+            'amount' => 40,
+            'payment_mode' => 'cash',
+            'cash_bank_account_id' => $cash->id,
+            'payment_date' => '2026-07-12',
+        ]);
+
+        $cancelled = $salesService->cancel($invoice->id);
+
+        $this->assertEquals('cancelled', $cancelled->status);
+        $this->assertEquals(0.0, (float) $cancelled->amount_paid);
+        $this->assertEquals(0.0, (float) $cancelled->balance_due);
+
+        $this->assertEquals(0, Voucher::where('sales_invoice_id', $invoice->id)->where('status', 'posted')->count());
+        $this->assertGreaterThan(0, Voucher::where('sales_invoice_id', $invoice->id)->where('status', 'cancelled')->count());
+    }
+
+    public function test_purchase_invoice_cancel_reverses_payment_expense_and_marks_cancelled(): void
+    {
+        [$company, $fy, $cash, $creditor] = $this->seedCompanyWithCashAndCreditor(500);
+
+        $purchaseService = app(PurchaseInvoiceService::class);
+        $invoice = $purchaseService->create([
+            'uuid' => (string) Str::uuid(),
+            'company_id' => $company->id,
+            'financial_year_id' => $fy->id,
+            'party_id' => $creditor->id,
+            'invoice_number' => 'PUR-000014',
+            'invoice_date' => '2026-07-10',
+            'due_date' => '2026-07-20',
+            'status' => 'draft',
+        ], [
+            ['description' => 'Supplies', 'quantity' => 1, 'unit_price' => 200, 'discount_percentage' => 0, 'tax_amount' => 0],
+        ]);
+
+        $purchaseService->generateVoucher($invoice);
+        $purchaseService->recordPayment($invoice->id, [
+            'amount' => 50,
+            'payment_mode' => 'cash',
+            'cash_bank_account_id' => $cash->id,
+            'payment_date' => '2026-07-12',
+        ]);
+
+        $cancelled = $purchaseService->cancel($invoice->id);
+
+        $this->assertEquals('cancelled', $cancelled->status);
+        $this->assertEquals(0.0, (float) $cancelled->amount_paid);
+        $this->assertEquals(0.0, (float) $cancelled->balance_due);
+        $this->assertEquals(0, Voucher::where('purchase_invoice_id', $invoice->id)->where('status', 'posted')->count());
+    }
+
     private function seedCompanyWithCashAndDebtor(float $openingCash): array
     {
         $company = Company::factory()->create();

@@ -83,6 +83,7 @@
             <table class="table report-table table-hover mb-0">
                 <thead>
                     <tr>
+                        <th style="width:56px">#</th>
                         <th>Voucher #</th>
                         <th>Type</th>
                         <th>Particulars</th>
@@ -95,6 +96,7 @@
                 <tbody>
                     @forelse($report['rows'] as $row)
                     <tr>
+                        <td class="text-muted">{{ $row['serial'] ?? ($loop->iteration) }}</td>
                         <td class="fw-semibold">
                             @if(!empty($row['voucher_id']))
                                 <a href="{{ route('admin.vouchers.show', $row['voucher_id']) }}" class="report-detail-link" title="View voucher">
@@ -135,13 +137,13 @@
                         <td class="text-end fw-semibold">{{ $row['credit'] > 0 ? '₹' . number_format($row['credit'], 2) : '-' }}</td>
                     </tr>
                     @empty
-                    <tr><td colspan="7" class="text-muted text-center py-4">No posted transactions found for {{ $date }}</td></tr>
+                    <tr><td colspan="8" class="text-muted text-center py-4">No posted transactions found for {{ $date }}</td></tr>
                     @endforelse
                 </tbody>
                 @if(count($report['rows']) > 0)
                 <tfoot>
                     <tr>
-                        <td colspan="5">Total</td>
+                        <td colspan="6">Total</td>
                         <td class="text-end fw-bold">₹{{ number_format($report['total_debit'], 2) }}</td>
                         <td class="text-end fw-bold">₹{{ number_format($report['total_credit'], 2) }}</td>
                     </tr>

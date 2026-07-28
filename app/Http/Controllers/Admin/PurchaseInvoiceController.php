@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\Item;
 use App\Services\PurchaseInvoiceService;
 use App\Services\PartyService;
 use App\Services\AccountService;
@@ -11,6 +12,8 @@ use App\Services\TaxRateService;
 use App\Helpers\ResponseHelper;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 
 class PurchaseInvoiceController extends Controller
 {
@@ -78,7 +81,7 @@ class PurchaseInvoiceController extends Controller
         $fyId = auth()->user()->company->currentFinancialYear?->id;
 
         $parties = $this->partyService->getAll(['company_id' => $companyId, 'type' => 'creditor']);
-        $items = $this->itemService->getAll($companyId);
+        $items = $this->itemService->getAll($companyId, ['type' => 'goods', 'is_active' => true]);
         $taxRates = $this->taxRateService->getAll($companyId);
         $invoiceNumber = $fyId ? $this->purchaseInvoiceService->generateInvoiceNumber($companyId, $fyId) : null;
 
@@ -90,6 +93,8 @@ class PurchaseInvoiceController extends Controller
      */
     public function store(Request $request): JsonResponse
     {
+        $companyId = auth()->user()->company_id;
+
         $validated = $request->validate([
             'party_id' => 'required|exists:parties,id',
             'supplier_invoice_number' => 'nullable|string|max:100',
@@ -100,7 +105,10 @@ class PurchaseInvoiceController extends Controller
             'delivery_terms' => 'nullable|string|max:100',
             'discount_percentage' => 'nullable|numeric|min:0|max:100',
             'lines' => 'required|array|min:1',
-            'lines.*.item_id' => 'nullable|exists:items,id',
+            'lines.*.item_id' => [
+                'nullable',
+                Rule::exists('items', 'id')->where(fn ($q) => $q->where('company_id', $companyId)->where('type', 'goods')),
+            ],
             'lines.*.account_id' => 'nullable|exists:accounts,id',
             'lines.*.tax_rate_id' => 'nullable|exists:tax_rates,id',
             'lines.*.description' => 'nullable|string',
@@ -110,7 +118,7 @@ class PurchaseInvoiceController extends Controller
         ]);
 
         try {
-            $companyId = auth()->user()->company_id;
+            $this->assertGoodsOnlyLines($companyId, $validated['lines']);
             $fyId = auth()->user()->company->currentFinancialYear?->id;
 
             $data = [
@@ -138,6 +146,8 @@ class PurchaseInvoiceController extends Controller
             }
 
             return ResponseHelper::success($invoice, 'Purchase invoice created successfully');
+        } catch (ValidationException $e) {
+            throw $e;
         } catch (\Exception $e) {
             return ResponseHelper::error($e->getMessage());
         }
@@ -162,9 +172,18 @@ class PurchaseInvoiceController extends Controller
     public function edit(int $id)
     {
         $invoice = $this->purchaseInvoiceService->getById($id);
+        if (!$invoice) {
+            abort(404);
+        }
+        if (in_array($invoice->status, ['paid', 'partial', 'cancelled'], true)) {
+            return redirect()
+                ->route('admin.purchase-invoices.show', $id)
+                ->with('error', 'Paid, partially paid, or cancelled invoices cannot be edited.');
+        }
+
         $companyId = auth()->user()->company_id;
         $parties = $this->partyService->getAll(['company_id' => $companyId, 'type' => 'creditor']);
-        $items = $this->itemService->getAll($companyId);
+        $items = $this->itemService->getAll($companyId, ['type' => 'goods', 'is_active' => true]);
         $taxRates = $this->taxRateService->getAll($companyId);
 
         return view('admin.purchase-invoices.edit', compact('invoice', 'parties', 'items', 'taxRates'));
@@ -175,6 +194,8 @@ class PurchaseInvoiceController extends Controller
      */
     public function update(Request $request, int $id): JsonResponse
     {
+        $companyId = auth()->user()->company_id;
+
         $validated = $request->validate([
             'party_id' => 'required|exists:parties,id',
             'supplier_invoice_number' => 'nullable|string|max:100',
@@ -185,7 +206,10 @@ class PurchaseInvoiceController extends Controller
             'delivery_terms' => 'nullable|string|max:100',
             'discount_percentage' => 'nullable|numeric|min:0|max:100',
             'lines' => 'required|array|min:1',
-            'lines.*.item_id' => 'nullable|exists:items,id',
+            'lines.*.item_id' => [
+                'nullable',
+                Rule::exists('items', 'id')->where(fn ($q) => $q->where('company_id', $companyId)->where('type', 'goods')),
+            ],
             'lines.*.account_id' => 'nullable|exists:accounts,id',
             'lines.*.tax_rate_id' => 'nullable|exists:tax_rates,id',
             'lines.*.description' => 'nullable|string',
@@ -195,6 +219,8 @@ class PurchaseInvoiceController extends Controller
         ]);
 
         try {
+            $this->assertGoodsOnlyLines($companyId, $validated['lines']);
+
             $data = [
                 'party_id' => $validated['party_id'],
                 'supplier_invoice_number' => $validated['supplier_invoice_number'] ?? null,
@@ -210,6 +236,8 @@ class PurchaseInvoiceController extends Controller
 
             $invoice = $this->purchaseInvoiceService->updateWithLines($id, $data, $validated['lines']);
             return ResponseHelper::success($invoice, 'Purchase invoice updated successfully');
+        } catch (ValidationException $e) {
+            throw $e;
         } catch (\Exception $e) {
             return ResponseHelper::error($e->getMessage());
         }
@@ -243,6 +271,24 @@ class PurchaseInvoiceController extends Controller
     }
 
     /**
+     * Cancel purchase invoice (reverses vouchers, ledger, and stock).
+     */
+    public function cancel(int $id): JsonResponse
+    {
+        try {
+            $invoice = $this->purchaseInvoiceService->getById($id);
+            if (!$invoice || $invoice->company_id !== auth()->user()->company_id) {
+                return ResponseHelper::notFound('Purchase invoice not found');
+            }
+
+            $invoice = $this->purchaseInvoiceService->cancel($id);
+            return ResponseHelper::success($invoice, 'Purchase invoice cancelled successfully');
+        } catch (\Exception $e) {
+            return ResponseHelper::error($e->getMessage());
+        }
+    }
+
+    /**
      * Delete purchase invoice.
      */
     public function destroy(int $id): JsonResponse
@@ -252,6 +298,26 @@ class PurchaseInvoiceController extends Controller
             return ResponseHelper::success(null, 'Purchase invoice deleted successfully');
         } catch (\Exception $e) {
             return ResponseHelper::error($e->getMessage());
+        }
+    }
+
+    /**
+     * @param  array<int, array<string, mixed>>  $lines
+     */
+    protected function assertGoodsOnlyLines(int $companyId, array $lines): void
+    {
+        foreach ($lines as $index => $line) {
+            $itemId = $line['item_id'] ?? null;
+            if (!$itemId) {
+                continue;
+            }
+
+            $item = Item::where('company_id', $companyId)->find($itemId);
+            if (!$item || $item->type !== 'goods') {
+                throw ValidationException::withMessages([
+                    "lines.{$index}.item_id" => 'Purchase invoices only allow goods items. Services cannot be purchased.',
+                ]);
+            }
         }
     }
 }

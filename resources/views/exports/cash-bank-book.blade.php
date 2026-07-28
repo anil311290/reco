@@ -89,7 +89,7 @@
                 <tr>
                     <td>{{ \Carbon\Carbon::parse($entry->transaction_date)->format('d-m-Y') }}</td>
                     <td>{{ $entry->voucher->voucher_number ?? '-' }}</td>
-                    <td>{{ $entry->description ?: ($entry->voucher->narration ?? '-') }}</td>
+                    <td>{{ $entry->particulars ?? ($entry->description ?: ($entry->voucher->narration ?? '-')) }}</td>
                     <td class="text-right">{{ number_format((float) $entry->debit, 2) }}</td>
                     <td class="text-right">{{ number_format((float) $entry->credit, 2) }}</td>
                     <td class="text-right">{{ number_format((float) $entry->running_balance, 2) }}</td>
