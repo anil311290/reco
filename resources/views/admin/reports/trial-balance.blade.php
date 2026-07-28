@@ -11,7 +11,9 @@
             <div class="col-lg-8">
                 <span class="report-eyebrow"><i class="bi bi-journal-check"></i> Closing Control</span>
                 <h1 class="report-title">Trial Balance</h1>
-                <p class="report-subtitle">Validate the reporting period with a sharper debit-credit view and faster visibility into balance differences.</p>
+                <p class="report-subtitle">
+                    Basis for Balance Sheet and Profit &amp; Loss — Opening, period transactions, and Closing for every ledger (Tally style).
+                </p>
             </div>
             <div class="col-lg-4">
                 <div class="report-toolbar">
@@ -64,14 +66,14 @@
     @else
         <div class="report-stats-grid">
             <div class="report-stat report-stat--info">
-                <p class="report-stat-label">Total Debit</p>
+                <p class="report-stat-label">Closing Debit</p>
                 <h3 class="report-stat-value">₹{{ number_format($report['total_debit'], 2) }}</h3>
-                <p class="report-stat-note">Debit-side total across all participating accounts.</p>
+                <p class="report-stat-note">Must equal closing credit when books tally.</p>
             </div>
             <div class="report-stat report-stat--warning">
-                <p class="report-stat-label">Total Credit</p>
+                <p class="report-stat-label">Closing Credit</p>
                 <h3 class="report-stat-value">₹{{ number_format($report['total_credit'], 2) }}</h3>
-                <p class="report-stat-note">Credit-side total across all participating accounts.</p>
+                <p class="report-stat-note">Closing balances across all ledgers.</p>
             </div>
             <div class="report-stat {{ $report['is_balanced'] ? 'report-stat--success' : 'report-stat--danger' }}">
                 <p class="report-stat-label">Status</p>
@@ -89,45 +91,61 @@
                 </span>
             </div>
             <div class="report-panel-body report-panel-body--flush">
-                <table class="table report-table table-hover mb-0">
-                    <thead>
-                        <tr>
-                            <th>Account Code</th>
-                            <th>Account Name</th>
-                            <th>Type</th>
-                            <th class="text-end">Debit (₹)</th>
-                            <th class="text-end">Credit (₹)</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @forelse($report['accounts'] as $item)
-                        <tr>
-                            <td>
-                                <a href="{{ route('admin.reports.ledger', ['account_id' => $item['account']->id]) }}" class="report-detail-link" title="View ledger">
-                                    {{ $item['account']->account_code }}
-                                </a>
-                            </td>
-                            <td>
-                                <a href="{{ route('admin.reports.ledger', ['account_id' => $item['account']->id]) }}" class="report-detail-link" title="View ledger">
-                                    {{ $item['account']->account_name }}
-                                </a>
-                            </td>
-                            <td><span class="report-pill report-pill--info">{{ ucfirst($item['account']->account_type) }}</span></td>
-                            <td class="text-end fw-semibold">{{ $item['debit'] > 0 ? '₹' . number_format($item['debit'], 2) : '-' }}</td>
-                            <td class="text-end fw-semibold">{{ $item['credit'] > 0 ? '₹' . number_format($item['credit'], 2) : '-' }}</td>
-                        </tr>
-                        @empty
-                        <tr><td colspan="5" class="text-muted text-center py-3">No accounts found</td></tr>
-                        @endforelse
-                    </tbody>
-                    <tfoot>
-                        <tr>
-                            <td colspan="3">Total</td>
-                            <td class="text-end fw-bold">₹{{ number_format($report['total_debit'], 2) }}</td>
-                            <td class="text-end fw-bold">₹{{ number_format($report['total_credit'], 2) }}</td>
-                        </tr>
-                    </tfoot>
-                </table>
+                <div class="table-responsive">
+                    <table class="table report-table table-hover mb-0">
+                        <thead>
+                            <tr>
+                                <th>Account</th>
+                                <th>Type</th>
+                                <th>Dest</th>
+                                <th class="text-end">Opening Dr</th>
+                                <th class="text-end">Opening Cr</th>
+                                <th class="text-end">Trans Dr</th>
+                                <th class="text-end">Trans Cr</th>
+                                <th class="text-end">Closing Dr</th>
+                                <th class="text-end">Closing Cr</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @forelse($report['accounts'] as $item)
+                            <tr>
+                                <td>
+                                    <a href="{{ route('admin.reports.ledger', ['account_id' => $item['account']->id]) }}" class="report-detail-link" title="View ledger">
+                                        <span class="fw-semibold">{{ $item['account']->account_code }}</span>
+                                        — {{ $item['account']->account_name }}
+                                    </a>
+                                    @if(($item['account']->transaction_mode ?? null) === 'bank' || ($item['account']->transaction_mode ?? null) === 'od')
+                                        <a href="{{ route('admin.reports.bank-book', ['account_id' => $item['account']->id]) }}" class="ms-1 small report-detail-link" title="Open Bank Book">Bank Book</a>
+                                    @elseif(($item['account']->transaction_mode ?? null) === 'cash')
+                                        <a href="{{ route('admin.reports.cash-book', ['account_id' => $item['account']->id]) }}" class="ms-1 small report-detail-link" title="Open Cash Book">Cash Book</a>
+                                    @endif
+                                </td>
+                                <td><span class="report-pill report-pill--info">{{ ucfirst($item['account']->account_type) }}</span></td>
+                                <td><span class="report-pill">{{ $item['destination'] ?? '-' }}</span></td>
+                                <td class="text-end">{{ ($item['opening_debit'] ?? 0) > 0 ? '₹' . number_format($item['opening_debit'], 2) : '-' }}</td>
+                                <td class="text-end">{{ ($item['opening_credit'] ?? 0) > 0 ? '₹' . number_format($item['opening_credit'], 2) : '-' }}</td>
+                                <td class="text-end">{{ ($item['transaction_debit'] ?? 0) > 0 ? '₹' . number_format($item['transaction_debit'], 2) : '-' }}</td>
+                                <td class="text-end">{{ ($item['transaction_credit'] ?? 0) > 0 ? '₹' . number_format($item['transaction_credit'], 2) : '-' }}</td>
+                                <td class="text-end fw-semibold">{{ ($item['debit'] ?? 0) > 0 ? '₹' . number_format($item['debit'], 2) : '-' }}</td>
+                                <td class="text-end fw-semibold">{{ ($item['credit'] ?? 0) > 0 ? '₹' . number_format($item['credit'], 2) : '-' }}</td>
+                            </tr>
+                            @empty
+                            <tr><td colspan="9" class="text-muted text-center py-3">No accounts found</td></tr>
+                            @endforelse
+                        </tbody>
+                        <tfoot>
+                            <tr>
+                                <td colspan="3">Total</td>
+                                <td class="text-end fw-bold">₹{{ number_format($report['total_opening_debit'] ?? 0, 2) }}</td>
+                                <td class="text-end fw-bold">₹{{ number_format($report['total_opening_credit'] ?? 0, 2) }}</td>
+                                <td class="text-end fw-bold">₹{{ number_format($report['total_transaction_debit'] ?? 0, 2) }}</td>
+                                <td class="text-end fw-bold">₹{{ number_format($report['total_transaction_credit'] ?? 0, 2) }}</td>
+                                <td class="text-end fw-bold">₹{{ number_format($report['total_debit'], 2) }}</td>
+                                <td class="text-end fw-bold">₹{{ number_format($report['total_credit'], 2) }}</td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
             </div>
         </div>
     @endif

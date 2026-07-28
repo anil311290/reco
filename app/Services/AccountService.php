@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\Account;
 use App\Models\FinancialYear;
 use App\Models\Party;
+use App\Models\Setting;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\QueryException;
 use Illuminate\Pagination\LengthAwarePaginator;
@@ -121,6 +122,12 @@ class AccountService
                         $data['company_id']
                     );
                     $data['entry_source'] = 'manual';
+
+                    if (empty($data['balance_type'])) {
+                        $data['balance_type'] = in_array($data['account_type'] ?? '', ['asset', 'expense'], true)
+                            ? 'debit'
+                            : 'credit';
+                    }
 
                     // Set opening date if not provided
                     if (empty($data['opening_date'])) {
@@ -450,31 +457,43 @@ class AccountService
                 'account_name' => 'Opening Balance Difference',
                 'account_type' => 'asset',
                 'balance_type' => 'debit',
-                'remarks' => 'System suspense account for opening balance differences.',
+                'remarks' => 'System suspense ledger used for balancing opening entries.',
+            ],
+            Account::CODE_PURCHASE_TAX => [
+                'account_name' => 'Purchase Tax',
+                'account_type' => 'asset',
+                'balance_type' => 'debit',
+                'remarks' => 'Default ledger for tax amount from purchase invoice lines.',
             ],
             Account::CODE_AR => [
                 'account_name' => 'Accounts Receivable',
                 'account_type' => 'asset',
                 'balance_type' => 'debit',
-                'remarks' => 'System account for customer receivables.',
+                'remarks' => 'Control ledger for all debtor (customer) balances.',
+            ],
+            Account::CODE_SALES_TAX => [
+                'account_name' => 'Sales Tax',
+                'account_type' => 'liability',
+                'balance_type' => 'credit',
+                'remarks' => 'Default ledger for tax amount from sales invoice lines.',
             ],
             Account::CODE_AP => [
                 'account_name' => 'Accounts Payable',
                 'account_type' => 'liability',
                 'balance_type' => 'credit',
-                'remarks' => 'System account for vendor payables.',
+                'remarks' => 'Control ledger for all creditor (supplier) balances.',
             ],
             Account::CODE_AR_INCOME => [
-                'account_name' => 'Sales Revenue (AR)',
+                'account_name' => 'Sales Revenue',
                 'account_type' => 'income',
                 'balance_type' => 'credit',
-                'remarks' => 'Reserved default income account for AR transactions.',
+                'remarks' => 'Default income ledger for item totals on sales invoices.',
             ],
             Account::CODE_AP_EXPENSE => [
-                'account_name' => 'Purchases (AP)',
+                'account_name' => 'Purchase Expenses',
                 'account_type' => 'expense',
                 'balance_type' => 'debit',
-                'remarks' => 'Reserved default expense account for AP transactions.',
+                'remarks' => 'Default expense ledger for item totals on purchase invoices.',
             ],
         ];
 
@@ -527,7 +546,37 @@ class AccountService
             ]);
         }
 
+        $this->syncDefaultTaxLedgerSettings($companyId);
+
         return $created;
+    }
+
+    protected function syncDefaultTaxLedgerSettings(int $companyId): void
+    {
+        $salesTax = Account::where('company_id', $companyId)
+            ->where('account_code', Account::CODE_SALES_TAX)
+            ->first();
+        $purchaseTax = Account::where('company_id', $companyId)
+            ->where('account_code', Account::CODE_PURCHASE_TAX)
+            ->first();
+
+        if ($salesTax) {
+            Setting::setValue(
+                'sales_tax_ledger_id',
+                (string) $salesTax->id,
+                $companyId,
+                'accounting'
+            );
+        }
+
+        if ($purchaseTax) {
+            Setting::setValue(
+                'purchase_tax_ledger_id',
+                (string) $purchaseTax->id,
+                $companyId,
+                'accounting'
+            );
+        }
     }
 
     protected function cleanupDuplicateAccounts(int $companyId): int

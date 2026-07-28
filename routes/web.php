@@ -445,6 +445,7 @@ Route::prefix('admin')->name('admin.')->group(function () {
             Route::get('sales-invoices/{id}/edit', [SalesInvoiceController::class, 'edit'])->name('sales-invoices.edit');
             Route::put('sales-invoices/{id}', [SalesInvoiceController::class, 'update'])->name('sales-invoices.update');
             Route::delete('sales-invoices/{id}', [SalesInvoiceController::class, 'destroy'])->name('sales-invoices.destroy');
+            Route::post('sales-invoices/{id}/cancel', [SalesInvoiceController::class, 'cancel'])->name('sales-invoices.cancel');
             Route::post('sales-invoices/{id}/payment', [SalesInvoiceController::class, 'payment'])->name('sales-invoices.payment');
             Route::get('sales-invoices/overdue', [SalesInvoiceController::class, 'overdue'])->name('sales-invoices.overdue');
         });
@@ -462,23 +463,8 @@ Route::prefix('admin')->name('admin.')->group(function () {
             Route::get('purchase-invoices/{id}/edit', [PurchaseInvoiceController::class, 'edit'])->name('purchase-invoices.edit');
             Route::put('purchase-invoices/{id}', [PurchaseInvoiceController::class, 'update'])->name('purchase-invoices.update');
             Route::delete('purchase-invoices/{id}', [PurchaseInvoiceController::class, 'destroy'])->name('purchase-invoices.destroy');
+            Route::post('purchase-invoices/{id}/cancel', [PurchaseInvoiceController::class, 'cancel'])->name('purchase-invoices.cancel');
             Route::post('purchase-invoices/{id}/payment', [PurchaseInvoiceController::class, 'payment'])->name('purchase-invoices.payment');
-        });
-
-        /*
-        |--------------------------------------------------------------------------
-        | Service Sales Invoice Routes (redirected — unified under Sales Invoice)
-        |--------------------------------------------------------------------------
-        */
-        Route::middleware(CheckPermission::class . ':vouchers.view')->group(function () {
-            Route::get('service-sales-invoices', fn () => redirect()->route('admin.sales-invoices.index'))
-                ->name('service-sales-invoices.index');
-            Route::get('service-sales-invoices/create', fn () => redirect()->route('admin.sales-invoices.create'))
-                ->name('service-sales-invoices.create');
-            Route::get('service-sales-invoices/{id}/edit', fn (int $id) => redirect()->route('admin.sales-invoices.edit', $id))
-                ->name('service-sales-invoices.edit');
-            Route::get('service-sales-invoices/{id}', fn (int $id) => redirect()->route('admin.sales-invoices.show', $id))
-                ->name('service-sales-invoices.show');
         });
 
         /*

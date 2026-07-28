@@ -98,8 +98,8 @@
                         </div>
 
                         <div class="mb-4">
-                            <label for="remarks" class="form-label fw-semibold">Remarks</label>
-                            <textarea class="form-control" id="remarks" name="remarks" rows="4" placeholder="Add notes, usage hints, or internal remarks">{{ old('remarks') }}</textarea>
+                            <label for="remarks" class="form-label fw-semibold">Notes</label>
+                            <textarea class="form-control" id="remarks" name="remarks" rows="4" placeholder="Add usage hints or internal notes">{{ old('remarks') }}</textarea>
                         </div>
 
                         <div class="d-flex align-items-center justify-content-between flex-wrap gap-3">
@@ -195,6 +195,10 @@
 @push('scripts')
 <script>
 $(document).ready(function() {
+    function defaultBalanceType(accountType) {
+        return (accountType === 'asset' || accountType === 'expense') ? 'debit' : 'credit';
+    }
+
     function syncTransactionModeState() {
         const isAsset = $('#account_type').val() === 'asset';
         $('#transaction_mode_row').toggleClass('d-none', !isAsset);
@@ -203,11 +207,23 @@ $(document).ready(function() {
         }
     }
 
+    function syncBalanceType() {
+        const accountType = $('#account_type').val();
+        if (!accountType) {
+            return;
+        }
+        $('#balance_type').val(defaultBalanceType(accountType));
+    }
+
     $('#account_type').on('change', function() {
         syncTransactionModeState();
+        syncBalanceType();
     });
 
     syncTransactionModeState();
+    @if(!old('balance_type'))
+    syncBalanceType();
+    @endif
 });
 </script>
 @endpush

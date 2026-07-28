@@ -2,7 +2,6 @@
 
 namespace App\Services;
 
-use App\Models\Account;
 use App\Models\Item;
 use App\Models\PurchaseInvoiceLine;
 use App\Models\SalesInvoiceLine;
@@ -79,10 +78,18 @@ class ItemService
      */
     public function create(array $data): Item
     {
-        $data['current_stock'] = $data['opening_stock'] ?? 0;
-        if (!array_key_exists('is_stockable', $data)) {
-            $data['is_stockable'] = ($data['type'] ?? 'goods') === 'goods';
+        if (($data['type'] ?? 'goods') === 'service') {
+            $data['is_stockable'] = false;
+            $data['opening_stock'] = 0;
+            $data['current_stock'] = 0;
+            $data['purchase_price'] = 0;
+        } else {
+            $data['current_stock'] = $data['opening_stock'] ?? 0;
+            if (!array_key_exists('is_stockable', $data)) {
+                $data['is_stockable'] = true;
+            }
         }
+
         return Item::create($data);
     }
 
@@ -91,7 +98,16 @@ class ItemService
      */
     public function update(int $id, array $data): bool
     {
-        return Item::findOrFail($id)->update($data);
+        $item = Item::findOrFail($id);
+        $type = $data['type'] ?? $item->type;
+
+        if ($type === 'service') {
+            $data['is_stockable'] = false;
+            $data['purchase_price'] = 0;
+            unset($data['opening_stock'], $data['current_stock']);
+        }
+
+        return $item->update($data);
     }
 
     /**
@@ -121,8 +137,8 @@ class ItemService
     }
 
     /**
-     * Sales line catalog: goods/service items + income accounts as services.
-     * Matches admin sales invoice Items/Services dropdown.
+     * Sales line catalog: goods items + service-type items.
+     * Matches admin sales invoice Goods/Services dropdown.
      *
      * @return array{items: Collection, services: array<int, array<string, mixed>>}
      */
@@ -132,72 +148,47 @@ class ItemService
         $items = new Collection();
         $services = [];
 
+        $baseFilters = $filters;
+        unset($baseFilters['type']);
+
         if ($type !== 'service') {
-            $itemFilters = $filters;
-            if ($type === 'goods') {
-                $itemFilters['type'] = 'goods';
-            } else {
-                unset($itemFilters['type']);
-            }
+            $itemFilters = $baseFilters;
+            $itemFilters['type'] = 'goods';
             $items = $this->getAll($companyId, $itemFilters);
         }
 
         if ($type === null || $type === '' || $type === 'service') {
-            $services = $this->getServiceAccountsForListing(
-                $companyId,
-                $filters['search'] ?? null,
-                isset($filters['is_active']) ? (bool) $filters['is_active'] : true
-            );
+            $serviceFilters = $baseFilters;
+            $serviceFilters['type'] = 'service';
+            $services = $this->getAll($companyId, $serviceFilters)
+                ->map(static function (Item $item) {
+                    $text = $item->item_code
+                        ? "{$item->item_code} - {$item->name}"
+                        : $item->name;
+
+                    return [
+                        'id' => $item->id,
+                        'kind' => 'service',
+                        'type' => 'service',
+                        'name' => $item->name,
+                        'item_code' => $item->item_code,
+                        'selling_price' => (float) $item->selling_price,
+                        'tax_rate_id' => $item->tax_rate_id,
+                        'income_account_id' => $item->income_account_id,
+                        'text' => $text,
+                        'description' => $item->description ?: $text,
+                        'is_active' => (bool) $item->is_active,
+                        'is_stockable' => false,
+                    ];
+                })
+                ->values()
+                ->all();
         }
 
         return [
             'items' => $items,
             'services' => $services,
         ];
-    }
-
-    /**
-     * Active income accounts exposed as selectable service lines.
-     *
-     * @return array<int, array<string, mixed>>
-     */
-    public function getServiceAccountsForListing(int $companyId, ?string $search = null, bool $activeOnly = true): array
-    {
-        $query = Account::query()
-            ->where('company_id', $companyId)
-            ->where('account_type', 'income');
-
-        if ($activeOnly) {
-            $query->where('is_active', true);
-        }
-
-        if (!empty($search)) {
-            $query->where(function ($q) use ($search) {
-                $q->where('account_name', 'like', "%{$search}%")
-                    ->orWhere('account_code', 'like', "%{$search}%");
-            });
-        }
-
-        return $query->orderBy('id', 'desc')
-            ->get()
-            ->map(static function (Account $account) {
-                $text = "{$account->account_code} - {$account->account_name}";
-
-                return [
-                    'id' => $account->id,
-                    'kind' => 'service',
-                    'type' => 'service',
-                    'account_code' => $account->account_code,
-                    'name' => $account->account_name,
-                    'text' => $text,
-                    'description' => $text,
-                    'account_type' => $account->account_type,
-                    'selling_price' => 0,
-                    'is_active' => (bool) $account->is_active,
-                ];
-            })
-            ->values()
-            ->all();
     }
 
     /**

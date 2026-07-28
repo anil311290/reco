@@ -21,7 +21,6 @@ class SalesInvoice extends Model
         'financial_year_id',
         'party_id',
         'invoice_number',
-        'invoice_type',
         'invoice_date',
         'due_date',
         'reference_number',

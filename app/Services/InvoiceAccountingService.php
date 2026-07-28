@@ -544,12 +544,31 @@ class InvoiceAccountingService
             default => $context === 'sales' ? 'sales_tax_ledger_id' : 'purchase_tax_ledger_id',
         };
 
+        // Sales / Purchase invoice tax always posts to reserved system ledgers.
+        if (in_array($key, ['sales_tax_ledger_id', 'purchase_tax_ledger_id'], true)) {
+            $taxContext = $key === 'sales_tax_ledger_id' ? 'sales' : 'purchase';
+            $defaultTaxAccount = $this->ensureTaxPostingAccount(
+                $companyId,
+                $financialYearId,
+                $createdBy,
+                $createdByIp,
+                $taxContext
+            );
+
+            Setting::setValue($key, (string) $defaultTaxAccount->id, $companyId, 'accounting');
+
+            return (int) $defaultTaxAccount->id;
+        }
+
         $ledgerId = $this->settingsService->get($key, null, $companyId);
 
         if ($ledgerId) {
-            $account = Account::where('company_id', $companyId)->where('id', (int) $ledgerId)->first();
+            $account = Account::where('company_id', $companyId)
+                ->where('id', (int) $ledgerId)
+                ->where('account_code', '!=', Account::CODE_SUSPENSE)
+                ->first();
             if ($account) {
-                return (int) $ledgerId;
+                return (int) $account->id;
             }
         }
 
@@ -573,12 +592,14 @@ class InvoiceAccountingService
         ?string $createdByIp,
         string $context
     ): Account {
-        $defaultName = $context === 'sales' ? 'Output Tax Payable' : 'Input Tax Credit';
+        $code = $context === 'sales' ? Account::CODE_SALES_TAX : Account::CODE_PURCHASE_TAX;
+        $name = $context === 'sales' ? 'Sales Tax' : 'Purchase Tax';
+        $type = $context === 'sales' ? 'liability' : 'asset';
+        $balanceType = $context === 'sales' ? 'credit' : 'debit';
 
         $existing = Account::withTrashed()
             ->where('company_id', $companyId)
-            ->where('account_type', $context === 'sales' ? 'liability' : 'asset')
-            ->where('account_name', $defaultName)
+            ->where('account_code', $code)
             ->first();
 
         if ($existing) {
@@ -587,7 +608,11 @@ class InvoiceAccountingService
             }
 
             $existing->update([
+                'account_name' => $name,
+                'account_type' => $type,
+                'balance_type' => $balanceType,
                 'is_active' => true,
+                'is_system' => true,
                 'entry_source' => 'system',
                 'updated_by' => $createdBy,
                 'updated_by_ip' => $createdByIp,
@@ -600,16 +625,18 @@ class InvoiceAccountingService
             'uuid' => (string) Str::uuid(),
             'company_id' => $companyId,
             'financial_year_id' => $financialYearId,
-            'account_code' => Account::generateCode($context === 'sales' ? 'liability' : 'asset', $companyId),
-            'account_name' => $defaultName,
-            'account_type' => $context === 'sales' ? 'liability' : 'asset',
+            'account_code' => $code,
+            'account_name' => $name,
+            'account_type' => $type,
             'entry_source' => 'system',
             'opening_balance' => 0,
-            'balance_type' => $context === 'sales' ? 'credit' : 'debit',
+            'balance_type' => $balanceType,
             'opening_date' => now()->toDateString(),
-            'remarks' => 'System tax posting account.',
+            'remarks' => $context === 'sales'
+                ? 'Default ledger for tax amount from sales invoice lines.'
+                : 'Default ledger for tax amount from purchase invoice lines.',
             'is_active' => true,
-            'is_system' => false,
+            'is_system' => true,
             'created_by' => $createdBy,
             'updated_by' => $createdBy,
             'created_by_ip' => $createdByIp,

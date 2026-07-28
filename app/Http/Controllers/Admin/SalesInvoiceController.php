@@ -83,12 +83,12 @@ class SalesInvoiceController extends Controller
         $fyId = auth()->user()->company->currentFinancialYear?->id;
 
         $parties = $this->partyService->getAll(['company_id' => $companyId, 'type' => 'debtor']);
-        $items = $this->itemService->getAll($companyId);
+        $goodsItems = $this->itemService->getAll($companyId, ['type' => 'goods']);
+        $serviceItems = $this->itemService->getAll($companyId, ['type' => 'service']);
         $taxRates = $this->taxRateService->getAll($companyId);
-        $serviceAccounts = $this->accountService->getForDropdown($companyId, 'income');
-        $invoiceNumber = $fyId ? $this->salesInvoiceService->generateInvoiceNumber($companyId, $fyId) : 'INV-000001';
+        $invoiceNumber = $fyId ? $this->salesInvoiceService->generateInvoiceNumber($companyId, $fyId) : null;
 
-        return view('admin.sales-invoices.create', compact('parties', 'items', 'taxRates', 'serviceAccounts', 'invoiceNumber'));
+        return view('admin.sales-invoices.create', compact('parties', 'goodsItems', 'serviceItems', 'taxRates', 'invoiceNumber'));
     }
 
     /**
@@ -195,13 +195,22 @@ class SalesInvoiceController extends Controller
     public function edit(int $id)
     {
         $invoice = $this->salesInvoiceService->getById($id);
+        if (!$invoice) {
+            abort(404);
+        }
+        if (in_array($invoice->status, ['paid', 'partial', 'cancelled'], true)) {
+            return redirect()
+                ->route('admin.sales-invoices.show', $id)
+                ->with('error', 'Paid, partially paid, or cancelled invoices cannot be edited.');
+        }
+
         $companyId = auth()->user()->company_id;
         $parties = $this->partyService->getAll(['company_id' => $companyId, 'type' => 'debtor']);
-        $items = $this->itemService->getAll($companyId);
+        $goodsItems = $this->itemService->getAll($companyId, ['type' => 'goods']);
+        $serviceItems = $this->itemService->getAll($companyId, ['type' => 'service']);
         $taxRates = $this->taxRateService->getAll($companyId);
-        $serviceAccounts = $this->accountService->getForDropdown($companyId, 'income');
 
-        return view('admin.sales-invoices.edit', compact('invoice', 'parties', 'items', 'taxRates', 'serviceAccounts'));
+        return view('admin.sales-invoices.edit', compact('invoice', 'parties', 'goodsItems', 'serviceItems', 'taxRates'));
     }
 
     /**
@@ -279,6 +288,24 @@ class SalesInvoiceController extends Controller
                 'created_by_ip' => $request->ip(),
             ]);
             return ResponseHelper::success($invoice, 'Payment recorded and receipt voucher posted');
+        } catch (\Exception $e) {
+            return ResponseHelper::error($e->getMessage());
+        }
+    }
+
+    /**
+     * Cancel sales invoice (reverses vouchers, ledger, and stock).
+     */
+    public function cancel(int $id): JsonResponse
+    {
+        try {
+            $invoice = $this->salesInvoiceService->getById($id);
+            if (!$invoice || $invoice->company_id !== auth()->user()->company_id) {
+                return ResponseHelper::notFound('Sales invoice not found');
+            }
+
+            $invoice = $this->salesInvoiceService->cancel($id);
+            return ResponseHelper::success($invoice, 'Sales invoice cancelled successfully');
         } catch (\Exception $e) {
             return ResponseHelper::error($e->getMessage());
         }

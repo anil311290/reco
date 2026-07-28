@@ -211,7 +211,7 @@ class _PaymentRowCard<T extends BaseVoucherFormController> extends GetView<T> {
           CustomTextField(
             label: 'Description',
             controller: row.descriptionController,
-            hintText: 'Optional remarks',
+            hintText: 'Optional description',
           ),
           if (controller.paymentRows.length > 1)
             Align(

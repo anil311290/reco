@@ -62,49 +62,62 @@ class Item extends Model
     protected static function booted(): void
     {
         static::creating(function ($item) {
-            // Default type is Goods
             if (empty($item->type)) {
                 $item->type = 'goods';
             }
 
-            // Set default accounts for type=goods
-            if ($item->type === 'goods') {
-                // Find default Sales Revenue account (income)
-                if (empty($item->income_account_id) && $item->company_id) {
+            if ($item->type === 'service') {
+                $item->is_stockable = false;
+                if ($item->opening_stock === null) {
+                    $item->opening_stock = 0;
+                }
+                if ($item->current_stock === null) {
+                    $item->current_stock = 0;
+                }
+            }
+
+            // Default Sales Revenue for both goods and service
+            if (empty($item->income_account_id) && $item->company_id) {
+                $salesAccount = Account::where('company_id', $item->company_id)
+                    ->where('account_type', 'income')
+                    ->where('account_code', Account::CODE_AR_INCOME)
+                    ->first();
+
+                if (!$salesAccount) {
                     $salesAccount = Account::where('company_id', $item->company_id)
                         ->where('account_type', 'income')
                         ->where('is_system', true)
                         ->first();
-
-                    if (!$salesAccount) {
-                        $salesAccount = Account::where('company_id', $item->company_id)
-                            ->where('account_type', 'income')
-                            ->where('account_name', 'like', '%sales%')
-                            ->first();
-                    }
-
-                    if ($salesAccount) {
-                        $item->income_account_id = $salesAccount->id;
-                    }
                 }
 
-                // Find default Purchases account (expense)
-                if (empty($item->expense_account_id) && $item->company_id) {
+                if (!$salesAccount) {
+                    $salesAccount = Account::where('company_id', $item->company_id)
+                        ->where('account_type', 'income')
+                        ->where('account_name', 'like', '%sales%')
+                        ->first();
+                }
+
+                if ($salesAccount) {
+                    $item->income_account_id = $salesAccount->id;
+                }
+            }
+
+            // Default Purchases expense account for goods only
+            if ($item->type === 'goods' && empty($item->expense_account_id) && $item->company_id) {
+                $purchaseAccount = Account::where('company_id', $item->company_id)
+                    ->where('account_type', 'expense')
+                    ->where('is_system', true)
+                    ->first();
+
+                if (!$purchaseAccount) {
                     $purchaseAccount = Account::where('company_id', $item->company_id)
                         ->where('account_type', 'expense')
-                        ->where('is_system', true)
+                        ->where('account_name', 'like', '%purchase%')
                         ->first();
+                }
 
-                    if (!$purchaseAccount) {
-                        $purchaseAccount = Account::where('company_id', $item->company_id)
-                            ->where('account_type', 'expense')
-                            ->where('account_name', 'like', '%purchase%')
-                            ->first();
-                    }
-
-                    if ($purchaseAccount) {
-                        $item->expense_account_id = $purchaseAccount->id;
-                    }
+                if ($purchaseAccount) {
+                    $item->expense_account_id = $purchaseAccount->id;
                 }
             }
         });
@@ -134,8 +147,6 @@ class Item extends Model
     {
         return $this->belongsTo(Account::class, 'expense_account_id');
     }
-
-
 
     /**
      * Update stock quantity.

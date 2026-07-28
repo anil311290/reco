@@ -176,7 +176,6 @@ class TallyFullBooksCycleTest extends TestCase
             'financial_year_id' => $fy->id,
             'party_id' => $customer->id,
             'invoice_number' => 'INV-000001',
-            'invoice_type' => 'item',
             'invoice_date' => $date,
             'due_date' => '2026-07-30',
             'status' => 'draft',

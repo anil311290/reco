@@ -16,7 +16,7 @@
 
 <div class="card card-form">
     <div class="card-body">
-        <form id="partyForm" method="POST" action="{{ route('admin.parties.store') }}" data-ajax="true" data-success-redirect="{{ route('admin.parties.index') }}">
+        <form id="partyForm" method="POST" action="{{ route('admin.parties.store') }}">
             @csrf
             
             <div class="row g-3">
@@ -102,6 +102,7 @@
                         <input type="number" class="form-control" id="opening_balance" name="opening_balance" 
                                value="{{ old('opening_balance', '0.00') }}" step="0.01" min="0">
                     </div>
+                    <div class="form-text">Cannot be edited after create.</div>
                 </div>
 
                 <div class="col-md-4">
@@ -120,8 +121,8 @@
             </div>
 
             <div class="mb-3">
-                <label for="remarks" class="form-label">Remarks</label>
-                <textarea class="form-control" id="remarks" name="remarks" rows="2" 
+                <label for="remarks" class="form-label">Notes</label>
+                <textarea class="form-control" id="remarks" name="remarks" rows="2"
                           placeholder="Enter any additional notes">{{ old('remarks') }}</textarea>
             </div>
 
@@ -181,6 +182,46 @@ $(document).ready(function() {
             citySelect.prop('disabled', true);
         }
     });
+
+    // Confirm opening balance before create — it cannot be edited later.
+    $('#partyForm').on('submit.obConfirm', function(e) {
+        const form = $(this);
+        if (form.data('ob-confirmed')) {
+            form.removeData('ob-confirmed');
+            return;
+        }
+
+        e.preventDefault();
+        e.stopImmediatePropagation();
+
+        const amount = parseFloat($('#opening_balance').val()) || 0;
+        const balanceType = $('#opening_balance_type option:selected').text();
+        const openingDate = $('#opening_date').val() || '-';
+        const formattedAmount = amount.toLocaleString('en-IN', {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2
+        });
+
+        Swal.fire({
+            title: 'Confirm Opening Balance',
+            html: amount > 0
+                ? `Opening balance of <strong>₹${formattedAmount}</strong> (${balanceType}) dated <strong>${openingDate}</strong> will be posted and <strong>cannot be edited later</strong>.`
+                : `No opening balance will be posted. Opening balance <strong>cannot be set later</strong> after the party is created.`,
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#4f46e5',
+            cancelButtonColor: '#6b7280',
+            confirmButtonText: 'Yes, create party',
+            cancelButtonText: 'Review again'
+        }).then(function(result) {
+            if (result.isConfirmed) {
+                form.data('ob-confirmed', true);
+                form.trigger('submit');
+            }
+        });
+    });
+
+    ajaxFormSubmit('#partyForm', '{{ route("admin.parties.store") }}', 'POST', '{{ route("admin.parties.index") }}');
 });
 </script>
 @endpush

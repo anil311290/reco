@@ -109,8 +109,8 @@
                         </div>
 
                         <div class="mb-4">
-                            <label for="remarks" class="form-label fw-semibold">Remarks</label>
-                            <textarea class="form-control" id="remarks" name="remarks" rows="4" placeholder="Add notes, usage hints, or internal remarks">{{ old('remarks', $account->remarks) }}</textarea>
+                            <label for="remarks" class="form-label fw-semibold">Notes</label>
+                            <textarea class="form-control" id="remarks" name="remarks" rows="4" placeholder="Add usage hints or internal notes">{{ old('remarks', $account->remarks) }}</textarea>
                         </div>
 
                         <div class="d-flex align-items-center justify-content-between flex-wrap gap-3">
@@ -136,7 +136,7 @@
                         @if($isInUse)
                             <div class="alert alert-warning mt-4 mb-0">
                                 <i class="bi bi-shield-lock me-2"></i>
-                                Transactions are posted to this ledger. You may rename it, update remarks, or change its active status; classification and opening-balance fields are locked to preserve historical reports.
+                                Transactions are posted to this ledger. You may rename it, update notes, or change its active status; classification and opening-balance fields are locked to preserve historical reports.
                             </div>
                         @endif
                     </form>
@@ -219,6 +219,10 @@
 @push('scripts')
 <script>
 $(document).ready(function() {
+    function defaultBalanceType(accountType) {
+        return (accountType === 'asset' || accountType === 'expense') ? 'debit' : 'credit';
+    }
+
     function syncTransactionModeState() {
         const isAsset = $('#account_type').val() === 'asset';
         $('#transaction_mode_row').toggleClass('d-none', !isAsset);
@@ -229,6 +233,9 @@ $(document).ready(function() {
 
     $('#account_type').on('change', function() {
         syncTransactionModeState();
+        if (!$('#balance_type').is(':disabled')) {
+            $('#balance_type').val(defaultBalanceType($(this).val()));
+        }
     });
 
     syncTransactionModeState();

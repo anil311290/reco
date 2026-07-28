@@ -174,6 +174,23 @@ class PurchaseInvoiceApiController extends Controller
         }
     }
 
+    public function cancel(int $id): JsonResponse
+    {
+        $invoice = $this->purchaseInvoiceService->getById($id);
+
+        if (!$invoice || $invoice->company_id !== request()->user()->company_id) {
+            return ResponseHelper::notFound('Invoice not found');
+        }
+
+        try {
+            $invoice = $this->purchaseInvoiceService->cancel($id);
+
+            return ResponseHelper::success(new PurchaseInvoiceResource($invoice), 'Invoice cancelled successfully');
+        } catch (\Exception $e) {
+            return ResponseHelper::error($e->getMessage());
+        }
+    }
+
     protected function purchaseRules(int $companyId): array
     {
         return [

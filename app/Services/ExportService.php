@@ -351,9 +351,16 @@ class ExportService
                 $trialBalance = $this->ledgerService->getTrialBalance($companyId, $filters['financial_year_id'] ?? FinancialYear::getCurrent($companyId)?->id);
                 $data = array_map(function ($row) {
                     return [
+                        'account_code' => $row['account']->account_code,
                         'account' => $row['account']->account_name,
-                        'debit' => $row['debit'],
-                        'credit' => $row['credit'],
+                        'type' => $row['account']->account_type,
+                        'destination' => $row['destination'] ?? '',
+                        'opening_debit' => $row['opening_debit'] ?? 0,
+                        'opening_credit' => $row['opening_credit'] ?? 0,
+                        'transaction_debit' => $row['transaction_debit'] ?? 0,
+                        'transaction_credit' => $row['transaction_credit'] ?? 0,
+                        'closing_debit' => $row['debit'],
+                        'closing_credit' => $row['credit'],
                     ];
                 }, $trialBalance['accounts']);
                 break;
@@ -368,7 +375,7 @@ class ExportService
                     return [
                         'transaction_date' => $entry->transaction_date,
                         'voucher_number' => $entry->voucher?->voucher_number ?? '',
-                        'description' => $entry->voucher?->narration ?? '',
+                        'particulars' => $entry->particulars ?? ($entry->voucher?->narration ?? ''),
                         'debit' => $entry->debit,
                         'credit' => $entry->credit,
                         'balance' => $entry->running_balance,
@@ -543,9 +550,16 @@ class ExportService
                 $trialBalance = $this->ledgerService->getTrialBalance($companyId, $filters['financial_year_id'] ?? FinancialYear::getCurrent($companyId)?->id);
                 $data = array_map(function ($row) {
                     return [
+                        'account_code' => $row['account']->account_code,
                         'account' => $row['account']->account_name,
-                        'debit' => $row['debit'],
-                        'credit' => $row['credit'],
+                        'type' => $row['account']->account_type,
+                        'destination' => $row['destination'] ?? '',
+                        'opening_debit' => $row['opening_debit'] ?? 0,
+                        'opening_credit' => $row['opening_credit'] ?? 0,
+                        'transaction_debit' => $row['transaction_debit'] ?? 0,
+                        'transaction_credit' => $row['transaction_credit'] ?? 0,
+                        'closing_debit' => $row['debit'],
+                        'closing_credit' => $row['credit'],
                     ];
                 }, $trialBalance['accounts']);
                 break;
@@ -560,7 +574,7 @@ class ExportService
                     return [
                         'transaction_date' => $entry->transaction_date,
                         'voucher_number' => $entry->voucher?->voucher_number ?? '',
-                        'description' => $entry->voucher?->narration ?? '',
+                        'particulars' => $entry->particulars ?? ($entry->voucher?->narration ?? ''),
                         'debit' => $entry->debit,
                         'credit' => $entry->credit,
                         'balance' => $entry->running_balance,

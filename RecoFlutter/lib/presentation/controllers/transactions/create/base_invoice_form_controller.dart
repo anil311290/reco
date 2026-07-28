@@ -45,14 +45,10 @@ abstract class BaseInvoiceFormController extends GetxController {
   String get temporaryPrefix;
   bool get supportsItems;
   bool get supportsServices;
-  bool get isServiceInvoice => false;
   bool get isPurchaseInvoice => false;
   bool get isEditing => initialPayload != null;
   bool get usesUnifiedSalesRows =>
-      supportsItems &&
-      supportsServices &&
-      !isPurchaseInvoice &&
-      !isServiceInvoice;
+      supportsItems && supportsServices && !isPurchaseInvoice;
 
   List<PartyEntity> get parties => lookupController.parties;
   List<ItemEntity> get items => lookupController.items;
@@ -508,7 +504,6 @@ abstract class BaseInvoiceFormController extends GetxController {
           ? null
           : notesController.text.trim(),
       'discount_percentage': double.tryParse(discountController.text.trim()) ?? 0,
-      if (isServiceInvoice) 'invoice_type': 'service',
       'lines': validItemRows
           .map(
             (row) => <String, dynamic>{

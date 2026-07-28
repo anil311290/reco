@@ -11,9 +11,14 @@
         <a href="{{ route('admin.purchase-invoices.index') }}" class="btn btn-outline-secondary me-2">
             <i class="bi bi-arrow-left me-1"></i>Back
         </a>
-        @if(!$invoice->isPaid())
-        <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#paymentModal">
+        @if($invoice->status !== 'cancelled' && !$invoice->isPaid())
+        <button class="btn btn-success me-2" data-bs-toggle="modal" data-bs-target="#paymentModal">
             <i class="bi bi-cash me-1"></i>Record Payment
+        </button>
+        @endif
+        @if($invoice->status !== 'cancelled')
+        <button type="button" class="btn btn-outline-warning" id="cancelInvoiceBtn">
+            <i class="bi bi-x-circle me-1"></i>Cancel Invoice
         </button>
         @endif
     </div>
@@ -123,7 +128,7 @@
     </div>
 </div>
 
-@if(!$invoice->isPaid())
+@if($invoice->status !== 'cancelled' && !$invoice->isPaid())
 <div class="modal fade" id="paymentModal" tabindex="-1">
     <div class="modal-dialog">
         <div class="modal-content">
@@ -204,6 +209,33 @@ $('#paymentForm').on('submit', function(e) {
         error: function(xhr) {
             toastr.error(xhr.responseJSON?.message || 'Error recording payment');
         }
+    });
+});
+
+$('#cancelInvoiceBtn').on('click', function() {
+    Swal.fire({
+        title: 'Cancel this invoice?',
+        text: 'Linked payments and purchase posting will be cancelled, ledgers reversed, and stock adjusted.',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#f59e0b',
+        confirmButtonText: 'Yes, cancel it'
+    }).then((result) => {
+        if (!result.isConfirmed) {
+            return;
+        }
+        $.ajax({
+            url: '{{ route("admin.purchase-invoices.cancel", $invoice->id) }}',
+            type: 'POST',
+            headers: { 'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content') },
+            success: function(r) {
+                toastr.success(r.message);
+                setTimeout(() => location.reload(), 800);
+            },
+            error: function(xhr) {
+                toastr.error(xhr.responseJSON?.message || 'Error cancelling invoice');
+            }
+        });
     });
 });
 </script>

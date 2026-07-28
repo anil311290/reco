@@ -10,11 +10,11 @@
             color: #333;
             margin: 0;
             padding: 0;
-            font-size: 12px;
+            font-size: 11px;
         }
         .container { padding: 20px; }
         .header { text-align: center; margin-bottom: 20px; }
-        .header h1 { margin: 0; font-size: 22px; }
+        .header h1 { margin: 0; font-size: 20px; }
         .table {
             width: 100%;
             border-collapse: collapse;
@@ -22,7 +22,7 @@
         }
         .table th, .table td {
             border: 1px solid #ddd;
-            padding: 8px;
+            padding: 6px;
         }
         .table th {
             background: #f7f7f7;
@@ -39,16 +39,22 @@
 <div class="container">
     <div class="header">
         <h1>Trial Balance</h1>
-        <p>Generated on {{ now()->format('d-m-Y H:i:s') }}</p>
+        <p>Opening · Transactions · Closing — Generated on {{ now()->format('d-m-Y H:i:s') }}</p>
     </div>
 
     <table class="table">
         <thead>
         <tr>
-            <th>Account Code</th>
-            <th>Account Name</th>
-            <th class="text-right">Debit (₹)</th>
-            <th class="text-right">Credit (₹)</th>
+            <th>Code</th>
+            <th>Account</th>
+            <th>Type</th>
+            <th>Dest</th>
+            <th class="text-right">Op Dr</th>
+            <th class="text-right">Op Cr</th>
+            <th class="text-right">Tr Dr</th>
+            <th class="text-right">Tr Cr</th>
+            <th class="text-right">Cl Dr</th>
+            <th class="text-right">Cl Cr</th>
         </tr>
         </thead>
         <tbody>
@@ -56,18 +62,28 @@
             <tr>
                 <td>{{ $item['account']->account_code }}</td>
                 <td>{{ $item['account']->account_name }}</td>
-                <td class="text-right">{{ $item['debit'] > 0 ? number_format($item['debit'], 2) : '-' }}</td>
-                <td class="text-right">{{ $item['credit'] > 0 ? number_format($item['credit'], 2) : '-' }}</td>
+                <td>{{ ucfirst($item['account']->account_type) }}</td>
+                <td>{{ $item['destination'] ?? '-' }}</td>
+                <td class="text-right">{{ ($item['opening_debit'] ?? 0) > 0 ? number_format($item['opening_debit'], 2) : '-' }}</td>
+                <td class="text-right">{{ ($item['opening_credit'] ?? 0) > 0 ? number_format($item['opening_credit'], 2) : '-' }}</td>
+                <td class="text-right">{{ ($item['transaction_debit'] ?? 0) > 0 ? number_format($item['transaction_debit'], 2) : '-' }}</td>
+                <td class="text-right">{{ ($item['transaction_credit'] ?? 0) > 0 ? number_format($item['transaction_credit'], 2) : '-' }}</td>
+                <td class="text-right">{{ ($item['debit'] ?? 0) > 0 ? number_format($item['debit'], 2) : '-' }}</td>
+                <td class="text-right">{{ ($item['credit'] ?? 0) > 0 ? number_format($item['credit'], 2) : '-' }}</td>
             </tr>
         @empty
-            <tr><td colspan="4">No records found</td></tr>
+            <tr><td colspan="10">No records found</td></tr>
         @endforelse
         </tbody>
         <tfoot>
         <tr>
-            <td colspan="2">Total</td>
-            <td class="text-right">₹{{ number_format($report['total_debit'], 2) }}</td>
-            <td class="text-right">₹{{ number_format($report['total_credit'], 2) }}</td>
+            <td colspan="4">Total</td>
+            <td class="text-right">{{ number_format($report['total_opening_debit'] ?? 0, 2) }}</td>
+            <td class="text-right">{{ number_format($report['total_opening_credit'] ?? 0, 2) }}</td>
+            <td class="text-right">{{ number_format($report['total_transaction_debit'] ?? 0, 2) }}</td>
+            <td class="text-right">{{ number_format($report['total_transaction_credit'] ?? 0, 2) }}</td>
+            <td class="text-right">{{ number_format($report['total_debit'], 2) }}</td>
+            <td class="text-right">{{ number_format($report['total_credit'], 2) }}</td>
         </tr>
         </tfoot>
     </table>

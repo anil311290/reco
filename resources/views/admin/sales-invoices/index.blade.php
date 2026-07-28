@@ -107,10 +107,11 @@ $(document).ready(function() {
                 return `<span class="badge bg-${colors[data]||'secondary'}">${data.charAt(0).toUpperCase()+data.slice(1)}</span>`;
             }},
             { data: null, orderable: false, render: function(data) {
-                return `<div class="d-flex gap-1">
-                    <a href="/admin/sales-invoices/${data.id}" class="btn btn-sm btn-outline-info"><i class="bi bi-eye"></i></a>
-                    <a href="/admin/sales-invoices/${data.id}/edit" class="btn btn-sm btn-outline-primary"><i class="bi bi-pencil"></i></a>
-                </div>`;
+                let buttons = `<a href="/admin/sales-invoices/${data.id}" class="btn btn-sm btn-outline-info"><i class="bi bi-eye"></i></a>`;
+                if (data.status !== 'cancelled' && data.status !== 'paid' && data.status !== 'partial') {
+                    buttons += ` <a href="/admin/sales-invoices/${data.id}/edit" class="btn btn-sm btn-outline-primary"><i class="bi bi-pencil"></i></a>`;
+                }
+                return `<div class="d-flex gap-1">${buttons}</div>`;
             }}
         ],
         order: [[1, 'desc']]

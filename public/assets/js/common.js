@@ -786,6 +786,44 @@ function initPartyQuickAdd() {
         openPartyQuickAddModal(this);
     });
 
+    const quickAddForm = modal.find('#partyQuickAddForm');
+    quickAddForm.off('submit.obConfirm').on('submit.obConfirm', function(e) {
+        const form = $(this);
+        if (form.data('ob-confirmed')) {
+            form.removeData('ob-confirmed');
+            return;
+        }
+
+        e.preventDefault();
+        e.stopImmediatePropagation();
+
+        const amount = parseFloat(form.find('[name="opening_balance"]').val()) || 0;
+        const balanceType = form.find('[name="opening_balance_type"] option:selected').text();
+        const openingDate = form.find('[name="opening_date"]').val() || '-';
+        const formattedAmount = amount.toLocaleString('en-IN', {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2
+        });
+
+        Swal.fire({
+            title: 'Confirm Opening Balance',
+            html: amount > 0
+                ? `Opening balance of <strong>₹${formattedAmount}</strong> (${balanceType}) dated <strong>${openingDate}</strong> will be posted and <strong>cannot be edited later</strong>.`
+                : `No opening balance will be posted. Opening balance <strong>cannot be set later</strong> after the party is created.`,
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#4f46e5',
+            cancelButtonColor: '#6b7280',
+            confirmButtonText: 'Yes, create party',
+            cancelButtonText: 'Review again'
+        }).then(function(result) {
+            if (result.isConfirmed) {
+                form.data('ob-confirmed', true);
+                form.trigger('submit');
+            }
+        });
+    });
+
     ajaxFormSubmit('#partyQuickAddForm', storeUrl, 'POST', function(response) {
         const modalInstance = bootstrap.Modal.getInstance(modal[0]);
         const party = response.data || {};

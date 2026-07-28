@@ -4,8 +4,10 @@ namespace App\Services;
 
 use App\Models\SalesInvoice;
 use App\Models\SalesInvoiceLine;
+use App\Models\Item;
 use App\Models\Voucher;
 use App\Models\TaxRate;
+use App\Models\FinancialYear;
 use App\Interfaces\SalesInvoiceRepositoryInterface;
 use App\Interfaces\AccountRepositoryInterface;
 use App\Services\SettingsService;
@@ -81,9 +83,6 @@ class SalesInvoiceService
         $query = SalesInvoice::with(['party'])
             ->where('company_id', $companyId);
 
-        if (isset($filters['invoice_type'])) {
-            $query->where('invoice_type', $filters['invoice_type']);
-        }
         if (isset($filters['status'])) {
             $query->where('status', $filters['status']);
         }
@@ -141,9 +140,15 @@ class SalesInvoiceService
                     $taxRate = null;
                 }
 
+                $item = !empty($line['item_id']) ? Item::find($line['item_id']) : null;
+                $isServiceItem = $item && $item->type === 'service';
+
                 $line['sales_invoice_id'] = $invoice->id;
                 $line['sort_order'] = $index;
-                $line['line_type'] = 'item';
+                $line['line_type'] = $isServiceItem ? 'service' : 'item';
+                if ($isServiceItem && empty($line['account_id']) && $item->income_account_id) {
+                    $line['account_id'] = $item->income_account_id;
+                }
 
                 // Calculate line total
                 $base = ($line['quantity'] ?? 1) * ($line['unit_price'] ?? 0);
@@ -216,7 +221,9 @@ class SalesInvoiceService
                 'financial_year_id' => $invoice->financial_year_id,
                 'party_id' => $invoice->party_id,
                 'voucher_date' => $invoice->invoice_date,
-                'narration' => "Sales Invoice #{$invoice->invoice_number}",
+                'narration' => filled($invoice->notes)
+                    ? (string) $invoice->notes
+                    : "Sales Invoice #{$invoice->invoice_number}",
                 'total' => $invoice->total,
                 'sales_invoice_id' => $invoice->id,
                 'created_by' => $invoice->created_by,
@@ -268,9 +275,15 @@ class SalesInvoiceService
             $invoice->lines()->delete();
 
             foreach ($lines as $index => $line) {
+                $item = !empty($line['item_id']) ? Item::find($line['item_id']) : null;
+                $isServiceItem = $item && $item->type === 'service';
+
                 $line['sales_invoice_id'] = $invoice->id;
                 $line['sort_order'] = $index;
-                $line['line_type'] = 'item';
+                $line['line_type'] = $isServiceItem ? 'service' : 'item';
+                if ($isServiceItem && empty($line['account_id']) && $item->income_account_id) {
+                    $line['account_id'] = $item->income_account_id;
+                }
 
                 $base = ($line['quantity'] ?? 1) * ($line['unit_price'] ?? 0);
                 $discount = $base * (($line['discount_percentage'] ?? 0) / 100);
@@ -446,6 +459,55 @@ class SalesInvoiceService
     }
 
     /**
+     * Cancel a sales invoice: reverse settlements, cancel posting voucher, restore stock.
+     */
+    public function cancel(int $id): SalesInvoice
+    {
+        return DB::transaction(function () use ($id) {
+            $invoice = SalesInvoice::query()
+                ->whereKey($id)
+                ->lockForUpdate()
+                ->first();
+
+            if (!$invoice) {
+                throw new \RuntimeException('Sales invoice not found.');
+            }
+
+            if ($invoice->status === 'cancelled') {
+                throw new \RuntimeException('This sales invoice is already cancelled.');
+            }
+
+            $this->periodLockService->assertWritable(
+                (int) $invoice->company_id,
+                $invoice->invoice_date,
+                $invoice->financial_year_id ? (int) $invoice->financial_year_id : null
+            );
+
+            $vouchers = Voucher::query()
+                ->where('sales_invoice_id', $invoice->id)
+                ->where('status', 'posted')
+                ->orderByRaw("CASE WHEN voucher_type = 'receipt' THEN 0 ELSE 1 END")
+                ->orderBy('id')
+                ->get();
+
+            foreach ($vouchers as $voucher) {
+                $this->voucherService->cancel((int) $voucher->id, true);
+            }
+
+            $itemLines = $invoice->lines()->where('line_type', 'item')->get();
+            $this->itemService->applyStockFromLines($itemLines, 'in');
+
+            $invoice->update([
+                'status' => 'cancelled',
+                'amount_paid' => 0,
+                'balance_due' => 0,
+            ]);
+
+            return $invoice->fresh(['party', 'financialYear', 'lines.item', 'lines.taxRate', 'lines.account']);
+        });
+    }
+
+    /**
      * Delete a sales invoice.
      */
     public function delete(int $id): bool
@@ -456,7 +518,7 @@ class SalesInvoiceService
         }
         if ($invoice->vouchers()->exists() || in_array($invoice->status, ['sent', 'paid', 'partial', 'cancelled'], true)) {
             throw new \RuntimeException(
-                'A posted sales invoice cannot be deleted because accounting entries exist. Cancel/reverse it instead.'
+                'A posted sales invoice cannot be deleted because accounting entries exist. Cancel it instead.'
             );
         }
 
@@ -476,22 +538,28 @@ class SalesInvoiceService
     }
 
     /**
-     * Generate next invoice number (company-wide sequence; not reset per FY).
+     * Generate next invoice number: INV-202627/0001
      */
-    public function generateInvoiceNumber(int $companyId, int $financialYearId, string $invoiceType = 'item'): string
+    public function generateInvoiceNumber(int $companyId, int $financialYearId): string
     {
-        $prefix = $invoiceType === 'service' ? 'SRV' : 'INV';
+        $fy = FinancialYear::find($financialYearId);
+        $fyCode = $fy?->code() ?? now()->format('Y') . now()->copy()->addYear()->format('y');
+        $needle = 'INV-' . $fyCode . '/';
 
-        $lastInvoice = SalesInvoice::where('company_id', $companyId)
-            ->where('invoice_type', $invoiceType)
-            ->where('invoice_number', 'like', $prefix . '-%')
-            ->orderBy('invoice_number', 'desc')
-            ->first();
+        $numbers = SalesInvoice::where('company_id', $companyId)
+            ->where('financial_year_id', $financialYearId)
+            ->where('invoice_number', 'like', $needle . '%')
+            ->pluck('invoice_number');
 
-        $nextNumber = $lastInvoice
-            ? intval(substr($lastInvoice->invoice_number, -6)) + 1
-            : 1;
+        $max = 0;
+        foreach ($numbers as $number) {
+            $pos = strrpos($number, '/');
+            $seq = $pos === false ? 0 : (int) substr($number, $pos + 1);
+            if ($seq > $max) {
+                $max = $seq;
+            }
+        }
 
-        return $prefix . '-' . str_pad($nextNumber, 6, '0', STR_PAD_LEFT);
+        return $needle . str_pad((string) ($max + 1), 4, '0', STR_PAD_LEFT);
     }
 }

@@ -6,6 +6,7 @@ use App\Models\PurchaseInvoice;
 use App\Models\PurchaseInvoiceLine;
 use App\Models\Voucher;
 use App\Models\TaxRate;
+use App\Models\FinancialYear;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\DB;
@@ -326,6 +327,55 @@ class PurchaseInvoiceService
     }
 
     /**
+     * Cancel a purchase invoice: reverse settlements, cancel posting voucher, reverse stock.
+     */
+    public function cancel(int $id): PurchaseInvoice
+    {
+        return DB::transaction(function () use ($id) {
+            $invoice = PurchaseInvoice::query()
+                ->whereKey($id)
+                ->lockForUpdate()
+                ->first();
+
+            if (!$invoice) {
+                throw new \RuntimeException('Purchase invoice not found.');
+            }
+
+            if ($invoice->status === 'cancelled') {
+                throw new \RuntimeException('This purchase invoice is already cancelled.');
+            }
+
+            $this->periodLockService->assertWritable(
+                (int) $invoice->company_id,
+                $invoice->invoice_date,
+                $invoice->financial_year_id ? (int) $invoice->financial_year_id : null
+            );
+
+            $vouchers = Voucher::query()
+                ->where('purchase_invoice_id', $invoice->id)
+                ->where('status', 'posted')
+                ->orderByRaw("CASE WHEN voucher_type = 'payment' THEN 0 ELSE 1 END")
+                ->orderBy('id')
+                ->get();
+
+            foreach ($vouchers as $voucher) {
+                $this->voucherService->cancel((int) $voucher->id, true);
+            }
+
+            $itemLines = $invoice->lines()->where('line_type', 'item')->get();
+            $this->itemService->applyStockFromLines($itemLines, 'out');
+
+            $invoice->update([
+                'status' => 'cancelled',
+                'amount_paid' => 0,
+                'balance_due' => 0,
+            ]);
+
+            return $invoice->fresh(['party', 'financialYear', 'lines.item', 'lines.taxRate', 'lines.account']);
+        });
+    }
+
+    /**
      * Delete a purchase invoice.
      */
     public function delete(int $id): bool
@@ -333,7 +383,7 @@ class PurchaseInvoiceService
         $invoice = PurchaseInvoice::findOrFail($id);
         if ($invoice->vouchers()->exists() || in_array($invoice->status, ['verified', 'paid', 'partial', 'cancelled'], true)) {
             throw new \RuntimeException(
-                'A posted purchase invoice cannot be deleted because accounting entries exist. Cancel/reverse it instead.'
+                'A posted purchase invoice cannot be deleted because accounting entries exist. Cancel it instead.'
             );
         }
 
@@ -353,20 +403,29 @@ class PurchaseInvoiceService
     }
 
     /**
-     * Generate next invoice number (company-wide sequence; not reset per FY).
+     * Generate next invoice number: PUR-202627/0001
      */
     public function generateInvoiceNumber(int $companyId, int $financialYearId): string
     {
-        $lastInvoice = PurchaseInvoice::where('company_id', $companyId)
-            ->where('invoice_number', 'like', 'PUR-%')
-            ->orderBy('invoice_number', 'desc')
-            ->first();
+        $fy = FinancialYear::find($financialYearId);
+        $fyCode = $fy?->code() ?? now()->format('Y') . now()->copy()->addYear()->format('y');
+        $needle = 'PUR-' . $fyCode . '/';
 
-        $nextNumber = $lastInvoice
-            ? intval(substr($lastInvoice->invoice_number, -6)) + 1
-            : 1;
+        $numbers = PurchaseInvoice::where('company_id', $companyId)
+            ->where('financial_year_id', $financialYearId)
+            ->where('invoice_number', 'like', $needle . '%')
+            ->pluck('invoice_number');
 
-        return 'PUR-' . str_pad($nextNumber, 6, '0', STR_PAD_LEFT);
+        $max = 0;
+        foreach ($numbers as $number) {
+            $pos = strrpos($number, '/');
+            $seq = $pos === false ? 0 : (int) substr($number, $pos + 1);
+            if ($seq > $max) {
+                $max = $seq;
+            }
+        }
+
+        return $needle . str_pad((string) ($max + 1), 4, '0', STR_PAD_LEFT);
     }
 
     /**
@@ -392,7 +451,9 @@ class PurchaseInvoiceService
                 'financial_year_id' => $invoice->financial_year_id,
                 'party_id' => $invoice->party_id,
                 'voucher_date' => $invoice->invoice_date,
-                'narration' => "Purchase Invoice #{$invoice->invoice_number}",
+                'narration' => filled($invoice->notes)
+                    ? (string) $invoice->notes
+                    : "Purchase Invoice #{$invoice->invoice_number}",
                 'total' => $invoice->total,
                 'purchase_invoice_id' => $invoice->id,
                 'created_by' => $invoice->created_by,

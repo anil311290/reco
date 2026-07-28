@@ -26,6 +26,7 @@
     <table class="table">
         <thead>
         <tr>
+            <th>#</th>
             <th>Voucher #</th>
             <th>Type</th>
             <th>Particulars</th>
@@ -37,6 +38,7 @@
         <tbody>
         @forelse($report['rows'] as $row)
             <tr>
+                <td>{{ $row['serial'] ?? $loop->iteration }}</td>
                 <td>{{ $row['voucher_number'] }}</td>
                 <td>{{ ucfirst($row['voucher_type']) }}</td>
                 <td>{{ $row['account_name'] }}</td>
@@ -45,12 +47,12 @@
                 <td class="text-right">{{ $row['credit'] > 0 ? number_format($row['credit'], 2) : '-' }}</td>
             </tr>
         @empty
-            <tr><td colspan="6">No entries found for selected date</td></tr>
+            <tr><td colspan="7">No entries found for selected date</td></tr>
         @endforelse
         </tbody>
         <tfoot>
             <tr>
-                <td colspan="4">Total</td>
+                <td colspan="5">Total</td>
                 <td class="text-right">₹{{ number_format($report['total_debit'], 2) }}</td>
                 <td class="text-right">₹{{ number_format($report['total_credit'], 2) }}</td>
             </tr>

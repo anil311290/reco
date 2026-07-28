@@ -49,7 +49,6 @@ class AdminPagesSmokeTest extends TestCase
             '/admin/sales-invoices/create',
             '/admin/purchase-invoices',
             '/admin/purchase-invoices/create',
-            '/admin/service-sales-invoices',
             '/admin/financial-years',
             '/admin/settings',
             '/admin/reports',

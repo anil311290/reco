@@ -174,9 +174,12 @@ class VoucherService
             $voucher = $this->voucherRepository->create($data);
 
             // Create voucher lines
-            foreach ($lines as $lineData) {
+            foreach ($lines as $index => $lineData) {
                 $lineData['voucher_id'] = $voucher->id;
                 $lineData['created_by'] = $data['created_by'] ?? auth('sanctum')->user()?->id;
+                if (!isset($lineData['sort_order'])) {
+                    $lineData['sort_order'] = $index;
+                }
                 $this->voucherLineRepository->create($lineData);
             }
 
@@ -252,11 +255,14 @@ class VoucherService
                 // Delete existing lines and recreate
                 $this->voucherLineRepository->deleteByVoucher($voucher->id);
 
-                foreach ($data['lines'] as $lineData) {
+                foreach ($data['lines'] as $index => $lineData) {
                     $lineData['voucher_id'] = $voucher->id;
                     $lineData['created_by'] = $data['updated_by']
                         ?? auth('sanctum')->user()?->id
                         ?? request()->user()?->id;
+                    if (!isset($lineData['sort_order'])) {
+                        $lineData['sort_order'] = $index;
+                    }
                     $this->voucherLineRepository->create($lineData);
                 }
 
@@ -329,9 +335,11 @@ class VoucherService
     }
 
     /**
-     * Cancel voucher
+     * Cancel voucher.
+     *
+     * @param  bool  $fromInvoiceCancel  When true, allows cancelling invoice-linked income/expense vouchers.
      */
-    public function cancel(int $id): bool
+    public function cancel(int $id, bool $fromInvoiceCancel = false): bool
     {
         $voucher = $this->voucherRepository->find($id);
 
@@ -344,11 +352,12 @@ class VoucherService
         }
 
         if (
-            in_array($voucher->voucher_type, ['income', 'expense'], true)
+            !$fromInvoiceCancel
+            && in_array($voucher->voucher_type, ['income', 'expense'], true)
             && ($voucher->sales_invoice_id || $voucher->purchase_invoice_id)
         ) {
             throw new \RuntimeException(
-                'Invoice posting vouchers cannot be cancelled from here. Reverse or cancel the invoice instead.'
+                'Invoice posting vouchers cannot be cancelled from here. Cancel the invoice instead.'
             );
         }
 
@@ -474,10 +483,11 @@ class VoucherService
                 'created_by' => $invoiceData['created_by'] ?? auth('sanctum')->user()?->id ?? request()->user()?->id,
             ]);
 
-            foreach ($lines as $line) {
+            foreach ($lines as $index => $line) {
                 $this->voucherLineRepository->create(array_merge($line, [
                     'uuid' => Str::uuid(),
                     'voucher_id' => $voucher->id,
+                    'sort_order' => $line['sort_order'] ?? $index,
                     'created_by' => $invoiceData['created_by'] ?? auth('sanctum')->user()?->id ?? request()->user()?->id,
                 ]));
             }
@@ -524,10 +534,11 @@ class VoucherService
                 'created_by' => $invoiceData['created_by'] ?? auth('sanctum')->user()?->id ?? request()->user()?->id,
             ]);
 
-            foreach ($lines as $line) {
+            foreach ($lines as $index => $line) {
                 $this->voucherLineRepository->create(array_merge($line, [
                     'uuid' => Str::uuid(),
                     'voucher_id' => $voucher->id,
+                    'sort_order' => $line['sort_order'] ?? $index,
                     'created_by' => $invoiceData['created_by'] ?? auth('sanctum')->user()?->id ?? request()->user()?->id,
                 ]));
             }
@@ -564,10 +575,11 @@ class VoucherService
 
             $this->voucherLineRepository->deleteByVoucher($voucher->id);
 
-            foreach ($lines as $line) {
+            foreach ($lines as $index => $line) {
                 $this->voucherLineRepository->create(array_merge($line, [
                     'uuid' => Str::uuid(),
                     'voucher_id' => $voucher->id,
+                    'sort_order' => $line['sort_order'] ?? $index,
                     'created_by' => $invoiceData['updated_by']
                         ?? $invoiceData['created_by']
                         ?? request()->user()?->id,

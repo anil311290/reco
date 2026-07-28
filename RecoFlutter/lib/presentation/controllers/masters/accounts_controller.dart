@@ -155,7 +155,7 @@ class AccountsController extends GetxController with MasterExportMixin {
           'Opening Balance': item.openingBalance.toStringAsFixed(2),
           'Balance Type': item.balanceType,
           'Status': item.isActive ? 'Active' : 'Inactive',
-          'Remarks': item.remarks,
+          'Notes': item.remarks,
         },
       )
       .toList();

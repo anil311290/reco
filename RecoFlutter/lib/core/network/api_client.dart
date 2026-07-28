@@ -35,9 +35,16 @@ class ApiClient {
           }
 
           final silentError = error.requestOptions.extra['silentError'] == true;
-          final message = error.response?.data is Map<String, dynamic>
+          var message = error.response?.data is Map<String, dynamic>
               ? (error.response?.data['message']?.toString() ?? error.message)
               : error.message;
+
+          if (message != null &&
+              (message.contains('SQLSTATE') ||
+                  message.contains('Operation not permitted') ||
+                  message.contains('Connection:'))) {
+            message = 'Unable to reach the server database. Please try again.';
+          }
 
           if (!silentError && message != null && message.isNotEmpty) {
             AppSnackbar.error(message);

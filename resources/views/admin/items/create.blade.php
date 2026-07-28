@@ -5,7 +5,10 @@
 @section('content')
 <div class="row mb-4">
     <div class="col-md-6">
-        <h4 class="mb-0">Add Item</h4>
+        <h4 class="mb-0 d-flex align-items-center gap-2">
+            <span id="pageTitleText">Add Item</span>
+            <span id="typeBadge" class="badge bg-primary d-none">Goods</span>
+        </h4>
     </div>
     <div class="col-md-6 text-md-end">
         <a href="{{ route('admin.items.index') }}" class="btn btn-outline-secondary">
@@ -24,10 +27,10 @@
             <div class="modal-body text-center">
                 <p class="mb-4">What would you like to create?</p>
                 <div class="d-flex gap-3 justify-content-center">
-                    <button class="btn btn-outline-primary btn-lg" id="itemTypeGoods" style="width: 150px;">
+                    <button type="button" class="btn btn-outline-primary btn-lg" id="itemTypeGoods" style="width: 150px;">
                         <i class="bi bi-box me-2"></i><br>Goods
                     </button>
-                    <button class="btn btn-outline-info btn-lg" id="itemTypeService" style="width: 150px;">
+                    <button type="button" class="btn btn-outline-info btn-lg" id="itemTypeService" style="width: 150px;">
                         <i class="bi bi-briefcase me-2"></i><br>Service
                     </button>
                 </div>
@@ -39,8 +42,8 @@
 <div class="card">
     <div class="card-body">
         <form id="itemForm">
-            <!-- Hidden field for type (defaults to goods) -->
             <input type="hidden" id="type" name="type" value="goods">
+            <input type="hidden" id="is_stockable" name="is_stockable" value="1">
 
             <div class="row g-3">
                 <div class="col-md-4">
@@ -61,7 +64,7 @@
                     </select>
                 </div>
                 <div class="col-md-4">
-                    <label for="hsn_sac_code" class="form-label">HSN/SAC Code</label>
+                    <label for="hsn_sac_code" class="form-label" id="hsnSacLabel">HSN/SAC Code</label>
                     <input type="text" class="form-control" id="hsn_sac_code" name="hsn_sac_code">
                 </div>
                 <div class="col-md-4">
@@ -77,6 +80,7 @@
                     <label for="unit" class="form-label">Unit</label>
                     <select class="form-select" id="unit" name="unit">
                         <option value="nos">Numbers (Nos)</option>
+                        <option value="hrs">Hours (Hrs)</option>
                         <option value="kg">Kilogram (Kg)</option>
                         <option value="ltr">Litre (Ltr)</option>
                         <option value="mtr">Metre (Mtr)</option>
@@ -85,15 +89,16 @@
                         <option value="set">Set</option>
                     </select>
                 </div>
-                <div class="col-md-4">
+                <div class="col-md-4" id="purchasePriceField">
                     <label for="purchase_price" class="form-label">Purchase Price</label>
                     <input type="number" class="form-control" id="purchase_price" name="purchase_price" step="0.01" min="0" value="0">
                 </div>
                 <div class="col-md-4">
-                    <label for="selling_price" class="form-label">Selling Price</label>
+                    <label for="selling_price" class="form-label" id="sellingPriceLabel">Selling Price</label>
                     <input type="number" class="form-control" id="selling_price" name="selling_price" step="0.01" min="0" value="0">
+                    <div class="form-text" id="sellingPriceHint" style="display:none;">Optional default rate for sales invoice; amount can still be changed per bill.</div>
                 </div>
-                <div class="col-md-4">
+                <div class="col-md-4" id="barcodeField">
                     <label for="barcode" class="form-label">Barcode</label>
                     <input type="text" class="form-control" id="barcode" name="barcode">
                 </div>
@@ -103,7 +108,7 @@
                 </div>
             </div>
             <div class="mt-4">
-                <button type="submit" class="btn btn-primary">
+                <button type="submit" class="btn btn-primary" id="saveItemBtn">
                     <i class="bi bi-check-circle me-2"></i>Save Item
                 </button>
             </div>
@@ -114,23 +119,46 @@
 
 @section('scripts')
 <script>
+function applyItemTypeUi(type) {
+    const isService = type === 'service';
+    $('#type').val(type);
+    $('#is_stockable').val(isService ? '0' : '1');
+    $('#typeBadge')
+        .removeClass('d-none bg-primary bg-info')
+        .addClass(isService ? 'bg-info' : 'bg-primary')
+        .text(isService ? 'Service' : 'Goods');
+    $('#pageTitleText').text(isService ? 'Add Service' : 'Add Item');
+    $('#hsnSacLabel').text(isService ? 'SAC Code' : 'HSN/SAC Code');
+    $('#barcodeField').toggle(!isService);
+    $('#purchasePriceField').toggle(!isService);
+    $('#sellingPriceLabel').text(isService ? 'Default Rate' : 'Selling Price');
+    $('#sellingPriceHint').toggle(isService);
+    if (isService) {
+        $('#barcode').val('');
+        $('#purchase_price').val('0');
+        const unit = $('#unit');
+        if (!['hrs', 'nos'].includes(unit.val())) {
+            unit.val('hrs');
+        }
+        $('#saveItemBtn').html('<i class="bi bi-check-circle me-2"></i>Save Service');
+    } else {
+        $('#saveItemBtn').html('<i class="bi bi-check-circle me-2"></i>Save Item');
+    }
+}
+
 $(document).ready(function() {
-    // Show item type selection modal
     $('#itemTypeModal').modal('show');
 
-    // Goods selected
     $('#itemTypeGoods').click(function() {
-        $('#type').val('goods');
+        applyItemTypeUi('goods');
         $('#itemTypeModal').modal('hide');
     });
 
-    // Service selected - redirect to account creation
     $('#itemTypeService').click(function() {
-        // Redirect to create account with income type for service
-        window.location.href = '{{ route("admin.accounts.create") }}?type=income&purpose=service-item';
+        applyItemTypeUi('service');
+        $('#itemTypeModal').modal('hide');
     });
 
-    // Form submission
     ajaxFormSubmit('#itemForm', '{{ route("admin.items.store") }}', 'POST', '{{ route("admin.items.index") }}');
 });
 </script>

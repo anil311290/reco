@@ -5,6 +5,15 @@
 @section('content')
 @php
     $allLines = $invoice->lines->sortBy('sort_order')->values();
+    $legacyServiceAccounts = $allLines
+        ->filter(fn ($line) => ($line->line_type ?? '') === 'service' && empty($line->item_id) && !empty($line->account_id))
+        ->mapWithKeys(function ($line) {
+            $account = $line->account;
+            $text = $account
+                ? trim(($account->account_code ?? '') . ' - ' . ($account->account_name ?? 'Service'))
+                : ('Service #' . $line->account_id);
+            return [$line->account_id => $text];
+        });
 @endphp
 
 <div class="row mb-4">
@@ -93,29 +102,33 @@
                             <tbody id="linesBody">
                                 @forelse($allLines as $line)
                                 @php
-                                    $isService = ($line->line_type ?? 'item') === 'service';
-                                    $selectedValue = $isService ? ('service:' . $line->account_id) : ('item:' . $line->item_id);
+                                    $isLegacyService = ($line->line_type ?? '') === 'service' && empty($line->item_id) && !empty($line->account_id);
+                                    $selectedValue = $isLegacyService ? ('service:' . $line->account_id) : ('item:' . $line->item_id);
+                                    $dataKind = $isLegacyService ? 'legacy-service' : 'item';
                                 @endphp
-                                <tr class="line-row" data-kind="{{ $isService ? 'service' : 'item' }}">
+                                <tr class="line-row" data-kind="{{ $dataKind }}">
                                     <td>
                                         <select class="form-select form-select-sm particular-select w-100">
                                             <option value="">Select Item / Service</option>
-                                            <optgroup label="Items">
-                                                @foreach($items as $item)
-                                                <option value="item:{{ $item->id }}" data-kind="item" data-id="{{ $item->id }}" data-price="{{ $item->selling_price }}" data-tax="{{ $item->tax_rate_id }}" data-description="{{ e($item->description ?? '') }}" {{ !$isService && $line->item_id == $item->id ? 'selected' : '' }}>{{ $item->name }}</option>
+                                            <optgroup label="Goods">
+                                                @foreach($goodsItems as $item)
+                                                <option value="item:{{ $item->id }}" data-kind="item" data-id="{{ $item->id }}" data-price="{{ $item->selling_price }}" data-tax="{{ $item->tax_rate_id }}" data-description="{{ e($item->description ?? '') }}" {{ !$isLegacyService && $line->item_id == $item->id ? 'selected' : '' }}>{{ $item->name }}</option>
                                                 @endforeach
                                             </optgroup>
                                             <optgroup label="Services">
-                                                @foreach($serviceAccounts as $account)
-                                                <option value="service:{{ $account['id'] }}" data-kind="service" data-id="{{ $account['id'] }}" data-price="0" data-tax="" data-description="{{ e($account['text']) }}" {{ $isService && $line->account_id == $account['id'] ? 'selected' : '' }}>{{ $account['text'] }}</option>
+                                                @foreach($serviceItems as $item)
+                                                <option value="item:{{ $item->id }}" data-kind="item" data-id="{{ $item->id }}" data-price="{{ $item->selling_price }}" data-tax="{{ $item->tax_rate_id }}" data-description="{{ e($item->description ?? '') }}" {{ !$isLegacyService && $line->item_id == $item->id ? 'selected' : '' }}>{{ $item->name }}</option>
+                                                @endforeach
+                                                @foreach($legacyServiceAccounts as $accountId => $accountText)
+                                                <option value="service:{{ $accountId }}" data-kind="legacy-service" data-id="{{ $accountId }}" data-price="0" data-tax="" data-description="{{ e($accountText) }}" {{ $isLegacyService && $line->account_id == $accountId ? 'selected' : '' }}>{{ $accountText }} (legacy)</option>
                                                 @endforeach
                                             </optgroup>
                                         </select>
                                         <input type="text" class="form-control form-control-sm mt-1 bg-light description-input" value="{{ $line->description }}" placeholder="Description" readonly>
                                     </td>
-                                    <td><input type="number" class="form-control form-control-sm qty-input {{ $isService ? 'bg-light' : '' }}" value="{{ $line->quantity }}" min="0.001" step="0.001" {{ $isService ? 'readonly' : '' }}></td>
+                                    <td><input type="number" class="form-control form-control-sm qty-input {{ $isLegacyService ? 'bg-light' : '' }}" value="{{ $line->quantity }}" min="0.001" step="0.001" {{ $isLegacyService ? 'readonly' : '' }}></td>
                                     <td><input type="number" class="form-control form-control-sm price-input" value="{{ $line->unit_price }}" min="0" step="0.01"></td>
-                                    <td><input type="number" class="form-control form-control-sm disc-input {{ $isService ? 'bg-light' : '' }}" value="{{ $isService ? 0 : ($line->discount_percentage ?? 0) }}" min="0" max="100" step="0.01" {{ $isService ? 'readonly' : '' }}></td>
+                                    <td><input type="number" class="form-control form-control-sm disc-input {{ $isLegacyService ? 'bg-light' : '' }}" value="{{ $isLegacyService ? 0 : ($line->discount_percentage ?? 0) }}" min="0" max="100" step="0.01" {{ $isLegacyService ? 'readonly' : '' }}></td>
                                     <td>
                                         <select class="form-select form-select-sm tax-select w-100">
                                             <option value="">No Tax</option>
@@ -132,14 +145,14 @@
                                     <td>
                                         <select class="form-select form-select-sm particular-select w-100">
                                             <option value="">Select Item / Service</option>
-                                            <optgroup label="Items">
-                                                @foreach($items as $item)
+                                            <optgroup label="Goods">
+                                                @foreach($goodsItems as $item)
                                                 <option value="item:{{ $item->id }}" data-kind="item" data-id="{{ $item->id }}" data-price="{{ $item->selling_price }}" data-tax="{{ $item->tax_rate_id }}" data-description="{{ e($item->description ?? '') }}">{{ $item->name }}</option>
                                                 @endforeach
                                             </optgroup>
                                             <optgroup label="Services">
-                                                @foreach($serviceAccounts as $account)
-                                                <option value="service:{{ $account['id'] }}" data-kind="service" data-id="{{ $account['id'] }}" data-price="0" data-tax="" data-description="{{ e($account['text']) }}">{{ $account['text'] }}</option>
+                                                @foreach($serviceItems as $item)
+                                                <option value="item:{{ $item->id }}" data-kind="item" data-id="{{ $item->id }}" data-price="{{ $item->selling_price }}" data-tax="{{ $item->tax_rate_id }}" data-description="{{ e($item->description ?? '') }}">{{ $item->name }}</option>
                                                 @endforeach
                                             </optgroup>
                                         </select>
@@ -202,14 +215,14 @@
         <td>
             <select class="form-select form-select-sm particular-select w-100">
                 <option value="">Select Item / Service</option>
-                <optgroup label="Items">
-                    @foreach($items as $item)
+                <optgroup label="Goods">
+                    @foreach($goodsItems as $item)
                     <option value="item:{{ $item->id }}" data-kind="item" data-id="{{ $item->id }}" data-price="{{ $item->selling_price }}" data-tax="{{ $item->tax_rate_id }}" data-description="{{ e($item->description ?? '') }}">{{ $item->name }}</option>
                     @endforeach
                 </optgroup>
                 <optgroup label="Services">
-                    @foreach($serviceAccounts as $account)
-                    <option value="service:{{ $account['id'] }}" data-kind="service" data-id="{{ $account['id'] }}" data-price="0" data-tax="" data-description="{{ e($account['text']) }}">{{ $account['text'] }}</option>
+                    @foreach($serviceItems as $item)
+                    <option value="item:{{ $item->id }}" data-kind="item" data-id="{{ $item->id }}" data-price="{{ $item->selling_price }}" data-tax="{{ $item->tax_rate_id }}" data-description="{{ e($item->description ?? '') }}">{{ $item->name }}</option>
                     @endforeach
                 </optgroup>
             </select>
@@ -244,7 +257,7 @@ function applyParticularSelection(row) {
     row.attr('data-kind', kind);
     row.find('.description-input').val(kind ? description : '');
 
-    if (kind === 'service') {
+    if (kind === 'legacy-service') {
         row.find('.qty-input').val(1).prop('readonly', true).addClass('bg-light');
         row.find('.disc-input').val(0).prop('readonly', true).addClass('bg-light');
         row.find('.price-input').prop('readonly', false).removeClass('bg-light');
@@ -341,7 +354,7 @@ function buildSubmitPayload() {
             appendHidden(`lines[${itemIdx}][discount_percentage]`, disc);
             appendHidden(`lines[${itemIdx}][tax_rate_id]`, taxRateId);
             itemIdx++;
-        } else if (kind === 'service') {
+        } else if (kind === 'legacy-service') {
             appendHidden(`service_lines[${serviceIdx}][account_id]`, option.data('id'));
             appendHidden(`service_lines[${serviceIdx}][description]`, description);
             appendHidden(`service_lines[${serviceIdx}][amount]`, price);
@@ -419,7 +432,7 @@ $('#invoiceForm').on('submit.clientValidate', function(e) {
             $(this).find('.qty-input').addClass('is-invalid');
             lineError = true;
         }
-        if (isNaN(price) || price < 0 || (kind === 'service' && price <= 0)) {
+        if (isNaN(price) || price < 0 || (kind === 'legacy-service' && price <= 0)) {
             $(this).find('.price-input').addClass('is-invalid');
             lineError = true;
         }

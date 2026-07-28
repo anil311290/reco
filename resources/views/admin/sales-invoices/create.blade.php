@@ -90,14 +90,14 @@
                                     <td>
                                         <select class="form-select form-select-sm particular-select w-100">
                                             <option value="">Select Item / Service</option>
-                                            <optgroup label="Items">
-                                                @foreach($items as $item)
+                                            <optgroup label="Goods">
+                                                @foreach($goodsItems as $item)
                                                 <option value="item:{{ $item->id }}" data-kind="item" data-id="{{ $item->id }}" data-price="{{ $item->selling_price }}" data-tax="{{ $item->tax_rate_id }}" data-description="{{ e($item->description ?? '') }}">{{ $item->name }}</option>
                                                 @endforeach
                                             </optgroup>
                                             <optgroup label="Services">
-                                                @foreach($serviceAccounts as $account)
-                                                <option value="service:{{ $account['id'] }}" data-kind="service" data-id="{{ $account['id'] }}" data-price="0" data-tax="" data-description="{{ e($account['text']) }}">{{ $account['text'] }}</option>
+                                                @foreach($serviceItems as $item)
+                                                <option value="item:{{ $item->id }}" data-kind="item" data-id="{{ $item->id }}" data-price="{{ $item->selling_price }}" data-tax="{{ $item->tax_rate_id }}" data-description="{{ e($item->description ?? '') }}">{{ $item->name }}</option>
                                                 @endforeach
                                             </optgroup>
                                         </select>
@@ -159,14 +159,14 @@
         <td>
             <select class="form-select form-select-sm particular-select w-100">
                 <option value="">Select Item / Service</option>
-                <optgroup label="Items">
-                    @foreach($items as $item)
+                <optgroup label="Goods">
+                    @foreach($goodsItems as $item)
                     <option value="item:{{ $item->id }}" data-kind="item" data-id="{{ $item->id }}" data-price="{{ $item->selling_price }}" data-tax="{{ $item->tax_rate_id }}" data-description="{{ e($item->description ?? '') }}">{{ $item->name }}</option>
                     @endforeach
                 </optgroup>
                 <optgroup label="Services">
-                    @foreach($serviceAccounts as $account)
-                    <option value="service:{{ $account['id'] }}" data-kind="service" data-id="{{ $account['id'] }}" data-price="0" data-tax="" data-description="{{ e($account['text']) }}">{{ $account['text'] }}</option>
+                    @foreach($serviceItems as $item)
+                    <option value="item:{{ $item->id }}" data-kind="item" data-id="{{ $item->id }}" data-price="{{ $item->selling_price }}" data-tax="{{ $item->tax_rate_id }}" data-description="{{ e($item->description ?? '') }}">{{ $item->name }}</option>
                     @endforeach
                 </optgroup>
             </select>
@@ -201,11 +201,7 @@ function applyParticularSelection(row) {
     row.attr('data-kind', kind);
     row.find('.description-input').val(kind ? description : '');
 
-    if (kind === 'service') {
-        row.find('.qty-input').val(1).prop('readonly', true).addClass('bg-light');
-        row.find('.disc-input').val(0).prop('readonly', true).addClass('bg-light');
-        row.find('.price-input').val(0).prop('readonly', false).removeClass('bg-light');
-    } else if (kind === 'item') {
+    if (kind === 'item') {
         row.find('.qty-input').prop('readonly', false).removeClass('bg-light');
         row.find('.disc-input').prop('readonly', false).removeClass('bg-light');
         row.find('.price-input').val(price).prop('readonly', false).removeClass('bg-light');
@@ -271,7 +267,6 @@ function appendHidden(name, value) {
 function buildSubmitPayload() {
     $('#builtPayload').empty();
     let itemIdx = 0;
-    let serviceIdx = 0;
     let hasLine = false;
 
     $('#linesBody tr').each(function() {
@@ -287,21 +282,13 @@ function buildSubmitPayload() {
         const price = row.find('.price-input').val() || 0;
         const disc = row.find('.disc-input').val() || 0;
 
-        if (kind === 'item') {
-            appendHidden(`lines[${itemIdx}][item_id]`, option.data('id'));
-            appendHidden(`lines[${itemIdx}][description]`, description);
-            appendHidden(`lines[${itemIdx}][quantity]`, qty);
-            appendHidden(`lines[${itemIdx}][unit_price]`, price);
-            appendHidden(`lines[${itemIdx}][discount_percentage]`, disc);
-            appendHidden(`lines[${itemIdx}][tax_rate_id]`, taxRateId);
-            itemIdx++;
-        } else if (kind === 'service') {
-            appendHidden(`service_lines[${serviceIdx}][account_id]`, option.data('id'));
-            appendHidden(`service_lines[${serviceIdx}][description]`, description);
-            appendHidden(`service_lines[${serviceIdx}][amount]`, price);
-            appendHidden(`service_lines[${serviceIdx}][tax_rate_id]`, taxRateId);
-            serviceIdx++;
-        }
+        appendHidden(`lines[${itemIdx}][item_id]`, option.data('id'));
+        appendHidden(`lines[${itemIdx}][description]`, description);
+        appendHidden(`lines[${itemIdx}][quantity]`, qty);
+        appendHidden(`lines[${itemIdx}][unit_price]`, price);
+        appendHidden(`lines[${itemIdx}][discount_percentage]`, disc);
+        appendHidden(`lines[${itemIdx}][tax_rate_id]`, taxRateId);
+        itemIdx++;
     });
 
     return hasLine;
@@ -371,7 +358,7 @@ $('#invoiceForm').on('submit.clientValidate', function(e) {
             $(this).find('.qty-input').addClass('is-invalid');
             lineError = true;
         }
-        if (isNaN(price) || price < 0 || (kind === 'service' && price <= 0)) {
+        if (isNaN(price) || price < 0) {
             $(this).find('.price-input').addClass('is-invalid');
             lineError = true;
         }
