@@ -214,7 +214,7 @@ function deleteRecord(url, itemName, successCallback = null, redirectUrl = null)
     });
 }
 
-function changeStatus(url, currentStatus, itemName, successCallback = null) {
+function changeStatus(url, currentStatus, itemName, successCallback = null, resetCallback = null) {
     const action = currentStatus ? 'deactivate' : 'activate';
 
     Swal.fire({
@@ -243,12 +243,20 @@ function changeStatus(url, currentStatus, itemName, successCallback = null) {
                         }
                     } else {
                         Swal.fire('Error!', response.message || 'Failed to update status.', 'error');
+                        if (typeof resetCallback === 'function') {
+                            resetCallback();
+                        }
                     }
                 },
                 error: function(xhr) {
                     Swal.fire('Error!', xhr.responseJSON?.message || 'An error occurred.', 'error');
+                    if (typeof resetCallback === 'function') {
+                        resetCallback();
+                    }
                 }
             });
+        } else if (typeof resetCallback === 'function') {
+            resetCallback();
         }
     });
 }

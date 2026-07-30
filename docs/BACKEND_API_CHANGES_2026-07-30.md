@@ -149,6 +149,74 @@ Remove this field from all registration payloads:
 
 Company email remains editable later through the authenticated company settings API.
 
+## Soft-Deleted Party Create Conflict
+
+```http
+POST /api/v1/parties
+```
+
+If a soft-deleted party already exists with the same normalized name, the first create request returns HTTP `409`:
+
+```json
+{
+  "success": false,
+  "code": "SOFT_DELETED_PARTY_EXISTS",
+  "message": "A deleted party with this name already exists.",
+  "data": {
+    "party_code": "AR001",
+    "party_name": "Default Customer"
+  }
+}
+```
+
+Retry with one of:
+
+```json
+{
+  "duplicate_action": "restore"
+}
+```
+
+or
+
+```json
+{
+  "duplicate_action": "new_entry"
+}
+```
+
+- `restore` restores and updates the deleted party.
+- `new_entry` creates a new party and generates a new AR/AP code.
+
+## Payment / Receipt Vouchers
+
+Do not send `payment_mode` on payment or receipt vouchers.
+
+Required fields:
+
+```json
+{
+  "voucher_date": "2026-07-30",
+  "cash_bank_account_id": 12,
+  "payment_rows": [
+    {
+      "account_id": 45,
+      "amount": 1000
+    }
+  ]
+}
+```
+
+`cash_bank_account_id` may be any Cash, Bank, or OD ledger from `GET /api/v1/accounts/cash-bank`.
+
+Invoice settlement still requires `payment_mode` + `cash_bank_account_id` + `amount`. That is separate from voucher create.
+
+## Items
+
+- Do not send `item_code` on create. The server generates `ITEM-001`, `ITEM-002`, etc.
+- Use `opening_stock` for opening quantity.
+- Updating `opening_stock` adjusts `current_stock` by the opening delta.
+
 ## App Developer Checklist
 
 - Fetch plans from `GET /api/v1/plans` when opening registration.

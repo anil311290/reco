@@ -213,10 +213,18 @@ $(document).ready(function() {
     // Status toggle
     $('#accountsTable').on('change', '.status-toggle', function() {
         const id = $(this).data('id');
-        const status = $(this).prop('checked') ? 1 : 0;
-        changeStatus(`/admin/accounts/${id}/status`, !status, 'account', function() {
+        const currentStatus = !$(this).prop('checked');
+        const reloadTable = function() {
             table.ajax.reload();
-        });
+        };
+
+        changeStatus(
+            `/admin/accounts/${id}/status`,
+            currentStatus,
+            'account',
+            reloadTable,
+            reloadTable
+        );
     });
 
     // Delete button (only rendered for manual accounts)

@@ -21,6 +21,7 @@ use OpenApi\Annotations as OA;
  *     path="/parties",
  *     tags={"Parties"},
  *     summary="Create party",
+ *     description="If a soft-deleted party with the same name exists, the API returns HTTP 409 with code SOFT_DELETED_PARTY_EXISTS. Retry with duplicate_action=restore or duplicate_action=new_entry.",
  *     operationId="createParty",
  *     security={{"bearerAuth":{}}},
  *     @OA\RequestBody(required=true, @OA\JsonContent(
@@ -34,9 +35,19 @@ use OpenApi\Annotations as OA;
  *         @OA\Property(property="city_id", type="integer"),
  *         @OA\Property(property="postal_code", type="string"),
  *         @OA\Property(property="opening_balance", type="number"),
- *         @OA\Property(property="opening_balance_type", type="string", enum={"debit","credit"})
+ *         @OA\Property(property="opening_balance_type", type="string", enum={"debit","credit"}),
+ *         @OA\Property(property="duplicate_action", type="string", enum={"restore","new_entry"}, description="Required only after a 409 soft-deleted duplicate response")
  *     )),
- *     @OA\Response(response=201, description="Created", @OA\JsonContent(ref="#/components/schemas/SuccessResponse"))
+ *     @OA\Response(response=201, description="Created", @OA\JsonContent(ref="#/components/schemas/SuccessResponse")),
+ *     @OA\Response(response=409, description="Soft-deleted party with the same name exists", @OA\JsonContent(
+ *         @OA\Property(property="success", type="boolean", example=false),
+ *         @OA\Property(property="code", type="string", example="SOFT_DELETED_PARTY_EXISTS"),
+ *         @OA\Property(property="message", type="string"),
+ *         @OA\Property(property="data", type="object",
+ *             @OA\Property(property="party_code", type="string"),
+ *             @OA\Property(property="party_name", type="string")
+ *         )
+ *     ))
  * )
  *
  * @OA\Get(

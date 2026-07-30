@@ -175,9 +175,10 @@ class AccountController extends Controller
      */
     public function changeStatus(Request $request, int $id): JsonResponse
     {
-        $request->validate([
+        $validated = $request->validate([
             'status' => 'required|boolean',
         ]);
+        $status = (bool) $validated['status'];
 
         try {
             $account = $this->accountService->getById($id);
@@ -186,14 +187,14 @@ class AccountController extends Controller
             }
 
             $updated = $this->accountService->update($id, [
-                'is_active' => $request->status,
+                'is_active' => $status,
             ]);
 
             if (!$updated) {
                 return ResponseHelper::notFound('Account not found');
             }
 
-            $statusText = $request->status ? 'activated' : 'deactivated';
+            $statusText = $status ? 'activated' : 'deactivated';
             return ResponseHelper::success(null, "Account {$statusText} successfully");
         } catch (\Exception $e) {
             return ResponseHelper::error($e->getMessage());

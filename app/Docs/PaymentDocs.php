@@ -7,7 +7,7 @@ use OpenApi\Annotations as OA;
 /**
  * @OA\Tag(
  *     name="Payments",
- *     description="Payment vouchers (money out). Same Tally-style payload as web admin: payment_mode + cash_bank_account_id + payment_rows. Server builds balanced ledger lines and auto-posts."
+ *     description="Payment vouchers (money out). Same Tally-style payload as web admin: cash_bank_account_id + payment_rows. Paid From may be any Cash, Bank, or OD ledger. Server builds balanced ledger lines and auto-posts."
  * )
  *
  * @OA\Get(
@@ -47,10 +47,9 @@ use OpenApi\Annotations as OA;
  *     operationId="createPayment",
  *     security={{"bearerAuth":{}}},
  *     @OA\RequestBody(required=true, @OA\JsonContent(
- *         required={"voucher_date","payment_mode","cash_bank_account_id","payment_rows"},
+ *         required={"voucher_date","cash_bank_account_id","payment_rows"},
  *         @OA\Property(property="voucher_date", type="string", format="date", example="2026-07-16"),
- *         @OA\Property(property="payment_mode", type="string", enum={"cash","bank","od"}, example="cash"),
- *         @OA\Property(property="cash_bank_account_id", type="integer", example=12, description="Paid From account (must match payment_mode)"),
+ *         @OA\Property(property="cash_bank_account_id", type="integer", example=12, description="Paid From Cash/Bank/OD account"),
  *         @OA\Property(property="party_id", type="integer", nullable=true, description="Optional; auto-resolved from party particulars"),
  *         @OA\Property(property="narration", type="string", example="Supplier payment"),
  *         @OA\Property(property="remarks", type="string"),
@@ -74,10 +73,9 @@ use OpenApi\Annotations as OA;
  *     security={{"bearerAuth":{}}},
  *     @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")),
  *     @OA\RequestBody(required=true, @OA\JsonContent(
- *         required={"voucher_date","payment_mode","cash_bank_account_id","payment_rows"},
+ *         required={"voucher_date","cash_bank_account_id","payment_rows"},
  *         @OA\Property(property="voucher_date", type="string", format="date"),
- *         @OA\Property(property="payment_mode", type="string", enum={"cash","bank","od"}),
- *         @OA\Property(property="cash_bank_account_id", type="integer"),
+ *         @OA\Property(property="cash_bank_account_id", type="integer", description="Paid From Cash/Bank/OD account"),
  *         @OA\Property(property="narration", type="string"),
  *         @OA\Property(property="remarks", type="string"),
  *         @OA\Property(property="payment_rows", type="array", @OA\Items(

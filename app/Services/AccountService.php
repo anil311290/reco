@@ -544,7 +544,6 @@ class AccountService
                 'balance_type' => $meta['balance_type'],
                 'remarks' => $meta['remarks'],
                 'is_system' => true,
-                'is_active' => true,
                 'financial_year_id' => $account->financial_year_id ?: $financialYearId,
             ]);
         }

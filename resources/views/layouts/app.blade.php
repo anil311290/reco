@@ -170,7 +170,7 @@
     
     @stack('styles')
 </head>
-<body class="admin-body">
+<body class="admin-body{{ $darkMode === '1' ? ' dark-mode' : '' }}">
     <!-- Sidebar Backdrop (mobile) -->
     <div id="sidebarBackdrop" class="sidebar-backdrop"></div>
 
@@ -582,7 +582,10 @@
                     <div class="col-auto">
                         <div class="header-actions">
                             <!-- Dark Mode Toggle -->
-                            <button type="button" id="darkModeToggle" class="btn btn-link" title="Toggle dark mode">
+                            <button type="button" id="darkModeToggle" class="btn btn-link"
+                                title="{{ $darkMode === '1' ? 'Switch to light mode' : 'Switch to dark mode' }}"
+                                aria-label="{{ $darkMode === '1' ? 'Switch to light mode' : 'Switch to dark mode' }}"
+                                aria-pressed="{{ $darkMode === '1' ? 'true' : 'false' }}">
                                 <i class="bi {{ $darkMode === '1' ? 'bi-sun' : 'bi-moon' }}"></i>
                             </button>
 
@@ -893,14 +896,20 @@
             handleResize();
 
             // Dark Mode Toggle
-            var isDarkMode = {{ $darkMode === '1' ? 'true' : 'false' }};
-            if (isDarkMode) { $('body').addClass('dark-mode'); }
-
             $('#darkModeToggle').on('click', function() {
+                var $toggle = $(this);
+                var $icon = $toggle.find('i');
                 var isDark = $('body').hasClass('dark-mode');
                 var newMode = isDark ? '0' : '1';
+
                 $('body').toggleClass('dark-mode');
-                $(this).find('i').toggleClass('bi-moon bi-sun');
+                $icon.toggleClass('bi-moon bi-sun');
+                $toggle
+                    .prop('disabled', true)
+                    .attr('aria-pressed', newMode === '1' ? 'true' : 'false')
+                    .attr('aria-label', newMode === '1' ? 'Switch to light mode' : 'Switch to dark mode')
+                    .attr('title', newMode === '1' ? 'Switch to light mode' : 'Switch to dark mode');
+
                 $.ajax({
                     url: '{{ route("admin.settings.theme") }}',
                     method: 'PUT',
@@ -911,6 +920,22 @@
                         sidebar_color: '{{ \App\Models\Setting::getValue("theme.sidebar_color", "#ffffff", $companyId) }}',
                         header_color: '{{ \App\Models\Setting::getValue("theme.header_color", "#ffffff", $companyId) }}',
                         dark_mode: newMode
+                    },
+                    error: function(xhr) {
+                        $('body').toggleClass('dark-mode');
+                        $icon.toggleClass('bi-moon bi-sun');
+                        $toggle
+                            .attr('aria-pressed', isDark ? 'true' : 'false')
+                            .attr('aria-label', isDark ? 'Switch to light mode' : 'Switch to dark mode')
+                            .attr('title', isDark ? 'Switch to light mode' : 'Switch to dark mode');
+
+                        var message = xhr.responseJSON && xhr.responseJSON.message
+                            ? xhr.responseJSON.message
+                            : 'Unable to update theme.';
+                        toastr.error(message);
+                    },
+                    complete: function() {
+                        $toggle.prop('disabled', false);
                     }
                 });
             });

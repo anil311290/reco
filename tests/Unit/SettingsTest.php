@@ -147,6 +147,14 @@ class SettingsTest extends TestCase
 
         $this->assertStringContainsString('--lp-primary:', $css);
         $this->assertStringContainsString('#4f46e5', $css);
+        $this->assertStringContainsString(
+            'body:not(.dark-mode) nav.sidebar { background: #1e1b4b !important; }',
+            $css
+        );
+        $this->assertStringNotContainsString(
+            "\nnav.sidebar { background: #1e1b4b !important; }",
+            $css
+        );
     }
 
     public function test_can_get_all_settings_as_key_value(): void

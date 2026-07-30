@@ -223,8 +223,8 @@ class SettingsService
     --bs-primary: {$primaryColor};
     --bs-primary-rgb: {$this->hexToRgbCsv($primaryColor)};
 }
-header.header { background: {$headerColor} !important; }
-nav.sidebar { background: {$sidebarColor} !important; }
+body:not(.dark-mode) header.header { background: {$headerColor} !important; }
+body:not(.dark-mode) nav.sidebar { background: {$sidebarColor} !important; }
 .btn-primary { background: {$primaryColor}; border-color: {$primaryColor}; }
 .btn-primary:hover, .btn-primary:focus { background: {$primaryHover}; border-color: {$primaryHover}; }
 ");

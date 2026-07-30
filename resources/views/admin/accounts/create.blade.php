@@ -25,14 +25,11 @@
     <div class="row g-4">
         <div class="col-xl-8">
             <div class="card account-section-card" id="accountFormCard">
-                <div class="card-header d-flex align-items-center justify-content-between flex-wrap gap-2">
+                <div class="card-header">
                     <div>
                         <h5 class="mb-1">Account Details</h5>
                         <p class="mb-0 account-note">Fields marked with * are required.</p>
                     </div>
-                    <button type="button" class="btn btn-outline-primary btn-sm" data-bs-toggle="modal" data-bs-target="#transactionModeHelpModal">
-                        <i class="bi bi-info-circle me-1"></i>Transaction Mode Help
-                    </button>
                 </div>
                 <div class="card-body">
                     <form id="accountForm" method="POST" action="{{ route('admin.accounts.store') }}">
@@ -61,16 +58,24 @@
                                 <span class="form-label fw-semibold d-block">Transaction Mode</span>
                                 <div class="d-flex flex-wrap gap-2" role="radiogroup" aria-label="Transaction Mode">
                                     <input class="btn-check" type="radio" name="transaction_mode" id="transaction_mode_general" value="" {{ old('transaction_mode', '') === '' ? 'checked' : '' }}>
-                                    <label class="btn btn-outline-secondary" for="transaction_mode_general">General Asset</label>
+                                    <label class="btn btn-outline-secondary" for="transaction_mode_general">
+                                        <i class="bi bi-box me-1"></i>General Asset
+                                    </label>
 
                                     <input class="btn-check" type="radio" name="transaction_mode" id="transaction_mode_cash" value="cash" {{ old('transaction_mode') === 'cash' ? 'checked' : '' }}>
-                                    <label class="btn btn-outline-primary" for="transaction_mode_cash">Cash</label>
+                                    <label class="btn btn-outline-primary" for="transaction_mode_cash">
+                                        <i class="bi bi-cash-stack me-1"></i>Cash
+                                    </label>
 
                                     <input class="btn-check" type="radio" name="transaction_mode" id="transaction_mode_bank" value="bank" {{ old('transaction_mode') === 'bank' ? 'checked' : '' }}>
-                                    <label class="btn btn-outline-primary" for="transaction_mode_bank">Bank</label>
+                                    <label class="btn btn-outline-primary" for="transaction_mode_bank">
+                                        <i class="bi bi-bank me-1"></i>Bank
+                                    </label>
 
                                     <input class="btn-check" type="radio" name="transaction_mode" id="transaction_mode_od" value="od" {{ old('transaction_mode') === 'od' ? 'checked' : '' }}>
-                                    <label class="btn btn-outline-primary" for="transaction_mode_od">OD</label>
+                                    <label class="btn btn-outline-primary" for="transaction_mode_od">
+                                        <i class="bi bi-credit-card me-1"></i>OD
+                                    </label>
                                 </div>
                             </div>
                             <div class="col-md-6 d-flex align-items-end">
@@ -162,41 +167,6 @@
     </div>
 </div>
 
-<div class="modal fade" id="transactionModeHelpModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered modal-lg">
-        <div class="modal-content border-0 rounded-4 overflow-hidden">
-            <div class="modal-header bg-primary text-white border-0">
-                <div>
-                    <h5 class="modal-title mb-1">Transaction Mode Guide</h5>
-                    <small class="text-white-50">Used only for Asset accounts</small>
-                </div>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body p-4">
-                <div class="row g-3">
-                    <div class="col-md-4">
-                        <div class="border rounded-4 p-3 h-100">
-                            <h6 class="fw-bold mb-2">Cash</h6>
-                            <p class="mb-0 text-muted small">Use for physical cash balances or petty cash accounts.</p>
-                        </div>
-                    </div>
-                    <div class="col-md-4">
-                        <div class="border rounded-4 p-3 h-100">
-                            <h6 class="fw-bold mb-2">Bank</h6>
-                            <p class="mb-0 text-muted small">Use for current accounts, savings accounts, and online bank balances.</p>
-                        </div>
-                    </div>
-                    <div class="col-md-4">
-                        <div class="border rounded-4 p-3 h-100">
-                            <h6 class="fw-bold mb-2">OD</h6>
-                            <p class="mb-0 text-muted small">Use for overdraft / cash credit linked accounts.</p>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
 @endsection
 
 @push('scripts')

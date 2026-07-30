@@ -231,4 +231,24 @@ class AccountTest extends TestCase
 
         $this->assertFalse($account->fresh()->is_active);
     }
+
+    public function test_loading_account_master_does_not_reactivate_an_inactive_system_account(): void
+    {
+        $this->accountService->ensureDefaultLedgersAndCleanupDuplicates(
+            $this->company->id,
+            $this->financialYear->id
+        );
+
+        $account = Account::where('company_id', $this->company->id)
+            ->where('account_code', Account::CODE_SUSPENSE)
+            ->firstOrFail();
+
+        $this->accountService->update($account->id, ['is_active' => false]);
+        $this->accountService->ensureDefaultLedgersAndCleanupDuplicates(
+            $this->company->id,
+            $this->financialYear->id
+        );
+
+        $this->assertFalse($account->fresh()->is_active);
+    }
 }

@@ -59,7 +59,7 @@ use OpenApi\Annotations as OA;
  *     path="/vouchers",
  *     tags={"Vouchers"},
  *     summary="Create new voucher",
- *     description="Prefer dedicated /payments, /receipts, /adjustments endpoints for those types (Tally-style rows). For payment/receipt this endpoint also accepts payment_mode + cash_bank_account_id + payment_rows. For journal/adjustment accept adjustment_rows. Raw balanced lines still work for income/expense.",
+ *     description="Prefer dedicated /payments, /receipts, /adjustments endpoints for those types (Tally-style rows). For payment/receipt this endpoint also accepts cash_bank_account_id + payment_rows (Cash/Bank/OD). For journal/adjustment accept adjustment_rows. Raw balanced lines still work for income/expense.",
  *     operationId="createVoucher",
  *     security={{"bearerAuth":{}}},
  *     @OA\RequestBody(
