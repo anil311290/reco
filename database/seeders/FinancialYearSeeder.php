@@ -34,10 +34,7 @@ class FinancialYearSeeder extends Seeder
         $end = $start->copy()->addYear()->subDay();
         $name = $startYear . '-' . ($startYear + 1);
 
-        FinancialYear::where('company_id', $company->id)
-            ->update(['is_current' => false]);
-
-        FinancialYear::updateOrCreate(
+        FinancialYear::firstOrCreate(
             ['company_id' => $company->id, 'name' => $name],
             [
                 'start_date' => $start->toDateString(),

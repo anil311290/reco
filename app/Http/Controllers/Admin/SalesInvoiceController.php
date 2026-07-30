@@ -3,9 +3,11 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Admin\ItemRequest;
 use App\Services\SalesInvoiceService;
 use App\Services\PartyService;
 use App\Services\AccountService;
+use App\Services\ItemCategoryService;
 use App\Services\ItemService;
 use App\Services\TaxRateService;
 use App\Services\ExportService;
@@ -13,12 +15,14 @@ use App\Helpers\ResponseHelper;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
+use Illuminate\Validation\Rule;
 
 class SalesInvoiceController extends Controller
 {
     protected SalesInvoiceService $salesInvoiceService;
     protected PartyService $partyService;
     protected AccountService $accountService;
+    protected ItemCategoryService $itemCategoryService;
     protected ItemService $itemService;
     protected TaxRateService $taxRateService;
     protected ExportService $exportService;
@@ -27,6 +31,7 @@ class SalesInvoiceController extends Controller
         SalesInvoiceService $salesInvoiceService,
         PartyService $partyService,
         AccountService $accountService,
+        ItemCategoryService $itemCategoryService,
         ItemService $itemService,
         TaxRateService $taxRateService,
         ExportService $exportService
@@ -34,6 +39,7 @@ class SalesInvoiceController extends Controller
         $this->salesInvoiceService = $salesInvoiceService;
         $this->partyService = $partyService;
         $this->accountService = $accountService;
+        $this->itemCategoryService = $itemCategoryService;
         $this->itemService = $itemService;
         $this->taxRateService = $taxRateService;
         $this->exportService = $exportService;
@@ -85,10 +91,31 @@ class SalesInvoiceController extends Controller
         $parties = $this->partyService->getAll(['company_id' => $companyId, 'type' => 'debtor']);
         $goodsItems = $this->itemService->getAll($companyId, ['type' => 'goods']);
         $serviceItems = $this->itemService->getAll($companyId, ['type' => 'service']);
+        $itemCategories = $this->itemCategoryService->getAll($companyId);
         $taxRates = $this->taxRateService->getAll($companyId);
         $invoiceNumber = $fyId ? $this->salesInvoiceService->generateInvoiceNumber($companyId, $fyId) : null;
 
-        return view('admin.sales-invoices.create', compact('parties', 'goodsItems', 'serviceItems', 'taxRates', 'invoiceNumber'));
+        return view('admin.sales-invoices.create', compact(
+            'parties',
+            'goodsItems',
+            'serviceItems',
+            'itemCategories',
+            'taxRates',
+            'invoiceNumber'
+        ));
+    }
+
+    /**
+     * Create an item or service directly from the sales invoice form.
+     */
+    public function quickAddItem(ItemRequest $request): JsonResponse
+    {
+        $data = $request->validated();
+        $data['company_id'] = $request->user()->company_id;
+
+        $item = $this->itemService->create($data);
+
+        return ResponseHelper::success($item, 'Item created and selected successfully');
     }
 
     /**
@@ -106,16 +133,31 @@ class SalesInvoiceController extends Controller
             'notes' => 'nullable|string',
             'discount_percentage' => 'nullable|numeric|min:0|max:100',
             'lines' => 'nullable|array',
-            'lines.*.item_id' => 'nullable|exists:items,id',
-            'lines.*.account_id' => 'nullable|exists:accounts,id',
-            'lines.*.tax_rate_id' => 'nullable|exists:tax_rates,id',
+            'lines.*.item_id' => [
+                'nullable',
+                Rule::exists('items', 'id')->where('company_id', $companyId),
+            ],
+            'lines.*.account_id' => [
+                'nullable',
+                Rule::exists('accounts', 'id')->where('company_id', $companyId),
+            ],
+            'lines.*.tax_rate_id' => [
+                'nullable',
+                Rule::exists('tax_rates', 'id')->where('company_id', $companyId),
+            ],
             'lines.*.description' => 'nullable|string',
             'lines.*.quantity' => 'required|numeric|min:0.001',
             'lines.*.unit_price' => 'required|numeric|min:0',
             'lines.*.discount_percentage' => 'nullable|numeric|min:0|max:100',
             'service_lines' => 'nullable|array',
-            'service_lines.*.account_id' => 'required|exists:accounts,id',
-            'service_lines.*.tax_rate_id' => 'nullable|exists:tax_rates,id',
+            'service_lines.*.account_id' => [
+                'required',
+                Rule::exists('accounts', 'id')->where('company_id', $companyId),
+            ],
+            'service_lines.*.tax_rate_id' => [
+                'nullable',
+                Rule::exists('tax_rates', 'id')->where('company_id', $companyId),
+            ],
             'service_lines.*.description' => 'nullable|string',
             'service_lines.*.amount' => 'required|numeric|min:0.01',
         ]);

@@ -47,8 +47,8 @@
 
             <div class="row g-3">
                 <div class="col-md-4">
-                    <label for="item_code" class="form-label">Item Code <span class="text-danger">*</span></label>
-                    <input type="text" class="form-control" id="item_code" name="item_code" required placeholder="e.g. ITEM-001">
+                    <label for="item_code" class="form-label">Item Code</label>
+                    <input type="text" class="form-control" id="item_code" value="Auto-generated on save" readonly>
                 </div>
                 <div class="col-md-4">
                     <label for="name" class="form-label">Name <span class="text-danger">*</span></label>
@@ -61,6 +61,9 @@
                         @foreach($categories as $category)
                         <option value="{{ $category->id }}">{{ $category->name }}</option>
                         @endforeach
+                        @permission('accounts.create')
+                        <option value="__quick_add__">+ Quick Add Category</option>
+                        @endpermission
                     </select>
                 </div>
                 <div class="col-md-4">
@@ -93,6 +96,10 @@
                     <label for="purchase_price" class="form-label">Purchase Price</label>
                     <input type="number" class="form-control" id="purchase_price" name="purchase_price" step="0.01" min="0" value="0">
                 </div>
+                <div class="col-md-4" id="openingStockField">
+                    <label for="opening_stock" class="form-label">Opening Qty.</label>
+                    <input type="number" class="form-control" id="opening_stock" name="opening_stock" step="0.01" min="0" value="0">
+                </div>
                 <div class="col-md-4">
                     <label for="selling_price" class="form-label" id="sellingPriceLabel">Selling Price</label>
                     <input type="number" class="form-control" id="selling_price" name="selling_price" step="0.01" min="0" value="0">
@@ -115,6 +122,8 @@
         </form>
     </div>
 </div>
+
+@include('admin.items._quick-add-category-modal')
 @endsection
 
 @section('scripts')
@@ -131,11 +140,13 @@ function applyItemTypeUi(type) {
     $('#hsnSacLabel').text(isService ? 'SAC Code' : 'HSN/SAC Code');
     $('#barcodeField').toggle(!isService);
     $('#purchasePriceField').toggle(!isService);
+    $('#openingStockField').toggle(!isService);
     $('#sellingPriceLabel').text(isService ? 'Default Rate' : 'Selling Price');
     $('#sellingPriceHint').toggle(isService);
     if (isService) {
         $('#barcode').val('');
         $('#purchase_price').val('0');
+        $('#opening_stock').val('0');
         const unit = $('#unit');
         if (!['hrs', 'nos'].includes(unit.val())) {
             unit.val('hrs');

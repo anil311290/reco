@@ -27,8 +27,7 @@ class RegisterRequest extends FormRequest
             'password' => 'required|string|min:8|confirmed',
             'phone' => 'nullable|string|max:20',
             'company_name' => 'required|string|max:255',
-            'company_email' => 'nullable|email|max:255',
-            'plan_slug' => 'nullable|string|exists:subscription_plans,slug',
+            'plan_slug' => 'required|string|exists:subscription_plans,slug',
         ];
     }
 
@@ -45,6 +44,9 @@ class RegisterRequest extends FormRequest
             'password.required' => 'Password is required',
             'password.min' => 'Password must be at least 8 characters',
             'password.confirmed' => 'Password confirmation does not match',
+            'company_name.required' => 'Company name is required',
+            'plan_slug.required' => 'Please select a subscription plan',
+            'plan_slug.exists' => 'Selected subscription plan is invalid',
         ];
     }
 }

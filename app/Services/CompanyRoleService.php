@@ -27,7 +27,7 @@ class CompanyRoleService
                 'is_active' => true,
             ]
         );
-        $adminRole->syncPermissions($allPermissions->pluck('id')->toArray());
+        $adminRole->permissions()->syncWithoutDetaching($allPermissions->pluck('id')->all());
 
         $managerRole = Role::firstOrCreate(
             ['slug' => 'manager', 'company_id' => $company->id],
@@ -42,7 +42,7 @@ class CompanyRoleService
         $managerPermissions = $allPermissions->filter(
             fn ($p) => ! in_array($p->module, ['Settings', 'Users', 'Roles'], true)
         );
-        $managerRole->syncPermissions($managerPermissions->pluck('id')->toArray());
+        $managerRole->permissions()->syncWithoutDetaching($managerPermissions->pluck('id')->all());
 
         $accountantRole = Role::firstOrCreate(
             ['slug' => 'accountant', 'company_id' => $company->id],
@@ -57,7 +57,7 @@ class CompanyRoleService
         $accountantPermissions = $allPermissions->filter(
             fn ($p) => in_array($p->module, ['Dashboard', 'Accounts', 'Parties', 'Vouchers', 'Reports', 'Tax Rates'], true)
         );
-        $accountantRole->syncPermissions($accountantPermissions->pluck('id')->toArray());
+        $accountantRole->permissions()->syncWithoutDetaching($accountantPermissions->pluck('id')->all());
 
         $viewerRole = Role::firstOrCreate(
             ['slug' => 'viewer', 'company_id' => $company->id],
@@ -72,7 +72,7 @@ class CompanyRoleService
         $viewerPermissions = $allPermissions->filter(
             fn ($p) => str_contains($p->slug, '.view') || str_contains($p->slug, 'reports.export')
         );
-        $viewerRole->syncPermissions($viewerPermissions->pluck('id')->toArray());
+        $viewerRole->permissions()->syncWithoutDetaching($viewerPermissions->pluck('id')->all());
     }
 
     /**

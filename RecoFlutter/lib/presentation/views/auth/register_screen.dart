@@ -106,22 +106,7 @@ class RegisterScreen extends GetView<RegisterController> {
                 return null;
               },
             ),
-
-            CustomTextField(
-              controller: controller.companyEmailController,
-              hintText: 'Optional company email',
-              label: 'Company Email',
-              keyboardType: TextInputType.emailAddress,
-              textInputAction: TextInputAction.next,
-              prefixIcon: Icons.alternate_email_rounded,
-              validator: (value) {
-                final email = (value ?? '').trim();
-                if (email.isNotEmpty && !GetUtils.isEmail(email)) {
-                  return 'Please enter valid company email';
-                }
-                return null;
-              },
-            ),
+            const SizedBox(height: AppSpacing.xl),
             Text(
               'Security',
               style: Theme.of(

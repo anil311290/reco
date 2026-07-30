@@ -105,13 +105,13 @@ class VoucherLedgerIntegrationTest extends TestCase
         $ledgerEntries = Ledger::where('voucher_id', $voucher->id)->get();
         $this->assertCount(2, $ledgerEntries);
 
-        // Verify first entry (asset debit) - running balance starts from opening balance
+        // Verify first entry (asset debit). Factory-created opening amounts are
+        // metadata only; production openings are posted as adjustment vouchers.
         $assetEntry = $ledgerEntries->firstWhere('account_id', $this->assetAccount->id);
         $this->assertNotNull($assetEntry);
         $this->assertEquals(5000, $assetEntry->debit);
         $this->assertEquals(0, $assetEntry->credit);
-        // Running balance is 10000 (opening) + 5000 (debit) = 15000
-        $this->assertEquals(15000, $assetEntry->running_balance);
+        $this->assertEquals(5000, $assetEntry->running_balance);
 
         // Verify second entry (income credit) - starts with opening balance of 0
         $incomeEntry = $ledgerEntries->firstWhere('account_id', $this->incomeAccount->id);

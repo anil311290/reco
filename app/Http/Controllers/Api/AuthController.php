@@ -11,6 +11,7 @@ use App\Services\LoginHistoryService;
 use App\Helpers\ResponseHelper;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\ValidationException;
 
 class AuthController extends Controller
 {
@@ -53,6 +54,8 @@ class AuthController extends Controller
                 'user' => new UserResource($result['user']),
                 'token' => $result['token'],
             ], 'Login successful');
+        } catch (ValidationException $e) {
+            return ResponseHelper::validationError($e->errors(), collect($e->errors())->flatten()->first() ?? 'Validation Error');
         } catch (\Exception $e) {
             return ResponseHelper::error($e->getMessage(), 401);
         }
@@ -68,7 +71,7 @@ class AuthController extends Controller
 
             return ResponseHelper::success(
                 new UserResource($user),
-                'Registration successful',
+                'Registration successful. Your account is pending admin approval.',
                 201
             );
         } catch (\Exception $e) {

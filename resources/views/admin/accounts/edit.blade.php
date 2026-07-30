@@ -63,13 +63,20 @@
 
                         <div class="row g-3 mb-4 {{ old('account_type', $account->account_type) === 'asset' ? '' : 'd-none' }}" id="transaction_mode_row">
                             <div class="col-md-6">
-                                <label for="transaction_mode" class="form-label fw-semibold">Transaction Mode</label>
-                                <select class="form-select form-select-lg" id="transaction_mode" name="transaction_mode" {{ $isInUse ? 'disabled' : '' }}>
-                                    <option value="">General Asset (not Cash/Bank)</option>
-                                    <option value="cash" {{ old('transaction_mode', $account->transaction_mode) === 'cash' ? 'selected' : '' }}>Cash</option>
-                                    <option value="bank" {{ old('transaction_mode', $account->transaction_mode) === 'bank' ? 'selected' : '' }}>Bank</option>
-                                    <option value="od" {{ old('transaction_mode', $account->transaction_mode) === 'od' ? 'selected' : '' }}>OD</option>
-                                </select>
+                                <span class="form-label fw-semibold d-block">Transaction Mode</span>
+                                <div class="d-flex flex-wrap gap-2" role="radiogroup" aria-label="Transaction Mode">
+                                    <input class="btn-check" type="radio" name="transaction_mode" id="transaction_mode_general" value="" {{ old('transaction_mode', $account->transaction_mode ?? '') === '' ? 'checked' : '' }} {{ $isInUse ? 'disabled' : '' }}>
+                                    <label class="btn btn-outline-secondary" for="transaction_mode_general">General Asset</label>
+
+                                    <input class="btn-check" type="radio" name="transaction_mode" id="transaction_mode_cash" value="cash" {{ old('transaction_mode', $account->transaction_mode) === 'cash' ? 'checked' : '' }} {{ $isInUse ? 'disabled' : '' }}>
+                                    <label class="btn btn-outline-primary" for="transaction_mode_cash">Cash</label>
+
+                                    <input class="btn-check" type="radio" name="transaction_mode" id="transaction_mode_bank" value="bank" {{ old('transaction_mode', $account->transaction_mode) === 'bank' ? 'checked' : '' }} {{ $isInUse ? 'disabled' : '' }}>
+                                    <label class="btn btn-outline-primary" for="transaction_mode_bank">Bank</label>
+
+                                    <input class="btn-check" type="radio" name="transaction_mode" id="transaction_mode_od" value="od" {{ old('transaction_mode', $account->transaction_mode) === 'od' ? 'checked' : '' }} {{ $isInUse ? 'disabled' : '' }}>
+                                    <label class="btn btn-outline-primary" for="transaction_mode_od">OD</label>
+                                </div>
                                 @if($isInUse && $account->transaction_mode)
                                     <input type="hidden" name="transaction_mode" value="{{ $account->transaction_mode }}">
                                 @endif
@@ -87,24 +94,22 @@
                                 <label for="opening_balance" class="form-label fw-semibold mb-1">Opening Balance</label>
                                 <div class="input-group">
                                     <span class="input-group-text">₹</span>
-                                    <input type="number" class="form-control" id="opening_balance" name="opening_balance" value="{{ old('opening_balance', $account->opening_balance) }}" step="0.01" min="0" {{ $isInUse ? 'readonly' : '' }}>
+                                    <input type="number" class="form-control" id="opening_balance" value="{{ $account->opening_balance }}" step="0.01" min="0" readonly>
                                 </div>
+                                <div class="form-text">Cannot be edited after create.</div>
                             </div>
 
                             <div class="col-md-4">
                                 <label for="balance_type" class="form-label fw-semibold mb-1">Balance Type</label>
-                                <select class="form-select" id="balance_type" name="balance_type" {{ $isInUse ? 'disabled' : '' }}>
-                                    <option value="debit" {{ old('balance_type', $account->balance_type ?? 'debit') === 'debit' ? 'selected' : '' }}>Debit</option>
-                                    <option value="credit" {{ old('balance_type', $account->balance_type ?? 'debit') === 'credit' ? 'selected' : '' }}>Credit</option>
+                                <select class="form-select" id="balance_type" disabled>
+                                    <option value="debit" {{ ($account->balance_type ?? 'debit') === 'debit' ? 'selected' : '' }}>Debit</option>
+                                    <option value="credit" {{ ($account->balance_type ?? 'debit') === 'credit' ? 'selected' : '' }}>Credit</option>
                                 </select>
-                                @if($isInUse)
-                                    <input type="hidden" name="balance_type" value="{{ $account->balance_type }}">
-                                @endif
                             </div>
 
                             <div class="col-md-4">
                                 <label for="opening_date" class="form-label fw-semibold mb-1">Opening Date</label>
-                                <input type="date" class="form-control" id="opening_date" name="opening_date" value="{{ old('opening_date', $account->opening_date?->format('Y-m-d')) }}" {{ $isInUse ? 'readonly' : '' }}>
+                                <input type="date" class="form-control" id="opening_date" value="{{ $account->opening_date?->format('Y-m-d') }}" readonly>
                             </div>
                         </div>
 
@@ -225,9 +230,13 @@ $(document).ready(function() {
 
     function syncTransactionModeState() {
         const isAsset = $('#account_type').val() === 'asset';
+        const transactionModes = $('input[name="transaction_mode"][type="radio"]');
+
         $('#transaction_mode_row').toggleClass('d-none', !isAsset);
         if (!isAsset) {
-            $('#transaction_mode').val('');
+            transactionModes.prop('checked', false);
+        } else if (!transactionModes.is(':checked')) {
+            $('#transaction_mode_general').prop('checked', true);
         }
     }
 

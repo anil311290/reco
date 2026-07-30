@@ -209,7 +209,8 @@ class Party extends Model
     {
         $prefix = $type === 'debtor' ? 'AR' : 'AP';
 
-        $lastParty = static::where('company_id', $companyId)
+        $lastParty = static::withTrashed()
+            ->where('company_id', $companyId)
             ->where('party_code', 'like', "{$prefix}%")
             ->orderBy('party_code', 'desc')
             ->first();

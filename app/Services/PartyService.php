@@ -83,6 +83,18 @@ class PartyService
     }
 
     /**
+     * Find the most recently deleted party with the same normalized name.
+     */
+    public function findDeletedByName(int $companyId, string $name): ?Party
+    {
+        return Party::onlyTrashed()
+            ->where('company_id', $companyId)
+            ->whereRaw('LOWER(TRIM(name)) = ?', [mb_strtolower(trim($name))])
+            ->latest('deleted_at')
+            ->first();
+    }
+
+    /**
      * Create party
      */
     public function create(array $data): Party
@@ -132,6 +144,60 @@ class PartyService
             DB::rollBack();
             throw $e;
         }
+    }
+
+    /**
+     * Restore a deleted party and replace its details with the submitted data.
+     */
+    public function restoreDeleted(Party $party, array $data): Party
+    {
+        if (!$party->trashed()) {
+            throw new \InvalidArgumentException('The selected party is not deleted.');
+        }
+
+        unset(
+            $data['party_code'],
+            $data['duplicate_action'],
+            $data['created_by'],
+            $data['created_by_ip']
+        );
+
+        if (empty($data['opening_balance_type'])) {
+            $data['opening_balance_type'] = ($data['type'] ?? $party->type) === 'creditor'
+                ? 'credit'
+                : 'debit';
+        }
+
+        if (empty($data['opening_date'])) {
+            $data['opening_date'] = now();
+        }
+
+        if (!array_key_exists('address', $data)) {
+            $data['address'] = '';
+        }
+
+        $financialYear = FinancialYear::getCurrent($party->company_id);
+        $data['financial_year_id'] = $financialYear?->id;
+        $data['company_id'] = $party->company_id;
+        $data['deleted_by'] = null;
+        $data['deleted_by_id'] = null;
+
+        return DB::transaction(function () use ($party, $data) {
+            $data['account_id'] = $this->resolveControlAccount([
+                ...$data,
+                'created_by' => $data['updated_by'] ?? $party->created_by,
+                'created_by_ip' => $data['updated_by_ip'] ?? request()->ip(),
+            ])->id;
+
+            $party->restore();
+            $party->update($data);
+
+            if ((float) $party->opening_balance > 0) {
+                $this->ledgerService->createOpeningBalanceEntries($party);
+            }
+
+            return $party->fresh();
+        });
     }
 
     /**

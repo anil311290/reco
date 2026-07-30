@@ -83,11 +83,6 @@ class PartySeeder extends Seeder
                 ->first();
 
             if ($existing) {
-                if ($existing->trashed()) {
-                    $existing->restore();
-                }
-
-                $partyService->update($existing->id, $partyData);
                 continue;
             }
 

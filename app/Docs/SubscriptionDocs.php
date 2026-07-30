@@ -6,6 +6,31 @@ use OpenApi\Annotations as OA;
 
 /**
  * @OA\Get(
+ *     path="/plans",
+ *     tags={"Subscriptions"},
+ *     summary="List public subscription plans for registration",
+ *     description="No auth required. Returns active and visible plans for the registration plan picker.",
+ *     operationId="getPublicSubscriptionPlans",
+ *     @OA\Response(
+ *         response=200,
+ *         description="Success",
+ *         @OA\JsonContent(
+ *             @OA\Property(property="success", type="boolean", example=true),
+ *             @OA\Property(property="data", type="array", @OA\Items(
+ *                 @OA\Property(property="id", type="integer", example=1),
+ *                 @OA\Property(property="slug", type="string", example="trial"),
+ *                 @OA\Property(property="name", type="string", example="Trial"),
+ *                 @OA\Property(property="monthly_price", type="number", example=0),
+ *                 @OA\Property(property="yearly_price", type="number", example=0),
+ *                 @OA\Property(property="trial_days", type="integer", example=14),
+ *                 @OA\Property(property="description", type="string"),
+ *                 @OA\Property(property="features", type="array", @OA\Items(type="string"))
+ *             ))
+ *         )
+ *     )
+ * )
+ *
+ * @OA\Get(
  *     path="/subscriptions/plans",
  *     tags={"Subscriptions"},
  *     summary="List subscription plans",

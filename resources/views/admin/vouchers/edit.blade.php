@@ -23,7 +23,6 @@
     $adjustmentRows = old('adjustment_rows', []);
     $paymentRows = old('payment_rows', []);
     $selectedCashBankAccountId = old('cash_bank_account_id');
-    $selectedPaymentMode = old('payment_mode');
     $cashBankModeMap = collect($cashBankAccounts ?? [])->pluck('transaction_mode', 'id');
 
     if ($isPaymentReceipt && empty($paymentRows)) {
@@ -63,9 +62,6 @@
         }
     }
 
-    if ($isPaymentReceipt && empty($selectedPaymentMode) && $selectedCashBankAccountId) {
-        $selectedPaymentMode = $cashBankModeMap[$selectedCashBankAccountId] ?? null;
-    }
 @endphp
 
 @section('title', 'Edit ' . $voucherLabel . ' Voucher')
@@ -98,27 +94,18 @@
                 </div>
 
                 @if($isPaymentReceipt)
-                <div class="col-md-3 mb-3">
-                    <label for="payment_mode" class="form-label">Payment Mode <span class="text-danger">*</span></label>
-                    <select class="form-select" id="payment_mode" name="payment_mode" required>
-                        <option value="">Select Mode</option>
-                        <option value="cash" {{ $selectedPaymentMode === 'cash' ? 'selected' : '' }}>Cash</option>
-                        <option value="bank" {{ $selectedPaymentMode === 'bank' ? 'selected' : '' }}>Bank</option>
-                        <option value="od" {{ $selectedPaymentMode === 'od' ? 'selected' : '' }}>OD</option>
-                    </select>
-                </div>
-                <div class="col-md-3 mb-3">
+                <div class="col-md-4 mb-3">
                     <label for="cash_bank_account_id" class="form-label">
                         {{ $voucher->voucher_type === 'receipt' ? 'Received In' : 'Paid From' }}
                         <span class="text-danger">*</span>
                     </label>
                     <select class="form-select" id="cash_bank_account_id" name="cash_bank_account_id" data-selected="{{ $selectedCashBankAccountId }}" required>
-                        <option value="">Select Cash / Bank</option>
+                        <option value="">Select Cash / Bank / OD</option>
                     </select>
                 </div>
                 @endif
 
-                <div class="col-md-{{ $isPaymentReceipt ? '3' : '4' }} mb-3">
+                <div class="col-md-4 mb-3">
                     <label for="narration" class="form-label">Narration</label>
                     <textarea class="form-control" id="narration" name="narration" rows="2"
                               placeholder="Brief description">{{ old('narration', $voucher->narration) }}</textarea>
@@ -393,12 +380,9 @@ $(document).ready(function() {
     let paymentReceiptRowIndex = {{ max(1, count($paymentRows)) }};
     let adjustmentRowIndex = {{ max(2, count($adjustmentRows)) }};
 
-    function cashBankOptionsHtml(selectedMode = '', selectedValue = '') {
-        let html = '<option value="">Select Cash / Bank</option>';
+    function cashBankOptionsHtml(selectedValue = '') {
+        let html = '<option value="">Select Cash / Bank / OD</option>';
         cashBankAccounts.forEach((option) => {
-            if (selectedMode && option.transaction_mode !== selectedMode) {
-                return;
-            }
             const selected = String(selectedValue) === String(option.id) ? 'selected' : '';
             html += `<option value="${option.id}" ${selected}>${option.text}</option>`;
         });
@@ -497,9 +481,8 @@ $(document).ready(function() {
         }
 
         function refreshCashBankDropdown() {
-            const mode = $('#payment_mode').val();
             const selected = $('#cash_bank_account_id').data('selected') || $('#cash_bank_account_id').val() || '';
-            $('#cash_bank_account_id').html(cashBankOptionsHtml(mode, selected));
+            $('#cash_bank_account_id').html(cashBankOptionsHtml(selected));
             $('#cash_bank_account_id').removeData('selected');
         }
 
@@ -595,7 +578,6 @@ $(document).ready(function() {
             refreshParticularsAvailability();
         });
 
-        $('#payment_mode').on('change', refreshCashBankDropdown);
         refreshCashBankDropdown();
         updatePaymentReceiptRemoveButtons();
         refreshParticularsAvailability();

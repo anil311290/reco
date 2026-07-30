@@ -53,28 +53,29 @@ use OpenApi\Annotations as OA;
  * @OA\Post(
  *     path="/register",
  *     tags={"Authentication"},
- *     summary="Register new user",
- *     description="Create a new user account",
+ *     summary="Register new company owner",
+ *     description="Create a new tenant company and owner account. Account status is pending until admin approval. User email is also used as company email. Do not send company_email.",
  *     operationId="register",
  *     @OA\RequestBody(
  *         required=true,
  *         description="Registration data",
  *         @OA\JsonContent(
- *             required={"name", "email", "password", "password_confirmation"},
+ *             required={"name", "email", "password", "password_confirmation", "company_name", "plan_slug"},
  *             @OA\Property(property="name", type="string", example="John Doe", description="Full name"),
- *             @OA\Property(property="email", type="string", format="email", example="john@example.com", description="Email address"),
+ *             @OA\Property(property="email", type="string", format="email", example="john@example.com", description="Owner email (also used as company email)"),
  *             @OA\Property(property="password", type="string", format="password", minLength=8, example="12345678", description="Password (min 8 characters)"),
  *             @OA\Property(property="password_confirmation", type="string", format="password", example="12345678", description="Confirm password"),
  *             @OA\Property(property="phone", type="string", example="+91 9876543210", description="Phone number"),
- *             @OA\Property(property="company_id", type="integer", example=1, description="Company ID")
+ *             @OA\Property(property="company_name", type="string", example="Acme Traders", description="Company / business name"),
+ *             @OA\Property(property="plan_slug", type="string", example="trial", description="Required subscription plan slug from GET /plans")
  *         )
  *     ),
  *     @OA\Response(
  *         response=201,
- *         description="Registration successful",
+ *         description="Registration successful (pending approval)",
  *         @OA\JsonContent(
  *             @OA\Property(property="success", type="boolean", example=true),
- *             @OA\Property(property="message", type="string", example="Registration successful"),
+ *             @OA\Property(property="message", type="string", example="Registration successful. Your account is pending admin approval."),
  *             @OA\Property(property="data", ref="#/components/schemas/User")
  *         )
  *     ),

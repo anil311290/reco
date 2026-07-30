@@ -6,7 +6,6 @@ class RegisterRequestModel {
     required this.passwordConfirmation,
     required this.companyName,
     this.phone,
-    this.companyEmail,
     this.planSlug,
   });
 
@@ -16,7 +15,6 @@ class RegisterRequestModel {
   final String passwordConfirmation;
   final String companyName;
   final String? phone;
-  final String? companyEmail;
   final String? planSlug;
 
   Map<String, dynamic> toJson() {
@@ -27,7 +25,6 @@ class RegisterRequestModel {
       'password_confirmation': passwordConfirmation,
       'company_name': companyName,
       'phone': phone,
-      'company_email': companyEmail,
       'plan_slug': planSlug,
     };
   }

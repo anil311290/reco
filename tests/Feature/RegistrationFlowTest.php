@@ -18,10 +18,59 @@ class RegistrationFlowTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        
+
         // Create default plans
-        SubscriptionPlan::factory()->create(['slug' => 'trial', 'trial_days' => 14]);
-        SubscriptionPlan::factory()->create(['slug' => 'basic', 'trial_days' => 0]);
+        SubscriptionPlan::factory()->create([
+            'slug' => 'trial',
+            'trial_days' => 14,
+            'is_active' => true,
+            'is_visible' => true,
+        ]);
+        SubscriptionPlan::factory()->create([
+            'slug' => 'basic',
+            'trial_days' => 0,
+            'is_active' => true,
+            'is_visible' => true,
+        ]);
+    }
+
+    public function test_public_registration_plans_are_available_without_authentication(): void
+    {
+        SubscriptionPlan::factory()->create([
+            'slug' => 'hidden-plan',
+            'is_active' => true,
+            'is_visible' => false,
+        ]);
+
+        $response = $this->getJson('/api/v1/plans');
+
+        $response->assertOk()
+            ->assertJsonPath('success', true)
+            ->assertJsonCount(2, 'data')
+            ->assertJsonFragment(['slug' => 'trial'])
+            ->assertJsonFragment(['slug' => 'basic'])
+            ->assertJsonMissing(['slug' => 'hidden-plan']);
+    }
+
+    public function test_registration_requires_a_valid_plan_slug(): void
+    {
+        $payload = [
+            'name' => 'Test User',
+            'email' => 'missingplan@example.com',
+            'password' => 'password123',
+            'password_confirmation' => 'password123',
+            'company_name' => 'Missing Plan Company',
+        ];
+
+        $this->postJson('/api/v1/register', $payload)
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('plan_slug');
+
+        $this->postJson('/api/v1/register', array_merge($payload, [
+            'plan_slug' => 'not-a-plan',
+        ]))
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('plan_slug');
     }
 
     public function test_user_registration_requires_pending_approval(): void
@@ -94,13 +143,34 @@ class RegistrationFlowTest extends TestCase
             'password' => 'password123',
             'password_confirmation' => 'password123',
             'company_name' => 'Test Company Ltd',
+            'company_email' => 'ignored@example.com',
             'plan_slug' => 'trial',
         ]);
 
         $company = Company::where('name', 'Test Company Ltd')->first();
-        
+
         $this->assertNotNull($company);
         $this->assertFalse($company->is_active); // Should be inactive until approved
+        $this->assertSame('companytest@example.com', $company->email);
+    }
+
+    public function test_companies_with_the_same_name_receive_unique_slugs(): void
+    {
+        foreach (['first@example.com', 'second@example.com'] as $email) {
+            $this->postJson('/api/v1/register', [
+                'name' => 'Company Owner',
+                'email' => $email,
+                'password' => 'password123',
+                'password_confirmation' => 'password123',
+                'company_name' => 'Duplicate Company',
+                'plan_slug' => 'trial',
+            ])->assertCreated();
+        }
+
+        $this->assertSame(
+            ['duplicate-company', 'duplicate-company-1'],
+            Company::where('name', 'Duplicate Company')->orderBy('id')->pluck('slug')->all()
+        );
     }
 
     public function test_subscription_is_created_on_registration(): void

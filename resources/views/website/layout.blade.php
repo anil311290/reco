@@ -117,7 +117,8 @@
                     <h5 class="fw-bold mb-3">Stay Updated</h5>
                     <p class="text-light opacity-75 small mb-3">Subscribe to our newsletter for updates and tips.</p>
                     <form class="d-flex gap-2 justify-content-center flex-wrap" id="newsletterForm">
-                        <input type="email" class="form-control w-auto" placeholder="Enter your email" style="max-width: 250px;">
+                        @csrf
+                        <input type="email" name="email" class="form-control w-auto" placeholder="Enter your email" style="max-width: 250px;" required>
                         <button type="submit" class="btn btn-primary">Subscribe</button>
                     </form>
                 </div>
@@ -183,6 +184,46 @@
     <!-- Local Vendor JS (offline-safe) -->
     <script src="{{ asset('assets/vendor/jquery/jquery.min.js') }}"></script>
     <script src="{{ asset('assets/vendor/bootstrap/js/bootstrap.bundle.min.js') }}"></script>
+    <script>
+        $('#newsletterForm').on('submit', function (e) {
+            e.preventDefault();
+
+            const $form = $(this);
+            const $button = $form.find('button[type="submit"]');
+            const email = $.trim($form.find('input[name="email"]').val());
+
+            if (!email) {
+                return;
+            }
+
+            $button.prop('disabled', true);
+
+            $.ajax({
+                url: '{{ route('website.contact.submit') }}',
+                method: 'POST',
+                data: {
+                    _token: $form.find('input[name="_token"]').val(),
+                    name: 'Newsletter Subscriber',
+                    email: email,
+                    subject: 'Newsletter Subscription',
+                    message: 'Please add this email to the Reco newsletter list.'
+                },
+                success: function (response) {
+                    $form[0].reset();
+                    alert(response.message || 'Subscribed successfully.');
+                },
+                error: function (xhr) {
+                    const message = xhr.responseJSON?.message
+                        || xhr.responseJSON?.errors?.email?.[0]
+                        || 'Unable to subscribe right now.';
+                    alert(message);
+                },
+                complete: function () {
+                    $button.prop('disabled', false);
+                }
+            });
+        });
+    </script>
 
     @stack('scripts')
 </body>

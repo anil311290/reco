@@ -78,6 +78,8 @@ class ItemService
      */
     public function create(array $data): Item
     {
+        unset($data['item_code']);
+
         if (($data['type'] ?? 'goods') === 'service') {
             $data['is_stockable'] = false;
             $data['opening_stock'] = 0;
@@ -100,11 +102,15 @@ class ItemService
     {
         $item = Item::findOrFail($id);
         $type = $data['type'] ?? $item->type;
+        unset($data['item_code']);
 
         if ($type === 'service') {
             $data['is_stockable'] = false;
             $data['purchase_price'] = 0;
             unset($data['opening_stock'], $data['current_stock']);
+        } elseif (array_key_exists('opening_stock', $data)) {
+            $openingStockChange = (float) $data['opening_stock'] - (float) $item->opening_stock;
+            $data['current_stock'] = (float) $item->current_stock + $openingStockChange;
         }
 
         return $item->update($data);

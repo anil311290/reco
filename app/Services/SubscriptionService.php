@@ -22,11 +22,14 @@ class SubscriptionService
     /**
      * Get all plans.
      */
-    public function getPlans(bool $activeOnly = true): Collection
+    public function getPlans(bool $activeOnly = true, bool $visibleOnly = false): Collection
     {
         $query = SubscriptionPlan::query();
         if ($activeOnly) {
             $query->active();
+        }
+        if ($visibleOnly) {
+            $query->visible();
         }
         return $query->orderBy('sort_order')->get();
     }

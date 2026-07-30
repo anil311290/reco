@@ -62,6 +62,8 @@ class Item extends Model
     protected static function booted(): void
     {
         static::creating(function ($item) {
+            $item->item_code = self::generateCode();
+
             if (empty($item->type)) {
                 $item->type = 'goods';
             }
@@ -184,5 +186,24 @@ class Item extends Model
         return $query->where('type', 'goods')
             ->where('is_stockable', true)
             ->whereColumn('current_stock', '<=', 'reorder_level');
+    }
+
+    /**
+     * Generate the next item code.
+     */
+    public static function generateCode(): string
+    {
+        $lastNumber = static::withTrashed()
+            ->where('item_code', 'like', 'ITEM-%')
+            ->pluck('item_code')
+            ->reduce(function (int $highest, string $code): int {
+                if (!preg_match('/^ITEM-(\d+)$/', $code, $matches)) {
+                    return $highest;
+                }
+
+                return max($highest, (int) $matches[1]);
+            }, 0);
+
+        return 'ITEM-' . str_pad((string) ($lastNumber + 1), 3, '0', STR_PAD_LEFT);
     }
 }

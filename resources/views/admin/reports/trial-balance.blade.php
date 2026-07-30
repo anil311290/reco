@@ -95,53 +95,48 @@
                     <table class="table report-table table-hover mb-0">
                         <thead>
                             <tr>
-                                <th>Account</th>
+                                <th>Account Code</th>
+                                <th>Particulars</th>
                                 <th>Type</th>
-                                <th>Dest</th>
-                                <th class="text-end">Opening Dr</th>
-                                <th class="text-end">Opening Cr</th>
-                                <th class="text-end">Trans Dr</th>
-                                <th class="text-end">Trans Cr</th>
-                                <th class="text-end">Closing Dr</th>
-                                <th class="text-end">Closing Cr</th>
+                                <th class="text-end">Debit (₹)</th>
+                                <th class="text-end">Credit (₹)</th>
+                                <th class="text-end">Balance (₹)</th>
                             </tr>
                         </thead>
                         <tbody>
                             @forelse($report['accounts'] as $item)
                             <tr>
+                                <td class="fw-semibold">{{ $item['account']->account_code }}</td>
                                 <td>
                                     <a href="{{ route('admin.reports.ledger', ['account_id' => $item['account']->id]) }}" class="report-detail-link" title="View ledger">
-                                        <span class="fw-semibold">{{ $item['account']->account_code }}</span>
-                                        — {{ $item['account']->account_name }}
+                                        {{ $item['account']->account_name }}
                                     </a>
-                                    @if(($item['account']->transaction_mode ?? null) === 'bank' || ($item['account']->transaction_mode ?? null) === 'od')
-                                        <a href="{{ route('admin.reports.bank-book', ['account_id' => $item['account']->id]) }}" class="ms-1 small report-detail-link" title="Open Bank Book">Bank Book</a>
-                                    @elseif(($item['account']->transaction_mode ?? null) === 'cash')
-                                        <a href="{{ route('admin.reports.cash-book', ['account_id' => $item['account']->id]) }}" class="ms-1 small report-detail-link" title="Open Cash Book">Cash Book</a>
-                                    @endif
                                 </td>
                                 <td><span class="report-pill report-pill--info">{{ ucfirst($item['account']->account_type) }}</span></td>
-                                <td><span class="report-pill">{{ $item['destination'] ?? '-' }}</span></td>
-                                <td class="text-end">{{ ($item['opening_debit'] ?? 0) > 0 ? '₹' . number_format($item['opening_debit'], 2) : '-' }}</td>
-                                <td class="text-end">{{ ($item['opening_credit'] ?? 0) > 0 ? '₹' . number_format($item['opening_credit'], 2) : '-' }}</td>
-                                <td class="text-end">{{ ($item['transaction_debit'] ?? 0) > 0 ? '₹' . number_format($item['transaction_debit'], 2) : '-' }}</td>
-                                <td class="text-end">{{ ($item['transaction_credit'] ?? 0) > 0 ? '₹' . number_format($item['transaction_credit'], 2) : '-' }}</td>
-                                <td class="text-end fw-semibold">{{ ($item['debit'] ?? 0) > 0 ? '₹' . number_format($item['debit'], 2) : '-' }}</td>
-                                <td class="text-end fw-semibold">{{ ($item['credit'] ?? 0) > 0 ? '₹' . number_format($item['credit'], 2) : '-' }}</td>
+                                <td class="text-end fw-semibold text-primary">{{ ($item['debit'] ?? 0) > 0 ? '₹' . number_format($item['debit'], 2) : '-' }}</td>
+                                <td class="text-end fw-semibold text-danger">{{ ($item['credit'] ?? 0) > 0 ? '₹' . number_format($item['credit'], 2) : '-' }}</td>
+                                <td class="text-end fw-bold">
+                                    @if(($item['debit'] ?? 0) > 0)
+                                        ₹{{ number_format($item['debit'], 2) }} DR
+                                    @elseif(($item['credit'] ?? 0) > 0)
+                                        ₹{{ number_format($item['credit'], 2) }} CR
+                                    @else
+                                        ₹0.00
+                                    @endif
+                                </td>
                             </tr>
                             @empty
-                            <tr><td colspan="9" class="text-muted text-center py-3">No accounts found</td></tr>
+                            <tr><td colspan="6" class="text-muted text-center py-3">No accounts found</td></tr>
                             @endforelse
                         </tbody>
                         <tfoot>
                             <tr>
                                 <td colspan="3">Total</td>
-                                <td class="text-end fw-bold">₹{{ number_format($report['total_opening_debit'] ?? 0, 2) }}</td>
-                                <td class="text-end fw-bold">₹{{ number_format($report['total_opening_credit'] ?? 0, 2) }}</td>
-                                <td class="text-end fw-bold">₹{{ number_format($report['total_transaction_debit'] ?? 0, 2) }}</td>
-                                <td class="text-end fw-bold">₹{{ number_format($report['total_transaction_credit'] ?? 0, 2) }}</td>
                                 <td class="text-end fw-bold">₹{{ number_format($report['total_debit'], 2) }}</td>
                                 <td class="text-end fw-bold">₹{{ number_format($report['total_credit'], 2) }}</td>
+                                <td class="text-end fw-bold">
+                                    {{ $report['is_balanced'] ? 'Balanced' : '₹' . number_format(abs($report['total_debit'] - $report['total_credit']), 2) }}
+                                </td>
                             </tr>
                         </tfoot>
                     </table>

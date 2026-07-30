@@ -97,6 +97,31 @@ class PartyController extends Controller
             $data['created_by_ip'] = request()->ip();
             $data['updated_by_ip'] = request()->ip();
 
+            $duplicateAction = $data['duplicate_action'] ?? null;
+            $deletedParty = $this->partyService->findDeletedByName(
+                $request->user()->company_id,
+                $data['name']
+            );
+
+            if ($deletedParty && !$duplicateAction) {
+                return response()->json([
+                    'success' => false,
+                    'code' => 'SOFT_DELETED_PARTY_EXISTS',
+                    'message' => 'A deleted party with this name already exists.',
+                    'data' => [
+                        'party_code' => $deletedParty->party_code,
+                        'party_name' => $deletedParty->name,
+                    ],
+                ], 409);
+            }
+
+            if ($deletedParty && $duplicateAction === 'restore') {
+                $party = $this->partyService->restoreDeleted($deletedParty, $data);
+
+                return ResponseHelper::success($party, 'Party restored successfully');
+            }
+
+            unset($data['duplicate_action']);
             $party = $this->partyService->create($data);
 
             return ResponseHelper::success($party, 'Party created successfully');

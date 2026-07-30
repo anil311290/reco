@@ -83,8 +83,8 @@ class AuthService
                 $company = Company::create([
                     'uuid' => Str::uuid(),
                     'name' => $data['company_name'],
-                    'slug' => Str::slug($data['company_name']),
-                    'email' => $data['company_email'] ?? null,
+                    'slug' => $this->uniqueCompanySlug($data['company_name']),
+                    'email' => $data['email'],
                     'phone' => $data['phone'] ?? null,
                     'is_active' => false, // Disabled until admin approval
                     'created_by_ip' => request()->ip(),
@@ -168,6 +168,21 @@ class AuthService
         }
 
         return $user;
+    }
+
+    private function uniqueCompanySlug(string $companyName): string
+    {
+        $baseSlug = Str::slug($companyName);
+        $baseSlug = $baseSlug !== '' ? $baseSlug : 'company';
+        $slug = $baseSlug;
+        $suffix = 1;
+
+        while (Company::where('slug', $slug)->exists()) {
+            $slug = $baseSlug . '-' . $suffix;
+            $suffix++;
+        }
+
+        return $slug;
     }
 
     /**

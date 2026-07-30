@@ -17,7 +17,6 @@ class RegisterController extends GetxController {
   final emailController = TextEditingController();
   final phoneController = TextEditingController();
   final companyNameController = TextEditingController();
-  final companyEmailController = TextEditingController();
   final passwordController = TextEditingController();
   final confirmPasswordController = TextEditingController();
 
@@ -31,7 +30,6 @@ class RegisterController extends GetxController {
     emailController.dispose();
     phoneController.dispose();
     companyNameController.dispose();
-    companyEmailController.dispose();
     passwordController.dispose();
     confirmPasswordController.dispose();
     super.onClose();
@@ -60,9 +58,6 @@ class RegisterController extends GetxController {
               ? null
               : phoneController.text.trim(),
           companyName: companyNameController.text.trim(),
-          companyEmail: companyEmailController.text.trim().isEmpty
-              ? null
-              : companyEmailController.text.trim(),
           password: passwordController.text,
           passwordConfirmation: confirmPasswordController.text,
         ),

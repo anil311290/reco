@@ -3,10 +3,12 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Admin\ItemRequest;
 use App\Models\Item;
 use App\Services\PurchaseInvoiceService;
 use App\Services\PartyService;
 use App\Services\AccountService;
+use App\Services\ItemCategoryService;
 use App\Services\ItemService;
 use App\Services\TaxRateService;
 use App\Helpers\ResponseHelper;
@@ -20,6 +22,7 @@ class PurchaseInvoiceController extends Controller
     protected PurchaseInvoiceService $purchaseInvoiceService;
     protected PartyService $partyService;
     protected AccountService $accountService;
+    protected ItemCategoryService $itemCategoryService;
     protected ItemService $itemService;
     protected TaxRateService $taxRateService;
 
@@ -27,12 +30,14 @@ class PurchaseInvoiceController extends Controller
         PurchaseInvoiceService $purchaseInvoiceService,
         PartyService $partyService,
         AccountService $accountService,
+        ItemCategoryService $itemCategoryService,
         ItemService $itemService,
         TaxRateService $taxRateService
     ) {
         $this->purchaseInvoiceService = $purchaseInvoiceService;
         $this->partyService = $partyService;
         $this->accountService = $accountService;
+        $this->itemCategoryService = $itemCategoryService;
         $this->itemService = $itemService;
         $this->taxRateService = $taxRateService;
     }
@@ -82,10 +87,32 @@ class PurchaseInvoiceController extends Controller
 
         $parties = $this->partyService->getAll(['company_id' => $companyId, 'type' => 'creditor']);
         $items = $this->itemService->getAll($companyId, ['type' => 'goods', 'is_active' => true]);
+        $itemCategories = $this->itemCategoryService->getAll($companyId);
         $taxRates = $this->taxRateService->getAll($companyId);
         $invoiceNumber = $fyId ? $this->purchaseInvoiceService->generateInvoiceNumber($companyId, $fyId) : null;
 
-        return view('admin.purchase-invoices.create', compact('parties', 'items', 'taxRates', 'invoiceNumber'));
+        return view('admin.purchase-invoices.create', compact(
+            'parties',
+            'items',
+            'itemCategories',
+            'taxRates',
+            'invoiceNumber'
+        ));
+    }
+
+    /**
+     * Create a goods item directly from the purchase invoice form.
+     */
+    public function quickAddItem(ItemRequest $request): JsonResponse
+    {
+        $data = $request->validated();
+        $data['company_id'] = $request->user()->company_id;
+        $data['type'] = 'goods';
+        $data['is_stockable'] = true;
+
+        $item = $this->itemService->create($data);
+
+        return ResponseHelper::success($item, 'Item created and selected successfully');
     }
 
     /**

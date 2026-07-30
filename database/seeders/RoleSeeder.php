@@ -30,7 +30,7 @@ class RoleSeeder extends Seeder
                 'is_active' => true,
             ]
         );
-        $superAdminRole->syncPermissions($allPermissions->pluck('id')->toArray());
+        $superAdminRole->permissions()->syncWithoutDetaching($allPermissions->pluck('id')->all());
 
         if (Company::count() === 0) {
             return;

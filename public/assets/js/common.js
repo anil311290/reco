@@ -133,6 +133,10 @@ function ajaxFormSubmit(formId, url, method, successCallback, errorCallback = nu
                     }
                 }
 
+                if (typeof errorCallback === 'function' && errorCallback(xhr) === true) {
+                    return;
+                }
+
                 if (xhr.status === 422 && response && response.errors) {
                     const rendered = showValidationErrors(formId, response.errors);
                     if (!rendered) {
@@ -145,10 +149,6 @@ function ajaxFormSubmit(formId, url, method, successCallback, errorCallback = nu
                     }, 1500);
                 } else {
                     toastr.error(response?.message || 'An error occurred. Please try again.');
-                }
-
-                if (typeof errorCallback === 'function') {
-                    errorCallback(xhr);
                 }
             },
             complete: function() {
@@ -232,7 +232,7 @@ function changeStatus(url, currentStatus, itemName, successCallback = null) {
                 url: url,
                 method: 'PATCH',
                 data: {
-                    status: currentStatus ? 'inactive' : 'active'
+                    status: currentStatus ? 0 : 1
                 },
                 success: function(response) {
                     if (response.success) {

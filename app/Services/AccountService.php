@@ -183,6 +183,12 @@ class AccountService
             return false;
         }
 
+        unset(
+            $data['opening_balance'],
+            $data['balance_type'],
+            $data['opening_date']
+        );
+
         $isInUse = $this->isAccountInUse($account->id);
 
         // Renaming a ledger is safe: transactions reference its immutable ID.
@@ -190,10 +196,7 @@ class AccountService
         if ($isInUse) {
             unset(
                 $data['account_type'],
-                $data['transaction_mode'],
-                $data['opening_balance'],
-                $data['balance_type'],
-                $data['opening_date']
+                $data['transaction_mode']
             );
         }
 
@@ -633,10 +636,6 @@ class AccountService
         }
 
         if (DB::table('parties')->where('account_id', $accountId)->exists()) {
-            return true;
-        }
-
-        if (DB::table('accounts')->where('parent_id', $accountId)->exists()) {
             return true;
         }
 

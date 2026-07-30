@@ -67,40 +67,6 @@ class LocationSeeder extends Seeder
             Country::firstOrCreate(['iso2' => $c['iso2']], array_merge($c, ['is_active' => true, 'sort_order' => $i + 2]));
         }
 
-        $this->mapExistingLocations($india->id);
-    }
-
-    private function mapExistingLocations(int $indiaId): void
-    {
-        foreach (\App\Models\Company::whereNull('country_id')->get() as $company) {
-            $updates = ['country_id' => $indiaId];
-            if ($company->state) {
-                $state = State::where('country_id', $indiaId)->where('name', $company->state)->first();
-                if ($state) {
-                    $updates['state_id'] = $state->id;
-                    if ($company->city) {
-                        $city = City::where('state_id', $state->id)->where('name', $company->city)->first();
-                        if ($city) $updates['city_id'] = $city->id;
-                    }
-                }
-            }
-            $company->update($updates);
-        }
-
-        foreach (\App\Models\Party::whereNull('country_id')->get() as $party) {
-            $updates = ['country_id' => $indiaId];
-            if ($party->state) {
-                $state = State::where('country_id', $indiaId)->where('name', $party->state)->first();
-                if ($state) {
-                    $updates['state_id'] = $state->id;
-                    if ($party->city) {
-                        $city = City::where('state_id', $state->id)->where('name', $party->city)->first();
-                        if ($city) $updates['city_id'] = $city->id;
-                    }
-                }
-            }
-            $party->update($updates);
-        }
     }
 
     private function getStatesAndCities(): array

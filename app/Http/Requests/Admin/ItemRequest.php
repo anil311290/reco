@@ -15,24 +15,28 @@ class ItemRequest extends BaseFormRequest
     public function rules(): array
     {
         $itemId = $this->route('item') ?? $this->route('id');
+        $companyId = $this->user()->company_id;
 
         return [
-            'item_code' => [
-                'required',
-                'string',
-                'max:50',
-                Rule::unique('items', 'item_code')->ignore($itemId)->where('company_id', $this->user()->company_id),
-            ],
             'name' => 'required|string|max:255',
             'hsn_sac_code' => 'nullable|string|max:20',
             'type' => ['required', Rule::in(['goods', 'service'])],
             'category_id' => [
                 'nullable',
-                Rule::exists('item_categories', 'id')->where('company_id', $this->user()->company_id),
+                Rule::exists('item_categories', 'id')->where('company_id', $companyId),
             ],
-            'tax_rate_id' => 'nullable|exists:tax_rates,id',
-            'income_account_id' => 'nullable|exists:accounts,id',
-            'expense_account_id' => 'nullable|exists:accounts,id',
+            'tax_rate_id' => [
+                'nullable',
+                Rule::exists('tax_rates', 'id')->where('company_id', $companyId),
+            ],
+            'income_account_id' => [
+                'nullable',
+                Rule::exists('accounts', 'id')->where('company_id', $companyId),
+            ],
+            'expense_account_id' => [
+                'nullable',
+                Rule::exists('accounts', 'id')->where('company_id', $companyId),
+            ],
             'purchase_price' => 'nullable|numeric|min:0',
             'selling_price' => 'nullable|numeric|min:0',
             'unit' => 'nullable|string|max:20',
@@ -52,8 +56,6 @@ class ItemRequest extends BaseFormRequest
     public function messages(): array
     {
         return [
-            'item_code.required' => 'Item code is required',
-            'item_code.unique' => 'This item code already exists',
             'name.required' => 'Item name is required',
             'type.required' => 'Item type is required',
         ];

@@ -34,8 +34,8 @@
             <input type="hidden" name="is_stockable" value="{{ $isService ? '0' : '1' }}">
             <div class="row g-3">
                 <div class="col-md-4">
-                    <label for="item_code" class="form-label">Item Code <span class="text-danger">*</span></label>
-                    <input type="text" class="form-control" id="item_code" name="item_code" value="{{ $item->item_code }}" required>
+                    <label for="item_code" class="form-label">Item Code</label>
+                    <input type="text" class="form-control" id="item_code" value="{{ $item->item_code }}" readonly>
                 </div>
                 <div class="col-md-4">
                     <label for="name" class="form-label">Name <span class="text-danger">*</span></label>
@@ -48,6 +48,9 @@
                         @foreach($categories as $category)
                         <option value="{{ $category->id }}" {{ $item->category_id == $category->id ? 'selected' : '' }}>{{ $category->name }}</option>
                         @endforeach
+                        @permission('accounts.create')
+                        <option value="__quick_add__">+ Quick Add Category</option>
+                        @endpermission
                     </select>
                 </div>
                 <div class="col-md-4">
@@ -79,6 +82,10 @@
                     <label for="purchase_price" class="form-label">Purchase Price</label>
                     <input type="number" class="form-control" id="purchase_price" name="purchase_price" step="0.01" min="0" value="{{ $item->purchase_price }}">
                 </div>
+                <div class="col-md-4">
+                    <label for="opening_stock" class="form-label">Opening Qty.</label>
+                    <input type="number" class="form-control" id="opening_stock" name="opening_stock" step="0.01" min="0" value="{{ $item->opening_stock }}">
+                </div>
                 @else
                 <input type="hidden" name="purchase_price" value="0">
                 @endunless
@@ -108,6 +115,8 @@
         </form>
     </div>
 </div>
+
+@include('admin.items._quick-add-category-modal')
 @endsection
 
 @section('scripts')

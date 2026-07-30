@@ -35,7 +35,7 @@
                     </button>
                 </div>
                 <div class="card-body">
-                    <form id="accountForm" method="POST" action="{{ route('admin.accounts.store') }}" data-ajax="true" data-success-redirect="{{ route('admin.accounts.index') }}">
+                    <form id="accountForm" method="POST" action="{{ route('admin.accounts.store') }}">
                         @csrf
 
                         <div class="row g-3 mb-4">
@@ -58,13 +58,20 @@
 
                         <div class="row g-3 mb-4 d-none" id="transaction_mode_row">
                             <div class="col-md-6">
-                                <label for="transaction_mode" class="form-label fw-semibold">Transaction Mode</label>
-                                <select class="form-select form-select-lg" id="transaction_mode" name="transaction_mode">
-                                    <option value="">General Asset (not Cash/Bank)</option>
-                                    <option value="cash" {{ old('transaction_mode') === 'cash' ? 'selected' : '' }}>Cash</option>
-                                    <option value="bank" {{ old('transaction_mode') === 'bank' ? 'selected' : '' }}>Bank</option>
-                                    <option value="od" {{ old('transaction_mode') === 'od' ? 'selected' : '' }}>OD</option>
-                                </select>
+                                <span class="form-label fw-semibold d-block">Transaction Mode</span>
+                                <div class="d-flex flex-wrap gap-2" role="radiogroup" aria-label="Transaction Mode">
+                                    <input class="btn-check" type="radio" name="transaction_mode" id="transaction_mode_general" value="" {{ old('transaction_mode', '') === '' ? 'checked' : '' }}>
+                                    <label class="btn btn-outline-secondary" for="transaction_mode_general">General Asset</label>
+
+                                    <input class="btn-check" type="radio" name="transaction_mode" id="transaction_mode_cash" value="cash" {{ old('transaction_mode') === 'cash' ? 'checked' : '' }}>
+                                    <label class="btn btn-outline-primary" for="transaction_mode_cash">Cash</label>
+
+                                    <input class="btn-check" type="radio" name="transaction_mode" id="transaction_mode_bank" value="bank" {{ old('transaction_mode') === 'bank' ? 'checked' : '' }}>
+                                    <label class="btn btn-outline-primary" for="transaction_mode_bank">Bank</label>
+
+                                    <input class="btn-check" type="radio" name="transaction_mode" id="transaction_mode_od" value="od" {{ old('transaction_mode') === 'od' ? 'checked' : '' }}>
+                                    <label class="btn btn-outline-primary" for="transaction_mode_od">OD</label>
+                                </div>
                             </div>
                             <div class="col-md-6 d-flex align-items-end">
                                 <div class="alert account-form-help mb-0 w-100">
@@ -201,9 +208,13 @@ $(document).ready(function() {
 
     function syncTransactionModeState() {
         const isAsset = $('#account_type').val() === 'asset';
+        const transactionModes = $('input[name="transaction_mode"]');
+
         $('#transaction_mode_row').toggleClass('d-none', !isAsset);
         if (!isAsset) {
-            $('#transaction_mode').val('');
+            transactionModes.prop('checked', false);
+        } else if (!transactionModes.is(':checked')) {
+            $('#transaction_mode_general').prop('checked', true);
         }
     }
 
@@ -219,6 +230,50 @@ $(document).ready(function() {
         syncTransactionModeState();
         syncBalanceType();
     });
+
+    $('#accountForm').on('submit.openingBalanceConfirmation', function(event) {
+        const form = $(this);
+        if (form.data('opening-balance-confirmed')) {
+            form.removeData('opening-balance-confirmed');
+            return;
+        }
+
+        event.preventDefault();
+        event.stopImmediatePropagation();
+
+        const amount = parseFloat($('#opening_balance').val()) || 0;
+        const balanceType = $('#balance_type option:selected').text();
+        const openingDate = $('#opening_date').val() || '-';
+        const formattedAmount = amount.toLocaleString('en-IN', {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2
+        });
+
+        Swal.fire({
+            title: 'Confirm Opening Balance',
+            html: amount > 0
+                ? `Opening balance of <strong>₹${formattedAmount}</strong> (${balanceType}) dated <strong>${openingDate}</strong> will be posted and <strong>cannot be edited later</strong>.`
+                : `No opening balance will be posted. Opening balance <strong>cannot be set later</strong> after the ledger is created.`,
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#4f46e5',
+            cancelButtonColor: '#6b7280',
+            confirmButtonText: 'Yes, create ledger',
+            cancelButtonText: 'Review again'
+        }).then(function(result) {
+            if (result.isConfirmed) {
+                form.data('opening-balance-confirmed', true);
+                form.trigger('submit');
+            }
+        });
+    });
+
+    ajaxFormSubmit(
+        '#accountForm',
+        '{{ route("admin.accounts.store") }}',
+        'POST',
+        '{{ route("admin.accounts.index") }}'
+    );
 
     syncTransactionModeState();
     @if(!old('balance_type'))

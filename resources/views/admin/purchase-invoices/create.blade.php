@@ -66,9 +66,14 @@
             <div class="card mb-4">
                 <div class="card-header d-flex justify-content-between align-items-center">
                     <h5 class="mb-0">Line Items</h5>
-                    <button type="button" class="btn btn-sm btn-primary" id="addLine">
-                        <i class="bi bi-plus-circle me-1"></i>Add Line
-                    </button>
+                    <div class="d-flex gap-2">
+                        <button type="button" class="btn btn-sm btn-outline-primary" id="quickAddItem">
+                            <i class="bi bi-lightning-charge me-1"></i>Quick Add Item
+                        </button>
+                        <button type="button" class="btn btn-sm btn-primary" id="addLine">
+                            <i class="bi bi-plus-circle me-1"></i>Add Line
+                        </button>
+                    </div>
                 </div>
                 <div class="card-body p-0">
                     <div class="table-responsive">
@@ -145,11 +150,69 @@
         </div>
     </div>
 </form>
+
+@include('admin.items._quick-add-item-modal', ['quickAddGoodsOnly' => true])
 @endsection
 
 @section('scripts')
 <script>
 let lineIndex = 1;
+let quickAddedItemOptions = '';
+let quickAddTargetRow = null;
+const quickAddItemModalElement = document.getElementById('quickAddItemModal');
+const quickAddItemModal = bootstrap.Modal.getOrCreateInstance(quickAddItemModalElement);
+
+$(document).on('focus', '.item-select', function() {
+    quickAddTargetRow = $(this).closest('.line-row');
+});
+
+$('#quickAddItem').on('click', function() {
+    if (!quickAddTargetRow || !document.body.contains(quickAddTargetRow[0])) {
+        quickAddTargetRow = $('#linesBody .line-row').filter(function() {
+            return !$(this).find('.item-select').val();
+        }).first();
+    }
+
+    if (!quickAddTargetRow.length) {
+        $('#addLine').trigger('click');
+        quickAddTargetRow = $('#linesBody .line-row').last();
+    }
+
+    $('#quickAddItemForm')[0].reset();
+    clearValidationErrors('#quickAddItemForm');
+    $('#quick_item_type').val('goods');
+    $('#quickItemOpeningStockField, #quickItemPurchasePriceField, #quickItemBarcodeField').show();
+    $('#quick_item_stockable').val('1');
+    quickAddItemModal.show();
+    quickAddItemModalElement.addEventListener('shown.bs.modal', function() {
+        $('#quick_item_name').trigger('focus');
+    }, { once: true });
+});
+
+ajaxFormSubmit(
+    '#quickAddItemForm',
+    '{{ route("admin.purchase-invoices.quick-add-item") }}',
+    'POST',
+    function(response) {
+        const item = response.data;
+        const option = $('<option>', {
+            value: item.id,
+            text: item.name
+        }).attr({
+            'data-price': item.purchase_price || 0,
+            'data-tax': item.tax_rate_id || '',
+            'data-description': item.description || ''
+        });
+
+        $('.item-select').append(option.clone());
+        quickAddedItemOptions += option.prop('outerHTML');
+        quickAddTargetRow.find('.item-select').val(String(item.id)).trigger('change');
+
+        quickAddItemModal.hide();
+        $('#quickAddItemForm')[0].reset();
+        quickAddTargetRow = null;
+    }
+);
 
 $('#addLine').on('click', function() {
     let row = `<tr class="line-row">
@@ -159,6 +222,7 @@ $('#addLine').on('click', function() {
                 @foreach($items as $item)
                 <option value="{{ $item->id }}" data-price="{{ $item->purchase_price }}" data-tax="{{ $item->tax_rate_id }}" data-description="{{ e($item->description ?? '') }}">{{ $item->name }}</option>
                 @endforeach
+                ${quickAddedItemOptions}
             </select>
             <input type="text" class="form-control form-control-sm mt-1 bg-light" name="lines[${lineIndex}][description]" placeholder="Description" readonly>
         </td>

@@ -7,6 +7,7 @@ use App\Models\Company;
 use App\Models\FinancialYear;
 use App\Models\Ledger;
 use App\Models\Party;
+use App\Models\Voucher;
 use App\Services\PartyService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -83,9 +84,10 @@ class LedgerPartyHistoryTest extends TestCase
             'opening_balance' => 1750.00,
         ]);
 
-        $ledgerEntries = Ledger::where('reference_type', 'party_opening_balance')
-            ->where('reference_id', $party->id)
-            ->get();
+        $openingVoucher = Voucher::where('company_id', $this->company->id)
+            ->where('narration', 'like', "[OB:party:{$party->id}]%")
+            ->firstOrFail();
+        $ledgerEntries = Ledger::where('voucher_id', $openingVoucher->id)->get();
 
         // Two balanced ledger legs (AR + suspense), but only the party leg is
         // tagged with the party under the control-account model.
@@ -98,8 +100,8 @@ class LedgerPartyHistoryTest extends TestCase
         $this->assertDatabaseHas('ledger_party_histories', [
             'ledger_id' => $partyLeg->id,
             'party_id' => $party->id,
-            'reference_type' => 'party_opening_balance',
-            'reference_id' => $party->id,
+            'reference_type' => 'voucher',
+            'reference_id' => $openingVoucher->id,
         ]);
     }
 }

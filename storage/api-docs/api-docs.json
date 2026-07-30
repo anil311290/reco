@@ -2,7 +2,7 @@
     "openapi": "3.0.0",
     "info": {
         "title": "Reco API",
-        "description": "Reco offline-first accounting SaaS API under /api/v1. Payment/receipt/adjustment APIs match web Tally forms (payment_mode + cash_bank_account_id + payment_rows / adjustment_rows). Helpers: GET /accounts/cash-bank, /accounts/payment-particulars, /accounts/adjustment-particulars. Sales invoices are unified (item + service lines) via /sales-invoices; /service-sales-invoices remains a legacy alias. Invoice settlement requires amount + payment_mode + cash_bank_account_id. PATCH /financial-years/{id}/set-current carries forward opening balances. Period lock applies when FY is closed or date is outside FY. Audit logs: GET /audit-logs and GET /audit-logs/{id}. Web-only: roles, CMS, Excel/CSV export.",
+        "description": "Reco offline-first accounting SaaS API under /api/v1. Payment/receipt/adjustment APIs match web Tally forms (payment_mode + cash_bank_account_id + payment_rows / adjustment_rows). Helpers: GET /accounts/cash-bank, /accounts/payment-particulars, /accounts/adjustment-particulars. Sales invoices are unified (item + service lines) via /sales-invoices. Invoice settlement requires amount + payment_mode + cash_bank_account_id. PATCH /financial-years/{id}/set-current carries forward opening balances. Period lock applies when FY is closed or date is outside FY. Audit logs: GET /audit-logs and GET /audit-logs/{id}. Web-only: roles, CMS, Excel/CSV export.",
         "contact": {
             "name": "Reco Support",
             "url": "https://reco.app/support",
@@ -1305,8 +1305,8 @@
                 "tags": [
                     "Authentication"
                 ],
-                "summary": "Register new user",
-                "description": "Create a new user account",
+                "summary": "Register new company owner",
+                "description": "Create a new tenant company and owner account. Account status is pending until admin approval. User email is also used as company email. Do not send company_email.",
                 "operationId": "register",
                 "requestBody": {
                     "description": "Registration data",
@@ -1318,7 +1318,9 @@
                                     "name",
                                     "email",
                                     "password",
-                                    "password_confirmation"
+                                    "password_confirmation",
+                                    "company_name",
+                                    "plan_slug"
                                 ],
                                 "properties": {
                                     "name": {
@@ -1327,7 +1329,7 @@
                                         "example": "John Doe"
                                     },
                                     "email": {
-                                        "description": "Email address",
+                                        "description": "Owner email (also used as company email)",
                                         "type": "string",
                                         "format": "email",
                                         "example": "john@example.com"
@@ -1350,10 +1352,15 @@
                                         "type": "string",
                                         "example": "+91 9876543210"
                                     },
-                                    "company_id": {
-                                        "description": "Company ID",
-                                        "type": "integer",
-                                        "example": 1
+                                    "company_name": {
+                                        "description": "Company / business name",
+                                        "type": "string",
+                                        "example": "Acme Traders"
+                                    },
+                                    "plan_slug": {
+                                        "description": "Required subscription plan slug from GET /plans",
+                                        "type": "string",
+                                        "example": "trial"
                                     }
                                 },
                                 "type": "object"
@@ -1363,7 +1370,7 @@
                 },
                 "responses": {
                     "201": {
-                        "description": "Registration successful",
+                        "description": "Registration successful (pending approval)",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -1374,7 +1381,7 @@
                                         },
                                         "message": {
                                             "type": "string",
-                                            "example": "Registration successful"
+                                            "example": "Registration successful. Your account is pending admin approval."
                                         },
                                         "data": {
                                             "$ref": "#/components/schemas/User"
@@ -2380,6 +2387,234 @@
                         "required": true,
                         "schema": {
                             "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "PDF generated",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/SuccessResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/export/masters/{type}/excel": {
+            "get": {
+                "tags": [
+                    "Export"
+                ],
+                "summary": "Export a master list as Excel",
+                "operationId": "exportMasterExcel",
+                "parameters": [
+                    {
+                        "name": "type",
+                        "in": "path",
+                        "description": "Supported values: accounts, parties, items, item-categories, tax-rates",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "accounts",
+                                "parties",
+                                "items",
+                                "item-categories",
+                                "tax-rates"
+                            ]
+                        }
+                    },
+                    {
+                        "name": "search",
+                        "in": "query",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "is_active",
+                        "in": "query",
+                        "schema": {
+                            "type": "integer",
+                            "enum": [
+                                0,
+                                1
+                            ]
+                        }
+                    },
+                    {
+                        "name": "account_type",
+                        "in": "query",
+                        "description": "Accounts only",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "type",
+                        "in": "query",
+                        "description": "Parties/items only",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "category_id",
+                        "in": "query",
+                        "description": "Items only",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "tax_category",
+                        "in": "query",
+                        "description": "Tax rates only",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "tax_type",
+                        "in": "query",
+                        "description": "Tax rates only",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "status",
+                        "in": "query",
+                        "description": "Tax rates only",
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "active",
+                                "inactive"
+                            ]
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Excel generated",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/SuccessResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/export/masters/{type}/pdf": {
+            "get": {
+                "tags": [
+                    "Export"
+                ],
+                "summary": "Export a master list as PDF",
+                "operationId": "exportMasterPdf",
+                "parameters": [
+                    {
+                        "name": "type",
+                        "in": "path",
+                        "description": "Supported values: accounts, parties, items, item-categories, tax-rates",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "accounts",
+                                "parties",
+                                "items",
+                                "item-categories",
+                                "tax-rates"
+                            ]
+                        }
+                    },
+                    {
+                        "name": "search",
+                        "in": "query",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "is_active",
+                        "in": "query",
+                        "schema": {
+                            "type": "integer",
+                            "enum": [
+                                0,
+                                1
+                            ]
+                        }
+                    },
+                    {
+                        "name": "account_type",
+                        "in": "query",
+                        "description": "Accounts only",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "type",
+                        "in": "query",
+                        "description": "Parties/items only",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "category_id",
+                        "in": "query",
+                        "description": "Items only",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "tax_category",
+                        "in": "query",
+                        "description": "Tax rates only",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "tax_type",
+                        "in": "query",
+                        "description": "Tax rates only",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "status",
+                        "in": "query",
+                        "description": "Tax rates only",
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "active",
+                                "inactive"
+                            ]
                         }
                     }
                 ],
@@ -6250,7 +6485,7 @@
                     "Sales Invoices"
                 ],
                 "summary": "List sales invoices",
-                "description": "Returns paginated sales invoices (item and service). Optional invoice_type filter; omit to list all (same as web Sales Invoice).",
+                "description": "Returns paginated unified sales invoices (item lines and/or service/income lines).",
                 "operationId": "getSalesInvoices",
                 "parameters": [
                     {
@@ -6280,18 +6515,6 @@
                         "in": "query",
                         "schema": {
                             "type": "integer"
-                        }
-                    },
-                    {
-                        "name": "invoice_type",
-                        "in": "query",
-                        "description": "Optional filter: item or service. Omit to return all.",
-                        "schema": {
-                            "type": "string",
-                            "enum": [
-                                "item",
-                                "service"
-                            ]
                         }
                     },
                     {
@@ -6336,7 +6559,7 @@
                     "Sales Invoices"
                 ],
                 "summary": "Create sales invoice",
-                "description": "Unified create matching web Sales Invoice: send lines and/or service_lines. Default invoice_type is item.",
+                "description": "Unified create: send lines and/or service_lines. Invoice numbers follow INV-202627/0001.",
                 "operationId": "createSalesInvoice",
                 "requestBody": {
                     "required": true,
@@ -6346,23 +6569,13 @@
                                 "required": [
                                     "party_id",
                                     "invoice_date",
-                                    "due_date",
-                                    "lines"
+                                    "due_date"
                                 ],
                                 "properties": {
                                     "party_id": {
                                         "description": "Customer ID",
                                         "type": "integer",
                                         "example": 1
-                                    },
-                                    "invoice_type": {
-                                        "description": "Type of invoice: item (default) or service",
-                                        "type": "string",
-                                        "example": "item",
-                                        "enum": [
-                                            "item",
-                                            "service"
-                                        ]
                                     },
                                     "invoice_date": {
                                         "type": "string",
@@ -6395,7 +6608,7 @@
                                         "example": 0
                                     },
                                     "lines": {
-                                        "description": "Required for item invoices",
+                                        "description": "Goods/item lines",
                                         "type": "array",
                                         "items": {
                                             "required": [
@@ -6435,7 +6648,7 @@
                                         }
                                     },
                                     "service_lines": {
-                                        "description": "Service line items (for service invoices or additional services in item invoices)",
+                                        "description": "Service/income lines",
                                         "type": "array",
                                         "items": {
                                             "required": [
@@ -6444,7 +6657,7 @@
                                             ],
                                             "properties": {
                                                 "account_id": {
-                                                    "description": "Income/expense account ID",
+                                                    "description": "Income account ID",
                                                     "type": "integer"
                                                 },
                                                 "description": {
@@ -6744,307 +6957,6 @@
                 "responses": {
                     "200": {
                         "description": "PDF generated",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/SuccessResponse"
-                                }
-                            }
-                        }
-                    }
-                },
-                "security": [
-                    {
-                        "bearerAuth": []
-                    }
-                ]
-            }
-        },
-        "/service-sales-invoices": {
-            "get": {
-                "tags": [
-                    "Service Sales Invoices"
-                ],
-                "summary": "List service sales invoices (legacy)",
-                "description": "Legacy alias of GET /sales-invoices?invoice_type=service. Prefer unified /sales-invoices.",
-                "operationId": "getServiceSalesInvoices",
-                "parameters": [
-                    {
-                        "name": "search",
-                        "in": "query",
-                        "schema": {
-                            "type": "string"
-                        }
-                    },
-                    {
-                        "name": "status",
-                        "in": "query",
-                        "schema": {
-                            "type": "string"
-                        }
-                    },
-                    {
-                        "name": "per_page",
-                        "in": "query",
-                        "schema": {
-                            "type": "integer",
-                            "default": 15
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Success",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/SuccessResponse"
-                                }
-                            }
-                        }
-                    }
-                },
-                "security": [
-                    {
-                        "bearerAuth": []
-                    }
-                ]
-            },
-            "post": {
-                "tags": [
-                    "Service Sales Invoices"
-                ],
-                "summary": "Create service sales invoice (legacy)",
-                "description": "Legacy alias. Prefer POST /sales-invoices with service_lines (and optional item lines).",
-                "operationId": "createServiceSalesInvoice",
-                "requestBody": {
-                    "required": true,
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "required": [
-                                    "party_id",
-                                    "invoice_date",
-                                    "due_date",
-                                    "service_lines"
-                                ],
-                                "properties": {
-                                    "party_id": {
-                                        "type": "integer"
-                                    },
-                                    "invoice_date": {
-                                        "type": "string",
-                                        "format": "date"
-                                    },
-                                    "due_date": {
-                                        "type": "string",
-                                        "format": "date"
-                                    },
-                                    "service_lines": {
-                                        "type": "array",
-                                        "items": {
-                                            "properties": {
-                                                "account_id": {
-                                                    "type": "integer"
-                                                },
-                                                "tax_rate_id": {
-                                                    "type": "integer"
-                                                },
-                                                "description": {
-                                                    "type": "string"
-                                                },
-                                                "amount": {
-                                                    "type": "number"
-                                                }
-                                            },
-                                            "type": "object"
-                                        }
-                                    }
-                                },
-                                "type": "object"
-                            }
-                        }
-                    }
-                },
-                "responses": {
-                    "201": {
-                        "description": "Created",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/SuccessResponse"
-                                }
-                            }
-                        }
-                    }
-                },
-                "security": [
-                    {
-                        "bearerAuth": []
-                    }
-                ]
-            }
-        },
-        "/service-sales-invoices/{id}": {
-            "get": {
-                "tags": [
-                    "Service Sales Invoices"
-                ],
-                "summary": "Get service sales invoice",
-                "operationId": "getServiceSalesInvoiceById",
-                "parameters": [
-                    {
-                        "name": "id",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "integer"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Success",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/SuccessResponse"
-                                }
-                            }
-                        }
-                    }
-                },
-                "security": [
-                    {
-                        "bearerAuth": []
-                    }
-                ]
-            },
-            "put": {
-                "tags": [
-                    "Service Sales Invoices"
-                ],
-                "summary": "Update service sales invoice",
-                "operationId": "updateServiceSalesInvoice",
-                "parameters": [
-                    {
-                        "name": "id",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "integer"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Updated",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/SuccessResponse"
-                                }
-                            }
-                        }
-                    }
-                },
-                "security": [
-                    {
-                        "bearerAuth": []
-                    }
-                ]
-            },
-            "delete": {
-                "tags": [
-                    "Service Sales Invoices"
-                ],
-                "summary": "Delete service sales invoice",
-                "operationId": "deleteServiceSalesInvoice",
-                "parameters": [
-                    {
-                        "name": "id",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "integer"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Deleted",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/SuccessResponse"
-                                }
-                            }
-                        }
-                    }
-                },
-                "security": [
-                    {
-                        "bearerAuth": []
-                    }
-                ]
-            }
-        },
-        "/service-sales-invoices/{id}/payment": {
-            "post": {
-                "tags": [
-                    "Service Sales Invoices"
-                ],
-                "summary": "Record payment against service sales invoice",
-                "operationId": "recordServiceSalesInvoicePayment",
-                "parameters": [
-                    {
-                        "name": "id",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "integer"
-                        }
-                    }
-                ],
-                "requestBody": {
-                    "required": true,
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "required": [
-                                    "amount",
-                                    "payment_mode",
-                                    "cash_bank_account_id"
-                                ],
-                                "properties": {
-                                    "amount": {
-                                        "type": "number",
-                                        "format": "float"
-                                    },
-                                    "payment_mode": {
-                                        "type": "string",
-                                        "enum": [
-                                            "cash",
-                                            "bank",
-                                            "od"
-                                        ]
-                                    },
-                                    "cash_bank_account_id": {
-                                        "type": "integer"
-                                    },
-                                    "payment_date": {
-                                        "type": "string",
-                                        "format": "date"
-                                    }
-                                },
-                                "type": "object"
-                            }
-                        }
-                    }
-                },
-                "responses": {
-                    "200": {
-                        "description": "Payment recorded",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -7568,6 +7480,75 @@
                         "bearerAuth": []
                     }
                 ]
+            }
+        },
+        "/plans": {
+            "get": {
+                "tags": [
+                    "Subscriptions"
+                ],
+                "summary": "List public subscription plans for registration",
+                "description": "No auth required. Returns active and visible plans for the registration plan picker.",
+                "operationId": "getPublicSubscriptionPlans",
+                "responses": {
+                    "200": {
+                        "description": "Success",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "properties": {
+                                                    "id": {
+                                                        "type": "integer",
+                                                        "example": 1
+                                                    },
+                                                    "slug": {
+                                                        "type": "string",
+                                                        "example": "trial"
+                                                    },
+                                                    "name": {
+                                                        "type": "string",
+                                                        "example": "Trial"
+                                                    },
+                                                    "monthly_price": {
+                                                        "type": "number",
+                                                        "example": 0
+                                                    },
+                                                    "yearly_price": {
+                                                        "type": "number",
+                                                        "example": 0
+                                                    },
+                                                    "trial_days": {
+                                                        "type": "integer",
+                                                        "example": 14
+                                                    },
+                                                    "description": {
+                                                        "type": "string"
+                                                    },
+                                                    "features": {
+                                                        "type": "array",
+                                                        "items": {
+                                                            "type": "string"
+                                                        }
+                                                    }
+                                                },
+                                                "type": "object"
+                                            }
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                }
             }
         },
         "/subscriptions/plans": {
@@ -10186,11 +10167,7 @@
         },
         {
             "name": "Sales Invoices",
-            "description": "Unified sales invoices (item lines and/or service/income lines). Prefer /sales-invoices for all app flows."
-        },
-        {
-            "name": "Service Sales Invoices",
-            "description": "Legacy alias of /sales-invoices with invoice_type=service. Prefer unified Sales Invoices endpoints."
+            "description": "Unified sales invoices (item lines and/or service/income lines) via /sales-invoices."
         },
         {
             "name": "Purchase Invoices",

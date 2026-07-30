@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
+use App\Models\SubscriptionPlan;
 use App\Services\AuthService;
 use Illuminate\Foundation\Auth\RegistersUsers;
 use Illuminate\Http\Request;
@@ -22,6 +23,17 @@ class RegisterController extends Controller
         $this->authService = $authService;
     }
 
+    public function showRegistrationForm()
+    {
+        $plans = SubscriptionPlan::query()
+            ->active()
+            ->visible()
+            ->orderBy('sort_order')
+            ->get();
+
+        return view('auth.register', compact('plans'));
+    }
+
     protected function validator(array $data)
     {
         return Validator::make($data, [
@@ -29,8 +41,7 @@ class RegisterController extends Controller
             'email' => ['required', 'string', 'email', 'max:255', 'unique:users'],
             'password' => ['required', 'string', 'min:8', 'confirmed'],
             'company_name' => ['required', 'string', 'max:255'],
-            'company_email' => ['nullable', 'email', 'max:255'],
-            'plan_slug' => ['nullable', 'string'],
+            'plan_slug' => ['required', 'string', 'exists:subscription_plans,slug'],
         ]);
     }
 

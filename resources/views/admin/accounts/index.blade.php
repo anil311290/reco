@@ -72,6 +72,7 @@
                         <th>Code</th>
                         <th>Name</th>
                         <th>Type</th>
+                        <th>Balance Type</th>
                         <th>Mode</th>
                         <th>Balance</th>
                         <th>Status</th>
@@ -112,6 +113,17 @@ $(document).ready(function() {
                     'equity': 'Equity'
                 };
                 return `<span class="badge ${badges[data] || 'bg-secondary'}">${labels[data] || data}</span>`;
+            }
+        },
+        {
+            data: 'balance_type',
+            name: 'balance_type',
+            render: function(data) {
+                const balanceType = data === 'credit' ? 'credit' : 'debit';
+                const badgeClass = balanceType === 'credit' ? 'bg-danger' : 'bg-success';
+                const label = balanceType === 'credit' ? 'Credit (CR)' : 'Debit (DR)';
+
+                return `<span class="badge ${badgeClass}">${label}</span>`;
             }
         },
         {

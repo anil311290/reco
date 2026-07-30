@@ -17,7 +17,7 @@ class WebsiteController extends Controller
      */
     public function home()
     {
-        $page = $this->websiteService->getPage('home');
+        $page = $this->page('home');
         $testimonials = $this->websiteService->getTestimonials(true);
         $plans = $this->websiteService->getPricingPlans();
         $navItems = $this->websiteService->getNavItems();
@@ -33,7 +33,7 @@ class WebsiteController extends Controller
      */
     public function features()
     {
-        $page = $this->websiteService->getPage('features');
+        $page = $this->page('features');
         $navItems = $this->websiteService->getNavItems();
         $settings = $this->websiteService->getSiteSettings();
 
@@ -45,7 +45,7 @@ class WebsiteController extends Controller
      */
     public function pricing()
     {
-        $page = $this->websiteService->getPage('pricing');
+        $page = $this->page('pricing');
         $plans = $this->websiteService->getPricingPlans();
         $navItems = $this->websiteService->getNavItems();
         $settings = $this->websiteService->getSiteSettings();
@@ -58,7 +58,7 @@ class WebsiteController extends Controller
      */
     public function faq()
     {
-        $page = $this->websiteService->getPage('faq');
+        $page = $this->page('faq');
         $faqs = $this->websiteService->getFaqs();
         $navItems = $this->websiteService->getNavItems();
         $settings = $this->websiteService->getSiteSettings();
@@ -71,8 +71,7 @@ class WebsiteController extends Controller
      */
     public function about()
     {
-        $page = $this->websiteService->getPage('about');
-        $testimonials = $this->websiteService->getTestimonials();
+        $page = $this->page('about');
         $navItems = $this->websiteService->getNavItems();
         $settings = $this->websiteService->getSiteSettings();
 
@@ -84,7 +83,7 @@ class WebsiteController extends Controller
      */
     public function contact()
     {
-        $page = $this->websiteService->getPage('contact');
+        $page = $this->page('contact');
         $navItems = $this->websiteService->getNavItems();
         $settings = $this->websiteService->getSiteSettings();
 
@@ -117,7 +116,7 @@ class WebsiteController extends Controller
      */
     public function privacy()
     {
-        $page = $this->websiteService->getPage('privacy-policy');
+        $page = $this->page('privacy-policy');
         $navItems = $this->websiteService->getNavItems();
         $settings = $this->websiteService->getSiteSettings();
 
@@ -129,10 +128,19 @@ class WebsiteController extends Controller
      */
     public function terms()
     {
-        $page = $this->websiteService->getPage('terms');
+        $page = $this->page('terms');
         $navItems = $this->websiteService->getNavItems();
         $settings = $this->websiteService->getSiteSettings();
 
         return view('website.default', compact('page', 'navItems', 'settings'));
+    }
+
+    private function page(string $slug): WebsitePage
+    {
+        $page = $this->websiteService->getPage($slug);
+
+        abort_if($page === null, 404);
+
+        return $page;
     }
 }

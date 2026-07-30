@@ -42,22 +42,13 @@
                 </div>
 
                 @if($isPaymentReceipt)
-                <div class="col-md-3 mb-3">
-                    <label for="payment_mode" class="form-label">Payment Mode <span class="text-danger">*</span></label>
-                    <select class="form-select" id="payment_mode" name="payment_mode" required>
-                        <option value="">Select Mode</option>
-                        <option value="cash" {{ old('payment_mode') === 'cash' ? 'selected' : '' }}>Cash</option>
-                        <option value="bank" {{ old('payment_mode') === 'bank' ? 'selected' : '' }}>Bank</option>
-                        <option value="od" {{ old('payment_mode') === 'od' ? 'selected' : '' }}>OD</option>
-                    </select>
-                </div>
-                <div class="col-md-3 mb-3">
+                <div class="col-md-4 mb-3">
                     <label for="cash_bank_account_id" class="form-label">
                         {{ $type === 'receipt' ? 'Received In' : 'Paid From' }}
                         <span class="text-danger">*</span>
                     </label>
                     <select class="form-select" id="cash_bank_account_id" name="cash_bank_account_id" required>
-                        <option value="">Select Cash / Bank</option>
+                        <option value="">Select Cash / Bank / OD</option>
                     </select>
                     @if($type === 'payment')
                     <small id="cashBankBalanceHint" class="text-muted d-block mt-1"></small>
@@ -65,7 +56,7 @@
                 </div>
                 @endif
 
-                <div class="col-md-{{ $isPaymentReceipt ? '3' : '4' }} mb-3">
+                <div class="col-md-4 mb-3">
                     <label for="narration" class="form-label">Narration</label>
                     <textarea class="form-control" id="narration" name="narration" rows="2"
                               placeholder="Brief description">{{ old('narration') }}</textarea>
@@ -277,12 +268,9 @@ $(document).ready(function() {
     let paymentReceiptRowIndex = 1;
     let adjustmentRowIndex = 2;
 
-    function cashBankOptionsHtml(selectedMode = '', selectedValue = '') {
-        let html = '<option value="">Select Cash / Bank</option>';
+    function cashBankOptionsHtml(selectedValue = '') {
+        let html = '<option value="">Select Cash / Bank / OD</option>';
         cashBankAccounts.forEach((option) => {
-            if (selectedMode && option.transaction_mode !== selectedMode) {
-                return;
-            }
             const selected = String(selectedValue) === String(option.id) ? 'selected' : '';
             html += `<option value="${option.id}" ${selected}>${option.text}</option>`;
         });
@@ -381,9 +369,8 @@ $(document).ready(function() {
         }
 
         function refreshCashBankDropdown() {
-            const mode = $('#payment_mode').val();
             const selected = $('#cash_bank_account_id').val() || '';
-            $('#cash_bank_account_id').html(cashBankOptionsHtml(mode, selected));
+            $('#cash_bank_account_id').html(cashBankOptionsHtml(selected));
             updateCashBankBalanceHint();
         }
 
@@ -525,7 +512,6 @@ $(document).ready(function() {
             refreshParticularsAvailability();
         });
 
-        $('#payment_mode').on('change', refreshCashBankDropdown);
         $('#cash_bank_account_id').on('change', updateCashBankBalanceHint);
         refreshCashBankDropdown();
         updatePaymentReceiptRemoveButtons();

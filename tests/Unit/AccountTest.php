@@ -96,6 +96,27 @@ class AccountTest extends TestCase
         $this->assertEquals('Updated remarks', $fresh->remarks);
     }
 
+    public function test_opening_balance_fields_cannot_be_updated_after_create(): void
+    {
+        $account = Account::factory()->create([
+            'company_id' => $this->company->id,
+            'opening_balance' => 100,
+            'balance_type' => 'debit',
+            'opening_date' => '2026-04-01',
+        ]);
+
+        $this->accountService->update($account->id, [
+            'opening_balance' => 500,
+            'balance_type' => 'credit',
+            'opening_date' => '2026-05-01',
+        ]);
+
+        $fresh = $account->fresh();
+        $this->assertSame(100.0, (float) $fresh->opening_balance);
+        $this->assertSame('debit', $fresh->balance_type);
+        $this->assertSame('2026-04-01', $fresh->opening_date->toDateString());
+    }
+
     public function test_transaction_mode_is_cleared_for_non_asset_accounts(): void
     {
         $account = $this->accountService->create([

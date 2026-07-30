@@ -18,6 +18,7 @@
     <div class="card-body">
         <form id="partyForm" method="POST" action="{{ route('admin.parties.store') }}">
             @csrf
+            <input type="hidden" id="duplicate_action" name="duplicate_action" value="">
             
             <div class="row g-3">
                 <div class="col-md-12">
@@ -183,6 +184,10 @@ $(document).ready(function() {
         }
     });
 
+    $('#name').on('input', function() {
+        $('#duplicate_action').val('');
+    });
+
     // Confirm opening balance before create — it cannot be edited later.
     $('#partyForm').on('submit.obConfirm', function(e) {
         const form = $(this);
@@ -221,7 +226,42 @@ $(document).ready(function() {
         });
     });
 
-    ajaxFormSubmit('#partyForm', '{{ route("admin.parties.store") }}', 'POST', '{{ route("admin.parties.index") }}');
+    ajaxFormSubmit(
+        '#partyForm',
+        '{{ route("admin.parties.store") }}',
+        'POST',
+        '{{ route("admin.parties.index") }}',
+        function(xhr) {
+            const response = xhr.responseJSON;
+            if (xhr.status !== 409 || response?.code !== 'SOFT_DELETED_PARTY_EXISTS') {
+                return false;
+            }
+
+            const deletedParty = response.data;
+            Swal.fire({
+                title: 'Deleted Party Found',
+                text: `${deletedParty.party_name} (${deletedParty.party_code}) already exists in deleted records. Restore it or create a new party?`,
+                icon: 'question',
+                showCancelButton: true,
+                showDenyButton: true,
+                confirmButtonColor: '#16a34a',
+                denyButtonColor: '#4f46e5',
+                cancelButtonColor: '#6b7280',
+                confirmButtonText: 'Restore Party',
+                denyButtonText: 'Create New Entry',
+                cancelButtonText: 'Cancel'
+            }).then(function(result) {
+                if (!result.isConfirmed && !result.isDenied) {
+                    return;
+                }
+
+                $('#duplicate_action').val(result.isConfirmed ? 'restore' : 'new_entry');
+                $('#partyForm').data('ob-confirmed', true).trigger('submit');
+            });
+
+            return true;
+        }
+    );
 });
 </script>
 @endpush

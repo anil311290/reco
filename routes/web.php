@@ -439,6 +439,7 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::middleware(CheckPermission::class . ':vouchers.view')->group(function () {
             Route::get('sales-invoices', [SalesInvoiceController::class, 'index'])->name('sales-invoices.index');
             Route::get('sales-invoices/create', [SalesInvoiceController::class, 'create'])->name('sales-invoices.create');
+            Route::post('sales-invoices/quick-add-item', [SalesInvoiceController::class, 'quickAddItem'])->name('sales-invoices.quick-add-item');
             Route::post('sales-invoices', [SalesInvoiceController::class, 'store'])->name('sales-invoices.store');
             Route::get('sales-invoices/{id}', [SalesInvoiceController::class, 'show'])->name('sales-invoices.show');
             Route::get('sales-invoices/{id}/pdf', [SalesInvoiceController::class, 'exportPdf'])->name('sales-invoices.pdf');
@@ -458,6 +459,7 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::middleware(CheckPermission::class . ':vouchers.view')->group(function () {
             Route::get('purchase-invoices', [PurchaseInvoiceController::class, 'index'])->name('purchase-invoices.index');
             Route::get('purchase-invoices/create', [PurchaseInvoiceController::class, 'create'])->name('purchase-invoices.create');
+            Route::post('purchase-invoices/quick-add-item', [PurchaseInvoiceController::class, 'quickAddItem'])->name('purchase-invoices.quick-add-item');
             Route::post('purchase-invoices', [PurchaseInvoiceController::class, 'store'])->name('purchase-invoices.store');
             Route::get('purchase-invoices/{id}', [PurchaseInvoiceController::class, 'show'])->name('purchase-invoices.show');
             Route::get('purchase-invoices/{id}/edit', [PurchaseInvoiceController::class, 'edit'])->name('purchase-invoices.edit');

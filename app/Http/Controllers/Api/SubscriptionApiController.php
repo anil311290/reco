@@ -29,6 +29,16 @@ class SubscriptionApiController extends Controller
     }
 
     /**
+     * Public plans list for registration (active + visible only).
+     */
+    public function publicPlans(): JsonResponse
+    {
+        $plans = $this->subscriptionService->getPlans(true, true);
+
+        return ResponseHelper::success(SubscriptionPlanResource::collection($plans));
+    }
+
+    /**
      * Get current subscription.
      */
     public function current(Request $request): JsonResponse

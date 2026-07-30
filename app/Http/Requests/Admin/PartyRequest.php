@@ -47,6 +47,7 @@ class PartyRequest extends BaseFormRequest
             'opening_date' => 'nullable|date',
             'remarks' => 'nullable|string|max:500',
             'is_active' => 'boolean',
+            'duplicate_action' => ['nullable', Rule::in(['restore', 'new_entry'])],
         ];
     }
 

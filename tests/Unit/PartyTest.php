@@ -7,6 +7,7 @@ use App\Models\Company;
 use App\Models\FinancialYear;
 use App\Models\Ledger;
 use App\Models\Party;
+use App\Models\Voucher;
 use App\Services\PartyService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -119,6 +120,58 @@ class PartyTest extends TestCase
         $this->assertNull(Party::find($party->id));
     }
 
+    public function test_deleted_party_name_can_be_found_and_restored(): void
+    {
+        $party = Party::factory()->create([
+            'company_id' => $this->company->id,
+            'party_code' => 'AR001',
+            'name' => 'Acme Customer',
+            'type' => 'debtor',
+            'opening_balance' => 0,
+        ]);
+        $this->partyService->delete($party->id);
+
+        $deletedParty = $this->partyService->findDeletedByName(
+            $this->company->id,
+            '  ACME CUSTOMER  '
+        );
+
+        $this->assertNotNull($deletedParty);
+
+        $restoredParty = $this->partyService->restoreDeleted($deletedParty, [
+            'name' => 'Acme Customer',
+            'type' => 'debtor',
+            'address' => 'Updated address',
+            'opening_balance' => 0,
+            'opening_balance_type' => 'debit',
+            'updated_by_ip' => '127.0.0.1',
+        ]);
+
+        $this->assertSame($party->id, $restoredParty->id);
+        $this->assertSame('AR001', $restoredParty->party_code);
+        $this->assertSame('Updated address', $restoredParty->address);
+        $this->assertNull($restoredParty->deleted_at);
+    }
+
+    public function test_new_party_code_does_not_reuse_soft_deleted_code(): void
+    {
+        $party = Party::factory()->create([
+            'company_id' => $this->company->id,
+            'party_code' => 'AR001',
+            'type' => 'debtor',
+            'opening_balance' => 0,
+        ]);
+        $this->partyService->delete($party->id);
+
+        $newParty = $this->partyService->create([
+            'company_id' => $this->company->id,
+            'name' => 'New Customer',
+            'type' => 'debtor',
+        ]);
+
+        $this->assertSame('AR002', $newParty->party_code);
+    }
+
     public function test_can_get_parties_by_type(): void
     {
         Party::factory()->count(3)->create([
@@ -210,9 +263,10 @@ class PartyTest extends TestCase
 
         $this->assertDatabaseHas('parties', ['id' => $party->id, 'opening_balance' => 1250.00]);
 
-        $ledgerEntries = Ledger::where('reference_type', 'party_opening_balance')
-            ->where('reference_id', $party->id)
-            ->get();
+        $openingVoucher = Voucher::where('company_id', $this->company->id)
+            ->where('narration', 'like', "[OB:party:{$party->id}]%")
+            ->firstOrFail();
+        $ledgerEntries = Ledger::where('voucher_id', $openingVoucher->id)->get();
 
         $this->assertCount(2, $ledgerEntries);
 

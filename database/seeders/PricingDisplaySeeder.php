@@ -90,7 +90,7 @@ class PricingDisplaySeeder extends Seeder
             $plan = SubscriptionPlan::where('slug', $planSlug)->first();
 
             if ($plan) {
-                PricingDisplay::updateOrCreate(
+                PricingDisplay::firstOrCreate(
                     ['plan_id' => $plan->id],
                     array_merge($displayData, [
                         'is_active' => true,

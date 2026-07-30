@@ -16,12 +16,6 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
-        if (app()->environment('local')) {
-            $this->call([
-                OldDataCleanupSeeder::class,
-            ]);
-        }
-
         $company = Company::firstOrCreate(
             ['slug' => 'ledgerpro-demo'],
             [
@@ -59,12 +53,7 @@ class DatabaseSeeder extends Seeder
             ]
         );
 
-        $company->update([
-            'created_by' => $admin->id,
-            'updated_by' => $admin->id,
-        ]);
-
-        User::updateOrCreate(
+        User::firstOrCreate(
             ['email' => 'admin@gmail.com'],
             [
                 'name' => 'Company Owner',
@@ -81,7 +70,7 @@ class DatabaseSeeder extends Seeder
             ]
         );
 
-        User::updateOrCreate(
+        User::firstOrCreate(
             ['email' => 'manager@gmail.com'],
             [
                 'name' => 'Manager User',
@@ -119,6 +108,10 @@ class DatabaseSeeder extends Seeder
             PermissionSeeder::class,
             RoleSeeder::class,
             SubscriptionPlanSeeder::class,
+            WebsitePageSeeder::class,
+            PricingDisplaySeeder::class,
+            FaqSeeder::class,
+            TestimonialSeeder::class,
             ThemeSeeder::class,
             LocationSeeder::class,
             FinancialYearSeeder::class,

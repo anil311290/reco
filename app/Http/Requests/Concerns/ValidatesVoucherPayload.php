@@ -21,7 +21,6 @@ trait ValidatesVoucherPayload
             'voucher_type' => ['required', Rule::in(['receipt', 'payment', 'journal', 'adjustment'])],
             'voucher_date' => 'required|date',
             'party_id' => ['nullable', $companyParty],
-            'payment_mode' => ['required_if:voucher_type,payment,receipt', Rule::in(['cash', 'bank', 'od'])],
             'cash_bank_account_id' => ['required_if:voucher_type,payment,receipt', 'nullable', $companyAccount],
             'narration' => 'nullable|string|max:500',
 
@@ -115,11 +114,6 @@ trait ValidatesVoucherPayload
             $cashBank = Account::find($cashBankAccountId);
 
             if ($cashBankAccountId && $cashBank) {
-                $mode = $this->input('payment_mode');
-                if ($mode && $cashBank->transaction_mode !== $mode) {
-                    $validator->errors()->add('cash_bank_account_id', 'Selected account must match the payment mode.');
-                }
-
                 if (!in_array($cashBank->transaction_mode, ['cash', 'bank', 'od'], true)) {
                     $validator->errors()->add('cash_bank_account_id', 'Select a Cash / Bank / OD account.');
                 }

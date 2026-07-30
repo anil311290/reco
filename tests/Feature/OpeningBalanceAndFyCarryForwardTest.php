@@ -40,11 +40,13 @@ class OpeningBalanceAndFyCarryForwardTest extends TestCase
             'is_active' => true,
         ]);
 
-        $this->assertTrue(
-            Ledger::where('account_id', $account->id)
-                ->where('reference_type', 'account_opening_balance')
-                ->exists()
-        );
+        $openingVoucher = Voucher::where('company_id', $company->id)
+            ->where('narration', 'like', "[OB:account:{$account->id}]%")
+            ->firstOrFail();
+
+        $this->assertTrue(Ledger::where('account_id', $account->id)
+            ->where('voucher_id', $openingVoucher->id)
+            ->exists());
 
         $trial = app(LedgerService::class)->getTrialBalance($company->id, $fy->id);
         $this->assertTrue($trial['is_balanced']);
