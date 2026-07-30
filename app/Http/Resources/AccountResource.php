@@ -16,10 +16,14 @@ class AccountResource extends JsonResource
     {
         return [
             'id' => $this->id,
+            'uuid' => $this->uuid,
+            'version' => (int) $this->version,
             'account_code' => $this->account_code,
             'account_name' => $this->account_name,
             'account_type' => $this->account_type,
             'type_label' => $this->type_label,
+            'entry_source' => $this->entry_source,
+            'is_system' => (bool) $this->is_system,
             'transaction_mode' => $this->transaction_mode,
             'transaction_mode_label' => $this->transaction_mode_label,
             'opening_balance' => $this->opening_balance,

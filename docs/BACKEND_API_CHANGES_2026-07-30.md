@@ -217,6 +217,31 @@ Invoice settlement still requires `payment_mode` + `cash_bank_account_id` + `amo
 - Use `opening_stock` for opening quantity.
 - Updating `opening_stock` adjusts `current_stock` by the opening delta.
 
+## Account List Deletion Controls
+
+```http
+GET /api/v1/accounts
+```
+
+Every account now includes:
+
+```json
+{
+  "uuid": "0198...",
+  "version": 1,
+  "entry_source": "manual",
+  "is_system": false
+}
+```
+
+App delete-button rule:
+
+```text
+Show Delete only when entry_source == "manual" AND is_system == false.
+```
+
+The backend remains authoritative. A manual account can still reject deletion when real accounting transactions are linked to it.
+
 ## App Developer Checklist
 
 - Fetch plans from `GET /api/v1/plans` when opening registration.

@@ -94,6 +94,29 @@ class AccountApiSoftDeleteConflictTest extends TestCase
         $this->assertTrue(Account::onlyTrashed()->whereKey($deletedAccount->id)->exists());
     }
 
+    public function test_api_account_list_exposes_deletion_control_fields(): void
+    {
+        [$company, $user, $service] = $this->createAccountContext();
+
+        $account = $service->create([
+            'company_id' => $company->id,
+            'account_name' => 'Manual Ledger',
+            'account_type' => 'expense',
+        ]);
+
+        Sanctum::actingAs($user);
+
+        $this->getJson('/api/v1/accounts')
+            ->assertOk()
+            ->assertJsonFragment([
+                'id' => $account->id,
+                'uuid' => $account->uuid,
+                'version' => (int) $account->version,
+                'entry_source' => 'manual',
+                'is_system' => false,
+            ]);
+    }
+
     private function createAccountContext(): array
     {
         $company = Company::factory()->create();
