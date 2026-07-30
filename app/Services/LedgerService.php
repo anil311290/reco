@@ -239,6 +239,12 @@ class LedgerService
         );
     }
 
+    public function deletePartyOpeningBalanceEntries(Party $party): void
+    {
+        $this->removeOpeningAdjustment('party', (int) $party->id, (int) $party->company_id);
+        $this->deleteEntriesByReference('party_opening_balance', (int) $party->id);
+    }
+
     /**
      * Create balanced opening for a ledger via Adjustment voucher
      * (account ↔ Opening Balance Difference) so Day Book / TB stay Dr = Cr.
@@ -280,6 +286,12 @@ class LedgerService
             createdBy: $account->created_by,
             createdByIp: $account->created_by_ip
         );
+    }
+
+    public function deleteAccountOpeningBalanceEntries(Account $account): void
+    {
+        $this->removeOpeningAdjustment('account', (int) $account->id, (int) $account->company_id);
+        $this->deleteEntriesByReference('account_opening_balance', (int) $account->id);
     }
 
     protected function openingAdjustmentNarration(string $kind, int $id, string $name): string
@@ -396,7 +408,13 @@ class LedgerService
                 'account_name' => 'Sales Revenue',
                 'account_type' => 'income',
                 'balance_type' => 'credit',
-                'remarks' => 'Default income ledger for item totals on sales invoices.',
+                'remarks' => 'Default income ledger for goods taxable totals on sales invoices.',
+            ],
+            Account::CODE_SERVICE_INCOME => [
+                'account_name' => 'Service Revenue',
+                'account_type' => 'income',
+                'balance_type' => 'credit',
+                'remarks' => 'Default income ledger for service taxable totals on sales invoices.',
             ],
             Account::CODE_AP_EXPENSE => [
                 'account_name' => 'Purchase Expenses',

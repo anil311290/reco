@@ -281,6 +281,56 @@ class PartyTest extends TestCase
         $this->assertEquals(1250.00, (float) $offsetEntry->credit);
     }
 
+    public function test_can_delete_new_party_with_only_an_opening_balance_adjustment(): void
+    {
+        $party = $this->partyService->create([
+            'company_id' => $this->company->id,
+            'financial_year_id' => $this->financialYear->id,
+            'name' => 'Opening Balance Supplier',
+            'type' => 'creditor',
+            'opening_balance' => 1000,
+            'opening_balance_type' => 'credit',
+            'opening_date' => now()->toDateString(),
+        ]);
+
+        $openingVoucher = Voucher::where('company_id', $this->company->id)
+            ->where('narration', 'like', "[OB:party:{$party->id}]%")
+            ->firstOrFail();
+
+        $deleted = $this->partyService->delete($party->id);
+
+        $this->assertTrue($deleted);
+        $this->assertNull(Party::find($party->id));
+        $this->assertDatabaseMissing('vouchers', ['id' => $openingVoucher->id]);
+        $this->assertDatabaseMissing('ledgers', ['voucher_id' => $openingVoucher->id]);
+        $this->assertDatabaseMissing('voucher_lines', ['voucher_id' => $openingVoucher->id]);
+    }
+
+    public function test_cannot_delete_party_with_a_real_transaction(): void
+    {
+        $party = Party::factory()->create([
+            'company_id' => $this->company->id,
+            'financial_year_id' => $this->financialYear->id,
+            'account_id' => Account::where('account_code', Account::CODE_AR)->value('id'),
+            'type' => 'debtor',
+        ]);
+
+        Ledger::factory()->create([
+            'company_id' => $this->company->id,
+            'financial_year_id' => $this->financialYear->id,
+            'account_id' => $party->account_id,
+            'party_id' => $party->id,
+            'voucher_id' => null,
+            'reference_type' => 'manual_test',
+            'reference_id' => $party->id,
+            'debit' => 100,
+            'credit' => 0,
+        ]);
+
+        $this->expectException(\Exception::class);
+        $this->partyService->delete($party->id);
+    }
+
     public function test_party_code_is_unique(): void
     {
         $party1 = Party::factory()->create([

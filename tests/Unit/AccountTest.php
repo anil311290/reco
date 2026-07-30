@@ -5,8 +5,10 @@ namespace Tests\Unit;
 use App\Models\Account;
 use App\Models\Company;
 use App\Models\FinancialYear;
+use App\Models\Item;
 use App\Models\Ledger;
 use App\Models\User;
+use App\Models\Voucher;
 use App\Services\AccountService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -140,6 +142,119 @@ class AccountTest extends TestCase
 
         $this->assertTrue($deleted);
         $this->assertNull(Account::find($account->id));
+    }
+
+    public function test_can_delete_new_manual_account_linked_to_a_master_without_transactions(): void
+    {
+        $account = Account::factory()->create([
+            'company_id' => $this->company->id,
+            'financial_year_id' => $this->financialYear->id,
+            'entry_source' => 'manual',
+            'is_system' => false,
+        ]);
+        $item = Item::create([
+            'company_id' => $this->company->id,
+            'name' => 'New Service',
+            'type' => 'service',
+            'income_account_id' => $account->id,
+        ]);
+
+        $deleted = $this->accountService->delete($account->id);
+
+        $this->assertTrue($deleted);
+        $this->assertNull(Account::find($account->id));
+        $this->assertNull($item->fresh()->income_account_id);
+    }
+
+    public function test_can_delete_new_manual_account_with_only_an_opening_balance_adjustment(): void
+    {
+        $account = $this->accountService->create([
+            'company_id' => $this->company->id,
+            'financial_year_id' => $this->financialYear->id,
+            'account_name' => 'New Petty Cash',
+            'account_type' => 'asset',
+            'transaction_mode' => 'cash',
+            'opening_balance' => 1000,
+            'balance_type' => 'debit',
+        ]);
+
+        $openingVoucher = Voucher::where('company_id', $this->company->id)
+            ->where('narration', 'like', "[OB:account:{$account->id}]%")
+            ->firstOrFail();
+
+        $deleted = $this->accountService->delete($account->id);
+
+        $this->assertTrue($deleted);
+        $this->assertNull(Account::find($account->id));
+        $this->assertDatabaseMissing('vouchers', ['id' => $openingVoucher->id]);
+        $this->assertDatabaseMissing('ledgers', ['voucher_id' => $openingVoucher->id]);
+        $this->assertDatabaseMissing('voucher_lines', ['voucher_id' => $openingVoucher->id]);
+    }
+
+    public function test_can_find_and_restore_a_soft_deleted_account_by_normalized_name_and_type(): void
+    {
+        $account = $this->accountService->create([
+            'company_id' => $this->company->id,
+            'financial_year_id' => $this->financialYear->id,
+            'account_name' => 'Petty Cash',
+            'account_type' => 'asset',
+            'transaction_mode' => 'cash',
+            'opening_balance' => 0,
+        ]);
+        $originalCode = $account->account_code;
+
+        $this->accountService->delete($account->id);
+
+        $deletedAccount = $this->accountService->findDeletedByNameAndType(
+            $this->company->id,
+            '  PETTY CASH  ',
+            'asset'
+        );
+
+        $this->assertNotNull($deletedAccount);
+        $this->assertSame($account->id, $deletedAccount->id);
+
+        $restored = $this->accountService->restoreDeleted($deletedAccount, [
+            'account_name' => 'Petty Cash',
+            'account_type' => 'asset',
+            'transaction_mode' => 'cash',
+            'opening_balance' => 750,
+            'balance_type' => 'debit',
+            'opening_date' => '2026-07-30',
+            'remarks' => 'Restored account',
+            'is_active' => true,
+        ]);
+
+        $this->assertSame($account->id, $restored->id);
+        $this->assertSame($originalCode, $restored->account_code);
+        $this->assertSame(750.0, (float) $restored->opening_balance);
+        $this->assertDatabaseHas('vouchers', [
+            'company_id' => $this->company->id,
+            'narration' => "[OB:account:{$account->id}] Opening balance for Petty Cash",
+        ]);
+    }
+
+    public function test_deleted_account_lookup_is_scoped_by_company_and_account_type(): void
+    {
+        $account = $this->accountService->create([
+            'company_id' => $this->company->id,
+            'account_name' => 'Clearing Ledger',
+            'account_type' => 'asset',
+        ]);
+        $this->accountService->delete($account->id);
+
+        $otherCompany = Company::factory()->create();
+
+        $this->assertNull($this->accountService->findDeletedByNameAndType(
+            $otherCompany->id,
+            'Clearing Ledger',
+            'asset'
+        ));
+        $this->assertNull($this->accountService->findDeletedByNameAndType(
+            $this->company->id,
+            'Clearing Ledger',
+            'liability'
+        ));
     }
 
     public function test_cannot_delete_system_account(): void

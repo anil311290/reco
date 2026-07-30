@@ -94,6 +94,33 @@ class AccountController extends Controller
             $data = $request->validated();
             $data['company_id'] = request()->user()->company_id;
 
+            $duplicateAction = $data['duplicate_action'] ?? null;
+            $deletedAccount = $this->accountService->findDeletedByNameAndType(
+                $request->user()->company_id,
+                $data['account_name'],
+                $data['account_type']
+            );
+
+            if ($deletedAccount && !$duplicateAction) {
+                return response()->json([
+                    'success' => false,
+                    'code' => 'SOFT_DELETED_ACCOUNT_EXISTS',
+                    'message' => 'A deleted account with this name and type already exists.',
+                    'data' => [
+                        'account_code' => $deletedAccount->account_code,
+                        'account_name' => $deletedAccount->account_name,
+                        'account_type' => $deletedAccount->account_type,
+                    ],
+                ], 409);
+            }
+
+            if ($deletedAccount && $duplicateAction === 'restore') {
+                $account = $this->accountService->restoreDeleted($deletedAccount, $data);
+
+                return ResponseHelper::success($account, 'Account restored successfully');
+            }
+
+            unset($data['duplicate_action']);
             $account = $this->accountService->create($data);
 
             return ResponseHelper::success($account, 'Account created successfully');

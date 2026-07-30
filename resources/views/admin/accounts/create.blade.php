@@ -34,6 +34,7 @@
                 <div class="card-body">
                     <form id="accountForm" method="POST" action="{{ route('admin.accounts.store') }}">
                         @csrf
+                        <input type="hidden" id="duplicate_action" name="duplicate_action" value="">
 
                         <div class="row g-3 mb-4">
                             <div class="col-md-8">
@@ -54,9 +55,14 @@
                         </div>
 
                         <div class="row g-3 mb-4 d-none" id="transaction_mode_row">
-                            <div class="col-md-6">
-                                <span class="form-label fw-semibold d-block">Transaction Mode</span>
-                                <div class="d-flex flex-wrap gap-2" role="radiogroup" aria-label="Transaction Mode">
+                            <div class="col-12">
+                                <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-2">
+                                    <span class="form-label fw-semibold mb-0">Transaction Mode</span>
+                                    <span class="form-text mt-0">
+                                        <i class="bi bi-info-circle me-1"></i>Use a mode only for Cash, Bank, or OD ledgers.
+                                    </span>
+                                </div>
+                                <div class="transaction-mode-options" role="radiogroup" aria-label="Transaction Mode">
                                     <input class="btn-check" type="radio" name="transaction_mode" id="transaction_mode_general" value="" {{ old('transaction_mode', '') === '' ? 'checked' : '' }}>
                                     <label class="btn btn-outline-secondary" for="transaction_mode_general">
                                         <i class="bi bi-box me-1"></i>General Asset
@@ -76,12 +82,6 @@
                                     <label class="btn btn-outline-primary" for="transaction_mode_od">
                                         <i class="bi bi-credit-card me-1"></i>OD
                                     </label>
-                                </div>
-                            </div>
-                            <div class="col-md-6 d-flex align-items-end">
-                                <div class="alert account-form-help mb-0 w-100">
-                                    <i class="bi bi-lightbulb me-1"></i>
-                                    Select a mode only for Cash, Bank, or OD ledgers.
                                 </div>
                             </div>
                         </div>
@@ -197,8 +197,13 @@ $(document).ready(function() {
     }
 
     $('#account_type').on('change', function() {
+        $('#duplicate_action').val('');
         syncTransactionModeState();
         syncBalanceType();
+    });
+
+    $('#account_name').on('input', function() {
+        $('#duplicate_action').val('');
     });
 
     $('#accountForm').on('submit.openingBalanceConfirmation', function(event) {
@@ -242,7 +247,37 @@ $(document).ready(function() {
         '#accountForm',
         '{{ route("admin.accounts.store") }}',
         'POST',
-        '{{ route("admin.accounts.index") }}'
+        '{{ route("admin.accounts.index") }}',
+        function(xhr) {
+            const response = xhr.responseJSON;
+            if (xhr.status !== 409 || response?.code !== 'SOFT_DELETED_ACCOUNT_EXISTS') {
+                return false;
+            }
+
+            const deletedAccount = response.data;
+            Swal.fire({
+                title: 'Deleted Account Found',
+                text: `${deletedAccount.account_name} (${deletedAccount.account_code}) already exists in deleted records. Restore it or create a new ledger entry?`,
+                icon: 'question',
+                showCancelButton: true,
+                showDenyButton: true,
+                confirmButtonColor: '#16a34a',
+                denyButtonColor: '#4f46e5',
+                cancelButtonColor: '#6b7280',
+                confirmButtonText: 'Restore Account',
+                denyButtonText: 'Create New Entry',
+                cancelButtonText: 'Cancel'
+            }).then(function(result) {
+                if (!result.isConfirmed && !result.isDenied) {
+                    return;
+                }
+
+                $('#duplicate_action').val(result.isConfirmed ? 'restore' : 'new_entry');
+                $('#accountForm').data('opening-balance-confirmed', true).trigger('submit');
+            });
+
+            return true;
+        }
     );
 
     syncTransactionModeState();

@@ -62,30 +62,37 @@
                         </div>
 
                         <div class="row g-3 mb-4 {{ old('account_type', $account->account_type) === 'asset' ? '' : 'd-none' }}" id="transaction_mode_row">
-                            <div class="col-md-6">
-                                <span class="form-label fw-semibold d-block">Transaction Mode</span>
-                                <div class="d-flex flex-wrap gap-2" role="radiogroup" aria-label="Transaction Mode">
+                            <div class="col-12">
+                                <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-2">
+                                    <span class="form-label fw-semibold mb-0">Transaction Mode</span>
+                                    <span class="form-text mt-0">
+                                        <i class="bi bi-info-circle me-1"></i>Use a mode only for Cash, Bank, or OD ledgers.
+                                    </span>
+                                </div>
+                                <div class="transaction-mode-options" role="radiogroup" aria-label="Transaction Mode">
                                     <input class="btn-check" type="radio" name="transaction_mode" id="transaction_mode_general" value="" {{ old('transaction_mode', $account->transaction_mode ?? '') === '' ? 'checked' : '' }} {{ $isInUse ? 'disabled' : '' }}>
-                                    <label class="btn btn-outline-secondary" for="transaction_mode_general">General Asset</label>
+                                    <label class="btn btn-outline-secondary" for="transaction_mode_general">
+                                        <i class="bi bi-box me-1"></i>General Asset
+                                    </label>
 
                                     <input class="btn-check" type="radio" name="transaction_mode" id="transaction_mode_cash" value="cash" {{ old('transaction_mode', $account->transaction_mode) === 'cash' ? 'checked' : '' }} {{ $isInUse ? 'disabled' : '' }}>
-                                    <label class="btn btn-outline-primary" for="transaction_mode_cash">Cash</label>
+                                    <label class="btn btn-outline-primary" for="transaction_mode_cash">
+                                        <i class="bi bi-cash-stack me-1"></i>Cash
+                                    </label>
 
                                     <input class="btn-check" type="radio" name="transaction_mode" id="transaction_mode_bank" value="bank" {{ old('transaction_mode', $account->transaction_mode) === 'bank' ? 'checked' : '' }} {{ $isInUse ? 'disabled' : '' }}>
-                                    <label class="btn btn-outline-primary" for="transaction_mode_bank">Bank</label>
+                                    <label class="btn btn-outline-primary" for="transaction_mode_bank">
+                                        <i class="bi bi-bank me-1"></i>Bank
+                                    </label>
 
                                     <input class="btn-check" type="radio" name="transaction_mode" id="transaction_mode_od" value="od" {{ old('transaction_mode', $account->transaction_mode) === 'od' ? 'checked' : '' }} {{ $isInUse ? 'disabled' : '' }}>
-                                    <label class="btn btn-outline-primary" for="transaction_mode_od">OD</label>
+                                    <label class="btn btn-outline-primary" for="transaction_mode_od">
+                                        <i class="bi bi-credit-card me-1"></i>OD
+                                    </label>
                                 </div>
                                 @if($isInUse && $account->transaction_mode)
                                     <input type="hidden" name="transaction_mode" value="{{ $account->transaction_mode }}">
                                 @endif
-                            </div>
-                            <div class="col-md-6 d-flex align-items-end">
-                                <div class="alert account-form-help mb-0 w-100">
-                                    <i class="bi bi-lightbulb me-1"></i>
-                                    Select a mode only for Cash, Bank, or OD ledgers.
-                                </div>
                             </div>
                         </div>
 

@@ -78,29 +78,19 @@ class Item extends Model
                 }
             }
 
-            // Default Sales Revenue for both goods and service
+            // Default income ledger by item type.
             if (empty($item->income_account_id) && $item->company_id) {
-                $salesAccount = Account::where('company_id', $item->company_id)
+                $incomeCode = $item->type === 'service'
+                    ? Account::CODE_SERVICE_INCOME
+                    : Account::CODE_AR_INCOME;
+
+                $incomeAccount = Account::where('company_id', $item->company_id)
                     ->where('account_type', 'income')
-                    ->where('account_code', Account::CODE_AR_INCOME)
+                    ->where('account_code', $incomeCode)
                     ->first();
 
-                if (!$salesAccount) {
-                    $salesAccount = Account::where('company_id', $item->company_id)
-                        ->where('account_type', 'income')
-                        ->where('is_system', true)
-                        ->first();
-                }
-
-                if (!$salesAccount) {
-                    $salesAccount = Account::where('company_id', $item->company_id)
-                        ->where('account_type', 'income')
-                        ->where('account_name', 'like', '%sales%')
-                        ->first();
-                }
-
-                if ($salesAccount) {
-                    $item->income_account_id = $salesAccount->id;
+                if ($incomeAccount) {
+                    $item->income_account_id = $incomeAccount->id;
                 }
             }
 

@@ -257,14 +257,18 @@ class PartyService
             return false;
         }
 
-        if ($this->isPartyTransactionallyUsed($party->id)) {
+        if ($this->hasPartyTransactions($party->id)) {
             throw new \Exception(
                 'This party cannot be deleted because accounting transactions are linked to it. '
                 . 'Mark the party inactive instead.'
             );
         }
 
-        return $party->delete();
+        return DB::transaction(function () use ($party) {
+            $this->ledgerService->deletePartyOpeningBalanceEntries($party);
+
+            return $party->delete();
+        });
     }
 
     /**
@@ -358,5 +362,25 @@ class PartyService
     protected function isPartyTransactionallyUsed(int $partyId): bool
     {
         return Ledger::where('party_id', $partyId)->exists();
+    }
+
+    /**
+     * Determine whether a party has activity other than its own opening balance.
+     */
+    protected function hasPartyTransactions(int $partyId): bool
+    {
+        $openingVoucherIds = DB::table('vouchers')
+            ->where('voucher_type', 'adjustment')
+            ->where('narration', 'like', "[OB:party:{$partyId}]%")
+            ->pluck('id');
+
+        return Ledger::where('party_id', $partyId)
+            ->when(
+                $openingVoucherIds->isNotEmpty(),
+                fn ($query) => $query->where(fn ($q) => $q
+                    ->whereNull('voucher_id')
+                    ->orWhereNotIn('voucher_id', $openingVoucherIds))
+            )
+            ->exists();
     }
 }

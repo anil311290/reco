@@ -70,7 +70,6 @@ class SalesInvoiceApiController extends Controller
             'company_id' => $companyId,
             'financial_year_id' => $fyId,
             'party_id' => $validated['party_id'],
-            'invoice_number' => $this->salesInvoiceService->generateInvoiceNumber($companyId, $fyId),
             'invoice_date' => $validated['invoice_date'],
             'due_date' => $validated['due_date'],
             'reference_number' => $validated['reference_number'] ?? null,

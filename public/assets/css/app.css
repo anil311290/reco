@@ -149,14 +149,25 @@ body.admin-body { display: flex; min-height: 100vh; }
     font-size: .9rem;
 }
 
-.account-form-help {
-    background: #f8fbff;
-    border: 1px solid var(--lp-border-light);
-    color: var(--lp-heading);
+.transaction-mode-options {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: .75rem;
 }
 
-.account-form-help .bi {
-    color: #1f6feb;
+.transaction-mode-options .btn {
+    align-items: center;
+    display: inline-flex;
+    justify-content: center;
+    min-height: 48px;
+    padding: .65rem .75rem;
+    white-space: nowrap;
+}
+
+@media (max-width: 575.98px) {
+    .transaction-mode-options {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
 }
 
 body.dark-mode .account-hero {
@@ -193,10 +204,74 @@ body.dark-mode .account-stat {
     border-color: var(--lp-border);
 }
 
-body.dark-mode .account-form-help {
-    background: rgba(31, 111, 235, 0.1);
-    border-color: rgba(31, 111, 235, 0.2);
-    color: var(--lp-heading);
+/* === Party Forms === */
+.party-shell {
+    position: relative;
+    z-index: 1;
+}
+
+.party-shell .account-side-card {
+    position: static;
+}
+
+.party-form-section + .party-form-section {
+    border-top: 1px solid var(--lp-border-light);
+    margin-top: 1.5rem;
+    padding-top: 1.5rem;
+}
+
+.party-section-heading {
+    align-items: center;
+    display: flex;
+    gap: .75rem;
+    margin-bottom: 1.25rem;
+}
+
+.party-section-icon {
+    align-items: center;
+    background: var(--lp-primary-light);
+    border-radius: .8rem;
+    color: var(--lp-primary);
+    display: inline-flex;
+    flex: 0 0 42px;
+    font-size: 1.1rem;
+    height: 42px;
+    justify-content: center;
+}
+
+.party-section-icon-locked {
+    background: var(--lp-warning-light);
+    color: var(--lp-warning);
+}
+
+.party-opening-panel {
+    background: #fbfdff;
+    border: 1px solid var(--lp-border-light);
+    border-radius: 1rem;
+    padding: 1rem;
+}
+
+.party-opening-panel-locked {
+    background: var(--lp-warning-light);
+    border-color: rgba(255, 159, 67, .25);
+}
+
+body.dark-mode .party-form-section + .party-form-section {
+    border-top-color: var(--lp-border);
+}
+
+body.dark-mode .party-section-icon {
+    background: rgba(31, 111, 235, .16);
+}
+
+body.dark-mode .party-section-icon-locked {
+    background: rgba(255, 159, 67, .16);
+}
+
+body.dark-mode .party-opening-panel,
+body.dark-mode .party-opening-panel-locked {
+    background: rgba(255, 255, 255, .025);
+    border-color: var(--lp-border);
 }
 
 /* === Sidebar === */

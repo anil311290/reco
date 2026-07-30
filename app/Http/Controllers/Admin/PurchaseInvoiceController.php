@@ -153,7 +153,6 @@ class PurchaseInvoiceController extends Controller
                 'company_id' => $companyId,
                 'financial_year_id' => $fyId,
                 'party_id' => $validated['party_id'],
-                'invoice_number' => $this->purchaseInvoiceService->generateInvoiceNumber($companyId, $fyId),
                 'supplier_invoice_number' => $validated['supplier_invoice_number'] ?? null,
                 'invoice_date' => $validated['invoice_date'],
                 'due_date' => $validated['due_date'],

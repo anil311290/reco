@@ -118,6 +118,19 @@ class SalesInvoiceService
                 throw new \Exception('Company ID is required');
             }
 
+            if (empty($data['invoice_number'])) {
+                $financialYearId = (int) ($data['financial_year_id'] ?? 0);
+                if ($financialYearId <= 0) {
+                    throw new \Exception('Financial year is required to generate the invoice number.');
+                }
+
+                FinancialYear::whereKey($financialYearId)->lockForUpdate()->firstOrFail();
+                $data['invoice_number'] = $this->generateInvoiceNumber(
+                    (int) $companyId,
+                    $financialYearId
+                );
+            }
+
             $this->periodLockService->assertWritable(
                 (int) $companyId,
                 $data['invoice_date'],
@@ -546,8 +559,8 @@ class SalesInvoiceService
         $fyCode = $fy?->code() ?? now()->format('Y') . now()->copy()->addYear()->format('y');
         $needle = 'INV-' . $fyCode . '/';
 
-        $numbers = SalesInvoice::where('company_id', $companyId)
-            ->where('financial_year_id', $financialYearId)
+        $numbers = SalesInvoice::withTrashed()
+            ->where('company_id', $companyId)
             ->where('invoice_number', 'like', $needle . '%')
             ->pluck('invoice_number');
 

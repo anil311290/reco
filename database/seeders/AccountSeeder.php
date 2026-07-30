@@ -29,7 +29,8 @@ class AccountSeeder extends Seeder
          | 1250 Accounts Receivable (AR) — debtors control
          | 1251 Sales Tax — tax on sales invoice lines
          | 1500 Accounts Payable (AP) — creditors control
-         | 1501 Sales Revenue — sales invoice item totals
+         | 1501 Sales Revenue — goods taxable totals
+         | 1502 Service Revenue — service taxable totals
          | 1751 Purchase Expenses — purchase invoice item totals
          */
         $accounts = [
@@ -85,7 +86,16 @@ class AccountSeeder extends Seeder
                 'balance_type' => 'credit',
                 'opening_balance' => 0,
                 'is_system' => true,
-                'remarks' => 'Default income ledger for item totals on sales invoices.',
+                'remarks' => 'Default income ledger for goods taxable totals on sales invoices.',
+            ],
+            [
+                'account_code' => Account::CODE_SERVICE_INCOME,
+                'account_name' => 'Service Revenue',
+                'account_type' => 'income',
+                'balance_type' => 'credit',
+                'opening_balance' => 0,
+                'is_system' => true,
+                'remarks' => 'Default income ledger for service taxable totals on sales invoices.',
             ],
             [
                 'account_code' => Account::CODE_AP_EXPENSE,

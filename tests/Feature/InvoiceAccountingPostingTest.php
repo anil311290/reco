@@ -5,8 +5,11 @@ namespace Tests\Feature;
 use App\Models\Account;
 use App\Models\Company;
 use App\Models\FinancialYear;
+use App\Models\Item;
 use App\Models\Ledger;
 use App\Models\Party;
+use App\Models\PurchaseInvoice;
+use App\Models\SalesInvoice;
 use App\Models\TaxRate;
 use App\Services\PurchaseInvoiceService;
 use App\Services\SalesInvoiceService;
@@ -66,6 +69,16 @@ class InvoiceAccountingPostingTest extends TestCase
             'is_system' => true,
         ]);
 
+        $serviceRevenue = Account::factory()->create([
+            'company_id' => $company->id,
+            'financial_year_id' => $fy->id,
+            'account_code' => Account::CODE_SERVICE_INCOME,
+            'account_name' => 'Service Revenue',
+            'account_type' => 'income',
+            'balance_type' => 'credit',
+            'is_system' => true,
+        ]);
+
         $ap = Account::factory()->create([
             'company_id' => $company->id,
             'financial_year_id' => $fy->id,
@@ -86,7 +99,65 @@ class InvoiceAccountingPostingTest extends TestCase
             'is_system' => true,
         ]);
 
-        return compact('ar', 'sales', 'ap', 'purchase');
+        return compact('ar', 'sales', 'serviceRevenue', 'ap', 'purchase');
+    }
+
+    public function test_sales_invoice_number_counts_legacy_and_deleted_numbers(): void
+    {
+        $company = Company::factory()->create();
+        $fy = FinancialYear::factory()->create([
+            'company_id' => $company->id,
+            'start_date' => '2026-04-01',
+            'end_date' => '2027-03-31',
+            'is_current' => true,
+        ]);
+
+        $invoice = SalesInvoice::create([
+            'uuid' => (string) Str::uuid(),
+            'company_id' => $company->id,
+            'financial_year_id' => null,
+            'invoice_number' => 'INV-202627/0001',
+            'invoice_date' => '2026-07-01',
+            'due_date' => '2026-07-31',
+            'status' => 'draft',
+        ]);
+        $invoice->delete();
+
+        $nextNumber = app(SalesInvoiceService::class)->generateInvoiceNumber(
+            $company->id,
+            $fy->id
+        );
+
+        $this->assertSame('INV-202627/0002', $nextNumber);
+    }
+
+    public function test_purchase_invoice_number_counts_legacy_and_deleted_numbers(): void
+    {
+        $company = Company::factory()->create();
+        $fy = FinancialYear::factory()->create([
+            'company_id' => $company->id,
+            'start_date' => '2026-04-01',
+            'end_date' => '2027-03-31',
+            'is_current' => true,
+        ]);
+
+        $invoice = PurchaseInvoice::create([
+            'uuid' => (string) Str::uuid(),
+            'company_id' => $company->id,
+            'financial_year_id' => null,
+            'invoice_number' => 'PUR-202627/0001',
+            'invoice_date' => '2026-07-01',
+            'due_date' => '2026-07-31',
+            'status' => 'draft',
+        ]);
+        $invoice->delete();
+
+        $nextNumber = app(PurchaseInvoiceService::class)->generateInvoiceNumber(
+            $company->id,
+            $fy->id
+        );
+
+        $this->assertSame('PUR-202627/0002', $nextNumber);
     }
 
     public function test_item_sales_with_header_discount_posts_balanced_entries(): void
@@ -247,14 +318,13 @@ class InvoiceAccountingPostingTest extends TestCase
             'selling_price' => 500,
             'unit' => 'hrs',
             'tax_rate_id' => $taxRate->id,
-            'income_account_id' => $accounts['sales']->id,
             'is_active' => true,
         ]);
 
         $this->assertFalse((bool) $serviceItem->is_stockable);
         $this->assertSame('service', $serviceItem->type);
         $this->assertEquals(0.0, (float) $serviceItem->current_stock);
-        $this->assertEquals((int) $accounts['sales']->id, (int) $serviceItem->income_account_id);
+        $this->assertEquals((int) $accounts['serviceRevenue']->id, (int) $serviceItem->income_account_id);
 
         /** @var SalesInvoiceService $service */
         $service = app(SalesInvoiceService::class);
@@ -283,7 +353,7 @@ class InvoiceAccountingPostingTest extends TestCase
         $this->assertNotNull($line);
         $this->assertSame('service', $line->line_type);
         $this->assertEquals((int) $serviceItem->id, (int) $line->item_id);
-        $this->assertEquals((int) $accounts['sales']->id, (int) $line->account_id);
+        $this->assertEquals((int) $accounts['serviceRevenue']->id, (int) $line->account_id);
 
         $voucher = $service->generateVoucher($invoice->fresh());
         $this->assertNotNull($voucher);
@@ -295,12 +365,82 @@ class InvoiceAccountingPostingTest extends TestCase
         $this->assertEquals(1180.0, (float) $invoice->fresh()->total);
 
         $incomeLine = $voucher->lines->first(
-            fn ($voucherLine) => (int) $voucherLine->account_id === (int) $accounts['sales']->id
+            fn ($voucherLine) => (int) $voucherLine->account_id === (int) $accounts['serviceRevenue']->id
         );
         $this->assertNotNull($incomeLine);
         $this->assertEquals(1000.0, (float) $incomeLine->credit);
 
         $this->assertEquals(0.0, (float) $serviceItem->fresh()->current_stock);
+    }
+
+    public function test_mixed_sales_invoice_splits_goods_and_service_taxable_amounts(): void
+    {
+        $company = Company::factory()->create();
+        $fy = FinancialYear::factory()->create(['company_id' => $company->id, 'is_current' => true]);
+        $accounts = $this->seedCoreAccounts($company, $fy);
+
+        $party = Party::factory()->create([
+            'company_id' => $company->id,
+            'financial_year_id' => $fy->id,
+            'type' => 'debtor',
+        ]);
+
+        $goods = Item::create([
+            'company_id' => $company->id,
+            'name' => 'Product',
+            'type' => 'goods',
+            'selling_price' => 100,
+            'unit' => 'pcs',
+            'is_active' => true,
+        ]);
+        $serviceItem = Item::create([
+            'company_id' => $company->id,
+            'name' => 'Installation',
+            'type' => 'service',
+            'selling_price' => 200,
+            'unit' => 'job',
+            'is_active' => true,
+        ]);
+
+        $this->assertSame((int) $accounts['sales']->id, (int) $goods->income_account_id);
+        $this->assertSame((int) $accounts['serviceRevenue']->id, (int) $serviceItem->income_account_id);
+
+        $invoice = app(SalesInvoiceService::class)->create([
+            'uuid' => (string) Str::uuid(),
+            'company_id' => $company->id,
+            'financial_year_id' => $fy->id,
+            'party_id' => $party->id,
+            'invoice_number' => 'INV-MIXED-001',
+            'invoice_date' => '2026-07-30',
+            'due_date' => '2026-08-06',
+            'status' => 'draft',
+        ], [
+            [
+                'item_id' => $goods->id,
+                'description' => 'Product',
+                'quantity' => 1,
+                'unit_price' => 100,
+            ],
+            [
+                'item_id' => $serviceItem->id,
+                'description' => 'Installation',
+                'quantity' => 1,
+                'unit_price' => 200,
+            ],
+        ]);
+
+        $voucher = app(SalesInvoiceService::class)->generateVoucher($invoice->fresh());
+        $voucher->load('lines');
+
+        $goodsCredit = $voucher->lines->firstWhere('account_id', $accounts['sales']->id);
+        $serviceCredit = $voucher->lines->firstWhere('account_id', $accounts['serviceRevenue']->id);
+
+        $this->assertNotNull($goodsCredit);
+        $this->assertNotNull($serviceCredit);
+        $this->assertSame(100.0, (float) $goodsCredit->credit);
+        $this->assertSame(200.0, (float) $serviceCredit->credit);
+        $this->assertSame(300.0, (float) $voucher->lines->sum('debit'));
+        $this->assertSame(300.0, (float) $voucher->lines->sum('credit'));
     }
 
     public function test_purchase_invoice_posts_balanced_entries(): void

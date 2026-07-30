@@ -30,6 +30,7 @@ class AccountRequest extends BaseFormRequest
                 'max:255',
                 Rule::unique('accounts', 'account_name')
                     ->ignore($accountId)
+                    ->withoutTrashed()
                     ->where(function ($query) {
                         $companyId = $this->user()?->company_id;
 
@@ -48,6 +49,7 @@ class AccountRequest extends BaseFormRequest
             'opening_date' => 'nullable|date',
             'remarks' => 'nullable|string|max:500',
             'is_active' => 'boolean',
+            'duplicate_action' => ['nullable', Rule::in(['restore', 'new_entry'])],
         ];
     }
 

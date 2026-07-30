@@ -180,7 +180,8 @@ class Account extends Model
      *   1252–1499    → Liabilities (user)
      *   1500         → Accounts Payable (system, reserved)
      *   1501         → Sales Revenue (system, reserved)
-     *   1502–1750    → Income (user)
+     *   1502         → Service Revenue (system, reserved)
+     *   1503–1750    → Income (user)
      *   1751         → Purchase Expenses (system, reserved)
      *   1752–2000    → Expenses (user)
      *   2001–2500    → Equity (user)
@@ -188,7 +189,7 @@ class Account extends Model
     public const CODE_RANGES = [
         'asset'     => ['start' => 1001, 'end' => 1249],
         'liability' => ['start' => 1252, 'end' => 1499],
-        'income'    => ['start' => 1502, 'end' => 1750],
+        'income'    => ['start' => 1503, 'end' => 1750],
         'expense'   => ['start' => 1752, 'end' => 2000],
         'equity'    => ['start' => 2001, 'end' => 2500],
     ];
@@ -201,6 +202,7 @@ class Account extends Model
         '1251' => 'Sales Tax',
         '1500' => 'Accounts Payable',
         '1501' => 'Sales Revenue',
+        '1502' => 'Service Revenue',
         '1751' => 'Purchase Expenses',
     ];
 
@@ -211,6 +213,7 @@ class Account extends Model
     public const CODE_SALES_TAX = '1251';
     public const CODE_AP = '1500';
     public const CODE_AR_INCOME = '1501';
+    public const CODE_SERVICE_INCOME = '1502';
     public const CODE_AP_EXPENSE = '1751';
 
     /**

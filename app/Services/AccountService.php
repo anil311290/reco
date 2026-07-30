@@ -103,6 +103,22 @@ class AccountService
     }
 
     /**
+     * Find the most recently deleted account with the same normalized name and type.
+     */
+    public function findDeletedByNameAndType(
+        int $companyId,
+        string $name,
+        string $type
+    ): ?Account {
+        return Account::onlyTrashed()
+            ->where('company_id', $companyId)
+            ->where('account_type', $type)
+            ->whereRaw('LOWER(TRIM(account_name)) = ?', [mb_strtolower(trim($name))])
+            ->latest('deleted_at')
+            ->first();
+    }
+
+    /**
      * Create account
      */
     public function create(array $data): Account
@@ -158,6 +174,57 @@ class AccountService
         }
 
         throw new \RuntimeException('Unable to generate a unique account code. Please try again.');
+    }
+
+    /**
+     * Restore a deleted account and replace its details with the submitted data.
+     */
+    public function restoreDeleted(Account $account, array $data): Account
+    {
+        if (!$account->trashed()) {
+            throw new \InvalidArgumentException('The selected account is not deleted.');
+        }
+
+        unset(
+            $data['account_code'],
+            $data['duplicate_action'],
+            $data['created_by'],
+            $data['created_by_ip']
+        );
+
+        if (($data['account_type'] ?? $account->account_type) !== 'asset') {
+            $data['transaction_mode'] = null;
+        }
+
+        if (empty($data['balance_type'])) {
+            $data['balance_type'] = in_array(
+                $data['account_type'] ?? $account->account_type,
+                ['asset', 'expense'],
+                true
+            ) ? 'debit' : 'credit';
+        }
+
+        if (empty($data['opening_date'])) {
+            $data['opening_date'] = now();
+        }
+
+        $data['company_id'] = $account->company_id;
+        $data['financial_year_id'] = FinancialYear::getCurrent($account->company_id)?->id;
+        $data['entry_source'] = 'manual';
+        $data['is_system'] = false;
+        $data['deleted_by'] = null;
+        $data['deleted_by_id'] = null;
+
+        return DB::transaction(function () use ($account, $data) {
+            $account->restore();
+            $account->update($data);
+
+            if (round((float) ($account->opening_balance ?? 0), 2) > 0) {
+                app(LedgerService::class)->createAccountOpeningBalanceEntries($account);
+            }
+
+            return $account->fresh();
+        });
     }
 
     protected function isDuplicateAccountCodeException(QueryException $exception): bool
@@ -233,14 +300,38 @@ class AccountService
             throw new \Exception('Cannot delete account with sub-accounts.');
         }
 
-        if ($this->isAccountInUse($account->id)) {
+        if ($this->hasAccountTransactions($account->id)) {
             throw new \Exception(
-                'This ledger cannot be deleted because transactions or master records are linked to it. '
+                'This ledger cannot be deleted because transactions are linked to it. '
                 . 'You may rename it or mark it inactive instead.'
             );
         }
 
-        return $account->delete();
+        return DB::transaction(function () use ($account) {
+            app(LedgerService::class)->deleteAccountOpeningBalanceEntries($account);
+
+            DB::table('items')
+                ->where('income_account_id', $account->id)
+                ->update(['income_account_id' => null]);
+            DB::table('items')
+                ->where('expense_account_id', $account->id)
+                ->update(['expense_account_id' => null]);
+            DB::table('parties')
+                ->where('account_id', $account->id)
+                ->update(['account_id' => null]);
+            DB::table('settings')
+                ->whereIn('key', [
+                    'sales_tax_ledger_id',
+                    'purchase_tax_ledger_id',
+                    'tds_ledger_id',
+                    'tcs_ledger_id',
+                    'cess_ledger_id',
+                ])
+                ->where('value', (string) $account->id)
+                ->update(['value' => null]);
+
+            return $account->delete();
+        });
     }
 
     /**
@@ -490,7 +581,13 @@ class AccountService
                 'account_name' => 'Sales Revenue',
                 'account_type' => 'income',
                 'balance_type' => 'credit',
-                'remarks' => 'Default income ledger for item totals on sales invoices.',
+                'remarks' => 'Default income ledger for goods taxable totals on sales invoices.',
+            ],
+            Account::CODE_SERVICE_INCOME => [
+                'account_name' => 'Service Revenue',
+                'account_type' => 'income',
+                'balance_type' => 'credit',
+                'remarks' => 'Default income ledger for service taxable totals on sales invoices.',
             ],
             Account::CODE_AP_EXPENSE => [
                 'account_name' => 'Purchase Expenses',
@@ -665,5 +762,42 @@ class AccountService
         }
 
         return false;
+    }
+
+    protected function hasAccountTransactions(int $accountId): bool
+    {
+        $openingVoucherIds = DB::table('vouchers')
+            ->where('voucher_type', 'adjustment')
+            ->where('narration', 'like', "[OB:account:{$accountId}]%")
+            ->pluck('id');
+
+        $hasLedgerEntries = DB::table('ledgers')
+            ->where('account_id', $accountId)
+            ->when(
+                $openingVoucherIds->isNotEmpty(),
+                fn ($query) => $query->where(fn ($q) => $q
+                    ->whereNull('voucher_id')
+                    ->orWhereNotIn('voucher_id', $openingVoucherIds))
+            )
+            ->exists();
+
+        if ($hasLedgerEntries) {
+            return true;
+        }
+
+        $hasVoucherLines = DB::table('voucher_lines')
+            ->where('account_id', $accountId)
+            ->when(
+                $openingVoucherIds->isNotEmpty(),
+                fn ($query) => $query->whereNotIn('voucher_id', $openingVoucherIds)
+            )
+            ->exists();
+
+        if ($hasVoucherLines) {
+            return true;
+        }
+
+        return DB::table('sales_invoice_lines')->where('account_id', $accountId)->exists()
+            || DB::table('purchase_invoice_lines')->where('account_id', $accountId)->exists();
     }
 }

@@ -22,7 +22,7 @@
 
 @if($isService)
 <div class="alert alert-info py-2">
-    Stock does not apply to service items. They are non-stockable and post to Sales Revenue via income account.
+    Stock does not apply to service items. They are non-stockable and post to Service Revenue via income account.
 </div>
 @endif
 

@@ -44,12 +44,18 @@ class InvoiceAccountingService
 
         $debtorAccount = $this->resolveDebtorAccount($invoice);
         $defaultIncome = $this->resolveDefaultIncomeAccount($invoice, $fallbackIncomeAccountId);
+        $defaultServiceIncome = $this->resolveDefaultServiceIncomeAccount($invoice);
 
         $netTaxableTotal = round((float) $invoice->total - (float) $invoice->tax_amount, 2);
         $incomeCredits = $this->allocateNetTaxableByAccount(
             $invoice->lines,
             $netTaxableTotal,
-            fn (SalesInvoiceLine $line) => $this->resolveSalesIncomeAccountId($line, $invoice, $defaultIncome)
+            fn (SalesInvoiceLine $line) => $this->resolveSalesIncomeAccountId(
+                $line,
+                $invoice,
+                $defaultIncome,
+                $defaultServiceIncome
+            )
         );
 
         $taxCredits = $this->aggregateTaxCredits(
@@ -357,30 +363,35 @@ class InvoiceAccountingService
     protected function resolveSalesIncomeAccountId(
         SalesInvoiceLine $line,
         SalesInvoice $invoice,
-        Account $defaultIncome
+        Account $defaultIncome,
+        Account $defaultServiceIncome
     ): int {
+        $line->loadMissing('item');
+        $isService = $line->line_type === 'service' || $line->item?->type === 'service';
+
         if ($line->account_id) {
             $account = Account::where('company_id', $invoice->company_id)
                 ->where('id', $line->account_id)
                 ->where('account_type', 'income')
                 ->first();
             if ($account) {
+                if ($isService && $account->account_code === Account::CODE_AR_INCOME) {
+                    return (int) $defaultServiceIncome->id;
+                }
+
                 return (int) $account->id;
             }
         }
 
-        if ($line->item_id && $line->relationLoaded('item') && $line->item?->income_account_id) {
+        if ($line->item?->income_account_id) {
+            if ($isService && (int) $line->item->income_account_id === (int) $defaultIncome->id) {
+                return (int) $defaultServiceIncome->id;
+            }
+
             return (int) $line->item->income_account_id;
         }
 
-        if ($line->item_id) {
-            $line->loadMissing('item');
-            if ($line->item?->income_account_id) {
-                return (int) $line->item->income_account_id;
-            }
-        }
-
-        return (int) $defaultIncome->id;
+        return (int) ($isService ? $defaultServiceIncome->id : $defaultIncome->id);
     }
 
     protected function resolvePurchaseExpenseAccountId(
@@ -460,14 +471,6 @@ class InvoiceAccountingService
             return $byCode;
         }
 
-        $fallback = $this->accountRepository->getByType('income', $invoice->company_id)
-            ->firstWhere('is_system', true)
-            ?? $this->accountRepository->getByType('income', $invoice->company_id)->first();
-
-        if ($fallback) {
-            return $fallback;
-        }
-
         return $this->resolveSystemAccount(
             Account::CODE_AR_INCOME,
             $invoice->company_id,
@@ -478,6 +481,31 @@ class InvoiceAccountingService
             $invoice->created_by,
             $invoice->created_by_ip,
             'System income account for sales posting.'
+        );
+    }
+
+    protected function resolveDefaultServiceIncomeAccount(SalesInvoice $invoice): Account
+    {
+        $account = $this->accountRepository->findByCode(
+            Account::CODE_SERVICE_INCOME,
+            $invoice->company_id,
+            $invoice->financial_year_id
+        );
+
+        if ($account) {
+            return $account;
+        }
+
+        return $this->resolveSystemAccount(
+            Account::CODE_SERVICE_INCOME,
+            $invoice->company_id,
+            $invoice->financial_year_id,
+            'Service Revenue',
+            'income',
+            'credit',
+            $invoice->created_by,
+            $invoice->created_by_ip,
+            'System income account for service taxable totals on sales invoices.'
         );
     }
 

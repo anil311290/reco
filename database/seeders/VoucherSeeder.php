@@ -45,8 +45,8 @@ class VoucherSeeder extends Seeder
 
         $cashAccount = $findAccount(['1000']);
         $bankAccount = $findAccount(['1001']);
-        $salesAccount = $findAccount(['1502', '3000']);
-        $serviceAccount = $findAccount(['1503', '3001']);
+        $salesAccount = $findAccount([Account::CODE_AR_INCOME]);
+        $serviceAccount = $findAccount([Account::CODE_SERVICE_INCOME]);
         $purchaseAccount = $findAccount(['1752', '4000']);
         $salaryAccount = $findAccount(['1753', '4001']);
         $rentAccount = $findAccount(['1754', '4002']);

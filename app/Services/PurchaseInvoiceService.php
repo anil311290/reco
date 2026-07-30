@@ -104,6 +104,19 @@ class PurchaseInvoiceService
     public function create(array $data, array $lines): PurchaseInvoice
     {
         return DB::transaction(function () use ($data, $lines) {
+            if (empty($data['invoice_number'])) {
+                $financialYearId = (int) ($data['financial_year_id'] ?? 0);
+                if ($financialYearId <= 0) {
+                    throw new \Exception('Financial year is required to generate the invoice number.');
+                }
+
+                FinancialYear::whereKey($financialYearId)->lockForUpdate()->firstOrFail();
+                $data['invoice_number'] = $this->generateInvoiceNumber(
+                    (int) $data['company_id'],
+                    $financialYearId
+                );
+            }
+
             $this->periodLockService->assertWritable(
                 (int) $data['company_id'],
                 $data['invoice_date'],
@@ -411,8 +424,8 @@ class PurchaseInvoiceService
         $fyCode = $fy?->code() ?? now()->format('Y') . now()->copy()->addYear()->format('y');
         $needle = 'PUR-' . $fyCode . '/';
 
-        $numbers = PurchaseInvoice::where('company_id', $companyId)
-            ->where('financial_year_id', $financialYearId)
+        $numbers = PurchaseInvoice::withTrashed()
+            ->where('company_id', $companyId)
             ->where('invoice_number', 'like', $needle . '%')
             ->pluck('invoice_number');
 
