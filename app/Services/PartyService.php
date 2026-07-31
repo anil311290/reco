@@ -296,6 +296,154 @@ class PartyService
     }
 
     /**
+     * Build invoice party dropdown options with existing parties and
+     * Cash/Bank/OD ledgers as selectable entries.
+     */
+    public function getInvoicePartyOptions(int $companyId, string $type): array
+    {
+        $partyOptions = Party::query()
+            ->where('company_id', $companyId)
+            ->where('type', $type)
+            ->where('is_active', true)
+            ->orderBy('name')
+            ->get()
+            ->map(function (Party $party) {
+                return [
+                    'value' => 'party:' . $party->id,
+                    'label' => "{$party->name} ({$party->party_code})",
+                    'kind' => 'party',
+                ];
+            })
+            ->values()
+            ->toArray();
+
+        $ledgerOptions = Account::query()
+            ->where('company_id', $companyId)
+            ->where('is_active', true)
+            ->cashBankOd()
+            ->orderBy('account_code')
+            ->get()
+            ->map(function (Account $account) {
+                return [
+                    'value' => 'account:' . $account->id,
+                    'label' => "{$account->account_name} ({$account->account_code})",
+                    'kind' => 'cash_bank_od',
+                ];
+            })
+            ->values()
+            ->toArray();
+
+        return [
+            'parties' => $partyOptions,
+            'cash_bank_od_accounts' => $ledgerOptions,
+        ];
+    }
+
+    /**
+     * Resolve invoice party selection token to a concrete party ID.
+     */
+    public function resolveInvoicePartySelection(
+        $selection,
+        int $companyId,
+        string $type,
+        ?int $userId = null,
+        ?string $ip = null
+    ): int {
+        $selection = trim((string) $selection);
+
+        if (str_starts_with($selection, 'party:')) {
+            $partyId = (int) substr($selection, 6);
+            $party = Party::query()
+                ->where('company_id', $companyId)
+                ->where('type', $type)
+                ->where('is_active', true)
+                ->find($partyId);
+
+            if (!$party) {
+                throw new \RuntimeException('Selected party is invalid for this company.');
+            }
+
+            return (int) $party->id;
+        }
+
+        if (!str_starts_with($selection, 'account:')) {
+            throw new \RuntimeException('Select a valid customer/supplier option.');
+        }
+
+        $accountId = (int) substr($selection, 8);
+        $account = Account::query()
+            ->where('company_id', $companyId)
+            ->where('id', $accountId)
+            ->where('is_active', true)
+            ->cashBankOd()
+            ->first();
+
+        if (!$account) {
+            throw new \RuntimeException('Selected Cash/Bank/OD ledger is invalid.');
+        }
+
+        $normalizedName = mb_strtolower(trim($account->account_name));
+
+        $existingParty = Party::query()
+            ->where('company_id', $companyId)
+            ->where('type', $type)
+            ->whereRaw('LOWER(TRIM(name)) = ?', [$normalizedName])
+            ->orderByDesc('id')
+            ->first();
+
+        if ($existingParty) {
+            if (!$existingParty->is_active) {
+                $existingParty->update([
+                    'is_active' => true,
+                    'updated_by' => $userId,
+                    'updated_by_ip' => $ip,
+                ]);
+            }
+
+            return (int) $existingParty->id;
+        }
+
+        $deletedParty = Party::onlyTrashed()
+            ->where('company_id', $companyId)
+            ->where('type', $type)
+            ->whereRaw('LOWER(TRIM(name)) = ?', [$normalizedName])
+            ->latest('deleted_at')
+            ->first();
+
+        if ($deletedParty) {
+            $deletedParty->restore();
+            $deletedParty->update([
+                'is_active' => true,
+                'updated_by' => $userId,
+                'updated_by_ip' => $ip,
+                'deleted_by' => null,
+                'deleted_by_id' => null,
+            ]);
+
+            return (int) $deletedParty->id;
+        }
+
+        $party = $this->create([
+            'company_id' => $companyId,
+            'financial_year_id' => FinancialYear::getCurrent($companyId)?->id,
+            'name' => $account->account_name,
+            'type' => $type,
+            'mobile' => null,
+            'email' => null,
+            'address' => '',
+            'opening_balance' => 0,
+            'opening_balance_type' => $type === 'creditor' ? 'credit' : 'debit',
+            'opening_date' => now()->toDateString(),
+            'remarks' => 'Auto-created from Cash/Bank/OD ledger selection in invoice form.',
+            'is_active' => true,
+            'created_by' => $userId,
+            'created_by_ip' => $ip,
+        ]);
+
+        return (int) $party->id;
+    }
+
+    /**
      * Get debtors outstanding
      */
     public function getDebtorsOutstanding(int $companyId): Collection

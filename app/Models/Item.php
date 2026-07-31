@@ -70,6 +70,7 @@ class Item extends Model
 
             if ($item->type === 'service') {
                 $item->is_stockable = false;
+                $item->unit = null;
                 if ($item->opening_stock === null) {
                     $item->opening_stock = 0;
                 }
@@ -111,6 +112,12 @@ class Item extends Model
                 if ($purchaseAccount) {
                     $item->expense_account_id = $purchaseAccount->id;
                 }
+            }
+        });
+
+        static::updating(function ($item) {
+            if ($item->type === 'service') {
+                $item->unit = null;
             }
         });
     }

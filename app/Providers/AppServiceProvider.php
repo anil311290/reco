@@ -33,6 +33,10 @@ class AppServiceProvider extends ServiceProvider
             return "<?php echo \\App\\Helpers\\DateHelper::formatDateTime($expression); ?>";
         });
 
+        Blade::directive('drCr', function (string $expression) {
+            return "<?php echo \\App\\Helpers\\BalanceHelper::drCr($expression); ?>";
+        });
+
         // Directive: @permission('slug')
         Blade::if('permission', function (string $permission) {
             return auth()->check() && auth()->user()->hasPermission($permission);

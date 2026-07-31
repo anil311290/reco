@@ -32,7 +32,7 @@ class DashboardController extends Controller
         $companyId = $user?->company_id;
         $range = $request->query('range', 'this_year');
         $group = $request->query('group', 'monthly');
-        $dateRange = $this->dashboardService->resolveDateRange($range);
+        $dateRange = $this->dashboardService->resolveDateRange($range, $companyId);
 
         if ($request->ajax()) {
             return $this->getDashboardData($companyId, $range, $group);
@@ -82,7 +82,7 @@ class DashboardController extends Controller
      */
     protected function getDashboardData(int $companyId, string $range = 'this_year', string $group = 'monthly'): JsonResponse
     {
-        $dateRange = $this->dashboardService->resolveDateRange($range);
+        $dateRange = $this->dashboardService->resolveDateRange($range, $companyId);
         $statistics = $this->dashboardService->getStatistics($companyId, $dateRange['start'], $dateRange['end']);
         $recentTransactions = $this->dashboardService->getRecentTransactions($companyId, 10);
         $chartData = $this->dashboardService->getChartData($companyId, $group, $dateRange['start'], $dateRange['end']);

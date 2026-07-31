@@ -78,12 +78,12 @@
         <div class="report-stat {{ $report['opening_balance']['type'] === 'debit' ? 'report-stat--primary' : 'report-stat--danger' }}">
             <p class="report-stat-label">Opening Balance</p>
             <h3 class="report-stat-value">₹{{ number_format($report['opening_balance']['balance'], 2) }}</h3>
-            <p class="report-stat-note">{{ strtoupper($report['opening_balance']['type']) }}</p>
+            <p class="report-stat-note">@drCr($report['opening_balance']['type'])</p>
         </div>
         <div class="report-stat {{ $report['closing_balance']['type'] === 'debit' ? 'report-stat--success' : 'report-stat--warning' }}">
             <p class="report-stat-label">Closing Balance</p>
             <h3 class="report-stat-value">₹{{ number_format($report['closing_balance']['balance'], 2) }}</h3>
-            <p class="report-stat-note">{{ strtoupper($report['closing_balance']['type']) }}</p>
+            <p class="report-stat-note">@drCr($report['closing_balance']['type'])</p>
         </div>
     </div>
 
@@ -112,7 +112,7 @@
                         <td class="text-end">-</td>
                         <td class="text-end">-</td>
                         <td class="text-end fw-bold">
-                            ₹{{ number_format($report['opening_balance']['balance'], 2) }} {{ strtoupper($report['opening_balance']['type']) }}
+                            ₹{{ number_format($report['opening_balance']['balance'], 2) }} @drCr($report['opening_balance']['type'])
                         </td>
                     </tr>
                     @forelse($report['entries'] as $entry)
@@ -139,7 +139,7 @@
                         </td>
                         <td class="text-end fw-semibold text-primary">{{ $entry->debit > 0 ? '₹' . number_format($entry->debit, 2) : '-' }}</td>
                         <td class="text-end fw-semibold text-danger">{{ $entry->credit > 0 ? '₹' . number_format($entry->credit, 2) : '-' }}</td>
-                        <td class="text-end fw-bold">₹{{ number_format(abs($entry->running_balance), 2) }} {{ strtoupper($entry->balance_type) }}</td>
+                        <td class="text-end fw-bold">₹{{ number_format(abs($entry->running_balance), 2) }} @drCr($entry->balance_type)</td>
                         <td class="text-center">
                             <div class="btn-group btn-group-sm">
                                 @if($entry->voucher)
@@ -167,7 +167,7 @@
                         <td colspan="4">Total</td>
                         <td class="text-end fw-bold">₹{{ number_format($report['total_debit'], 2) }}</td>
                         <td class="text-end fw-bold">₹{{ number_format($report['total_credit'], 2) }}</td>
-                        <td class="text-end fw-bold">₹{{ number_format($report['closing_balance']['balance'], 2) }} {{ strtoupper($report['closing_balance']['type']) }}</td>
+                        <td class="text-end fw-bold">₹{{ number_format($report['closing_balance']['balance'], 2) }} @drCr($report['closing_balance']['type'])</td>
                         <td></td>
                     </tr>
                 </tfoot>

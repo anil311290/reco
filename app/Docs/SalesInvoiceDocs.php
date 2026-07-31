@@ -87,9 +87,8 @@ use OpenApi\Annotations as OA;
  *     security={{"bearerAuth":{}}},
  *     @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")),
  *     @OA\RequestBody(required=true, @OA\JsonContent(
- *         required={"amount","payment_mode","cash_bank_account_id"},
+ *         required={"amount","cash_bank_account_id"},
  *         @OA\Property(property="amount", type="number", format="float", example=500.00),
- *         @OA\Property(property="payment_mode", type="string", enum={"cash","bank","od"}, example="bank"),
  *         @OA\Property(property="cash_bank_account_id", type="integer", example=12, description="Received In cash/bank/OD account"),
  *         @OA\Property(property="payment_date", type="string", format="date", example="2026-07-16")
  *     )),

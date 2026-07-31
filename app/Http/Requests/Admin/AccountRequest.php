@@ -40,10 +40,7 @@ class AccountRequest extends BaseFormRequest
                     }),
             ],
             'account_type' => ['required', Rule::in(['asset', 'liability', 'income', 'expense', 'equity'])],
-            'transaction_mode' => [
-                Rule::in(['cash', 'bank', 'od']),
-                'nullable',
-            ],
+            'is_cash_bank_od' => ['nullable', 'boolean'],
             'opening_balance' => 'nullable|numeric|min:0',
             'balance_type' => ['nullable', Rule::in(['debit', 'credit'])],
             'opening_date' => 'nullable|date',
@@ -63,7 +60,6 @@ class AccountRequest extends BaseFormRequest
             'account_type.required' => 'Account type is required',
             'account_type.in' => 'Invalid account type',
             'account_name.unique' => 'An account with this name already exists for this type',
-            'transaction_mode.in' => 'Transaction mode must be Cash, Bank, or OD',
         ];
     }
 }

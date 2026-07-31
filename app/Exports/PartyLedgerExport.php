@@ -2,6 +2,7 @@
 
 namespace App\Exports;
 
+use App\Helpers\BalanceHelper;
 use App\Helpers\DateHelper;
 use Maatwebsite\Excel\Concerns\FromArray;
 use Maatwebsite\Excel\Concerns\WithHeadings;
@@ -29,7 +30,7 @@ class PartyLedgerExport implements FromArray, WithHeadings, WithTitle
                 $particulars,
                 $entry->debit > 0 ? number_format((float) $entry->debit, 2, '.', '') : '',
                 $entry->credit > 0 ? number_format((float) $entry->credit, 2, '.', '') : '',
-                number_format($row['running_balance'], 2, '.', '') . ' ' . strtoupper($row['running_type']),
+                number_format($row['running_balance'], 2, '.', '') . ' ' . BalanceHelper::drCr($row['running_type']),
             ];
         }, $this->rows);
     }

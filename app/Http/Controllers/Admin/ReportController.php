@@ -95,14 +95,31 @@ class ReportController extends Controller
         return view('admin.reports.day-book', compact('report', 'date', 'financialYearId', 'financialYears'));
     }
 
-    public function cashBook(Request $request)
+    public function receiptPayment(Request $request)
     {
-        return $this->renderCashBankBook($request, 'cash');
-    }
+        $companyId = auth()->user()->company_id;
+        $financialYearId = $request->filled('financial_year_id')
+            ? (int) $request->input('financial_year_id')
+            : FinancialYear::getCurrent($companyId)?->id;
 
-    public function bankBook(Request $request)
-    {
-        return $this->renderCashBankBook($request, 'bank');
+        $report = $this->reportService->getReceiptPayment(
+            $companyId,
+            $request->input('date_from'),
+            $request->input('date_to'),
+            $financialYearId
+        );
+
+        $financialYears = FinancialYear::where('company_id', $companyId)
+            ->orderByDesc('start_date')
+            ->get();
+
+        return view('admin.reports.receipt-payment', [
+            'report' => $report,
+            'financialYears' => $financialYears,
+            'financialYearId' => $financialYearId,
+            'dateFrom' => $report['date_from'],
+            'dateTo' => $report['date_to'],
+        ]);
     }
 
     public function ledger(Request $request)
@@ -147,35 +164,5 @@ class ReportController extends Controller
         $report = $this->reportService->getCreditorsOutstanding($companyId);
 
         return view('admin.reports.creditors-outstanding', compact('report'));
-    }
-
-    protected function renderCashBankBook(Request $request, string $mode)
-    {
-        $companyId = auth()->user()->company_id;
-        $accountId = $request->filled('account_id') ? (int) $request->input('account_id') : null;
-        $dateFrom = $request->input('date_from');
-        $dateTo = $request->input('date_to');
-        $financialYearId = $request->input('financial_year_id') ?? FinancialYear::getCurrent($companyId)?->id;
-
-        $book = $this->reportService->getCashBankBook(
-            $companyId,
-            $mode,
-            $accountId,
-            $dateFrom,
-            $dateTo,
-            $financialYearId
-        );
-
-        $financialYears = FinancialYear::where('company_id', $companyId)->get();
-
-        return view('admin.reports.cash-bank-book', [
-            'book' => $book,
-            'mode' => $mode,
-            'accountId' => $book['account']?->id,
-            'dateFrom' => $dateFrom,
-            'dateTo' => $dateTo,
-            'financialYearId' => $financialYearId,
-            'financialYears' => $financialYears,
-        ]);
     }
 }

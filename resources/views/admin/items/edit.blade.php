@@ -66,6 +66,7 @@
                         @endforeach
                     </select>
                 </div>
+                @unless($isService)
                 <div class="col-md-4">
                     <label for="unit" class="form-label">Unit</label>
                     <select class="form-select" id="unit" name="unit">
@@ -77,7 +78,6 @@
                         <option value="pcs" {{ $item->unit == 'pcs' ? 'selected' : '' }}>Pieces (Pcs)</option>
                     </select>
                 </div>
-                @unless($isService)
                 <div class="col-md-4">
                     <label for="purchase_price" class="form-label">Purchase Price</label>
                     <input type="number" class="form-control" id="purchase_price" name="purchase_price" step="0.01" min="0" value="{{ $item->purchase_price }}">

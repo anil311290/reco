@@ -34,7 +34,7 @@ class OpeningBalanceAndFyCarryForwardTest extends TestCase
             'financial_year_id' => $fy->id,
             'account_name' => 'Petty Cash',
             'account_type' => 'asset',
-            'transaction_mode' => 'cash',
+            'is_cash_bank_od' => true,
             'opening_balance' => 500,
             'balance_type' => 'debit',
             'is_active' => true,
@@ -82,7 +82,7 @@ class OpeningBalanceAndFyCarryForwardTest extends TestCase
             'financial_year_id' => $fy1->id,
             'account_name' => 'Cash',
             'account_type' => 'asset',
-            'transaction_mode' => 'cash',
+            'is_cash_bank_od' => true,
             'opening_balance' => 0,
             'balance_type' => 'debit',
         ]);
@@ -150,7 +150,7 @@ class OpeningBalanceAndFyCarryForwardTest extends TestCase
             'company_id' => $company->id,
             'financial_year_id' => $fy2->id,
             'account_type' => 'asset',
-            'transaction_mode' => 'cash',
+            'is_cash_bank_od' => true,
             'opening_balance' => 0,
             'balance_type' => 'debit',
         ]);

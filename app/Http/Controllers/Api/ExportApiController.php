@@ -121,52 +121,27 @@ class ExportApiController extends Controller
         return $this->reportExcelResponse($request, 'day-book');
     }
 
-    public function cashBookPdf(Request $request): JsonResponse
+    public function receiptPaymentPdf(Request $request): JsonResponse
     {
         $companyId = $request->user()->company_id;
 
         try {
-            $pdf = $this->exportService->exportCashBookPdf(
+            $pdf = $this->exportService->exportReceiptPaymentPdf(
                 $companyId,
-                $request->filled('account_id') ? (int) $request->account_id : null,
                 $request->input('date_from'),
                 $request->input('date_to'),
                 $request->filled('financial_year_id') ? (int) $request->financial_year_id : null
             );
 
-            return $this->storePdfResponse($pdf, 'cash-book-' . date('Y-m-d') . '.pdf');
+            return $this->storePdfResponse($pdf, 'receipt-payment-' . date('Y-m-d') . '.pdf');
         } catch (\Exception $e) {
             return ResponseHelper::error($e->getMessage());
         }
     }
 
-    public function cashBookExcel(Request $request): JsonResponse
+    public function receiptPaymentExcel(Request $request): JsonResponse
     {
-        return $this->reportExcelResponse($request, 'cash-book');
-    }
-
-    public function bankBookPdf(Request $request): JsonResponse
-    {
-        $companyId = $request->user()->company_id;
-
-        try {
-            $pdf = $this->exportService->exportBankBookPdf(
-                $companyId,
-                $request->filled('account_id') ? (int) $request->account_id : null,
-                $request->input('date_from'),
-                $request->input('date_to'),
-                $request->filled('financial_year_id') ? (int) $request->financial_year_id : null
-            );
-
-            return $this->storePdfResponse($pdf, 'bank-book-' . date('Y-m-d') . '.pdf');
-        } catch (\Exception $e) {
-            return ResponseHelper::error($e->getMessage());
-        }
-    }
-
-    public function bankBookExcel(Request $request): JsonResponse
-    {
-        return $this->reportExcelResponse($request, 'bank-book');
+        return $this->reportExcelResponse($request, 'receipt-payment');
     }
 
     public function ledgerPdf(Request $request): JsonResponse

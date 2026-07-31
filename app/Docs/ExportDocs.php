@@ -36,6 +36,30 @@ use OpenApi\Annotations as OA;
  * )
  *
  * @OA\Get(
+ *     path="/export/receipt-payment/pdf",
+ *     tags={"Export"},
+ *     summary="Export receipt and payment report as PDF",
+ *     operationId="exportReceiptPaymentPdf",
+ *     security={{"bearerAuth":{}}},
+ *     @OA\Parameter(name="date_from", in="query", @OA\Schema(type="string", format="date")),
+ *     @OA\Parameter(name="date_to", in="query", @OA\Schema(type="string", format="date")),
+ *     @OA\Parameter(name="financial_year_id", in="query", @OA\Schema(type="integer")),
+ *     @OA\Response(response=200, description="PDF generated", @OA\JsonContent(ref="#/components/schemas/SuccessResponse"))
+ * )
+ *
+ * @OA\Get(
+ *     path="/export/receipt-payment/excel",
+ *     tags={"Export"},
+ *     summary="Export receipt and payment report as Excel",
+ *     operationId="exportReceiptPaymentExcel",
+ *     security={{"bearerAuth":{}}},
+ *     @OA\Parameter(name="date_from", in="query", @OA\Schema(type="string", format="date")),
+ *     @OA\Parameter(name="date_to", in="query", @OA\Schema(type="string", format="date")),
+ *     @OA\Parameter(name="financial_year_id", in="query", @OA\Schema(type="integer")),
+ *     @OA\Response(response=200, description="Excel generated", @OA\JsonContent(ref="#/components/schemas/SuccessResponse"))
+ * )
+ *
+ * @OA\Get(
  *     path="/export/day-book/pdf",
  *     tags={"Export"},
  *     summary="Export day book report as PDF",

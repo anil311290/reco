@@ -33,7 +33,7 @@ class VoucherShowApiLinesTest extends TestCase
             'account_code' => '1001',
             'account_name' => 'Cash',
             'account_type' => 'asset',
-            'transaction_mode' => 'cash',
+            'is_cash_bank_od' => true,
             'opening_balance' => 0,
         ]);
         $expense = Account::factory()->create([

@@ -9,7 +9,7 @@
             <div class="col-lg-8">
                 <span class="account-kicker mb-3"><i class="bi bi-pencil-square"></i> Account Master</span>
                 <h1 class="h2 fw-bold mb-2">Edit account details</h1>
-                <p class="mb-0 account-hero-copy">Refine account metadata, opening balance, and asset transaction mode without disturbing ledger continuity.</p>
+                <p class="mb-0 account-hero-copy">Refine account metadata, opening balance, and asset cash-bank eligibility without disturbing ledger continuity.</p>
             </div>
             <div class="col-lg-4 text-lg-end">
                 <a href="#accountFormCard" class="btn btn-primary btn-lg me-2">
@@ -30,9 +30,6 @@
                         <h5 class="mb-1">Account Details</h5>
                         <p class="mb-0 account-note">Editing: {{ $account->account_code }} - {{ $account->account_name }}</p>
                     </div>
-                    <button type="button" class="btn btn-outline-primary btn-sm" data-bs-toggle="modal" data-bs-target="#transactionModeHelpModal">
-                        <i class="bi bi-info-circle me-1"></i>Transaction Mode Help
-                    </button>
                 </div>
                 <div class="card-body">
                     <form id="accountForm" method="POST" action="{{ route('admin.accounts.update', $account->id) }}" data-ajax="true" data-success-redirect="{{ route('admin.accounts.index') }}">
@@ -61,37 +58,21 @@
                             </div>
                         </div>
 
-                        <div class="row g-3 mb-4 {{ old('account_type', $account->account_type) === 'asset' ? '' : 'd-none' }}" id="transaction_mode_row">
+                        <div class="row g-3 mb-4 {{ old('account_type', $account->account_type) === 'asset' ? '' : 'd-none' }}" id="cash_bank_toggle_row">
                             <div class="col-12">
                                 <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-2">
-                                    <span class="form-label fw-semibold mb-0">Transaction Mode</span>
+                                    <span class="form-label fw-semibold mb-0">Is Cash/Bank/OD?</span>
                                     <span class="form-text mt-0">
-                                        <i class="bi bi-info-circle me-1"></i>Use a mode only for Cash, Bank, or OD ledgers.
+                                        <i class="bi bi-info-circle me-1"></i>Yes stores <strong>1</strong>, No stores <strong>0</strong>.
                                     </span>
                                 </div>
-                                <div class="transaction-mode-options" role="radiogroup" aria-label="Transaction Mode">
-                                    <input class="btn-check" type="radio" name="transaction_mode" id="transaction_mode_general" value="" {{ old('transaction_mode', $account->transaction_mode ?? '') === '' ? 'checked' : '' }} {{ $isInUse ? 'disabled' : '' }}>
-                                    <label class="btn btn-outline-secondary" for="transaction_mode_general">
-                                        <i class="bi bi-box me-1"></i>General Asset
-                                    </label>
-
-                                    <input class="btn-check" type="radio" name="transaction_mode" id="transaction_mode_cash" value="cash" {{ old('transaction_mode', $account->transaction_mode) === 'cash' ? 'checked' : '' }} {{ $isInUse ? 'disabled' : '' }}>
-                                    <label class="btn btn-outline-primary" for="transaction_mode_cash">
-                                        <i class="bi bi-cash-stack me-1"></i>Cash
-                                    </label>
-
-                                    <input class="btn-check" type="radio" name="transaction_mode" id="transaction_mode_bank" value="bank" {{ old('transaction_mode', $account->transaction_mode) === 'bank' ? 'checked' : '' }} {{ $isInUse ? 'disabled' : '' }}>
-                                    <label class="btn btn-outline-primary" for="transaction_mode_bank">
-                                        <i class="bi bi-bank me-1"></i>Bank
-                                    </label>
-
-                                    <input class="btn-check" type="radio" name="transaction_mode" id="transaction_mode_od" value="od" {{ old('transaction_mode', $account->transaction_mode) === 'od' ? 'checked' : '' }} {{ $isInUse ? 'disabled' : '' }}>
-                                    <label class="btn btn-outline-primary" for="transaction_mode_od">
-                                        <i class="bi bi-credit-card me-1"></i>OD
-                                    </label>
+                                <input type="hidden" name="is_cash_bank_od" value="0">
+                                <div class="form-check form-switch fs-5">
+                                    <input class="form-check-input" type="checkbox" id="is_cash_bank_od" name="is_cash_bank_od" value="1" {{ old('is_cash_bank_od', $account->is_cash_bank_od ?? 0) ? 'checked' : '' }} {{ $isInUse ? 'disabled' : '' }}>
+                                    <label class="form-check-label fw-semibold" for="is_cash_bank_od">Yes, this is a Cash/Bank/OD ledger</label>
                                 </div>
-                                @if($isInUse && $account->transaction_mode)
-                                    <input type="hidden" name="transaction_mode" value="{{ $account->transaction_mode }}">
+                                @if($isInUse)
+                                    <input type="hidden" name="is_cash_bank_od" value="{{ (int) $account->is_cash_bank_od }}">
                                 @endif
                             </div>
                         </div>
@@ -167,7 +148,7 @@
                     <div class="account-stat mb-3">
                         <p class="account-stat-label">Account type</p>
                         <p class="account-stat-value">{{ ucfirst($account->account_type) }}</p>
-                        <div class="small text-muted">Asset accounts require a mode. Others do not.</div>
+                        <div class="small text-muted">Enable Is Cash/Bank/OD only when this ledger is used for payment/receipt cash-bank selection.</div>
                     </div>
                     <div class="account-stat">
                         <p class="account-stat-label">Current status</p>
@@ -182,45 +163,9 @@
                     <h6 class="fw-bold mb-3">Quick Notes</h6>
                     <ul class="list-unstyled mb-0 small text-muted">
                         <li class="mb-2"><i class="bi bi-check2-circle text-success me-2"></i>Keep opening balance aligned with opening date.</li>
-                        <li class="mb-2"><i class="bi bi-check2-circle text-success me-2"></i>Use Bank mode for account-ledger bank balances.</li>
-                        <li class="mb-2"><i class="bi bi-check2-circle text-success me-2"></i>OD is best for overdraft / cash credit entries.</li>
+                        <li class="mb-2"><i class="bi bi-check2-circle text-success me-2"></i>Turn on Is Cash/Bank/OD for ledgers you want in Paid From / Received In dropdowns.</li>
+                        <li class="mb-2"><i class="bi bi-check2-circle text-success me-2"></i>Turn it off for general asset ledgers.</li>
                     </ul>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
-
-<div class="modal fade" id="transactionModeHelpModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered modal-lg">
-        <div class="modal-content border-0 rounded-4 overflow-hidden">
-            <div class="modal-header bg-primary text-white border-0">
-                <div>
-                    <h5 class="modal-title mb-1">Transaction Mode Guide</h5>
-                    <small class="text-white-50">Used only for Asset accounts</small>
-                </div>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body p-4">
-                <div class="row g-3">
-                    <div class="col-md-4">
-                        <div class="border rounded-4 p-3 h-100">
-                            <h6 class="fw-bold mb-2">Cash</h6>
-                            <p class="mb-0 text-muted small">Use for physical cash balances or petty cash accounts.</p>
-                        </div>
-                    </div>
-                    <div class="col-md-4">
-                        <div class="border rounded-4 p-3 h-100">
-                            <h6 class="fw-bold mb-2">Bank</h6>
-                            <p class="mb-0 text-muted small">Use for current accounts, savings accounts, and online bank balances.</p>
-                        </div>
-                    </div>
-                    <div class="col-md-4">
-                        <div class="border rounded-4 p-3 h-100">
-                            <h6 class="fw-bold mb-2">OD</h6>
-                            <p class="mb-0 text-muted small">Use for overdraft / cash credit linked accounts.</p>
-                        </div>
-                    </div>
                 </div>
             </div>
         </div>
@@ -235,26 +180,24 @@ $(document).ready(function() {
         return (accountType === 'asset' || accountType === 'expense') ? 'debit' : 'credit';
     }
 
-    function syncTransactionModeState() {
+    function syncCashBankToggleState() {
         const isAsset = $('#account_type').val() === 'asset';
-        const transactionModes = $('input[name="transaction_mode"][type="radio"]');
 
-        $('#transaction_mode_row').toggleClass('d-none', !isAsset);
+        $('#cash_bank_toggle_row').toggleClass('d-none', !isAsset);
+
         if (!isAsset) {
-            transactionModes.prop('checked', false);
-        } else if (!transactionModes.is(':checked')) {
-            $('#transaction_mode_general').prop('checked', true);
+            $('#is_cash_bank_od').prop('checked', false);
         }
     }
 
     $('#account_type').on('change', function() {
-        syncTransactionModeState();
+        syncCashBankToggleState();
         if (!$('#balance_type').is(':disabled')) {
             $('#balance_type').val(defaultBalanceType($(this).val()));
         }
     });
 
-    syncTransactionModeState();
+    syncCashBankToggleState();
 });
 </script>
 @endpush

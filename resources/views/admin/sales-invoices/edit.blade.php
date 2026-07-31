@@ -51,15 +51,27 @@
                         <div class="col-md-6">
                             <div class="d-flex justify-content-between align-items-center mb-1">
                                 <label class="form-label mb-0">Customer <span class="text-danger">*</span></label>
-                                @permission('parties.create')
-                                <button type="button" class="btn btn-link btn-sm p-0 quick-add-party-btn" data-party-quick-add-target="#party_id" data-party-quick-add-type="debtor">Quick Add</button>
-                                @endpermission
+                                <div class="d-flex gap-2">
+                                    @permission('accounts.create')
+                                    <button type="button" class="btn btn-link btn-sm p-0 quick-add-ledger-btn" data-account-quick-add-target="#party_id">Quick Add Ledger</button>
+                                    @endpermission
+                                    @permission('parties.create')
+                                    <button type="button" class="btn btn-link btn-sm p-0 quick-add-party-btn" data-party-quick-add-target="#party_id" data-party-quick-add-type="debtor">Quick Add Party</button>
+                                    @endpermission
+                                </div>
                             </div>
-                            <select class="form-select" name="party_id" id="party_id" required>
+                            <select class="form-select" name="party_id" id="party_id" data-quick-add-value-mode="token" required>
                                 <option value="">Select Customer</option>
-                                @foreach($parties as $party)
-                                <option value="{{ $party->id }}" {{ $invoice->party_id == $party->id ? 'selected' : '' }}>{{ $party->name }} ({{ $party->party_code }})</option>
+                                @foreach(($partyOptions['parties'] ?? []) as $option)
+                                <option value="{{ $option['value'] }}" {{ ('party:' . $invoice->party_id) === $option['value'] ? 'selected' : '' }}>{{ $option['label'] }}</option>
                                 @endforeach
+                                @if(!empty($partyOptions['cash_bank_od_accounts']))
+                                <optgroup label="Cash / Bank / OD Ledgers">
+                                    @foreach($partyOptions['cash_bank_od_accounts'] as $option)
+                                    <option value="{{ $option['value'] }}">{{ $option['label'] }}</option>
+                                    @endforeach
+                                </optgroup>
+                                @endif
                             </select>
                         </div>
                         <div class="col-md-3">
@@ -81,9 +93,14 @@
             <div class="card mb-4">
                 <div class="card-header d-flex justify-content-between align-items-center">
                     <h5 class="mb-0">Line Items</h5>
-                    <button type="button" class="btn btn-sm btn-primary" id="addLine">
-                        <i class="bi bi-plus-circle me-1"></i>Add Line
-                    </button>
+                    <div class="d-flex gap-2">
+                        <button type="button" class="btn btn-sm btn-outline-primary" id="quickAddItem">
+                            <i class="bi bi-lightning-charge me-1"></i>Quick Add Item
+                        </button>
+                        <button type="button" class="btn btn-sm btn-primary" id="addLine">
+                            <i class="bi bi-plus-circle me-1"></i>Add Line
+                        </button>
+                    </div>
                 </div>
                 <div class="card-body p-0">
                     <div class="table-responsive">
@@ -108,7 +125,7 @@
                                 @endphp
                                 <tr class="line-row" data-kind="{{ $dataKind }}">
                                     <td>
-                                        <select class="form-select form-select-sm particular-select w-100">
+                                        <select class="form-select form-select-sm particular-select w-100" data-searchable="true" data-placeholder="Search item / service">
                                             <option value="">Select Item / Service</option>
                                             <optgroup label="Goods">
                                                 @foreach($goodsItems as $item)
@@ -143,7 +160,7 @@
                                 @empty
                                 <tr class="line-row" data-kind="">
                                     <td>
-                                        <select class="form-select form-select-sm particular-select w-100">
+                                        <select class="form-select form-select-sm particular-select w-100" data-searchable="true" data-placeholder="Search item / service">
                                             <option value="">Select Item / Service</option>
                                             <optgroup label="Goods">
                                                 @foreach($goodsItems as $item)
@@ -210,10 +227,12 @@
     </div>
 </form>
 
+@include('admin.items._quick-add-item-modal')
+
 <template id="lineRowTemplate">
     <tr class="line-row" data-kind="">
         <td>
-            <select class="form-select form-select-sm particular-select w-100">
+            <select class="form-select form-select-sm particular-select w-100" data-searchable="true" data-placeholder="Search item / service">
                 <option value="">Select Item / Service</option>
                 <optgroup label="Goods">
                     @foreach($goodsItems as $item)
@@ -366,9 +385,109 @@ function buildSubmitPayload() {
     return hasLine;
 }
 
-$('#addLine').on('click', function() {
+function addLineRow() {
     const row = $($('#lineRowTemplate').html());
     $('#linesBody').append(row);
+    initSearchableSelects(row);
+
+    return row;
+}
+
+function ensureTrailingEmptyRow(row) {
+    const isLastRow = row.is($('#linesBody .line-row').last());
+
+    if (isLastRow && row.find('.particular-select').val()) {
+        addLineRow();
+    }
+}
+
+function buildQuickItemOption(item) {
+    return $('<option>', {
+        value: `item:${item.id}`,
+        text: item.name
+    }).attr({
+        'data-kind': 'item',
+        'data-id': item.id,
+        'data-price': item.selling_price || 0,
+        'data-tax': item.tax_rate_id || '',
+        'data-description': item.description || ''
+    });
+}
+
+function appendQuickItemOption(select, item) {
+    const groupLabel = item.type === 'service' ? 'Services' : 'Goods';
+    $(select).find(`optgroup[label="${groupLabel}"]`).append(buildQuickItemOption(item));
+}
+
+let quickAddTargetRow = null;
+const quickAddItemModalElement = document.getElementById('quickAddItemModal');
+const quickAddItemModal = bootstrap.Modal.getOrCreateInstance(quickAddItemModalElement);
+
+$(document).on('focus select2:open', '.particular-select', function() {
+    quickAddTargetRow = $(this).closest('.line-row');
+});
+
+$('#quickAddItem').on('click', function() {
+    if (!quickAddTargetRow || !document.body.contains(quickAddTargetRow[0])) {
+        quickAddTargetRow = $('#linesBody .line-row').filter(function() {
+            return !$(this).find('.particular-select').val();
+        }).first();
+    }
+
+    if (!quickAddTargetRow.length) {
+        quickAddTargetRow = addLineRow();
+    }
+
+    $('#quickAddItemForm')[0].reset();
+    clearValidationErrors('#quickAddItemForm');
+    $('#quick_item_type').val('goods').trigger('change');
+    quickAddItemModal.show();
+    quickAddItemModalElement.addEventListener('shown.bs.modal', function() {
+        $('#quick_item_name').trigger('focus');
+    }, { once: true });
+});
+
+$('#quick_item_type').on('change', function() {
+    const isService = $(this).val() === 'service';
+    $('#quickItemOpeningStockField').toggle(!isService);
+    $('#quickItemPurchasePriceField').toggle(!isService);
+    $('#quickItemBarcodeField').toggle(!isService);
+    $('#quickItemUnitField').toggle(!isService);
+    $('#quickItemHsnSacLabel').text(isService ? 'SAC Code' : 'HSN/SAC Code');
+    $('#quickItemSellingPriceLabel').text(isService ? 'Default Rate' : 'Selling Price');
+    $('#quick_item_opening_stock').val('0');
+    $('#quick_item_purchase_price').val('0');
+    $('#quick_item_barcode').val('');
+    $('#quick_item_unit').prop('disabled', isService);
+    $('#quick_item_stockable').val(isService ? '0' : '1');
+});
+
+ajaxFormSubmit(
+    '#quickAddItemForm',
+    '{{ route("admin.sales-invoices.quick-add-item") }}',
+    'POST',
+    function(response) {
+        const item = response.data;
+
+        $('.particular-select').each(function() {
+            appendQuickItemOption(this, item);
+        });
+
+        const templateContent = document.getElementById('lineRowTemplate').content;
+        appendQuickItemOption($(templateContent).find('.particular-select'), item);
+
+        quickAddTargetRow.find('.particular-select')
+            .val(`item:${item.id}`)
+            .trigger('change');
+
+        quickAddItemModal.hide();
+        $('#quickAddItemForm')[0].reset();
+        quickAddTargetRow = null;
+    }
+);
+
+$('#addLine').on('click', function() {
+    addLineRow();
 });
 
 $(document).on('click', '.remove-line', function() {
@@ -379,7 +498,9 @@ $(document).on('click', '.remove-line', function() {
 });
 
 $(document).on('change', '.particular-select', function() {
-    applyParticularSelection($(this).closest('tr'));
+    const row = $(this).closest('tr');
+    applyParticularSelection(row);
+    ensureTrailingEmptyRow(row);
 });
 
 $(document).on('input', '.qty-input, .price-input, .disc-input', function() {
@@ -453,6 +574,10 @@ $('#invoiceForm').on('submit.clientValidate', function(e) {
 $('#invoiceForm').on('change input', '.is-invalid', function() {
     $(this).removeClass('is-invalid');
     $(this).nextAll('.invalid-feedback').first().remove();
+});
+
+$(function() {
+    ensureTrailingEmptyRow($('#linesBody .line-row').last());
 });
 
 ajaxFormSubmit('#invoiceForm', '{{ route("admin.sales-invoices.update", $invoice->id) }}', 'PUT', '{{ route("admin.sales-invoices.show", $invoice->id) }}');

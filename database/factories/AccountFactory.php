@@ -31,6 +31,7 @@ class AccountFactory extends Factory
             'account_code' => (string) fake()->unique()->numberBetween($range[0], $range[1]),
             'account_name' => fake()->words(2, true),
             'account_type' => $type,
+            'is_cash_bank_od' => false,
             'opening_balance' => fake()->randomFloat(2, 0, 100000),
             'balance_type' => in_array($type, ['asset', 'expense'], true) ? 'debit' : 'credit',
             'opening_date' => fake()->date(),

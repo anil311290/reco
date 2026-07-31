@@ -85,14 +85,14 @@ class PurchaseInvoiceController extends Controller
         $companyId = auth()->user()->company_id;
         $fyId = auth()->user()->company->currentFinancialYear?->id;
 
-        $parties = $this->partyService->getAll(['company_id' => $companyId, 'type' => 'creditor']);
+        $partyOptions = $this->partyService->getInvoicePartyOptions($companyId, 'creditor');
         $items = $this->itemService->getAll($companyId, ['type' => 'goods', 'is_active' => true]);
         $itemCategories = $this->itemCategoryService->getAll($companyId);
         $taxRates = $this->taxRateService->getAll($companyId);
         $invoiceNumber = $fyId ? $this->purchaseInvoiceService->generateInvoiceNumber($companyId, $fyId) : null;
 
         return view('admin.purchase-invoices.create', compact(
-            'parties',
+            'partyOptions',
             'items',
             'itemCategories',
             'taxRates',
@@ -123,7 +123,7 @@ class PurchaseInvoiceController extends Controller
         $companyId = auth()->user()->company_id;
 
         $validated = $request->validate([
-            'party_id' => 'required|exists:parties,id',
+            'party_id' => 'required',
             'supplier_invoice_number' => 'nullable|string|max:100',
             'invoice_date' => 'required|date',
             'due_date' => 'required|date|after_or_equal:invoice_date',
@@ -147,12 +147,19 @@ class PurchaseInvoiceController extends Controller
         try {
             $this->assertGoodsOnlyLines($companyId, $validated['lines']);
             $fyId = auth()->user()->company->currentFinancialYear?->id;
+            $resolvedPartyId = $this->partyService->resolveInvoicePartySelection(
+                $validated['party_id'],
+                $companyId,
+                'creditor',
+                auth()->id(),
+                $request->ip()
+            );
 
             $data = [
                 'uuid' => \Illuminate\Support\Str::uuid(),
                 'company_id' => $companyId,
                 'financial_year_id' => $fyId,
-                'party_id' => $validated['party_id'],
+                'party_id' => $resolvedPartyId,
                 'supplier_invoice_number' => $validated['supplier_invoice_number'] ?? null,
                 'invoice_date' => $validated['invoice_date'],
                 'due_date' => $validated['due_date'],
@@ -187,7 +194,7 @@ class PurchaseInvoiceController extends Controller
         $invoice = $this->purchaseInvoiceService->getById($id);
         $companyId = auth()->user()->company_id;
         $financialYearId = auth()->user()->company->currentFinancialYear?->id;
-        $cashBankAccounts = $this->accountService->getCashBankAccountsForMode($companyId, null, $financialYearId);
+        $cashBankAccounts = $this->accountService->getCashBankAccountsForMode($companyId, $financialYearId);
 
         return view('admin.purchase-invoices.show', compact('invoice', 'cashBankAccounts'));
     }
@@ -208,11 +215,18 @@ class PurchaseInvoiceController extends Controller
         }
 
         $companyId = auth()->user()->company_id;
-        $parties = $this->partyService->getAll(['company_id' => $companyId, 'type' => 'creditor']);
+        $partyOptions = $this->partyService->getInvoicePartyOptions($companyId, 'creditor');
         $items = $this->itemService->getAll($companyId, ['type' => 'goods', 'is_active' => true]);
+        $itemCategories = $this->itemCategoryService->getAll($companyId);
         $taxRates = $this->taxRateService->getAll($companyId);
 
-        return view('admin.purchase-invoices.edit', compact('invoice', 'parties', 'items', 'taxRates'));
+        return view('admin.purchase-invoices.edit', compact(
+            'invoice',
+            'partyOptions',
+            'items',
+            'itemCategories',
+            'taxRates'
+        ));
     }
 
     /**
@@ -223,7 +237,7 @@ class PurchaseInvoiceController extends Controller
         $companyId = auth()->user()->company_id;
 
         $validated = $request->validate([
-            'party_id' => 'required|exists:parties,id',
+            'party_id' => 'required',
             'supplier_invoice_number' => 'nullable|string|max:100',
             'invoice_date' => 'required|date',
             'due_date' => 'required|date|after_or_equal:invoice_date',
@@ -246,9 +260,16 @@ class PurchaseInvoiceController extends Controller
 
         try {
             $this->assertGoodsOnlyLines($companyId, $validated['lines']);
+            $resolvedPartyId = $this->partyService->resolveInvoicePartySelection(
+                $validated['party_id'],
+                $companyId,
+                'creditor',
+                auth()->id(),
+                $request->ip()
+            );
 
             $data = [
-                'party_id' => $validated['party_id'],
+                'party_id' => $resolvedPartyId,
                 'supplier_invoice_number' => $validated['supplier_invoice_number'] ?? null,
                 'invoice_date' => $validated['invoice_date'],
                 'due_date' => $validated['due_date'],
@@ -276,7 +297,6 @@ class PurchaseInvoiceController extends Controller
     {
         $validated = $request->validate([
             'amount' => 'required|numeric|min:0.01',
-            'payment_mode' => 'required|in:cash,bank,od',
             'cash_bank_account_id' => 'required|exists:accounts,id',
             'payment_date' => 'nullable|date',
         ]);
@@ -284,7 +304,6 @@ class PurchaseInvoiceController extends Controller
         try {
             $invoice = $this->purchaseInvoiceService->recordPayment($id, [
                 'amount' => $validated['amount'],
-                'payment_mode' => $validated['payment_mode'],
                 'cash_bank_account_id' => $validated['cash_bank_account_id'],
                 'payment_date' => $validated['payment_date'] ?? now()->toDateString(),
                 'created_by' => auth()->id(),

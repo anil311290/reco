@@ -75,7 +75,9 @@
     <table class="summary">
         <tr>
             <td><strong>Type:</strong> {{ ucfirst($item->type) }}</td>
+            @if($item->type === 'goods')
             <td><strong>Unit:</strong> {{ $item->unit ?: '-' }}</td>
+            @endif
             <td><strong>Current Stock:</strong> {{ number_format((float) $item->current_stock, 3) }}</td>
         </tr>
         <tr>

@@ -53,21 +53,18 @@ class ApiEndpoints {
   static const String ledgers = '/ledgers';
   static String ledgerHistory(Object id) => '/ledgers/$id/history';
   static const String reportsDayBook = '/reports/day-book';
-  static const String reportsCashBook = '/reports/cash-book';
-  static const String reportsBankBook = '/reports/bank-book';
   static const String reportsLedger = '/reports/ledger';
   static const String reportsTrialBalance = '/reports/trial-balance';
   static const String reportsProfitLoss = '/reports/profit-loss';
+  static const String reportsReceiptPayment = '/reports/receipt-payment';
   static const String reportsBalanceSheet = '/reports/balance-sheet';
   static const String reportsDebtorsOutstanding = '/reports/debtors-outstanding';
   static const String reportsCreditorsOutstanding =
       '/reports/creditors-outstanding';
   static const String exportDayBookPdf = '/export/day-book/pdf';
   static const String exportDayBookExcel = '/export/day-book/excel';
-  static const String exportCashBookPdf = '/export/cash-book/pdf';
-  static const String exportCashBookExcel = '/export/cash-book/excel';
-  static const String exportBankBookPdf = '/export/bank-book/pdf';
-  static const String exportBankBookExcel = '/export/bank-book/excel';
+  static const String exportReceiptPaymentPdf = '/export/receipt-payment/pdf';
+  static const String exportReceiptPaymentExcel = '/export/receipt-payment/excel';
   static const String exportLedgerPdf = '/export/ledger/pdf';
   static const String exportLedgerExcel = '/export/ledger/excel';
   static const String exportTrialBalancePdf = '/export/trial-balance/pdf';

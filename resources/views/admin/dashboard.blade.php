@@ -15,7 +15,7 @@
             <option value="this_month" {{ ($range ?? 'this_year') === 'this_month' ? 'selected' : '' }}>This Month</option>
             <option value="last_month" {{ ($range ?? 'this_year') === 'last_month' ? 'selected' : '' }}>Last Month</option>
             <option value="this_quarter" {{ ($range ?? 'this_year') === 'this_quarter' ? 'selected' : '' }}>This Quarter</option>
-            <option value="this_year" {{ ($range ?? 'this_year') === 'this_year' ? 'selected' : '' }}>This Year</option>
+            <option value="this_year" {{ ($range ?? 'this_year') === 'this_year' ? 'selected' : '' }}>This Financial Year</option>
         </select>
     </div>
     <div id="dashboardLoader" class="position-absolute top-0 start-0 w-100 h-100 d-none" style="background: rgba(255,255,255,0.7); backdrop-filter: blur(4px); z-index: 10; display: flex; align-items: center; justify-content: center;">
@@ -24,6 +24,12 @@
         </div>
     </div>
 </div>
+
+@php
+    $profitValue = (float) ($statistics['profit'] ?? 0);
+    $isNetLoss = $profitValue < 0;
+    $periodLabel = $statistics['period']['label'] ?? '';
+@endphp
 
 <!-- Stats Cards Row 1 -->
 <div class="row g-3 mb-4">
@@ -35,8 +41,8 @@
                         <p class="text-muted mb-1" style="font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em;">Total Income</p>
                         <h3 id="statIncome" class="mb-1 fw-bold" style="color: var(--success); letter-spacing: -0.02em;">₹{{ number_format($statistics['income'] ?? 0, 2) }}</h3>
                         <span id="statIncomeDetail" class="d-inline-flex align-items-center gap-1" style="font-size: 12px; color: var(--success);">
-                            <i class="bi bi-calendar-check"></i> {{ number_format($statistics['income'] ?? 0, 2) }}
-                            <span class="text-muted ms-1">year to date</span>
+                            <i class="bi bi-calendar-check"></i>
+                            <span class="text-muted">{{ $periodLabel }}</span>
                         </span>
                     </div>
                     <div class="stats-icon" style="background: var(--success-light); color: var(--success);">
@@ -55,8 +61,8 @@
                         <p class="text-muted mb-1" style="font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em;">Total Expense</p>
                         <h3 id="statExpense" class="mb-1 fw-bold" style="color: var(--danger); letter-spacing: -0.02em;">₹{{ number_format($statistics['expense'] ?? 0, 2) }}</h3>
                         <span id="statExpenseDetail" class="d-inline-flex align-items-center gap-1" style="font-size: 12px; color: var(--danger);">
-                            <i class="bi bi-calendar-check"></i> {{ number_format($statistics['expense'] ?? 0, 2) }}
-                            <span class="text-muted ms-1">year to date</span>
+                            <i class="bi bi-calendar-check"></i>
+                            <span class="text-muted">{{ $periodLabel }}</span>
                         </span>
                     </div>
                     <div class="stats-icon" style="background: var(--danger-light); color: var(--danger);">
@@ -72,11 +78,11 @@
             <div class="card-body">
                 <div class="d-flex align-items-center">
                     <div class="flex-grow-1">
-                        <p class="text-muted mb-1" style="font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em;">Net Profit</p>
-                        <h3 id="statProfit" class="mb-1 fw-bold" style="color: var(--primary); letter-spacing: -0.02em;">₹{{ number_format($statistics['profit'] ?? 0, 2) }}</h3>
-                        <span id="statProfitDetail" class="d-inline-flex align-items-center gap-1" style="font-size: 12px; color: var(--primary);">
-                            <i class="bi bi-graph-up"></i> {{ $statistics['profit'] >= 0 ? '+'.number_format($statistics['profit'], 2) : number_format($statistics['profit'], 2) }}
-                            <span class="text-muted ms-1">since opening</span>
+                        <p id="statProfitLabel" class="text-muted mb-1" style="font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em;">{{ $isNetLoss ? 'Net Loss' : 'Net Profit' }}</p>
+                        <h3 id="statProfit" class="mb-1 fw-bold" style="color: var({{ $isNetLoss ? '--danger' : '--success' }}); letter-spacing: -0.02em;">{{ $isNetLoss ? '-' : '' }}₹{{ number_format(abs($profitValue), 2) }}</h3>
+                        <span id="statProfitDetail" class="d-inline-flex align-items-center gap-1" style="font-size: 12px;">
+                            <i class="bi bi-graph-up"></i>
+                            <span class="text-muted">{{ $periodLabel }}</span>
                         </span>
                     </div>
                     <div class="stats-icon" style="background: var(--primary-light); color: var(--primary);">
@@ -95,7 +101,7 @@
                         <p class="text-muted mb-1" style="font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em;">Cash Balance</p>
                         <h3 id="statCashBalance" class="mb-1 fw-bold" style="color: var(--info); letter-spacing: -0.02em;">₹{{ number_format($statistics['cash_balance'] ?? 0, 2) }}</h3>
                         <span id="statCashBalanceDetail" class="text-muted" style="font-size: 12px;">
-                            <i class="bi bi-wallet2"></i> Available balance
+                            <i class="bi bi-wallet2"></i> Cash + Bank balance
                         </span>
                     </div>
                     <div class="stats-icon" style="background: var(--info-light); color: var(--info);">
@@ -536,22 +542,32 @@ $(document).ready(function() {
         }
     }
 
+    function formatDashboardAmount(value) {
+        return Number(value || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+
     function refreshDashboardStats(statistics) {
-        $('#statIncome').text('₹' + Number(statistics.income || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
-        $('#statIncomeDetail').html('<i class="bi bi-calendar-check"></i> ₹' + Number(statistics.income || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' <span class="text-muted ms-1">year to date</span>');
+        const periodLabel = (statistics.period && statistics.period.label) ? statistics.period.label : '';
 
-        $('#statExpense').text('₹' + Number(statistics.expense || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
-        $('#statExpenseDetail').html('<i class="bi bi-calendar-check"></i> ₹' + Number(statistics.expense || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' <span class="text-muted ms-1">year to date</span>');
+        $('#statIncome').text('₹' + formatDashboardAmount(statistics.income));
+        $('#statIncomeDetail').html('<i class="bi bi-calendar-check"></i> <span class="text-muted">' + periodLabel + '</span>');
 
-        $('#statProfit').text('₹' + Number(statistics.profit || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
-        const profitSign = Number(statistics.profit || 0) >= 0 ? '+' : '';
-        $('#statProfitDetail').html('<i class="bi bi-graph-up"></i> ' + profitSign + '₹' + Number(statistics.profit || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' <span class="text-muted ms-1">since opening</span>');
+        $('#statExpense').text('₹' + formatDashboardAmount(statistics.expense));
+        $('#statExpenseDetail').html('<i class="bi bi-calendar-check"></i> <span class="text-muted">' + periodLabel + '</span>');
 
-        $('#statCashBalance').text('₹' + Number(statistics.cash_balance || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
-        $('#statCashBalanceDetail').html('<i class="bi bi-wallet2"></i> Available balance');
+        const profit = Number(statistics.profit || 0);
+        const isNetLoss = profit < 0;
+        $('#statProfitLabel').text(isNetLoss ? 'Net Loss' : 'Net Profit');
+        $('#statProfit')
+            .text((isNetLoss ? '-' : '') + '₹' + formatDashboardAmount(Math.abs(profit)))
+            .css('color', isNetLoss ? 'var(--danger)' : 'var(--success)');
+        $('#statProfitDetail').html('<i class="bi bi-graph-up"></i> <span class="text-muted">' + periodLabel + '</span>');
 
-        $('#statReceivables').text('₹' + Number(statistics.receivables || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
-        $('#statPayables').text('₹' + Number(statistics.payables || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
+        $('#statCashBalance').text('₹' + formatDashboardAmount(statistics.cash_balance));
+        $('#statCashBalanceDetail').html('<i class="bi bi-wallet2"></i> Cash + Bank balance');
+
+        $('#statReceivables').text('₹' + formatDashboardAmount(statistics.receivables));
+        $('#statPayables').text('₹' + formatDashboardAmount(statistics.payables));
     }
 
     function refreshRecentTransactions(transactions) {

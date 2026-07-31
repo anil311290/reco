@@ -15,6 +15,7 @@
 </div>
 
 <form id="invoiceForm">
+    <div id="builtPayload"></div>
     <div class="row g-4">
         <div class="col-md-8">
             <div class="card mb-4">
@@ -40,15 +41,27 @@
                         <div class="col-md-4">
                             <div class="d-flex justify-content-between align-items-center mb-1">
                                 <label class="form-label mb-0">Supplier <span class="text-danger">*</span></label>
-                                @permission('parties.create')
-                                <button type="button" class="btn btn-link btn-sm p-0 quick-add-party-btn" data-party-quick-add-target="#party_id" data-party-quick-add-type="creditor">Quick Add</button>
-                                @endpermission
+                                <div class="d-flex gap-2">
+                                    @permission('accounts.create')
+                                    <button type="button" class="btn btn-link btn-sm p-0 quick-add-ledger-btn" data-account-quick-add-target="#party_id">Quick Add Ledger</button>
+                                    @endpermission
+                                    @permission('parties.create')
+                                    <button type="button" class="btn btn-link btn-sm p-0 quick-add-party-btn" data-party-quick-add-target="#party_id" data-party-quick-add-type="creditor">Quick Add Party</button>
+                                    @endpermission
+                                </div>
                             </div>
-                            <select class="form-select" name="party_id" id="party_id" required>
+                            <select class="form-select" name="party_id" id="party_id" data-quick-add-value-mode="token" required>
                                 <option value="">Select Supplier</option>
-                                @foreach($parties as $party)
-                                <option value="{{ $party->id }}">{{ $party->name }} ({{ $party->party_code }})</option>
+                                @foreach(($partyOptions['parties'] ?? []) as $option)
+                                <option value="{{ $option['value'] }}">{{ $option['label'] }}</option>
                                 @endforeach
+                                @if(!empty($partyOptions['cash_bank_od_accounts']))
+                                <optgroup label="Cash / Bank / OD Ledgers">
+                                    @foreach($partyOptions['cash_bank_od_accounts'] as $option)
+                                    <option value="{{ $option['value'] }}">{{ $option['label'] }}</option>
+                                    @endforeach
+                                </optgroup>
+                                @endif
                             </select>
                         </div>
                         <div class="col-md-4">
@@ -90,30 +103,7 @@
                                 </tr>
                             </thead>
                             <tbody id="linesBody">
-                                <tr class="line-row">
-                                    <td>
-                                        <select class="form-select form-select-sm item-select w-100" name="lines[0][item_id]">
-                                            <option value="">Select Item</option>
-                                            @foreach($items as $item)
-                                            <option value="{{ $item->id }}" data-price="{{ $item->purchase_price }}" data-tax="{{ $item->tax_rate_id }}" data-description="{{ e($item->description ?? '') }}">{{ $item->name }}</option>
-                                            @endforeach
-                                        </select>
-                                        <input type="text" class="form-control form-control-sm mt-1 bg-light" name="lines[0][description]" placeholder="Description" readonly>
-                                    </td>
-                                    <td><input type="number" class="form-control form-control-sm qty-input" name="lines[0][quantity]" value="1" min="0.001" step="0.001"></td>
-                                    <td><input type="number" class="form-control form-control-sm price-input" name="lines[0][unit_price]" value="0" min="0" step="0.01"></td>
-                                    <td><input type="number" class="form-control form-control-sm disc-input" name="lines[0][discount_percentage]" value="0" min="0" max="100" step="0.01"></td>
-                                    <td>
-                                        <select class="form-select form-select-sm tax-select w-100" name="lines[0][tax_rate_id]">
-                                            <option value="">No Tax</option>
-                                            @foreach($taxRates as $tax)
-                                            <option value="{{ $tax->id }}" data-rate="{{ $tax->rate }}">{{ $tax->name }} ({{ $tax->rate }}%)</option>
-                                            @endforeach
-                                        </select>
-                                    </td>
-                                    <td><input type="text" class="form-control form-control-sm line-total" readonly></td>
-                                    <td><button type="button" class="btn btn-sm btn-outline-danger remove-line"><i class="bi bi-trash"></i></button></td>
-                                </tr>
+                                @include('admin.purchase-invoices._line-row')
                             </tbody>
                         </table>
                     </div>
@@ -152,17 +142,74 @@
 </form>
 
 @include('admin.items._quick-add-item-modal', ['quickAddGoodsOnly' => true])
+
+<template id="lineRowTemplate">
+    @include('admin.purchase-invoices._line-row', ['line' => null])
+</template>
 @endsection
 
 @section('scripts')
 <script>
-let lineIndex = 1;
-let quickAddedItemOptions = '';
+function addLineRow() {
+    const row = $($('#lineRowTemplate').html());
+    $('#linesBody').append(row);
+    initSearchableSelects(row);
+
+    return row;
+}
+
+function ensureTrailingEmptyRow(row) {
+    const isLastRow = row.is($('#linesBody .line-row').last());
+
+    if (isLastRow && row.find('.item-select').val()) {
+        addLineRow();
+    }
+}
+
+function appendHidden(name, value) {
+    $('<input>', { type: 'hidden', name: name, value: value ?? '' }).appendTo('#builtPayload');
+}
+
+function buildSubmitPayload() {
+    $('#builtPayload').empty();
+    let index = 0;
+
+    $('#linesBody .line-row').each(function() {
+        const row = $(this);
+        const option = row.find('.item-select option:selected');
+
+        if (!row.find('.item-select').val()) {
+            return;
+        }
+
+        appendHidden(`lines[${index}][item_id]`, option.val());
+        appendHidden(`lines[${index}][description]`, row.find('.description-input').val() || '');
+        appendHidden(`lines[${index}][quantity]`, row.find('.qty-input').val() || 1);
+        appendHidden(`lines[${index}][unit_price]`, row.find('.price-input').val() || 0);
+        appendHidden(`lines[${index}][discount_percentage]`, row.find('.disc-input').val() || 0);
+        appendHidden(`lines[${index}][tax_rate_id]`, row.find('.tax-select').val() || '');
+        index++;
+    });
+
+    return index > 0;
+}
+
 let quickAddTargetRow = null;
 const quickAddItemModalElement = document.getElementById('quickAddItemModal');
 const quickAddItemModal = bootstrap.Modal.getOrCreateInstance(quickAddItemModalElement);
 
-$(document).on('focus', '.item-select', function() {
+function buildQuickItemOption(item) {
+    return $('<option>', {
+        value: item.id,
+        text: item.name
+    }).attr({
+        'data-price': item.purchase_price || 0,
+        'data-tax': item.tax_rate_id || '',
+        'data-description': item.description || ''
+    });
+}
+
+$(document).on('focus select2:open', '.item-select', function() {
     quickAddTargetRow = $(this).closest('.line-row');
 });
 
@@ -174,14 +221,13 @@ $('#quickAddItem').on('click', function() {
     }
 
     if (!quickAddTargetRow.length) {
-        $('#addLine').trigger('click');
-        quickAddTargetRow = $('#linesBody .line-row').last();
+        quickAddTargetRow = addLineRow();
     }
 
     $('#quickAddItemForm')[0].reset();
     clearValidationErrors('#quickAddItemForm');
     $('#quick_item_type').val('goods');
-    $('#quickItemOpeningStockField, #quickItemPurchasePriceField, #quickItemBarcodeField').show();
+    $('#quick_item_unit').prop('disabled', false);
     $('#quick_item_stockable').val('1');
     quickAddItemModal.show();
     quickAddItemModalElement.addEventListener('shown.bs.modal', function() {
@@ -195,17 +241,14 @@ ajaxFormSubmit(
     'POST',
     function(response) {
         const item = response.data;
-        const option = $('<option>', {
-            value: item.id,
-            text: item.name
-        }).attr({
-            'data-price': item.purchase_price || 0,
-            'data-tax': item.tax_rate_id || '',
-            'data-description': item.description || ''
+
+        $('.item-select').each(function() {
+            $(this).append(buildQuickItemOption(item));
         });
 
-        $('.item-select').append(option.clone());
-        quickAddedItemOptions += option.prop('outerHTML');
+        const templateContent = document.getElementById('lineRowTemplate').content;
+        $(templateContent).find('.item-select').append(buildQuickItemOption(item));
+
         quickAddTargetRow.find('.item-select').val(String(item.id)).trigger('change');
 
         quickAddItemModal.hide();
@@ -215,33 +258,7 @@ ajaxFormSubmit(
 );
 
 $('#addLine').on('click', function() {
-    let row = `<tr class="line-row">
-        <td>
-            <select class="form-select form-select-sm item-select w-100" name="lines[${lineIndex}][item_id]">
-                <option value="">Select Item</option>
-                @foreach($items as $item)
-                <option value="{{ $item->id }}" data-price="{{ $item->purchase_price }}" data-tax="{{ $item->tax_rate_id }}" data-description="{{ e($item->description ?? '') }}">{{ $item->name }}</option>
-                @endforeach
-                ${quickAddedItemOptions}
-            </select>
-            <input type="text" class="form-control form-control-sm mt-1 bg-light" name="lines[${lineIndex}][description]" placeholder="Description" readonly>
-        </td>
-        <td><input type="number" class="form-control form-control-sm qty-input" name="lines[${lineIndex}][quantity]" value="1" min="0.001" step="0.001"></td>
-        <td><input type="number" class="form-control form-control-sm price-input" name="lines[${lineIndex}][unit_price]" value="0" min="0" step="0.01"></td>
-        <td><input type="number" class="form-control form-control-sm disc-input" name="lines[${lineIndex}][discount_percentage]" value="0" min="0" max="100" step="0.01"></td>
-        <td>
-            <select class="form-select form-select-sm tax-select w-100" name="lines[${lineIndex}][tax_rate_id]">
-                <option value="">No Tax</option>
-                @foreach($taxRates as $tax)
-                <option value="{{ $tax->id }}" data-rate="{{ $tax->rate }}">{{ $tax->name }} ({{ $tax->rate }}%)</option>
-                @endforeach
-            </select>
-        </td>
-        <td><input type="text" class="form-control form-control-sm line-total" readonly></td>
-        <td><button type="button" class="btn btn-sm btn-outline-danger remove-line"><i class="bi bi-trash"></i></button></td>
-    </tr>`;
-    $('#linesBody').append(row);
-    lineIndex++;
+    addLineRow();
 });
 
 $(document).on('click', '.remove-line', function() {
@@ -252,18 +269,16 @@ $(document).on('click', '.remove-line', function() {
 });
 
 $(document).on('change', '.item-select', function() {
-    let row = $(this).closest('tr');
-    let option = $(this).find(':selected');
-    let price = option.data('price') || 0;
-    let taxId = option.data('tax') || '';
-    let description = option.attr('data-description') || '';
-    let descInput = row.find('input[name*="[description]"]');
+    const row = $(this).closest('tr');
+    const option = $(this).find('option:selected');
+    const hasItem = Boolean($(this).val());
 
-    descInput.val($(this).val() ? description : '');
+    row.find('.description-input').val(hasItem ? (option.attr('data-description') || '') : '');
+    row.find('.price-input').val(hasItem ? (option.data('price') || 0) : 0);
+    row.find('.tax-select').val(hasItem ? (option.data('tax') || '') : '');
 
-    row.find('.price-input').val(price);
-    row.find('.tax-select').val(taxId);
     calculateLineTotal(row);
+    ensureTrailingEmptyRow(row);
 });
 
 $(document).on('input', '.qty-input, .price-input, .disc-input', function() {
@@ -355,7 +370,13 @@ $('#invoiceForm').on('submit.clientValidate', function(e) {
         hasError = true;
     }
 
-    $('#linesBody tr').each(function() {
+    let selectedCount = 0;
+    $('#linesBody .line-row').each(function() {
+        if (!$(this).find('.item-select').val()) {
+            return;
+        }
+
+        selectedCount++;
         const qty = parseFloat($(this).find('.qty-input').val());
         const price = parseFloat($(this).find('.price-input').val());
 
@@ -369,8 +390,10 @@ $('#invoiceForm').on('submit.clientValidate', function(e) {
         }
     });
 
-    if (hasError || lineError) {
-        toastr.error('Please fill in all required fields correctly');
+    if (selectedCount === 0 || hasError || lineError || !buildSubmitPayload()) {
+        toastr.error(selectedCount === 0
+            ? 'Please add at least one item line'
+            : 'Please fill in all required fields correctly');
         e.preventDefault();
         e.stopImmediatePropagation();
         return false;
@@ -381,6 +404,10 @@ $('#invoiceForm').on('submit.clientValidate', function(e) {
 $('#invoiceForm').on('change input', '.is-invalid', function() {
     $(this).removeClass('is-invalid');
     $(this).nextAll('.invalid-feedback').first().remove();
+});
+
+$(function() {
+    ensureTrailingEmptyRow($('#linesBody .line-row').last());
 });
 
 ajaxFormSubmit('#invoiceForm', '{{ route("admin.purchase-invoices.store") }}', 'POST', '{{ route("admin.purchase-invoices.index") }}');

@@ -5,11 +5,13 @@ namespace App\Services;
 use App\Models\Company;
 use App\Models\Account;
 use App\Models\FinancialYear;
+use App\Models\Ledger;
 use App\Models\Party;
 use App\Models\Subscription;
 use App\Models\SubscriptionPayment;
 use App\Models\User;
 use App\Models\Voucher;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 
@@ -24,8 +26,9 @@ class DashboardService
 
     /**
      * Resolve dashboard date range from filter values.
+     * "this_year" follows the current financial year so cards match Profit & Loss.
      */
-    public function resolveDateRange(string $range): array
+    public function resolveDateRange(string $range, ?int $companyId = null): array
     {
         $now = Carbon::now();
 
@@ -42,79 +45,235 @@ class DashboardService
                 'start' => $now->copy()->startOfQuarter()->toDateString(),
                 'end' => $now->copy()->endOfQuarter()->toDateString(),
             ],
-            'this_year' => [
-                'start' => $now->copy()->startOfYear()->toDateString(),
-                'end' => $now->copy()->endOfYear()->toDateString(),
-            ],
-            default => [
-                'start' => $now->copy()->startOfYear()->toDateString(),
-                'end' => $now->copy()->endOfYear()->toDateString(),
-            ],
+            default => $this->financialYearRange($companyId, $now),
         };
     }
 
     /**
-     * Get dashboard statistics
+     * Get dashboard statistics from posted ledger entries (same source as reports).
      */
     public function getStatistics(int $companyId, ?string $startDate = null, ?string $endDate = null): array
     {
         $financialYear = FinancialYear::getCurrent($companyId);
         $financialYearId = $financialYear?->id;
+        $isFullFinancialYear = $this->coversFinancialYear($financialYear, $startDate, $endDate);
 
-        // Get voucher statistics for selected range or current financial year.
-        $voucherStats = $this->getVoucherStatistics($companyId, $financialYearId, $startDate, $endDate);
+        $periodStart = $startDate ?? $financialYear?->start_date->toDateString();
+        $periodEnd = $endDate ?? $financialYear?->end_date->toDateString();
 
-        // Get party statistics
+        if ($isFullFinancialYear && $financialYearId) {
+            // Whole financial year: reuse the report so cards are identical to the Profit & Loss page.
+            $startDate = null;
+            $endDate = null;
+
+            $profitLoss = $this->reportService->getProfitLoss($companyId, $financialYearId);
+            $income = round((float) $profitLoss['income']['total'], 2);
+            $expense = round((float) $profitLoss['expense']['total'], 2);
+        } else {
+            $movement = $this->incomeExpenseMovement($companyId, $financialYearId, $startDate, $endDate);
+            $income = $movement['income'];
+            $expense = $movement['expense'];
+        }
+
         $partyStats = $this->getPartyStatistics($companyId);
 
-        // Get profit/loss from voucher totals so dashboard cards align with chart data.
         $debtorsOutstanding = $this->reportService->getDebtorsOutstanding($companyId);
         $creditorsOutstanding = $this->reportService->getCreditorsOutstanding($companyId);
-
-        $income = $voucherStats['income'] ?? 0;
-        $expense = $voucherStats['expense'] ?? 0;
-        $profit = $income - $expense;
 
         return [
             'income' => $income,
             'expense' => $expense,
-            'profit' => $profit,
-            'receivables' => $debtorsOutstanding['total'] ?? 0,
-            'payables' => $creditorsOutstanding['total'] ?? 0,
-            'cash_balance' => ($voucherStats['receipt'] ?? 0) - ($voucherStats['payment'] ?? 0),
-            'total_vouchers' => $voucherStats['total'] ?? 0,
+            'profit' => round($income - $expense, 2),
+            'receivables' => round((float) ($debtorsOutstanding['total'] ?? 0), 2),
+            'payables' => round((float) ($creditorsOutstanding['total'] ?? 0), 2),
+            'cash_balance' => $this->cashBankBalance($companyId, $financialYearId, $endDate),
+            'total_vouchers' => $this->countPostedVouchers($companyId, $financialYearId, $startDate, $endDate),
             'total_parties' => $partyStats['total'] ?? 0,
             'total_accounts' => $partyStats['accounts'] ?? 0,
+            'period' => [
+                'start' => $periodStart,
+                'end' => $periodEnd,
+                'label' => $this->periodLabel($financialYear, $isFullFinancialYear, $periodStart, $periodEnd),
+            ],
         ];
     }
 
     /**
-     * Get voucher statistics
+     * Human readable label for the statistics period.
      */
-    protected function getVoucherStatistics(int $companyId, ?int $financialYearId, ?string $startDate = null, ?string $endDate = null): array
+    protected function periodLabel(
+        ?FinancialYear $financialYear,
+        bool $isFullFinancialYear,
+        ?string $periodStart,
+        ?string $periodEnd
+    ): string {
+        if ($isFullFinancialYear && $financialYear) {
+            return $financialYear->name;
+        }
+
+        if (!$periodStart || !$periodEnd) {
+            return 'All time';
+        }
+
+        return Carbon::parse($periodStart)->format('d M Y') . ' - ' . Carbon::parse($periodEnd)->format('d M Y');
+    }
+
+    /**
+     * Start/end dates of the current financial year, falling back to the calendar year.
+     */
+    protected function financialYearRange(?int $companyId, Carbon $now): array
     {
+        $financialYear = $companyId ? FinancialYear::getCurrent($companyId) : null;
+
+        if ($financialYear) {
+            return [
+                'start' => $financialYear->start_date->toDateString(),
+                'end' => $financialYear->end_date->toDateString(),
+            ];
+        }
+
+        return [
+            'start' => $now->copy()->startOfYear()->toDateString(),
+            'end' => $now->copy()->endOfYear()->toDateString(),
+        ];
+    }
+
+    protected function coversFinancialYear(?FinancialYear $financialYear, ?string $startDate, ?string $endDate): bool
+    {
+        if (!$financialYear || !$startDate || !$endDate) {
+            return false;
+        }
+
+        return $startDate === $financialYear->start_date->toDateString()
+            && $endDate === $financialYear->end_date->toDateString();
+    }
+
+    /**
+     * Base ledger query joined to accounts, scoped to company, financial year and dates.
+     */
+    protected function ledgerMovementQuery(
+        int $companyId,
+        ?int $financialYearId,
+        ?string $startDate,
+        ?string $endDate
+    ): Builder {
+        $query = Ledger::query()
+            ->join('accounts', 'accounts.id', '=', 'ledgers.account_id')
+            ->where('ledgers.company_id', $companyId)
+            ->whereNull('accounts.deleted_at');
+
+        if ($financialYearId) {
+            $query->where('ledgers.financial_year_id', $financialYearId);
+        }
+
+        if ($startDate) {
+            $query->where('ledgers.transaction_date', '>=', $startDate);
+        }
+
+        if ($endDate) {
+            $query->where('ledgers.transaction_date', '<=', $endDate);
+        }
+
+        return $query;
+    }
+
+    /**
+     * Income and expense movement, excluding tax and control accounts by design
+     * because those balances live on their own asset/liability ledgers.
+     */
+    protected function incomeExpenseMovement(
+        int $companyId,
+        ?int $financialYearId,
+        ?string $startDate,
+        ?string $endDate
+    ): array {
+        $rows = $this->ledgerMovementQuery($companyId, $financialYearId, $startDate, $endDate)
+            ->whereIn('accounts.account_type', ['income', 'expense'])
+            ->groupBy('accounts.account_type')
+            ->selectRaw('accounts.account_type as account_type')
+            ->selectRaw('COALESCE(SUM(ledgers.debit), 0) as debit_total')
+            ->selectRaw('COALESCE(SUM(ledgers.credit), 0) as credit_total')
+            ->get();
+
+        $income = 0.0;
+        $expense = 0.0;
+
+        foreach ($rows as $row) {
+            $debit = (float) $row->debit_total;
+            $credit = (float) $row->credit_total;
+
+            if ($row->account_type === 'income') {
+                $income = $credit - $debit;
+                continue;
+            }
+
+            $expense = $debit - $credit;
+        }
+
+        return [
+            'income' => round($income, 2),
+            'expense' => round($expense, 2),
+        ];
+    }
+
+    /**
+     * Cash + Bank + OD balance up to the given date.
+     */
+    protected function cashBankBalance(int $companyId, ?int $financialYearId, ?string $endDate): float
+    {
+        $row = $this->ledgerMovementQuery($companyId, $financialYearId, null, $endDate)
+            ->where('accounts.is_cash_bank_od', true)
+            ->selectRaw('COALESCE(SUM(ledgers.debit), 0) as debit_total')
+            ->selectRaw('COALESCE(SUM(ledgers.credit), 0) as credit_total')
+            ->first();
+
+        return round(((float) ($row->debit_total ?? 0)) - ((float) ($row->credit_total ?? 0)), 2);
+    }
+
+    /**
+     * Signed balance of a control account (AR / AP) up to the given date.
+     */
+    protected function controlAccountBalance(
+        int $companyId,
+        ?int $financialYearId,
+        string $accountCode,
+        string $normalType,
+        ?string $endDate
+    ): float {
+        $row = $this->ledgerMovementQuery($companyId, $financialYearId, null, $endDate)
+            ->where('accounts.account_code', $accountCode)
+            ->selectRaw('COALESCE(SUM(ledgers.debit), 0) as debit_total')
+            ->selectRaw('COALESCE(SUM(ledgers.credit), 0) as credit_total')
+            ->first();
+
+        $debit = (float) ($row->debit_total ?? 0);
+        $credit = (float) ($row->credit_total ?? 0);
+
+        return round($normalType === 'debit' ? $debit - $credit : $credit - $debit, 2);
+    }
+
+    protected function countPostedVouchers(
+        int $companyId,
+        ?int $financialYearId,
+        ?string $startDate,
+        ?string $endDate
+    ): int {
         $query = Voucher::where('company_id', $companyId)
             ->where('status', 'posted');
 
-        if ($startDate && $endDate) {
-            $query->whereBetween('voucher_date', [$startDate, $endDate]);
-        } elseif ($financialYearId) {
+        if ($financialYearId) {
             $query->where('financial_year_id', $financialYearId);
         }
 
-        $income = (clone $query)->where('voucher_type', 'income')->sum('total_debit');
-        $expense = (clone $query)->where('voucher_type', 'expense')->sum('total_debit');
-        $receipt = (clone $query)->where('voucher_type', 'receipt')->sum('total_debit');
-        $payment = (clone $query)->where('voucher_type', 'payment')->sum('total_debit');
-        $total = (clone $query)->count();
+        if ($startDate) {
+            $query->where('voucher_date', '>=', $startDate);
+        }
 
-        return [
-            'income' => $income,
-            'expense' => $expense,
-            'receipt' => $receipt,
-            'payment' => $payment,
-            'total' => $total,
-        ];
+        if ($endDate) {
+            $query->where('voucher_date', '<=', $endDate);
+        }
+
+        return $query->count();
     }
 
     /**
@@ -151,58 +310,26 @@ class DashboardService
     }
 
     /**
-     * Get chart data for the dashboard.
+     * Income vs expense chart data, bucketed by month, quarter or year.
      */
     public function getChartData(int $companyId, string $group, string $startDate, string $endDate): array
     {
-        $start = Carbon::parse($startDate)->startOfDay();
-        $end = Carbon::parse($endDate)->endOfDay();
+        $financialYearId = FinancialYear::getCurrent($companyId)?->id;
         $labels = [];
         $incomeData = [];
         $expenseData = [];
 
-        $current = $start->copy();
+        foreach ($this->buildBuckets($group, $startDate, $endDate) as $bucket) {
+            $movement = $this->incomeExpenseMovement(
+                $companyId,
+                $financialYearId,
+                $bucket['start'],
+                $bucket['end']
+            );
 
-        while ($current->lessThanOrEqualTo($end)) {
-            if ($group === 'quarterly') {
-                $quarter = (int) ceil($current->month / 3);
-                $bucketStart = $current->copy()->startOfQuarter();
-                $bucketEnd = $current->copy()->endOfQuarter();
-                $label = sprintf('Q%s %s', $quarter, $current->year);
-                $current->addQuarter();
-            } elseif ($group === 'yearly') {
-                $bucketStart = $current->copy()->startOfYear();
-                $bucketEnd = $current->copy()->endOfYear();
-                $label = $current->format('Y');
-                $current->addYear();
-            } else {
-                $bucketStart = $current->copy()->startOfMonth();
-                $bucketEnd = $current->copy()->endOfMonth();
-                $label = $current->format('M Y');
-                $current->addMonth();
-            }
-
-            if ($bucketStart->greaterThan($end)) {
-                break;
-            }
-
-            $bucketEnd = $bucketEnd->greaterThan($end) ? $end : $bucketEnd;
-
-            $income = Voucher::where('company_id', $companyId)
-                ->where('voucher_type', 'income')
-                ->where('status', 'posted')
-                ->whereBetween('voucher_date', [$bucketStart->toDateString(), $bucketEnd->toDateString()])
-                ->sum('total_debit');
-
-            $expense = Voucher::where('company_id', $companyId)
-                ->where('voucher_type', 'expense')
-                ->where('status', 'posted')
-                ->whereBetween('voucher_date', [$bucketStart->toDateString(), $bucketEnd->toDateString()])
-                ->sum('total_debit');
-
-            $labels[] = $label;
-            $incomeData[] = $income;
-            $expenseData[] = $expense;
+            $labels[] = $bucket['label'];
+            $incomeData[] = $movement['income'];
+            $expenseData[] = $movement['expense'];
         }
 
         return [
@@ -212,36 +339,45 @@ class DashboardService
         ];
     }
 
-    protected function getTrendData(int $companyId, string $voucherType, string $startDate, string $endDate): array
+    /**
+     * Build period buckets between two dates.
+     */
+    protected function buildBuckets(string $group, string $startDate, string $endDate): array
     {
-        $current = Carbon::parse($startDate)->copy()->startOfMonth();
-        $end = Carbon::parse($endDate)->copy()->endOfMonth();
-        $labels = [];
-        $data = [];
+        $start = Carbon::parse($startDate)->startOfDay();
+        $end = Carbon::parse($endDate)->startOfDay();
+        $current = $start->copy();
+        $buckets = [];
 
         while ($current->lessThanOrEqualTo($end)) {
-            $bucketStart = $current->copy()->startOfMonth();
-            $bucketEnd = $current->copy()->endOfMonth();
+            if ($group === 'quarterly') {
+                $bucketStart = $current->copy()->startOfQuarter();
+                $bucketEnd = $current->copy()->endOfQuarter()->startOfDay();
+                $label = sprintf('Q%s %s', (int) ceil($current->month / 3), $current->year);
+            } elseif ($group === 'yearly') {
+                $bucketStart = $current->copy()->startOfYear();
+                $bucketEnd = $current->copy()->endOfYear()->startOfDay();
+                $label = $current->format('Y');
+            } else {
+                $bucketStart = $current->copy()->startOfMonth();
+                $bucketEnd = $current->copy()->endOfMonth()->startOfDay();
+                $label = $current->format('M Y');
+            }
 
-            $value = Voucher::where('company_id', $companyId)
-                ->where('voucher_type', $voucherType)
-                ->where('status', 'posted')
-                ->whereBetween('voucher_date', [$bucketStart->toDateString(), $bucketEnd->toDateString()])
-                ->sum('total_debit');
+            $buckets[] = [
+                'label' => $label,
+                'start' => $bucketStart->lessThan($start) ? $start->toDateString() : $bucketStart->toDateString(),
+                'end' => $bucketEnd->greaterThan($end) ? $end->toDateString() : $bucketEnd->toDateString(),
+            ];
 
-            $labels[] = $current->format('M Y');
-            $data[] = $value;
-            $current->addMonth();
+            $current = $bucketEnd->copy()->addDay();
         }
 
-        return [
-            'labels' => $labels,
-            'data' => $data,
-        ];
+        return $buckets;
     }
 
     /**
-     * Get monthly income/expense data for chart
+     * Monthly income/expense data for a calendar year.
      */
     public function getMonthlyData(int $companyId, int $year): array
     {
@@ -253,21 +389,11 @@ class DashboardService
             $startDate = sprintf('%d-%02d-01', $year, $month);
             $endDate = date('Y-m-t', strtotime($startDate));
 
-            $income = Voucher::where('company_id', $companyId)
-                ->where('voucher_type', 'income')
-                ->where('status', 'posted')
-                ->whereBetween('voucher_date', [$startDate, $endDate])
-                ->sum('total_debit');
-
-            $expense = Voucher::where('company_id', $companyId)
-                ->where('voucher_type', 'expense')
-                ->where('status', 'posted')
-                ->whereBetween('voucher_date', [$startDate, $endDate])
-                ->sum('total_debit');
+            $movement = $this->incomeExpenseMovement($companyId, null, $startDate, $endDate);
 
             $months[] = date('M', mktime(0, 0, 0, $month, 1));
-            $incomeData[] = $income;
-            $expenseData[] = $expense;
+            $incomeData[] = $movement['income'];
+            $expenseData[] = $movement['expense'];
         }
 
         return [
@@ -278,63 +404,83 @@ class DashboardService
     }
 
     /**
-     * Get receivables trend data
+     * Outstanding receivables at each month end.
      */
-    public function getReceivablesTrend(int $companyId, ?string $startDate = null, ?string $endDate = null): array
-    {
-        if ($startDate && $endDate) {
-            return $this->getTrendData($companyId, 'income', $startDate, $endDate);
-        }
-
-        $data = [];
-        $labels = [];
-
-        for ($i = 5; $i >= 0; $i--) {
-            $date = now()->subMonths($i);
-            $startPeriod = $date->copy()->startOfMonth()->format('Y-m-d');
-            $endPeriod = $date->copy()->endOfMonth()->format('Y-m-d');
-
-            $receivables = Voucher::where('company_id', $companyId)
-                ->where('voucher_type', 'income')
-                ->where('status', 'posted')
-                ->whereBetween('voucher_date', [$startPeriod, $endPeriod])
-                ->sum('total_debit');
-
-            $labels[] = $date->format('M Y');
-            $data[] = $receivables;
-        }
-
-        return [
-            'labels' => $labels,
-            'data' => $data,
-        ];
+    public function getReceivablesTrend(
+        int $companyId,
+        ?string $startDate = null,
+        ?string $endDate = null,
+        int $months = 6
+    ): array {
+        return $this->controlAccountTrend(
+            $companyId,
+            Account::CODE_AR,
+            'debit',
+            $startDate,
+            $endDate,
+            $months
+        );
     }
 
     /**
-     * Get payables trend data
+     * Outstanding payables at each month end.
      */
-    public function getPayablesTrend(int $companyId, ?string $startDate = null, ?string $endDate = null): array
-    {
-        if ($startDate && $endDate) {
-            return $this->getTrendData($companyId, 'expense', $startDate, $endDate);
+    public function getPayablesTrend(
+        int $companyId,
+        ?string $startDate = null,
+        ?string $endDate = null,
+        int $months = 6
+    ): array {
+        return $this->controlAccountTrend(
+            $companyId,
+            Account::CODE_AP,
+            'credit',
+            $startDate,
+            $endDate,
+            $months
+        );
+    }
+
+    /**
+     * Closing balance of a control account at each month end in the period.
+     */
+    protected function controlAccountTrend(
+        int $companyId,
+        string $accountCode,
+        string $normalType,
+        ?string $startDate,
+        ?string $endDate,
+        int $months
+    ): array {
+        $financialYearId = FinancialYear::getCurrent($companyId)?->id;
+
+        if (!$startDate || !$endDate) {
+            $startDate = now()->subMonths(max($months - 1, 0))->startOfMonth()->toDateString();
+            $endDate = now()->endOfMonth()->toDateString();
         }
 
-        $data = [];
+        // A running balance has nothing to show for months that have not happened yet.
+        $currentMonthEnd = now()->endOfMonth()->toDateString();
+        if ($endDate > $currentMonthEnd) {
+            $endDate = $currentMonthEnd;
+        }
+
+        if ($startDate > $endDate) {
+            $startDate = Carbon::parse($endDate)->startOfMonth()->toDateString();
+        }
+
         $labels = [];
+        $data = [];
 
-        for ($i = 5; $i >= 0; $i--) {
-            $date = now()->subMonths($i);
-            $startPeriod = $date->copy()->startOfMonth()->format('Y-m-d');
-            $endPeriod = $date->copy()->endOfMonth()->format('Y-m-d');
-
-            $payables = Voucher::where('company_id', $companyId)
-                ->where('voucher_type', 'expense')
-                ->where('status', 'posted')
-                ->whereBetween('voucher_date', [$startPeriod, $endPeriod])
-                ->sum('total_debit');
-
-            $labels[] = $date->format('M Y');
-            $data[] = $payables;
+        foreach ($this->buildBuckets('monthly', $startDate, $endDate) as $bucket) {
+            $labels[] = $bucket['label'];
+            $data[] = $this->controlAccountBalance(
+                $companyId,
+                $financialYearId,
+                $accountCode,
+                $normalType,
+                $bucket['end']
+            );
         }
 
         return [

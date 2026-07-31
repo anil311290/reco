@@ -14,7 +14,7 @@ import '../../controllers/masters/masters_shell_controller.dart';
 import '../../controllers/dashboard/dashboard_controller.dart';
 import '../../controllers/reports/report_lookup_controller.dart';
 import '../../controllers/transactions/transactions_shell_controller.dart';
-import '../reports/cash_book_report_screen.dart';
+import '../reports/receipt_payment_report_screen.dart';
 import '../reports/creditors_outstanding_report_screen.dart';
 import '../reports/debtors_outstanding_report_screen.dart';
 import '../reports/profit_loss_report_screen.dart';
@@ -309,7 +309,7 @@ class _MetricsGrid extends StatelessWidget {
         caption: 'available balance',
         icon: Icons.account_balance_wallet_outlined,
         color: const Color(0xFFF29B38),
-        target: _DashboardMetricTarget.cashBook,
+        target: _DashboardMetricTarget.receiptPayment,
       ),
       _DashboardMetric(
         title: 'RECEIVABLES',
@@ -350,7 +350,7 @@ class _MetricsGrid extends StatelessWidget {
   }
 }
 
-enum _DashboardMetricTarget { profitLoss, cashBook, receivables, payables }
+enum _DashboardMetricTarget { profitLoss, receiptPayment, receivables, payables }
 
 void _openDashboardMetricTarget(_DashboardMetricTarget target) {
   if (!Get.isRegistered<ReportLookupController>()) {
@@ -360,8 +360,8 @@ void _openDashboardMetricTarget(_DashboardMetricTarget target) {
     case _DashboardMetricTarget.profitLoss:
       Get.to(() => const ProfitLossReportScreen());
       break;
-    case _DashboardMetricTarget.cashBook:
-      Get.to(() => const CashBookReportScreen());
+    case _DashboardMetricTarget.receiptPayment:
+      Get.to(() => const ReceiptPaymentReportScreen());
       break;
     case _DashboardMetricTarget.receivables:
       Get.to(() => const DebtorsOutstandingReportScreen());

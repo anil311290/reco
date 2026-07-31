@@ -92,36 +92,24 @@ class ReportApiController extends Controller
     }
 
     /**
-     * Cash Book
+     * Receipt & Payment
      */
-    public function cashBook(Request $request): JsonResponse
+    public function receiptPayment(Request $request): JsonResponse
     {
+        $request->validate([
+            'date_from' => 'nullable|date',
+            'date_to' => 'nullable|date',
+            'financial_year_id' => 'nullable|integer',
+        ]);
+
         $companyId = $request->user()->company_id;
-        $report = $this->reportService->getCashBankBook(
+        $report = $this->reportService->getReceiptPayment(
             $companyId,
-            'cash',
-            $request->filled('account_id') ? (int) $request->account_id : null,
             $request->date_from,
             $request->date_to,
-            $request->financial_year_id
-        );
-
-        return ResponseHelper::success($report);
-    }
-
-    /**
-     * Bank Book
-     */
-    public function bankBook(Request $request): JsonResponse
-    {
-        $companyId = $request->user()->company_id;
-        $report = $this->reportService->getCashBankBook(
-            $companyId,
-            'bank',
-            $request->filled('account_id') ? (int) $request->account_id : null,
-            $request->date_from,
-            $request->date_to,
-            $request->financial_year_id
+            $request->filled('financial_year_id')
+                ? (int) $request->financial_year_id
+                : FinancialYear::getCurrent($companyId)?->id
         );
 
         return ResponseHelper::success($report);

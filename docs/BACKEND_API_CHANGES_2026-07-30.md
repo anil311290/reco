@@ -209,13 +209,14 @@ Required fields:
 
 `cash_bank_account_id` may be any Cash, Bank, or OD ledger from `GET /api/v1/accounts/cash-bank`.
 
-Invoice settlement still requires `payment_mode` + `cash_bank_account_id` + `amount`. That is separate from voucher create.
+Invoice settlement requires `cash_bank_account_id` + `amount` (and optional `payment_date`).
 
 ## Items
 
 - Do not send `item_code` on create. The server generates `ITEM-001`, `ITEM-002`, etc.
 - Use `opening_stock` for opening quantity.
 - Updating `opening_stock` adjusts `current_stock` by the opening delta.
+- `unit` applies to goods only. For `type: "service"` the server stores `unit` as `null`, so hide the unit field on service forms.
 
 ## Account List Deletion Controls
 
@@ -287,6 +288,44 @@ Example:
         "sort_order": 0
       }
     ]
+  }
+}
+```
+
+## Dashboard Figures (31 July 2026)
+
+```http
+GET /api/v1/dashboard?range=this_year&group=monthly
+```
+
+- `range=this_year` now means the **current financial year**, not the calendar year, so the dashboard matches the Profit & Loss report.
+- `statistics.income` and `statistics.expense` come from income / expense ledger movement, so GST and other taxes are excluded (they live on their own tax ledgers). Previously these were voucher totals including tax.
+- `statistics.profit` is `income - expense`. A negative value is a net loss; show the `Net Loss` label with the absolute amount.
+- `statistics.cash_balance` is the combined Cash + Bank + OD ledger balance.
+- `statistics.total_vouchers` counts posted vouchers inside the selected period.
+- New `statistics.period` block and top-level `period` block describe the resolved period.
+- `chart_data`, `receivables_trend` and `payables_trend` use the same ledger source. The trends return the outstanding receivable / payable balance at each month end.
+- `GET /api/v1/dashboard/receivables-trend?months=6` and `.../payables-trend?months=6` accept `months` between 1 and 36.
+
+```json
+{
+  "success": true,
+  "data": {
+    "statistics": {
+      "income": 1030,
+      "expense": 1250,
+      "profit": -220,
+      "receivables": 6715.4,
+      "payables": 5975,
+      "cash_balance": -259.6,
+      "total_vouchers": 2,
+      "period": {
+        "start": "2026-04-01",
+        "end": "2027-03-31",
+        "label": "FY 2026-27"
+      }
+    },
+    "period": { "start": "2026-04-01", "end": "2027-03-31" }
   }
 }
 ```

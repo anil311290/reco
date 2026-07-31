@@ -88,7 +88,7 @@ class SalesInvoiceController extends Controller
         $companyId = auth()->user()->company_id;
         $fyId = auth()->user()->company->currentFinancialYear?->id;
 
-        $parties = $this->partyService->getAll(['company_id' => $companyId, 'type' => 'debtor']);
+        $partyOptions = $this->partyService->getInvoicePartyOptions($companyId, 'debtor');
         $goodsItems = $this->itemService->getAll($companyId, ['type' => 'goods']);
         $serviceItems = $this->itemService->getAll($companyId, ['type' => 'service']);
         $itemCategories = $this->itemCategoryService->getAll($companyId);
@@ -96,7 +96,7 @@ class SalesInvoiceController extends Controller
         $invoiceNumber = $fyId ? $this->salesInvoiceService->generateInvoiceNumber($companyId, $fyId) : null;
 
         return view('admin.sales-invoices.create', compact(
-            'parties',
+            'partyOptions',
             'goodsItems',
             'serviceItems',
             'itemCategories',
@@ -126,7 +126,7 @@ class SalesInvoiceController extends Controller
         $companyId = auth()->user()->company_id;
         
         $validated = $request->validate([
-            'party_id' => 'required|exists:parties,id,company_id,' . $companyId,
+            'party_id' => 'required',
             'invoice_date' => 'required|date',
             'due_date' => 'required|date|after_or_equal:invoice_date',
             'reference_number' => 'nullable|string|max:100',
@@ -172,12 +172,19 @@ class SalesInvoiceController extends Controller
         try {
             $companyId = auth()->user()->company_id;
             $fyId = auth()->user()->company->currentFinancialYear?->id;
+            $resolvedPartyId = $this->partyService->resolveInvoicePartySelection(
+                $validated['party_id'],
+                $companyId,
+                'debtor',
+                auth()->id(),
+                $request->ip()
+            );
 
             $data = [
                 'uuid' => \Illuminate\Support\Str::uuid(),
                 'company_id' => $companyId,
                 'financial_year_id' => $fyId,
-                'party_id' => $validated['party_id'],
+                'party_id' => $resolvedPartyId,
                 'invoice_date' => $validated['invoice_date'],
                 'due_date' => $validated['due_date'],
                 'reference_number' => $validated['reference_number'] ?? null,
@@ -207,7 +214,7 @@ class SalesInvoiceController extends Controller
         $invoice = $this->salesInvoiceService->getById($id);
         $companyId = auth()->user()->company_id;
         $financialYearId = auth()->user()->company->currentFinancialYear?->id;
-        $cashBankAccounts = $this->accountService->getCashBankAccountsForMode($companyId, null, $financialYearId);
+        $cashBankAccounts = $this->accountService->getCashBankAccountsForMode($companyId, $financialYearId);
 
         return view('admin.sales-invoices.show', compact('invoice', 'cashBankAccounts'));
     }
@@ -246,12 +253,20 @@ class SalesInvoiceController extends Controller
         }
 
         $companyId = auth()->user()->company_id;
-        $parties = $this->partyService->getAll(['company_id' => $companyId, 'type' => 'debtor']);
+        $partyOptions = $this->partyService->getInvoicePartyOptions($companyId, 'debtor');
         $goodsItems = $this->itemService->getAll($companyId, ['type' => 'goods']);
         $serviceItems = $this->itemService->getAll($companyId, ['type' => 'service']);
+        $itemCategories = $this->itemCategoryService->getAll($companyId);
         $taxRates = $this->taxRateService->getAll($companyId);
 
-        return view('admin.sales-invoices.edit', compact('invoice', 'parties', 'goodsItems', 'serviceItems', 'taxRates'));
+        return view('admin.sales-invoices.edit', compact(
+            'invoice',
+            'partyOptions',
+            'goodsItems',
+            'serviceItems',
+            'itemCategories',
+            'taxRates'
+        ));
     }
 
     /**
@@ -260,7 +275,7 @@ class SalesInvoiceController extends Controller
     public function update(Request $request, int $id): JsonResponse
     {
         $validated = $request->validate([
-            'party_id' => 'required|exists:parties,id',
+            'party_id' => 'required',
             'invoice_date' => 'required|date',
             'due_date' => 'required|date|after_or_equal:invoice_date',
             'reference_number' => 'nullable|string|max:100',
@@ -289,8 +304,16 @@ class SalesInvoiceController extends Controller
         $validated['service_lines'] = $validated['service_lines'] ?? [];
 
         try {
+            $resolvedPartyId = $this->partyService->resolveInvoicePartySelection(
+                $validated['party_id'],
+                auth()->user()->company_id,
+                'debtor',
+                auth()->id(),
+                $request->ip()
+            );
+
             $data = [
-                'party_id' => $validated['party_id'],
+                'party_id' => $resolvedPartyId,
                 'invoice_date' => $validated['invoice_date'],
                 'due_date' => $validated['due_date'],
                 'reference_number' => $validated['reference_number'] ?? null,
@@ -314,7 +337,6 @@ class SalesInvoiceController extends Controller
     {
         $validated = $request->validate([
             'amount' => 'required|numeric|min:0.01',
-            'payment_mode' => 'required|in:cash,bank,od',
             'cash_bank_account_id' => 'required|exists:accounts,id',
             'payment_date' => 'nullable|date',
         ]);
@@ -322,7 +344,6 @@ class SalesInvoiceController extends Controller
         try {
             $invoice = $this->salesInvoiceService->recordPayment($id, [
                 'amount' => $validated['amount'],
-                'payment_mode' => $validated['payment_mode'],
                 'cash_bank_account_id' => $validated['cash_bank_account_id'],
                 'payment_date' => $validated['payment_date'] ?? now()->toDateString(),
                 'created_by' => auth()->id(),

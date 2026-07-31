@@ -275,16 +275,15 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::middleware(CheckPermission::class . ':reports.view')->group(function () {
             Route::get('reports', [ReportController::class, 'index'])->name('reports.index');
             Route::get('reports/day-book', [ReportController::class, 'dayBook'])->name('reports.day-book');
-            Route::get('reports/cash-book', [ReportController::class, 'cashBook'])->name('reports.cash-book');
-            Route::get('reports/bank-book', [ReportController::class, 'bankBook'])->name('reports.bank-book');
             Route::get('reports/ledger', [ReportController::class, 'ledger'])->name('reports.ledger');
             Route::get('reports/trial-balance', [ReportController::class, 'trialBalance'])->name('reports.trial-balance');
             Route::get('reports/profit-loss', [ReportController::class, 'profitLoss'])->name('reports.profit-loss');
+            Route::get('reports/receipt-payment', [ReportController::class, 'receiptPayment'])->name('reports.receipt-payment');
             Route::get('reports/balance-sheet', [ReportController::class, 'balanceSheet'])->name('reports.balance-sheet');
             Route::get('reports/debtors-outstanding', [ReportController::class, 'debtorsOutstanding'])->name('reports.debtors-outstanding');
             Route::get('reports/creditors-outstanding', [ReportController::class, 'creditorsOutstanding'])->name('reports.creditors-outstanding');
-            // Legacy: thin Cash Flow removed — redirect to Cash Book
-            Route::redirect('reports/cash-flow', '/admin/reports/cash-book')->name('reports.cash-flow');
+            // Legacy: thin Cash Flow removed — Receipt & Payment replaces it
+            Route::redirect('reports/cash-flow', '/admin/reports/receipt-payment')->name('reports.cash-flow');
             Route::get('ledgers/{ledger}/history', [LedgerHistoryController::class, 'show'])
                 ->name('ledgers.history');
         });
@@ -326,8 +325,9 @@ Route::prefix('admin')->name('admin.')->group(function () {
             Route::get('export/profit-loss/pdf', [ExportController::class, 'profitLossPdf'])->name('export.profit-loss.pdf');
             Route::get('export/balance-sheet/pdf', [ExportController::class, 'balanceSheetPdf'])->name('export.balance-sheet.pdf');
             Route::get('export/trial-balance/pdf', [ExportController::class, 'trialBalancePdf'])->name('export.trial-balance.pdf');
-            // Legacy cash-flow PDF → cash book ledger export guidance
-            Route::redirect('export/cash-flow/pdf', '/admin/reports/cash-book')->name('export.cash-flow.pdf');
+            Route::get('export/receipt-payment/pdf', [ExportController::class, 'receiptPaymentPdf'])->name('export.receipt-payment.pdf');
+            // Legacy cash-flow PDF → Receipt & Payment
+            Route::redirect('export/cash-flow/pdf', '/admin/reports/receipt-payment')->name('export.cash-flow.pdf');
             Route::get('export/ledger/pdf', [ExportController::class, 'ledgerPdf'])->name('export.ledger.pdf');
             Route::get('export/day-book/pdf', [ExportController::class, 'dayBookPdf'])->name('export.day-book.pdf');
             Route::get('export/debtors-outstanding/pdf', [ExportController::class, 'debtorsOutstandingPdf'])->name('export.debtors-outstanding.pdf');

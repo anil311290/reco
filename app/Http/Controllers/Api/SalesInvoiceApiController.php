@@ -101,7 +101,6 @@ class SalesInvoiceApiController extends Controller
 
         $validated = $request->validate([
             'amount' => 'required|numeric|min:0.01',
-            'payment_mode' => 'required|in:cash,bank,od',
             'cash_bank_account_id' => [
                 'required',
                 Rule::exists('accounts', 'id')->where('company_id', $companyId),
@@ -112,7 +111,6 @@ class SalesInvoiceApiController extends Controller
         try {
             $invoice = $this->salesInvoiceService->recordPayment($id, [
                 'amount' => $validated['amount'],
-                'payment_mode' => $validated['payment_mode'],
                 'cash_bank_account_id' => $validated['cash_bank_account_id'],
                 'payment_date' => $validated['payment_date'] ?? now()->toDateString(),
                 'created_by' => $request->user()->id,

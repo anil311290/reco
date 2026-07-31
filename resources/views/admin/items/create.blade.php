@@ -79,7 +79,7 @@
                         @endforeach
                     </select>
                 </div>
-                <div class="col-md-4">
+                <div class="col-md-4" id="unitField">
                     <label for="unit" class="form-label">Unit</label>
                     <select class="form-select" id="unit" name="unit">
                         <option value="nos">Numbers (Nos)</option>
@@ -141,16 +141,14 @@ function applyItemTypeUi(type) {
     $('#barcodeField').toggle(!isService);
     $('#purchasePriceField').toggle(!isService);
     $('#openingStockField').toggle(!isService);
+    $('#unitField').toggle(!isService);
     $('#sellingPriceLabel').text(isService ? 'Default Rate' : 'Selling Price');
     $('#sellingPriceHint').toggle(isService);
+    $('#unit').prop('disabled', isService);
     if (isService) {
         $('#barcode').val('');
         $('#purchase_price').val('0');
         $('#opening_stock').val('0');
-        const unit = $('#unit');
-        if (!['hrs', 'nos'].includes(unit.val())) {
-            unit.val('hrs');
-        }
         $('#saveItemBtn').html('<i class="bi bi-check-circle me-2"></i>Save Service');
     } else {
         $('#saveItemBtn').html('<i class="bi bi-check-circle me-2"></i>Save Item');

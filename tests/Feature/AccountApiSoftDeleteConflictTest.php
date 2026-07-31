@@ -23,7 +23,7 @@ class AccountApiSoftDeleteConflictTest extends TestCase
             'company_id' => $company->id,
             'account_name' => 'Petty Cash',
             'account_type' => 'asset',
-            'transaction_mode' => 'cash',
+            'is_cash_bank_od' => true,
         ]);
         $originalCode = $account->account_code;
         $service->delete($account->id);
@@ -33,7 +33,7 @@ class AccountApiSoftDeleteConflictTest extends TestCase
         $payload = [
             'account_name' => 'Petty Cash',
             'account_type' => 'asset',
-            'transaction_mode' => 'cash',
+            'is_cash_bank_od' => true,
             'opening_balance' => 500,
             'balance_type' => 'debit',
             'opening_date' => '2026-07-30',

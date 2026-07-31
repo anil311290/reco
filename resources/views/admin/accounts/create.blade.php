@@ -9,7 +9,7 @@
             <div class="col-lg-8">
                 <span class="account-kicker mb-3"><i class="bi bi-diagram-3"></i> Account Master</span>
                 <h1 class="h2 fw-bold mb-2">Create a new ledger account</h1>
-                <p class="mb-0 account-hero-copy">Create clean chart-of-accounts entries with smart code generation, opening balance support, and asset-specific transaction mode control.</p>
+                <p class="mb-0 account-hero-copy">Create clean chart-of-accounts entries with smart code generation, opening balance support, and asset cash-bank eligibility control.</p>
             </div>
             <div class="col-lg-4 text-lg-end">
                 <a href="#accountFormCard" class="btn btn-primary btn-lg me-2">
@@ -54,34 +54,18 @@
                             </div>
                         </div>
 
-                        <div class="row g-3 mb-4 d-none" id="transaction_mode_row">
+                        <div class="row g-3 mb-4 d-none" id="cash_bank_toggle_row">
                             <div class="col-12">
                                 <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-2">
-                                    <span class="form-label fw-semibold mb-0">Transaction Mode</span>
+                                    <span class="form-label fw-semibold mb-0">Is Cash/Bank/OD?</span>
                                     <span class="form-text mt-0">
-                                        <i class="bi bi-info-circle me-1"></i>Use a mode only for Cash, Bank, or OD ledgers.
+                                        <i class="bi bi-info-circle me-1"></i>Yes stores <strong>1</strong>, No stores <strong>0</strong>.
                                     </span>
                                 </div>
-                                <div class="transaction-mode-options" role="radiogroup" aria-label="Transaction Mode">
-                                    <input class="btn-check" type="radio" name="transaction_mode" id="transaction_mode_general" value="" {{ old('transaction_mode', '') === '' ? 'checked' : '' }}>
-                                    <label class="btn btn-outline-secondary" for="transaction_mode_general">
-                                        <i class="bi bi-box me-1"></i>General Asset
-                                    </label>
-
-                                    <input class="btn-check" type="radio" name="transaction_mode" id="transaction_mode_cash" value="cash" {{ old('transaction_mode') === 'cash' ? 'checked' : '' }}>
-                                    <label class="btn btn-outline-primary" for="transaction_mode_cash">
-                                        <i class="bi bi-cash-stack me-1"></i>Cash
-                                    </label>
-
-                                    <input class="btn-check" type="radio" name="transaction_mode" id="transaction_mode_bank" value="bank" {{ old('transaction_mode') === 'bank' ? 'checked' : '' }}>
-                                    <label class="btn btn-outline-primary" for="transaction_mode_bank">
-                                        <i class="bi bi-bank me-1"></i>Bank
-                                    </label>
-
-                                    <input class="btn-check" type="radio" name="transaction_mode" id="transaction_mode_od" value="od" {{ old('transaction_mode') === 'od' ? 'checked' : '' }}>
-                                    <label class="btn btn-outline-primary" for="transaction_mode_od">
-                                        <i class="bi bi-credit-card me-1"></i>OD
-                                    </label>
+                                <input type="hidden" name="is_cash_bank_od" value="0">
+                                <div class="form-check form-switch fs-5">
+                                    <input class="form-check-input" type="checkbox" id="is_cash_bank_od" name="is_cash_bank_od" value="1" {{ old('is_cash_bank_od', 0) ? 'checked' : '' }}>
+                                    <label class="form-check-label fw-semibold" for="is_cash_bank_od">Yes, this is a Cash/Bank/OD ledger</label>
                                 </div>
                             </div>
                         </div>
@@ -143,7 +127,7 @@
                     <div class="account-stat mb-3">
                         <p class="account-stat-label">Asset accounts</p>
                         <p class="account-stat-value">Cash / Bank / OD</p>
-                        <div class="small text-muted">Use a transaction mode only for liquid asset ledgers.</div>
+                        <div class="small text-muted">Enable only when this asset should be available in Receipt/Payment selection.</div>
                     </div>
                     <div class="account-stat">
                         <p class="account-stat-label">Ledger impact</p>
@@ -176,15 +160,13 @@ $(document).ready(function() {
         return (accountType === 'asset' || accountType === 'expense') ? 'debit' : 'credit';
     }
 
-    function syncTransactionModeState() {
+    function syncCashBankToggleState() {
         const isAsset = $('#account_type').val() === 'asset';
-        const transactionModes = $('input[name="transaction_mode"]');
 
-        $('#transaction_mode_row').toggleClass('d-none', !isAsset);
+        $('#cash_bank_toggle_row').toggleClass('d-none', !isAsset);
+
         if (!isAsset) {
-            transactionModes.prop('checked', false);
-        } else if (!transactionModes.is(':checked')) {
-            $('#transaction_mode_general').prop('checked', true);
+            $('#is_cash_bank_od').prop('checked', false);
         }
     }
 
@@ -198,7 +180,7 @@ $(document).ready(function() {
 
     $('#account_type').on('change', function() {
         $('#duplicate_action').val('');
-        syncTransactionModeState();
+        syncCashBankToggleState();
         syncBalanceType();
     });
 
@@ -276,11 +258,13 @@ $(document).ready(function() {
                 $('#accountForm').data('opening-balance-confirmed', true).trigger('submit');
             });
 
+            syncCashBankToggleState();
+
             return true;
         }
     );
 
-    syncTransactionModeState();
+    syncCashBankToggleState();
     @if(!old('balance_type'))
     syncBalanceType();
     @endif

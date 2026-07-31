@@ -11,7 +11,7 @@ use App\Services\VoucherService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
-class TrialBalanceAndBankBookTest extends TestCase
+class TrialBalanceAndReceiptPaymentTest extends TestCase
 {
     use RefreshDatabase;
 
@@ -59,7 +59,7 @@ class TrialBalanceAndBankBookTest extends TestCase
         $this->assertEqualsWithDelta(60000.0, (float) $loanRow['credit'], 0.01);
     }
 
-    public function test_bank_book_opening_is_not_closing_and_particulars_show_contra_ledger(): void
+    public function test_receipt_payment_groups_bank_movement_under_the_contra_head(): void
     {
         [$company, $fy, $bank, $loan] = $this->seedBooks();
 
@@ -82,15 +82,25 @@ class TrialBalanceAndBankBookTest extends TestCase
             ],
         ]);
 
-        $book = $reportService->getCashBankBook($company->id, 'bank', $bank->id, null, null, $fy->id);
-        $this->assertNotNull($book['report']);
-        $this->assertEqualsWithDelta(0.0, (float) $book['report']['opening_balance']['balance'], 0.01);
-        $this->assertEqualsWithDelta(60000.0, (float) $book['report']['closing_balance']['balance'], 0.01);
-        $this->assertEqualsWithDelta(60000.0, (float) $book['report']['total_debit'], 0.01);
+        $report = $reportService->getReceiptPayment($company->id, null, null, $fy->id);
 
-        $entry = $book['report']['entries']->first();
-        $this->assertNotNull($entry);
-        $this->assertStringContainsString($loan->account_name, (string) $entry->particulars);
+        $this->assertNull($report['message']);
+        $this->assertEqualsWithDelta(0.0, (float) $report['opening_total'], 0.01);
+        $this->assertEqualsWithDelta(60000.0, (float) $report['receipts']['total'], 0.01);
+        $this->assertEqualsWithDelta(0.0, (float) $report['payments']['total'], 0.01);
+        $this->assertEqualsWithDelta(60000.0, (float) $report['closing_total'], 0.01);
+        $this->assertTrue($report['is_balanced']);
+
+        $this->assertCount(1, $report['receipts']['rows']);
+        $this->assertSame($loan->account_name, $report['receipts']['rows'][0]['label']);
+        $this->assertEqualsWithDelta(60000.0, (float) $report['receipts']['rows'][0]['amount'], 0.01);
+
+        $bankRow = collect($report['accounts'])->first(
+            fn (array $row) => (int) $row['account']->id === (int) $bank->id
+        );
+        $this->assertNotNull($bankRow);
+        $this->assertEqualsWithDelta(60000.0, (float) $bankRow['received'], 0.01);
+        $this->assertEqualsWithDelta(60000.0, (float) $bankRow['closing'], 0.01);
 
         $midPeriod = $ledgerService->getAccountLedger(
             $bank->id,
@@ -122,7 +132,7 @@ class TrialBalanceAndBankBookTest extends TestCase
             'account_code' => 'BANK01',
             'account_name' => 'HDFC Bank',
             'account_type' => 'asset',
-            'transaction_mode' => 'bank',
+            'is_cash_bank_od' => true,
             'balance_type' => 'debit',
             'opening_balance' => 0,
             'is_active' => true,

@@ -202,7 +202,6 @@ class AccountApiController extends Controller
     public function cashBank(Request $request): JsonResponse
     {
         $validated = $request->validate([
-            'mode' => 'nullable|in:cash,bank,od',
             'financial_year_id' => 'nullable|integer|exists:financial_years,id',
         ]);
 
@@ -214,7 +213,6 @@ class AccountApiController extends Controller
         return ResponseHelper::success(
             $this->accountService->getCashBankAccountsForMode(
                 $companyId,
-                $validated['mode'] ?? null,
                 $financialYearId
             )
         );

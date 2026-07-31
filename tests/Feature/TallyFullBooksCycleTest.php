@@ -22,7 +22,7 @@ use Tests\TestCase;
 /**
  * Full Tally-style double-entry cycle:
  * Sales → Receipt (bill-wise) → Purchase → Payment (bill-wise) → Journal
- * then Day Book, Cash Book, Trial Balance, P&L, Balance Sheet, Outstanding.
+ * then Day Book, Receipt & Payment, Trial Balance, P&L, Balance Sheet, Outstanding.
  */
 class TallyFullBooksCycleTest extends TestCase
 {
@@ -47,7 +47,7 @@ class TallyFullBooksCycleTest extends TestCase
             'account_code' => 'CASH01',
             'account_name' => 'Cash',
             'account_type' => 'asset',
-            'transaction_mode' => 'cash',
+            'is_cash_bank_od' => true,
             'opening_balance' => 0,
             'balance_type' => 'debit',
             'is_active' => true,
@@ -59,7 +59,7 @@ class TallyFullBooksCycleTest extends TestCase
             'account_code' => 'BANK01',
             'account_name' => 'Bank',
             'account_type' => 'asset',
-            'transaction_mode' => 'bank',
+            'is_cash_bank_od' => true,
             'opening_balance' => 0,
             'balance_type' => 'debit',
             'is_active' => true,
@@ -205,7 +205,6 @@ class TallyFullBooksCycleTest extends TestCase
         // --- 2) Bill-wise receipt 600 against sales ---
         $salesInvoice = $salesService->recordPayment($salesInvoice->id, [
             'amount' => 600,
-            'payment_mode' => 'cash',
             'cash_bank_account_id' => $cash->id,
             'payment_date' => $date,
         ]);
@@ -248,7 +247,6 @@ class TallyFullBooksCycleTest extends TestCase
         // --- 4) Bill-wise payment 400 against purchase ---
         $purchaseInvoice = $purchaseService->recordPayment($purchaseInvoice->id, [
             'amount' => 400,
-            'payment_mode' => 'cash',
             'cash_bank_account_id' => $cash->id,
             'payment_date' => $date,
         ]);
@@ -321,17 +319,30 @@ class TallyFullBooksCycleTest extends TestCase
         $this->assertEqualsWithDelta(2550.0, (float) $dayBook['total_debit'], 0.01);
         // income 1000 + receipt 600 + expense 400 + payment 400 + journal 50 + receipt 100 = 2550 each side
 
-        // --- Cash Book ---
-        $cashBook = $reportService->getCashBankBook($company->id, 'cash', $cash->id, null, null, $fy->id);
-        $this->assertNotNull($cashBook['report']);
-        $this->assertEqualsWithDelta(600.0, (float) $cashBook['report']['total_debit'], 0.01);
-        $this->assertEqualsWithDelta(400.0, (float) $cashBook['report']['total_credit'], 0.01);
-        $this->assertEqualsWithDelta(200.0, (float) $cashBook['report']['closing_balance']['balance'], 0.01);
+        // --- Receipt & Payment ---
+        // Receipts: 600 cash + 100 bank collected from the customer = 700
+        // Payments: 400 cash paid to the supplier
+        // Closing: cash 200 + bank 100 = 300
+        $receiptPayment = $reportService->getReceiptPayment($company->id, null, null, $fy->id);
+        $this->assertNull($receiptPayment['message']);
+        $this->assertEqualsWithDelta(0.0, (float) $receiptPayment['opening_total'], 0.01);
+        $this->assertEqualsWithDelta(700.0, (float) $receiptPayment['receipts']['total'], 0.01);
+        $this->assertEqualsWithDelta(400.0, (float) $receiptPayment['payments']['total'], 0.01);
+        $this->assertEqualsWithDelta(300.0, (float) $receiptPayment['closing_total'], 0.01);
+        $this->assertTrue($receiptPayment['is_balanced']);
 
-        // --- Bank Book ---
-        $bankBook = $reportService->getCashBankBook($company->id, 'bank', $bank->id, null, null, $fy->id);
-        $this->assertEqualsWithDelta(100.0, (float) $bankBook['report']['total_debit'], 0.01);
-        $this->assertEqualsWithDelta(100.0, (float) $bankBook['report']['closing_balance']['balance'], 0.01);
+        $cashRow = collect($receiptPayment['accounts'])->first(
+            fn (array $row) => (int) $row['account']->id === (int) $cash->id
+        );
+        $this->assertEqualsWithDelta(600.0, (float) $cashRow['received'], 0.01);
+        $this->assertEqualsWithDelta(400.0, (float) $cashRow['paid'], 0.01);
+        $this->assertEqualsWithDelta(200.0, (float) $cashRow['closing'], 0.01);
+
+        $bankRow = collect($receiptPayment['accounts'])->first(
+            fn (array $row) => (int) $row['account']->id === (int) $bank->id
+        );
+        $this->assertEqualsWithDelta(100.0, (float) $bankRow['received'], 0.01);
+        $this->assertEqualsWithDelta(100.0, (float) $bankRow['closing'], 0.01);
 
         // --- Trial Balance ---
         $trial = $ledgerService->getTrialBalance($company->id, $fy->id);
@@ -460,7 +471,7 @@ class TallyFullBooksCycleTest extends TestCase
             'company_id' => $company->id,
             'financial_year_id' => $fy->id,
             'account_type' => 'asset',
-            'transaction_mode' => 'cash',
+            'is_cash_bank_od' => true,
             'opening_balance' => 0,
             'balance_type' => 'debit',
         ]);

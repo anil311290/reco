@@ -174,6 +174,38 @@ function initAjaxForms() {
     });
 }
 
+/**
+ * Turn every `select[data-searchable="true"]` inside the scope into a
+ * searchable Select2 control. Safe to call again for dynamically added rows.
+ */
+function initSearchableSelects(scope) {
+    const $scope = scope ? $(scope) : $(document);
+    const $targets = $scope.find('select[data-searchable="true"]')
+        .add($scope.filter('select[data-searchable="true"]'));
+
+    $targets.each(function() {
+        const $select = $(this);
+
+        if ($select.hasClass('select2-hidden-accessible')) {
+            return;
+        }
+
+        const modal = $select.closest('.modal');
+        const isSmall = $select.hasClass('form-select-sm');
+
+        $select.select2({
+            theme: 'bootstrap-5',
+            width: '100%',
+            placeholder: $select.data('placeholder')
+                || $select.find('option[value=""]').first().text()
+                || 'Search...',
+            dropdownParent: modal.length ? modal : $(document.body),
+            selectionCssClass: isSmall ? 'select2-selection--sm' : '',
+            dropdownCssClass: isSmall ? 'select2-dropdown--sm' : ''
+        });
+    });
+}
+
 function deleteRecord(url, itemName, successCallback = null, redirectUrl = null) {
     Swal.fire({
         title: 'Are you sure?',
@@ -885,5 +917,6 @@ $(document).ready(function() {
 
     initAjaxForms();
     initPartyQuickAdd();
+    initSearchableSelects();
     enforceResponsiveTables();
 });

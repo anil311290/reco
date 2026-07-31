@@ -50,7 +50,6 @@ class InvoiceSettlementAndPeriodLockTest extends TestCase
 
         $invoice = $salesService->recordPayment($invoice->id, [
             'amount' => 40,
-            'payment_mode' => 'cash',
             'cash_bank_account_id' => $cash->id,
             'payment_date' => '2026-07-12',
         ]);
@@ -105,7 +104,6 @@ class InvoiceSettlementAndPeriodLockTest extends TestCase
 
         $invoice = $purchaseService->recordPayment($invoice->id, [
             'amount' => 200,
-            'payment_mode' => 'cash',
             'cash_bank_account_id' => $cash->id,
             'payment_date' => '2026-07-11',
         ]);
@@ -146,7 +144,7 @@ class InvoiceSettlementAndPeriodLockTest extends TestCase
             'company_id' => $company->id,
             'financial_year_id' => $fy->id,
             'account_type' => 'asset',
-            'transaction_mode' => 'cash',
+            'is_cash_bank_od' => true,
             'opening_balance' => 1000,
             'balance_type' => 'debit',
         ]);
@@ -211,7 +209,6 @@ class InvoiceSettlementAndPeriodLockTest extends TestCase
         $salesService->generateVoucher($invoice);
         $salesService->recordPayment($invoice->id, [
             'amount' => 100,
-            'payment_mode' => 'cash',
             'cash_bank_account_id' => $cash->id,
             'payment_date' => '2026-07-11',
         ]);
@@ -304,7 +301,6 @@ class InvoiceSettlementAndPeriodLockTest extends TestCase
         $this->expectExceptionMessage('Post the sales invoice');
         $salesService->recordPayment($invoice->id, [
             'amount' => 80,
-            'payment_mode' => 'cash',
             'cash_bank_account_id' => $cash->id,
             'payment_date' => '2026-07-11',
         ]);
@@ -334,7 +330,6 @@ class InvoiceSettlementAndPeriodLockTest extends TestCase
 
         $salesService->recordPayment($invoice->id, [
             'amount' => 40,
-            'payment_mode' => 'cash',
             'cash_bank_account_id' => $cash->id,
             'payment_date' => '2026-07-12',
         ]);
@@ -370,7 +365,6 @@ class InvoiceSettlementAndPeriodLockTest extends TestCase
         $purchaseService->generateVoucher($invoice);
         $purchaseService->recordPayment($invoice->id, [
             'amount' => 50,
-            'payment_mode' => 'cash',
             'cash_bank_account_id' => $cash->id,
             'payment_date' => '2026-07-12',
         ]);
@@ -398,7 +392,7 @@ class InvoiceSettlementAndPeriodLockTest extends TestCase
             'financial_year_id' => $fy->id,
             'account_name' => 'Cash',
             'account_type' => 'asset',
-            'transaction_mode' => 'cash',
+            'is_cash_bank_od' => true,
             'opening_balance' => $openingCash,
             'balance_type' => 'debit',
         ]);
@@ -430,7 +424,7 @@ class InvoiceSettlementAndPeriodLockTest extends TestCase
             'financial_year_id' => $fy->id,
             'account_name' => 'Cash',
             'account_type' => 'asset',
-            'transaction_mode' => 'cash',
+            'is_cash_bank_od' => true,
             'opening_balance' => $openingCash,
             'balance_type' => 'debit',
         ]);

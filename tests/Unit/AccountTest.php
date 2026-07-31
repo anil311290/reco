@@ -40,7 +40,7 @@ class AccountTest extends TestCase
             'company_id' => $this->company->id,
             'account_name' => 'Cash',
             'account_type' => 'asset',
-            'transaction_mode' => 'cash',
+            'is_cash_bank_od' => true,
         ];
 
         $account = $this->accountService->create($accountData);
@@ -57,7 +57,7 @@ class AccountTest extends TestCase
             'company_id' => $this->company->id,
             'account_name' => 'Bank Account',
             'account_type' => 'asset',
-            'transaction_mode' => 'bank',
+            'is_cash_bank_od' => true,
         ]);
 
         // Numeric chart-of-accounts range (asset starts at 1000)
@@ -66,16 +66,16 @@ class AccountTest extends TestCase
         $this->assertLessThan(2000, (int) $account->account_code);
     }
 
-    public function test_can_create_account_with_transaction_mode(): void
+    public function test_can_create_account_with_cash_bank_toggle(): void
     {
         $account = $this->accountService->create([
             'company_id' => $this->company->id,
             'account_name' => 'Cash in Hand',
             'account_type' => 'asset',
-            'transaction_mode' => 'cash',
+            'is_cash_bank_od' => 1,
         ]);
 
-        $this->assertEquals('cash', $account->transaction_mode);
+        $this->assertTrue((bool) $account->is_cash_bank_od);
         $this->assertEquals('Cash in Hand', $account->account_name);
     }
 
@@ -119,16 +119,16 @@ class AccountTest extends TestCase
         $this->assertSame('2026-04-01', $fresh->opening_date->toDateString());
     }
 
-    public function test_transaction_mode_is_cleared_for_non_asset_accounts(): void
+    public function test_cash_bank_toggle_is_disabled_for_non_asset_accounts(): void
     {
         $account = $this->accountService->create([
             'company_id' => $this->company->id,
             'account_name' => 'Sales',
             'account_type' => 'income',
-            'transaction_mode' => 'cash',
+            'is_cash_bank_od' => true,
         ]);
 
-        $this->assertNull($account->transaction_mode);
+        $this->assertFalse((bool) $account->is_cash_bank_od);
     }
 
     public function test_can_delete_non_system_account(): void
@@ -173,7 +173,7 @@ class AccountTest extends TestCase
             'financial_year_id' => $this->financialYear->id,
             'account_name' => 'New Petty Cash',
             'account_type' => 'asset',
-            'transaction_mode' => 'cash',
+            'is_cash_bank_od' => true,
             'opening_balance' => 1000,
             'balance_type' => 'debit',
         ]);
@@ -198,7 +198,7 @@ class AccountTest extends TestCase
             'financial_year_id' => $this->financialYear->id,
             'account_name' => 'Petty Cash',
             'account_type' => 'asset',
-            'transaction_mode' => 'cash',
+            'is_cash_bank_od' => true,
             'opening_balance' => 0,
         ]);
         $originalCode = $account->account_code;
@@ -217,7 +217,7 @@ class AccountTest extends TestCase
         $restored = $this->accountService->restoreDeleted($deletedAccount, [
             'account_name' => 'Petty Cash',
             'account_type' => 'asset',
-            'transaction_mode' => 'cash',
+            'is_cash_bank_od' => true,
             'opening_balance' => 750,
             'balance_type' => 'debit',
             'opening_date' => '2026-07-30',
