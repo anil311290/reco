@@ -53,7 +53,7 @@
                                 <label class="form-label mb-0">Customer <span class="text-danger">*</span></label>
                                 <div class="d-flex gap-2">
                                     @permission('accounts.create')
-                                    <button type="button" class="btn btn-link btn-sm p-0 quick-add-ledger-btn" data-account-quick-add-target="#party_id">Quick Add Ledger</button>
+                                    <button type="button" class="btn btn-link btn-sm p-0 quick-add-ledger-btn" data-account-quick-add-target="#party_id">Quick Add Cash / Bank Ledger</button>
                                     @endpermission
                                     @permission('parties.create')
                                     <button type="button" class="btn btn-link btn-sm p-0 quick-add-party-btn" data-party-quick-add-target="#party_id" data-party-quick-add-type="debtor">Quick Add Party</button>
@@ -66,7 +66,7 @@
                                 <option value="{{ $option['value'] }}" {{ ('party:' . $invoice->party_id) === $option['value'] ? 'selected' : '' }}>{{ $option['label'] }}</option>
                                 @endforeach
                                 @if(!empty($partyOptions['cash_bank_od_accounts']))
-                                <optgroup label="Ledger Accounts (AR + Cash/Bank/OD)">
+                                <optgroup label="Ledger Accounts (Cash/Bank/OD)">
                                     @foreach($partyOptions['cash_bank_od_accounts'] as $option)
                                     <option value="{{ $option['value'] }}">{{ $option['label'] }}</option>
                                     @endforeach

@@ -319,24 +319,17 @@ class PartyService
             ->values()
             ->toArray();
 
-        $controlCode = $type === 'creditor'
-            ? Account::CODE_AP
-            : Account::CODE_AR;
-
         $ledgerOptions = Account::query()
             ->where('company_id', $companyId)
             ->where('is_active', true)
-            ->where(function ($query) use ($controlCode) {
-                $query->cashBankOd()
-                    ->orWhere('account_code', $controlCode);
-            })
+            ->cashBankOd()
             ->orderBy('account_code')
             ->get()
             ->map(function (Account $account) {
                 return [
                     'value' => 'account:' . $account->id,
                     'label' => "{$account->account_name} ({$account->account_code})",
-                    'kind' => $account->isCashBankOd() ? 'cash_bank_od' : 'control_account',
+                    'kind' => 'cash_bank_od',
                 ];
             })
             ->values()
@@ -380,18 +373,11 @@ class PartyService
         }
 
         $accountId = (int) substr($selection, 8);
-        $controlCode = $type === 'creditor'
-            ? Account::CODE_AP
-            : Account::CODE_AR;
-
         $account = Account::query()
             ->where('company_id', $companyId)
             ->where('id', $accountId)
             ->where('is_active', true)
-            ->where(function ($query) use ($controlCode) {
-                $query->cashBankOd()
-                    ->orWhere('account_code', $controlCode);
-            })
+            ->cashBankOd()
             ->first();
 
         if (!$account) {
@@ -497,15 +483,12 @@ class PartyService
         }
 
         $accountId = (int) substr($selection, 8);
-        $controlCode = $type === 'creditor' ? Account::CODE_AP : Account::CODE_AR;
 
         $account = Account::query()
             ->where('company_id', $companyId)
             ->where('id', $accountId)
             ->where('is_active', true)
-            ->where(function ($query) use ($controlCode) {
-                $query->cashBankOd()->orWhere('account_code', $controlCode);
-            })
+            ->cashBankOd()
             ->first();
 
         if (!$account) {

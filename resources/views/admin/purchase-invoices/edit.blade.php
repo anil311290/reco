@@ -55,7 +55,7 @@
                                 </optgroup>
                                 @endif
                                 @if(!empty($supplierLedgerOptions))
-                                <optgroup label="Ledger Accounts (AP + Cash/Bank/OD)">
+                                <optgroup label="Ledger Accounts (Cash/Bank/OD)">
                                     @foreach($supplierLedgerOptions as $option)
                                     <option value="{{ $option['value'] }}">{{ $option['label'] }}</option>
                                     @endforeach
@@ -64,7 +64,7 @@
                             </select>
                             <div class="d-flex align-items-center gap-3 mt-1 small">
                                 @permission('accounts.create')
-                                <button type="button" class="btn btn-link btn-sm p-0 text-nowrap quick-add-ledger-btn" data-account-quick-add-target="#party_id">Quick Add Ledger</button>
+                                <button type="button" class="btn btn-link btn-sm p-0 text-nowrap quick-add-ledger-btn" data-account-quick-add-target="#party_id">Quick Add Cash / Bank Ledger</button>
                                 @endpermission
                                 @permission('parties.create')
                                 <button type="button" class="btn btn-link btn-sm p-0 text-nowrap quick-add-party-btn" data-party-quick-add-target="#party_id" data-party-quick-add-type="creditor">Quick Add Party</button>

@@ -789,7 +789,7 @@
             <div class="modal-content">
                 <div class="modal-header">
                     <div>
-                        <h5 class="modal-title mb-0">Quick Add Ledger</h5>
+                        <h5 class="modal-title mb-0">Quick Add Cash / Bank Ledger</h5>
                         <small class="text-muted">Create a Cash/Bank/OD ledger without leaving this form.</small>
                     </div>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
