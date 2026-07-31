@@ -57,7 +57,11 @@ use OpenApi\Annotations as OA;
  *     operationId="getPartiesByType",
  *     security={{"bearerAuth":{}}},
  *     @OA\Parameter(name="type", in="query", required=true, @OA\Schema(type="string", enum={"debtor","creditor"})),
- *     @OA\Response(response=200, description="Success", @OA\JsonContent(ref="#/components/schemas/SuccessResponse"))
+ *     @OA\Response(
+ *         response=200,
+ *         description="Returns parties for the authenticated company plus the next party_code for that type",
+ *         @OA\JsonContent(ref="#/components/schemas/SuccessResponse")
+ *     )
  * )
  *
  * @OA\Get(

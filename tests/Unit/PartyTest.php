@@ -172,6 +172,65 @@ class PartyTest extends TestCase
         $this->assertSame('AR002', $newParty->party_code);
     }
 
+    public function test_party_codes_and_opening_vouchers_are_scoped_per_company(): void
+    {
+        Party::factory()->create([
+            'company_id' => $this->company->id,
+            'party_code' => 'AR001',
+            'type' => 'debtor',
+            'opening_balance' => 0,
+        ]);
+
+        Voucher::factory()->create([
+            'company_id' => $this->company->id,
+            'financial_year_id' => $this->financialYear->id,
+            'voucher_number' => 'ADJ000001',
+            'voucher_type' => 'adjustment',
+        ]);
+
+        $otherCompany = Company::factory()->create();
+        $otherYear = FinancialYear::factory()->create([
+            'company_id' => $otherCompany->id,
+            'is_current' => true,
+        ]);
+
+        foreach ([
+            [Account::CODE_AR, 'Accounts Receivable', 'asset'],
+            [Account::CODE_AP, 'Accounts Payable', 'liability'],
+            [Account::CODE_SUSPENSE, 'Opening Balance Difference', 'asset'],
+        ] as [$code, $name, $type]) {
+            Account::factory()->create([
+                'company_id' => $otherCompany->id,
+                'financial_year_id' => $otherYear->id,
+                'account_code' => $code,
+                'account_name' => $name,
+                'account_type' => $type,
+                'opening_balance' => 0,
+                'is_system' => true,
+            ]);
+        }
+
+        $party = $this->partyService->create([
+            'company_id' => $otherCompany->id,
+            'name' => 'Other Co Customer',
+            'type' => 'debtor',
+            'opening_balance' => 5500,
+            'opening_balance_type' => 'debit',
+            'opening_date' => now()->toDateString(),
+        ]);
+
+        $this->assertSame('AR001', $party->party_code);
+        $this->assertDatabaseHas('vouchers', [
+            'company_id' => $otherCompany->id,
+            'voucher_number' => 'ADJ000001',
+            'voucher_type' => 'adjustment',
+        ]);
+        $this->assertSame(
+            2,
+            Voucher::withTrashed()->where('voucher_number', 'ADJ000001')->count()
+        );
+    }
+
     public function test_can_get_parties_by_type(): void
     {
         Party::factory()->count(3)->create([

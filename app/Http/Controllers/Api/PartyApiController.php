@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\PartyRequest;
 use App\Http\Resources\PartyResource;
+use App\Models\Party;
 use App\Services\LedgerService;
 use App\Services\PartyService;
 use App\Helpers\ResponseHelper;
@@ -238,7 +239,11 @@ class PartyApiController extends Controller
 
         $companyId = $request->user()->company_id;
         $parties = $this->partyService->getForDropdown($companyId, $request->type);
+        $nextPartyCode = Party::generateCode($request->type, $companyId);
 
-        return ResponseHelper::success($parties);
+        return ResponseHelper::success([
+            'parties' => $parties,
+            'next_party_code' => $nextPartyCode,
+        ]);
     }
 }

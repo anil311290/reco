@@ -62,7 +62,7 @@ class Item extends Model
     protected static function booted(): void
     {
         static::creating(function ($item) {
-            $item->item_code = self::generateCode();
+            $item->item_code = self::generateCode((int) $item->company_id);
 
             if (empty($item->type)) {
                 $item->type = 'goods';
@@ -179,11 +179,12 @@ class Item extends Model
     }
 
     /**
-     * Generate the next item code.
+     * Generate the next item code for a company.
      */
-    public static function generateCode(): string
+    public static function generateCode(int $companyId): string
     {
         $lastNumber = static::withTrashed()
+            ->where('company_id', $companyId)
             ->where('item_code', 'like', 'ITEM-%')
             ->pluck('item_code')
             ->reduce(function (int $highest, string $code): int {

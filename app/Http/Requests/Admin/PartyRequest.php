@@ -30,7 +30,9 @@ class PartyRequest extends BaseFormRequest
                 'nullable',
                 'string',
                 'max:20',
-                Rule::unique('parties', 'party_code')->ignore($partyId),
+                Rule::unique('parties', 'party_code')
+                    ->ignore($partyId)
+                    ->where(fn ($query) => $query->where('company_id', $this->user()?->company_id)),
             ],
             'name' => 'required|string|max:255',
             'type' => ['required', Rule::in(['debtor', 'creditor'])],
@@ -60,7 +62,7 @@ class PartyRequest extends BaseFormRequest
             'name.required' => 'Party name is required',
             'type.required' => 'Party type is required',
             'type.in' => 'Invalid party type',
-            'party_code.unique' => 'This party code is already taken',
+            'party_code.unique' => 'This party code is already taken for your company',
             'state_id.required' => 'State is required',
             'state_id.exists' => 'Invalid state selected',
             'city_id.required' => 'City is required',

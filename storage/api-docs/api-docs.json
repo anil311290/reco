@@ -4328,7 +4328,7 @@
                 ],
                 "responses": {
                     "200": {
-                        "description": "Success",
+                        "description": "Returns parties for the authenticated company plus the next party_code for that type",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -9749,9 +9749,9 @@
                         "example": 1
                     },
                     "account_code": {
-                        "description": "Unique account code",
+                        "description": "Account code unique within the company",
                         "type": "string",
-                        "example": "AST0001"
+                        "example": "1101"
                     },
                     "account_name": {
                         "description": "Account name",
@@ -9831,9 +9831,9 @@
                         "example": 1
                     },
                     "party_code": {
-                        "description": "Unique party code",
+                        "description": "Party code unique within the company",
                         "type": "string",
-                        "example": "DEB0001"
+                        "example": "AR001"
                     },
                     "name": {
                         "description": "Party name",
@@ -9953,9 +9953,9 @@
                         "example": 1
                     },
                     "voucher_number": {
-                        "description": "Unique voucher number",
+                        "description": "Voucher number unique within the company",
                         "type": "string",
-                        "example": "EXP000001"
+                        "example": "ADJ000001"
                     },
                     "voucher_type": {
                         "description": "Voucher type",

@@ -242,6 +242,55 @@ Show Delete only when entry_source == "manual" AND is_system == false.
 
 The backend remains authoritative. A manual account can still reject deletion when real accounting transactions are linked to it.
 
+## Company-scoped Codes (31 July 2026)
+
+`party_code`, `voucher_number`, and `item_code` are unique **per company**, not globally.
+
+- Creating a party/account/item in company B may reuse `AR001` / `ADJ000001` / `ITEM-001` even when company A already has those values.
+- Opening-balance adjustment vouchers are generated per company.
+- `GET /api/v1/parties/by-type?type=debtor|creditor` now returns:
+
+```json
+{
+  "parties": [],
+  "next_party_code": "AR001"
+}
+```
+
+- `GET /api/v1/accounts/by-type?type=...` already returns `next_account_code` for the authenticated company.
+
+## Voucher Show Lines (31 July 2026)
+
+```http
+GET /api/v1/vouchers/{id}
+```
+
+`data.lines` is always returned (same lines shown on the admin voucher detail page), including nested `account` and `party` when present.
+
+Example:
+
+```json
+{
+  "success": true,
+  "data": {
+    "id": 11,
+    "voucher_number": "PAY000001",
+    "lines": [
+      {
+        "id": 1,
+        "account_id": 21,
+        "account": { "id": 21, "account_code": "5001", "account_name": "Office Rent" },
+        "party_id": null,
+        "debit": "1500.00",
+        "credit": "0.00",
+        "description": "Office Rent",
+        "sort_order": 0
+      }
+    ]
+  }
+}
+```
+
 ## App Developer Checklist
 
 - Fetch plans from `GET /api/v1/plans` when opening registration.

@@ -10,7 +10,7 @@ interface VoucherRepositoryInterface extends RepositoryInterface
     /**
      * Find voucher by number
      */
-    public function findByNumber(string $number): ?Voucher;
+    public function findByNumber(string $number, int $companyId): ?Voucher;
 
     /**
      * Get vouchers by company

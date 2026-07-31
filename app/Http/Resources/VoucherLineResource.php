@@ -17,10 +17,19 @@ class VoucherLineResource extends JsonResource
         return [
             'id' => $this->id,
             'account_id' => $this->account_id,
-            'account' => new AccountResource($this->whenLoaded('account')),
+            'account' => $this->when(
+                $this->relationLoaded('account') && $this->account !== null,
+                fn () => new AccountResource($this->account)
+            ),
+            'party_id' => $this->party_id,
+            'party' => $this->when(
+                $this->relationLoaded('party') && $this->party !== null,
+                fn () => new PartyResource($this->party)
+            ),
             'debit' => $this->debit,
             'credit' => $this->credit,
             'description' => $this->description,
+            'sort_order' => $this->sort_order ?? 0,
         ];
     }
 }
