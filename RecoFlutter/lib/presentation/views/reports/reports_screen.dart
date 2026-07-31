@@ -5,13 +5,12 @@ import 'package:get/get.dart';
 import '../../bindings/reports_binding.dart';
 import '../../controllers/reports/report_lookup_controller.dart';
 import 'balance_sheet_report_screen.dart';
-import 'bank_book_report_screen.dart';
-import 'cash_book_report_screen.dart';
 import 'creditors_outstanding_report_screen.dart';
 import 'day_book_report_screen.dart';
 import 'debtors_outstanding_report_screen.dart';
 import 'ledger_report_screen.dart';
 import 'profit_loss_report_screen.dart';
+import 'receipt_payment_report_screen.dart';
 import 'trial_balance_report_screen.dart';
 import 'widgets/report_ui_components.dart';
 
@@ -33,20 +32,6 @@ class ReportsScreen extends StatelessWidget {
         onTap: () => Get.to(() => const DayBookReportScreen()),
       ),
       ReportFeatureItem(
-        title: 'Cash Book',
-        subtitle: 'Cash ledger movement with opening and closing.',
-        icon: FontAwesomeIcons.moneyBillWave,
-        color: const Color(0xFF059669),
-        onTap: () => Get.to(() => const CashBookReportScreen()),
-      ),
-      ReportFeatureItem(
-        title: 'Bank Book',
-        subtitle: 'Bank and OD account statements.',
-        icon: FontAwesomeIcons.buildingColumns,
-        color: const Color(0xFF2563EB),
-        onTap: () => Get.to(() => const BankBookReportScreen()),
-      ),
-      ReportFeatureItem(
         title: 'Ledger',
         subtitle: 'Account-wise ledger with running balance.',
         icon: FontAwesomeIcons.bookOpen,
@@ -66,6 +51,13 @@ class ReportsScreen extends StatelessWidget {
         icon: FontAwesomeIcons.chartLine,
         color: const Color(0xFF16A34A),
         onTap: () => Get.to(() => const ProfitLossReportScreen()),
+      ),
+      ReportFeatureItem(
+        title: 'Receipt & Payment',
+        subtitle: 'Cash, bank, and OD movement head-wise for the period.',
+        icon: FontAwesomeIcons.moneyBillTransfer,
+        color: const Color(0xFF059669),
+        onTap: () => Get.to(() => const ReceiptPaymentReportScreen()),
       ),
       ReportFeatureItem(
         title: 'Balance Sheet',

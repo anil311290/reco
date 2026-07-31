@@ -62,7 +62,7 @@ class Item extends Model
     protected static function booted(): void
     {
         static::creating(function ($item) {
-            $item->item_code = self::generateCode();
+            $item->item_code = self::generateCode((int) $item->company_id);
 
             if (empty($item->type)) {
                 $item->type = 'goods';
@@ -70,6 +70,7 @@ class Item extends Model
 
             if ($item->type === 'service') {
                 $item->is_stockable = false;
+                $item->unit = null;
                 if ($item->opening_stock === null) {
                     $item->opening_stock = 0;
                 }
@@ -111,6 +112,12 @@ class Item extends Model
                 if ($purchaseAccount) {
                     $item->expense_account_id = $purchaseAccount->id;
                 }
+            }
+        });
+
+        static::updating(function ($item) {
+            if ($item->type === 'service') {
+                $item->unit = null;
             }
         });
     }
@@ -179,11 +186,12 @@ class Item extends Model
     }
 
     /**
-     * Generate the next item code.
+     * Generate the next item code for a company.
      */
-    public static function generateCode(): string
+    public static function generateCode(int $companyId): string
     {
         $lastNumber = static::withTrashed()
+            ->where('company_id', $companyId)
             ->where('item_code', 'like', 'ITEM-%')
             ->pluck('item_code')
             ->reduce(function (int $highest, string $code): int {

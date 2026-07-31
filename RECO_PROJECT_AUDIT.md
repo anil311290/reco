@@ -1450,7 +1450,7 @@ User creates Adjustment Voucher:
 ## 6.4 ReportService
 - **Responsibility:** Financial report generation (P&L, Balance Sheet, Trial Balance, Day Book, Outstanding reports)
 - **Dependencies:** LedgerService
-- **Methods:** getProfitLoss(), getBalanceSheet(), getTrialBalance(), getDayBook(), getCashBankBook(), getDebtorsOutstanding(), getCreditorsOutstanding()
+- **Methods:** getProfitLoss(), getBalanceSheet(), getTrialBalance(), getDayBook(), getReceiptPayment(), getDebtorsOutstanding(), getCreditorsOutstanding()
 - **Called By:** ReportController, ReportApiController, DashboardService, ExportService
 - **Calls To:** LedgerService
 
@@ -1706,8 +1706,7 @@ User creates Adjustment Voucher:
 | /api/v1/reports/balance-sheet | GET | Yes | Balance Sheet |
 | /api/v1/reports/trial-balance | GET | Yes | Trial Balance |
 | /api/v1/reports/day-book | GET | Yes | Day Book (voucher list for date) |
-| /api/v1/reports/cash-book | GET | Yes | Cash Book report |
-| /api/v1/reports/bank-book | GET | Yes | Bank Book report |
+| /api/v1/reports/receipt-payment | GET | Yes | Receipt & Payment report |
 | /api/v1/reports/ledger | GET | Yes | Account ledger report |
 | /api/v1/reports/debtors-outstanding | GET | Yes | AR outstanding report |
 | /api/v1/reports/creditors-outstanding | GET | Yes | AP outstanding report |
@@ -2044,10 +2043,11 @@ Net Profit = Total Income - Total Expenses
 ```
 **Implementation:** ReportService::getProfitLoss()
 
-## 13.3 Cash Book & Bank Book
+## 13.3 Receipt & Payment
 **Source Tables:** accounts, ledgers
-**Implementation:** ReportService::getCashBankBook($companyId, 'cash'|'bank', ...)
-Cash Flow report was removed; legacy URLs redirect to Cash Book.
+**Implementation:** ReportService::getReceiptPayment($companyId, $dateFrom, $dateTo, $financialYearId)
+Cash, bank, and OD movement for the period grouped by contra ledger head, with opening and closing balances.
+Cash Flow, Cash Book, and Bank Book were removed; the legacy cash-flow URL redirects here.
 
 ## 13.4 Trial Balance
 **Source Tables:** accounts, ledgers

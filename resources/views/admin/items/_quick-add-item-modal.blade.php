@@ -39,7 +39,7 @@
                             <label for="quick_item_hsn_sac" class="form-label" id="quickItemHsnSacLabel">HSN/SAC Code</label>
                             <input type="text" class="form-control" id="quick_item_hsn_sac" name="hsn_sac_code" maxlength="20">
                         </div>
-                        <div class="col-md-4">
+                        <div class="col-md-4" id="quickItemUnitField">
                             <label for="quick_item_unit" class="form-label">Unit</label>
                             <select class="form-select" id="quick_item_unit" name="unit">
                                 <option value="nos">Numbers (Nos)</option>

@@ -366,7 +366,7 @@ class SalesInvoiceService
     /**
      * Record a payment against an invoice and post a Receipt voucher (bill-wise).
      *
-     * @param  array{amount:float,cash_bank_account_id:int,payment_mode:string,payment_date?:string}  $paymentData
+        * @param  array{amount:float,cash_bank_account_id:int,payment_date?:string}  $paymentData
      */
     public function recordPayment(int $invoiceId, array $paymentData): SalesInvoice
     {
@@ -414,20 +414,15 @@ class SalesInvoiceService
             );
 
             $cashBankAccountId = (int) ($paymentData['cash_bank_account_id'] ?? 0);
-            $paymentMode = $paymentData['payment_mode'] ?? null;
             $cashBank = \App\Models\Account::query()
                 ->where('company_id', $invoice->company_id)
                 ->where('id', $cashBankAccountId)
                 ->where('is_active', true)
                 ->first();
 
-            if (!$cashBank || !in_array($cashBank->transaction_mode, ['cash', 'bank', 'od'], true)) {
+            if (!$cashBank || !$cashBank->isCashBankOd()) {
                 throw new \RuntimeException('Select a valid Cash / Bank / OD account.');
             }
-            if ($paymentMode && $cashBank->transaction_mode !== $paymentMode) {
-                throw new \RuntimeException('Selected account must match the payment mode.');
-            }
-
             $partyAccountId = $invoice->party?->account_id
                 ?: \App\Models\Account::query()
                 ->where('company_id', $invoice->company_id)

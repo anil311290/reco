@@ -146,15 +146,6 @@
                         <input type="date" class="form-control" name="payment_date" value="{{ date('Y-m-d') }}" required>
                     </div>
                     <div class="mb-3">
-                        <label class="form-label">Payment Mode <span class="text-danger">*</span></label>
-                        <select class="form-select" id="payment_mode" name="payment_mode" required>
-                            <option value="">Select Mode</option>
-                            <option value="cash">Cash</option>
-                            <option value="bank">Bank</option>
-                            <option value="od">OD</option>
-                        </select>
-                    </div>
-                    <div class="mb-3">
                         <label class="form-label">Paid From <span class="text-danger">*</span></label>
                         <select class="form-select" id="cash_bank_account_id" name="cash_bank_account_id" required>
                             <option value="">Select Cash / Bank</option>
@@ -182,18 +173,14 @@
 const cashBankAccounts = @json($cashBankAccounts ?? []);
 
 function refreshCashBankDropdown() {
-    const mode = $('#payment_mode').val();
     let html = '<option value="">Select Cash / Bank</option>';
     cashBankAccounts.forEach((option) => {
-        if (mode && option.transaction_mode !== mode) {
-            return;
-        }
         html += `<option value="${option.id}">${option.text}</option>`;
     });
     $('#cash_bank_account_id').html(html);
 }
 
-$('#payment_mode').on('change', refreshCashBankDropdown);
+refreshCashBankDropdown();
 
 $('#paymentForm').on('submit', function(e) {
     e.preventDefault();

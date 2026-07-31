@@ -57,7 +57,11 @@ use OpenApi\Annotations as OA;
  *     operationId="getPartiesByType",
  *     security={{"bearerAuth":{}}},
  *     @OA\Parameter(name="type", in="query", required=true, @OA\Schema(type="string", enum={"debtor","creditor"})),
- *     @OA\Response(response=200, description="Success", @OA\JsonContent(ref="#/components/schemas/SuccessResponse"))
+ *     @OA\Response(
+ *         response=200,
+ *         description="Returns parties for the authenticated company plus the next party_code for that type",
+ *         @OA\JsonContent(ref="#/components/schemas/SuccessResponse")
+ *     )
  * )
  *
  * @OA\Get(
@@ -88,6 +92,7 @@ use OpenApi\Annotations as OA;
  *     path="/parties/{id}",
  *     tags={"Parties"},
  *     summary="Update party",
+ *     description="Opening fields are immutable after creation. opening_balance, opening_balance_type, and opening_date are ignored on update.",
  *     operationId="updateParty",
  *     security={{"bearerAuth":{}}},
  *     @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")),

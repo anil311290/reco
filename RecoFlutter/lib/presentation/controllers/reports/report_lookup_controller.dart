@@ -17,8 +17,6 @@ class ReportLookupController extends GetxController {
   final financialYears = <Map<String, dynamic>>[].obs;
   final currentFinancialYearId = RxnInt();
   final ledgerAccounts = <Map<String, dynamic>>[].obs;
-  final cashAccounts = <Map<String, dynamic>>[].obs;
-  final bankAccounts = <Map<String, dynamic>>[].obs;
 
   @override
   void onInit() {
@@ -30,7 +28,6 @@ class ReportLookupController extends GetxController {
     await Future.wait(<Future<void>>[
       loadFinancialYears(),
       loadLedgerAccounts(),
-      loadCashBankAccounts(),
     ]);
   }
 
@@ -49,11 +46,6 @@ class ReportLookupController extends GetxController {
               : Map<String, dynamic>.from(item))
           .toList(),
     );
-  }
-
-  Future<void> loadCashBankAccounts() async {
-    cashAccounts.assignAll(await _accountsRepository.getCashBankAccounts(mode: 'cash'));
-    bankAccounts.assignAll(await _accountsRepository.getCashBankAccounts(mode: 'bank'));
   }
 
   int? _asInt(dynamic value) {

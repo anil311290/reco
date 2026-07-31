@@ -209,13 +209,126 @@ Required fields:
 
 `cash_bank_account_id` may be any Cash, Bank, or OD ledger from `GET /api/v1/accounts/cash-bank`.
 
-Invoice settlement still requires `payment_mode` + `cash_bank_account_id` + `amount`. That is separate from voucher create.
+Invoice settlement requires `cash_bank_account_id` + `amount` (and optional `payment_date`).
 
 ## Items
 
 - Do not send `item_code` on create. The server generates `ITEM-001`, `ITEM-002`, etc.
 - Use `opening_stock` for opening quantity.
 - Updating `opening_stock` adjusts `current_stock` by the opening delta.
+- `unit` applies to goods only. For `type: "service"` the server stores `unit` as `null`, so hide the unit field on service forms.
+
+## Account List Deletion Controls
+
+```http
+GET /api/v1/accounts
+```
+
+Every account now includes:
+
+```json
+{
+  "uuid": "0198...",
+  "version": 1,
+  "entry_source": "manual",
+  "is_system": false
+}
+```
+
+App delete-button rule:
+
+```text
+Show Delete only when entry_source == "manual" AND is_system == false.
+```
+
+The backend remains authoritative. A manual account can still reject deletion when real accounting transactions are linked to it.
+
+## Company-scoped Codes (31 July 2026)
+
+`party_code`, `voucher_number`, and `item_code` are unique **per company**, not globally.
+
+- Creating a party/account/item in company B may reuse `AR001` / `ADJ000001` / `ITEM-001` even when company A already has those values.
+- Opening-balance adjustment vouchers are generated per company.
+- `GET /api/v1/parties/by-type?type=debtor|creditor` now returns:
+
+```json
+{
+  "parties": [],
+  "next_party_code": "AR001"
+}
+```
+
+- `GET /api/v1/accounts/by-type?type=...` already returns `next_account_code` for the authenticated company.
+
+## Voucher Show Lines (31 July 2026)
+
+```http
+GET /api/v1/vouchers/{id}
+```
+
+`data.lines` is always returned (same lines shown on the admin voucher detail page), including nested `account` and `party` when present.
+
+Example:
+
+```json
+{
+  "success": true,
+  "data": {
+    "id": 11,
+    "voucher_number": "PAY000001",
+    "lines": [
+      {
+        "id": 1,
+        "account_id": 21,
+        "account": { "id": 21, "account_code": "5001", "account_name": "Office Rent" },
+        "party_id": null,
+        "debit": "1500.00",
+        "credit": "0.00",
+        "description": "Office Rent",
+        "sort_order": 0
+      }
+    ]
+  }
+}
+```
+
+## Dashboard Figures (31 July 2026)
+
+```http
+GET /api/v1/dashboard?range=this_year&group=monthly
+```
+
+- `range=this_year` now means the **current financial year**, not the calendar year, so the dashboard matches the Profit & Loss report.
+- `statistics.income` and `statistics.expense` come from income / expense ledger movement, so GST and other taxes are excluded (they live on their own tax ledgers). Previously these were voucher totals including tax.
+- `statistics.profit` is `income - expense`. A negative value is a net loss; show the `Net Loss` label with the absolute amount.
+- `statistics.cash_balance` is the combined Cash + Bank + OD ledger balance.
+- `statistics.total_vouchers` counts posted vouchers inside the selected period.
+- New `statistics.period` block and top-level `period` block describe the resolved period.
+- `chart_data`, `receivables_trend` and `payables_trend` use the same ledger source. The trends return the outstanding receivable / payable balance at each month end.
+- `GET /api/v1/dashboard/receivables-trend?months=6` and `.../payables-trend?months=6` accept `months` between 1 and 36.
+
+```json
+{
+  "success": true,
+  "data": {
+    "statistics": {
+      "income": 1030,
+      "expense": 1250,
+      "profit": -220,
+      "receivables": 6715.4,
+      "payables": 5975,
+      "cash_balance": -259.6,
+      "total_vouchers": 2,
+      "period": {
+        "start": "2026-04-01",
+        "end": "2027-03-31",
+        "label": "FY 2026-27"
+      }
+    },
+    "period": { "start": "2026-04-01", "end": "2027-03-31" }
+  }
+}
+```
 
 ## App Developer Checklist
 

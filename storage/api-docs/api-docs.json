@@ -2,7 +2,7 @@
     "openapi": "3.0.0",
     "info": {
         "title": "Reco API",
-        "description": "Reco offline-first accounting SaaS API under /api/v1. Payment/receipt/adjustment APIs match web Tally forms (cash_bank_account_id + payment_rows / adjustment_rows; Cash/Bank/OD ledgers). Helpers: GET /accounts/cash-bank, /accounts/payment-particulars, /accounts/adjustment-particulars. Sales invoices are unified (item + service lines) via /sales-invoices. Invoice settlement requires amount + payment_mode + cash_bank_account_id. PATCH /financial-years/{id}/set-current carries forward opening balances. Period lock applies when FY is closed or date is outside FY. Audit logs: GET /audit-logs and GET /audit-logs/{id}. Public registration: GET /plans and POST /register. Web-only: roles, CMS, Excel/CSV export.",
+        "description": "Reco offline-first accounting SaaS API under /api/v1. Payment/receipt/adjustment APIs match web Tally forms (cash_bank_account_id + payment_rows / adjustment_rows; Cash/Bank/OD ledgers). Helpers: GET /accounts/cash-bank, /accounts/payment-particulars, /accounts/adjustment-particulars. Sales invoices are unified (item + service lines) via /sales-invoices. Invoice settlement requires amount + cash_bank_account_id. PATCH /financial-years/{id}/set-current carries forward opening balances. Period lock applies when FY is closed or date is outside FY. Audit logs: GET /audit-logs and GET /audit-logs/{id}. Public registration: GET /plans and POST /register. Web-only: roles, CMS, Excel/CSV export.",
         "contact": {
             "name": "Reco Support",
             "url": "https://reco.app/support",
@@ -123,13 +123,9 @@
                                             "equity"
                                         ]
                                     },
-                                    "transaction_mode": {
-                                        "type": "string",
-                                        "enum": [
-                                            "cash",
-                                            "bank",
-                                            "od"
-                                        ]
+                                    "is_cash_bank_od": {
+                                        "type": "boolean",
+                                        "example": true
                                     },
                                     "opening_balance": {
                                         "type": "number"
@@ -424,19 +420,6 @@
                 "description": "Dropdown helper matching web Paid From / Received In. Includes available_balance (null for OD).",
                 "operationId": "getCashBankAccounts",
                 "parameters": [
-                    {
-                        "name": "mode",
-                        "in": "query",
-                        "description": "Filter by transaction mode",
-                        "schema": {
-                            "type": "string",
-                            "enum": [
-                                "cash",
-                                "bank",
-                                "od"
-                            ]
-                        }
-                    },
                     {
                         "name": "financial_year_id",
                         "in": "query",
@@ -1683,8 +1666,48 @@
                     "Dashboard"
                 ],
                 "summary": "Get dashboard statistics",
-                "description": "Get main dashboard statistics including income, expense, profit, receivables, payables",
+                "description": "Dashboard statistics computed from posted ledger entries, so figures match the Profit & Loss report. Taxes are excluded from income and expense because they sit on their own tax ledgers.",
                 "operationId": "getDashboard",
+                "parameters": [
+                    {
+                        "name": "range",
+                        "in": "query",
+                        "description": "Period filter. this_year means the current financial year.",
+                        "schema": {
+                            "type": "string",
+                            "example": "this_year",
+                            "enum": [
+                                "this_month",
+                                "last_month",
+                                "this_quarter",
+                                "this_year"
+                            ]
+                        }
+                    },
+                    {
+                        "name": "group",
+                        "in": "query",
+                        "description": "Chart bucket size",
+                        "schema": {
+                            "type": "string",
+                            "example": "monthly",
+                            "enum": [
+                                "monthly",
+                                "quarterly",
+                                "yearly"
+                            ]
+                        }
+                    },
+                    {
+                        "name": "limit",
+                        "in": "query",
+                        "description": "Recent transactions to return (1-20)",
+                        "schema": {
+                            "type": "integer",
+                            "example": 10
+                        }
+                    }
+                ],
                 "responses": {
                     "200": {
                         "description": "Dashboard data",
@@ -1701,43 +1724,43 @@
                                                 "statistics": {
                                                     "properties": {
                                                         "income": {
-                                                            "description": "Total income",
+                                                            "description": "Income ledger movement for the period, excluding tax",
                                                             "type": "number",
                                                             "format": "float",
                                                             "example": 150000
                                                         },
                                                         "expense": {
-                                                            "description": "Total expense",
+                                                            "description": "Expense ledger movement for the period, excluding tax",
                                                             "type": "number",
                                                             "format": "float",
                                                             "example": 80000
                                                         },
                                                         "profit": {
-                                                            "description": "Net profit",
+                                                            "description": "Income - expense. Negative means net loss",
                                                             "type": "number",
                                                             "format": "float",
                                                             "example": 70000
                                                         },
                                                         "receivables": {
-                                                            "description": "Total receivables",
+                                                            "description": "Outstanding receivables",
                                                             "type": "number",
                                                             "format": "float",
                                                             "example": 45000
                                                         },
                                                         "payables": {
-                                                            "description": "Total payables",
+                                                            "description": "Outstanding payables",
                                                             "type": "number",
                                                             "format": "float",
                                                             "example": 25000
                                                         },
                                                         "cash_balance": {
-                                                            "description": "Cash balance",
+                                                            "description": "Cash + Bank + OD balance",
                                                             "type": "number",
                                                             "format": "float",
                                                             "example": 120000
                                                         },
                                                         "total_vouchers": {
-                                                            "description": "Total vouchers",
+                                                            "description": "Posted vouchers in the period",
                                                             "type": "integer",
                                                             "example": 150
                                                         },
@@ -1750,6 +1773,25 @@
                                                             "description": "Total accounts",
                                                             "type": "integer",
                                                             "example": 30
+                                                        },
+                                                        "period": {
+                                                            "properties": {
+                                                                "start": {
+                                                                    "type": "string",
+                                                                    "format": "date",
+                                                                    "example": "2026-04-01"
+                                                                },
+                                                                "end": {
+                                                                    "type": "string",
+                                                                    "format": "date",
+                                                                    "example": "2027-03-31"
+                                                                },
+                                                                "label": {
+                                                                    "type": "string",
+                                                                    "example": "FY 2026-27"
+                                                                }
+                                                            },
+                                                            "type": "object"
                                                         }
                                                     },
                                                     "type": "object"
@@ -1759,6 +1801,56 @@
                                                     "items": {
                                                         "$ref": "#/components/schemas/Voucher"
                                                     }
+                                                },
+                                                "chart_data": {
+                                                    "properties": {
+                                                        "labels": {
+                                                            "type": "array",
+                                                            "items": {
+                                                                "type": "string"
+                                                            },
+                                                            "example": [
+                                                                "Apr 2026",
+                                                                "May 2026"
+                                                            ]
+                                                        },
+                                                        "income": {
+                                                            "type": "array",
+                                                            "items": {
+                                                                "type": "number"
+                                                            },
+                                                            "example": [
+                                                                15000,
+                                                                18000
+                                                            ]
+                                                        },
+                                                        "expense": {
+                                                            "type": "array",
+                                                            "items": {
+                                                                "type": "number"
+                                                            },
+                                                            "example": [
+                                                                8000,
+                                                                9500
+                                                            ]
+                                                        }
+                                                    },
+                                                    "type": "object"
+                                                },
+                                                "period": {
+                                                    "properties": {
+                                                        "start": {
+                                                            "type": "string",
+                                                            "format": "date",
+                                                            "example": "2026-04-01"
+                                                        },
+                                                        "end": {
+                                                            "type": "string",
+                                                            "format": "date",
+                                                            "example": "2027-03-31"
+                                                        }
+                                                    },
+                                                    "type": "object"
                                                 }
                                             },
                                             "type": "object"
@@ -1793,7 +1885,7 @@
                     "Dashboard"
                 ],
                 "summary": "Get monthly income/expense data",
-                "description": "Get monthly income and expense data for charts",
+                "description": "Monthly income and expense ledger movement for a calendar year, excluding tax",
                 "operationId": "getMonthlyData",
                 "parameters": [
                     {
@@ -1885,7 +1977,7 @@
                     "Dashboard"
                 ],
                 "summary": "Get receivables trend",
-                "description": "Get receivables trend data for the last N months",
+                "description": "Outstanding receivables balance at each month end for the last N months",
                 "operationId": "getReceivablesTrend",
                 "parameters": [
                     {
@@ -1964,7 +2056,7 @@
                     "Dashboard"
                 ],
                 "summary": "Get payables trend",
-                "description": "Get payables trend data for the last N months",
+                "description": "Outstanding payables balance at each month end for the last N months",
                 "operationId": "getPayablesTrend",
                 "parameters": [
                     {
@@ -2196,6 +2288,108 @@
                 "responses": {
                     "200": {
                         "description": "PDF generated",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/SuccessResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/export/receipt-payment/pdf": {
+            "get": {
+                "tags": [
+                    "Export"
+                ],
+                "summary": "Export receipt and payment report as PDF",
+                "operationId": "exportReceiptPaymentPdf",
+                "parameters": [
+                    {
+                        "name": "date_from",
+                        "in": "query",
+                        "schema": {
+                            "type": "string",
+                            "format": "date"
+                        }
+                    },
+                    {
+                        "name": "date_to",
+                        "in": "query",
+                        "schema": {
+                            "type": "string",
+                            "format": "date"
+                        }
+                    },
+                    {
+                        "name": "financial_year_id",
+                        "in": "query",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "PDF generated",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/SuccessResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/export/receipt-payment/excel": {
+            "get": {
+                "tags": [
+                    "Export"
+                ],
+                "summary": "Export receipt and payment report as Excel",
+                "operationId": "exportReceiptPaymentExcel",
+                "parameters": [
+                    {
+                        "name": "date_from",
+                        "in": "query",
+                        "schema": {
+                            "type": "string",
+                            "format": "date"
+                        }
+                    },
+                    {
+                        "name": "date_to",
+                        "in": "query",
+                        "schema": {
+                            "type": "string",
+                            "format": "date"
+                        }
+                    },
+                    {
+                        "name": "financial_year_id",
+                        "in": "query",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Excel generated",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -3160,7 +3354,7 @@
                     "Items"
                 ],
                 "summary": "Create item",
-                "description": "item_code is generated by the server as ITEM-001, ITEM-002, etc. Do not send item_code. opening_stock sets the opening quantity.",
+                "description": "item_code is generated by the server as ITEM-001, ITEM-002, etc. Do not send item_code. opening_stock sets the opening quantity. unit applies to goods only and is stored as null for services.",
                 "operationId": "createItem",
                 "requestBody": {
                     "required": true,
@@ -3206,6 +3400,7 @@
                                         "example": 150
                                     },
                                     "unit": {
+                                        "description": "Goods only; ignored for services",
                                         "type": "string",
                                         "example": "nos"
                                     },
@@ -3411,7 +3606,7 @@
                     "Items"
                 ],
                 "summary": "Update item",
-                "description": "item_code is read-only. Updating opening_stock adjusts current_stock by the opening delta.",
+                "description": "item_code is read-only. Updating opening_stock adjusts current_stock by the opening delta. unit applies to goods only and is stored as null for services.",
                 "operationId": "updateItem",
                 "parameters": [
                     {
@@ -4328,7 +4523,7 @@
                 ],
                 "responses": {
                     "200": {
-                        "description": "Success",
+                        "description": "Returns parties for the authenticated company plus the next party_code for that type",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -5300,7 +5495,6 @@
                             "schema": {
                                 "required": [
                                     "amount",
-                                    "payment_mode",
                                     "cash_bank_account_id"
                                 ],
                                 "properties": {
@@ -5308,15 +5502,6 @@
                                         "type": "number",
                                         "format": "float",
                                         "example": 500
-                                    },
-                                    "payment_mode": {
-                                        "type": "string",
-                                        "example": "cash",
-                                        "enum": [
-                                            "cash",
-                                            "bank",
-                                            "od"
-                                        ]
                                     },
                                     "cash_bank_account_id": {
                                         "description": "Paid From cash/bank/OD account",
@@ -6255,17 +6440,19 @@
                 ]
             }
         },
-        "/reports/cash-book": {
+        "/reports/receipt-payment": {
             "get": {
                 "tags": [
                     "Reports"
                 ],
-                "summary": "Get Cash Book report",
-                "operationId": "getCashBook",
+                "summary": "Get Receipt & Payment report",
+                "description": "Cash, bank, and OD movement for the period grouped by contra ledger head. Opening + Receipts always equals Payments + Closing; transfers between two cash / bank ledgers are excluded from both sides. Dates default to the financial year range.",
+                "operationId": "getReceiptPayment",
                 "parameters": [
                     {
                         "name": "date_from",
                         "in": "query",
+                        "description": "From date (default: financial year start)",
                         "schema": {
                             "type": "string",
                             "format": "date"
@@ -6274,16 +6461,10 @@
                     {
                         "name": "date_to",
                         "in": "query",
+                        "description": "To date (default: financial year end)",
                         "schema": {
                             "type": "string",
                             "format": "date"
-                        }
-                    },
-                    {
-                        "name": "account_id",
-                        "in": "query",
-                        "schema": {
-                            "type": "integer"
                         }
                     },
                     {
@@ -6301,66 +6482,171 @@
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "$ref": "#/components/schemas/SuccessResponse"
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "data": {
+                                            "properties": {
+                                                "date_from": {
+                                                    "type": "string",
+                                                    "format": "date",
+                                                    "example": "2025-04-01"
+                                                },
+                                                "date_to": {
+                                                    "type": "string",
+                                                    "format": "date",
+                                                    "example": "2026-03-31"
+                                                },
+                                                "financial_year_id": {
+                                                    "type": "integer",
+                                                    "example": 1
+                                                },
+                                                "accounts": {
+                                                    "description": "Per cash / bank / OD ledger movement",
+                                                    "type": "array",
+                                                    "items": {
+                                                        "properties": {
+                                                            "account": {
+                                                                "$ref": "#/components/schemas/Account"
+                                                            },
+                                                            "opening": {
+                                                                "type": "number",
+                                                                "example": 15000
+                                                            },
+                                                            "received": {
+                                                                "type": "number",
+                                                                "example": 48000
+                                                            },
+                                                            "paid": {
+                                                                "type": "number",
+                                                                "example": 32000
+                                                            },
+                                                            "closing": {
+                                                                "type": "number",
+                                                                "example": 31000
+                                                            }
+                                                        },
+                                                        "type": "object"
+                                                    }
+                                                },
+                                                "receipts": {
+                                                    "properties": {
+                                                        "rows": {
+                                                            "type": "array",
+                                                            "items": {
+                                                                "properties": {
+                                                                    "account": {
+                                                                        "$ref": "#/components/schemas/Account"
+                                                                    },
+                                                                    "code": {
+                                                                        "type": "string",
+                                                                        "example": "4001"
+                                                                    },
+                                                                    "label": {
+                                                                        "type": "string",
+                                                                        "example": "Sales"
+                                                                    },
+                                                                    "amount": {
+                                                                        "type": "number",
+                                                                        "example": 48000
+                                                                    }
+                                                                },
+                                                                "type": "object"
+                                                            }
+                                                        },
+                                                        "total": {
+                                                            "type": "number",
+                                                            "example": 48000
+                                                        }
+                                                    },
+                                                    "type": "object"
+                                                },
+                                                "payments": {
+                                                    "properties": {
+                                                        "rows": {
+                                                            "type": "array",
+                                                            "items": {
+                                                                "properties": {
+                                                                    "account": {
+                                                                        "$ref": "#/components/schemas/Account"
+                                                                    },
+                                                                    "code": {
+                                                                        "type": "string",
+                                                                        "example": "5001"
+                                                                    },
+                                                                    "label": {
+                                                                        "type": "string",
+                                                                        "example": "Rent"
+                                                                    },
+                                                                    "amount": {
+                                                                        "type": "number",
+                                                                        "example": 32000
+                                                                    }
+                                                                },
+                                                                "type": "object"
+                                                            }
+                                                        },
+                                                        "total": {
+                                                            "type": "number",
+                                                            "example": 32000
+                                                        }
+                                                    },
+                                                    "type": "object"
+                                                },
+                                                "opening_total": {
+                                                    "type": "number",
+                                                    "example": 15000
+                                                },
+                                                "closing_total": {
+                                                    "type": "number",
+                                                    "example": 31000
+                                                },
+                                                "receipts_side_total": {
+                                                    "description": "opening_total + receipts.total",
+                                                    "type": "number",
+                                                    "example": 63000
+                                                },
+                                                "payments_side_total": {
+                                                    "description": "payments.total + closing_total",
+                                                    "type": "number",
+                                                    "example": 63000
+                                                },
+                                                "is_balanced": {
+                                                    "type": "boolean",
+                                                    "example": true
+                                                },
+                                                "message": {
+                                                    "description": "Set when no cash / bank / OD ledger exists",
+                                                    "type": "string",
+                                                    "nullable": true
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
                                 }
                             }
                         }
-                    }
-                },
-                "security": [
-                    {
-                        "bearerAuth": []
-                    }
-                ]
-            }
-        },
-        "/reports/bank-book": {
-            "get": {
-                "tags": [
-                    "Reports"
-                ],
-                "summary": "Get Bank Book report",
-                "operationId": "getBankBook",
-                "parameters": [
-                    {
-                        "name": "date_from",
-                        "in": "query",
-                        "schema": {
-                            "type": "string",
-                            "format": "date"
-                        }
                     },
-                    {
-                        "name": "date_to",
-                        "in": "query",
-                        "schema": {
-                            "type": "string",
-                            "format": "date"
-                        }
-                    },
-                    {
-                        "name": "account_id",
-                        "in": "query",
-                        "schema": {
-                            "type": "integer"
-                        }
-                    },
-                    {
-                        "name": "financial_year_id",
-                        "in": "query",
-                        "description": "Financial year ID (default: current)",
-                        "schema": {
-                            "type": "integer"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Success",
+                    "401": {
+                        "description": "Unauthorized",
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "$ref": "#/components/schemas/SuccessResponse"
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
                                 }
                             }
                         }
@@ -6884,7 +7170,6 @@
                             "schema": {
                                 "required": [
                                     "amount",
-                                    "payment_mode",
                                     "cash_bank_account_id"
                                 ],
                                 "properties": {
@@ -6892,15 +7177,6 @@
                                         "type": "number",
                                         "format": "float",
                                         "example": 500
-                                    },
-                                    "payment_mode": {
-                                        "type": "string",
-                                        "example": "bank",
-                                        "enum": [
-                                            "cash",
-                                            "bank",
-                                            "od"
-                                        ]
                                     },
                                     "cash_bank_account_id": {
                                         "description": "Received In cash/bank/OD account",
@@ -9749,9 +10025,9 @@
                         "example": 1
                     },
                     "account_code": {
-                        "description": "Unique account code",
+                        "description": "Account code unique within the company",
                         "type": "string",
-                        "example": "AST0001"
+                        "example": "1101"
                     },
                     "account_name": {
                         "description": "Account name",
@@ -9831,9 +10107,9 @@
                         "example": 1
                     },
                     "party_code": {
-                        "description": "Unique party code",
+                        "description": "Party code unique within the company",
                         "type": "string",
-                        "example": "DEB0001"
+                        "example": "AR001"
                     },
                     "name": {
                         "description": "Party name",
@@ -9953,9 +10229,9 @@
                         "example": 1
                     },
                     "voucher_number": {
-                        "description": "Unique voucher number",
+                        "description": "Voucher number unique within the company",
                         "type": "string",
-                        "example": "EXP000001"
+                        "example": "ADJ000001"
                     },
                     "voucher_type": {
                         "description": "Voucher type",

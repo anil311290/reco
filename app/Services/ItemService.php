@@ -85,6 +85,7 @@ class ItemService
             $data['opening_stock'] = 0;
             $data['current_stock'] = 0;
             $data['purchase_price'] = 0;
+            $data['unit'] = null;
         } else {
             $data['current_stock'] = $data['opening_stock'] ?? 0;
             if (!array_key_exists('is_stockable', $data)) {
@@ -107,6 +108,7 @@ class ItemService
         if ($type === 'service') {
             $data['is_stockable'] = false;
             $data['purchase_price'] = 0;
+            $data['unit'] = null;
             unset($data['opening_stock'], $data['current_stock']);
         } elseif (array_key_exists('opening_stock', $data)) {
             $openingStockChange = (float) $data['opening_stock'] - (float) $item->opening_stock;

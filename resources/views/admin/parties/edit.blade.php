@@ -169,7 +169,7 @@
                         </div>
                         <div class="account-stat">
                             <p class="account-stat-label">Opening Balance</p>
-                            <p class="account-stat-value">₹{{ number_format((float) $party->opening_balance, 2) }} {{ strtoupper($party->opening_balance_type ?? 'debit') }}</p>
+                            <p class="account-stat-value">₹{{ number_format((float) $party->opening_balance, 2) }} @drCr($party->opening_balance_type ?? 'debit')</p>
                         </div>
                     </div>
                 </div>

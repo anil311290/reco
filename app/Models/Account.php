@@ -24,7 +24,7 @@ class Account extends Model
         'account_name',
         'account_type',
         'entry_source',
-        'transaction_mode',
+        'is_cash_bank_od',
         'opening_balance',
         'balance_type',
         'opening_date',
@@ -42,6 +42,7 @@ class Account extends Model
     protected $casts = [
         'opening_balance' => 'decimal:2',
         'opening_date' => 'date',
+        'is_cash_bank_od' => 'boolean',
         'is_active' => 'boolean',
         'is_system' => 'boolean',
     ];
@@ -141,16 +142,19 @@ class Account extends Model
     }
 
     /**
-     * Get transaction mode label.
+     * Whether this ledger is enabled as Cash/Bank/OD.
      */
-    public function getTransactionModeLabelAttribute(): string
+    public function isCashBankOd(): bool
     {
-        return match($this->transaction_mode) {
-            'cash' => 'Cash',
-            'bank' => 'Bank',
-            'od' => 'OD',
-            default => '-',
-        };
+        return (bool) $this->is_cash_bank_od;
+    }
+
+    /**
+     * Scope: only ledgers enabled for Cash / Bank / OD usage.
+     */
+    public function scopeCashBankOd($query)
+    {
+        return $query->where('is_cash_bank_od', true);
     }
 
     /**

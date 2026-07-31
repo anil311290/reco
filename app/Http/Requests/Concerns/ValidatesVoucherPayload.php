@@ -114,7 +114,7 @@ trait ValidatesVoucherPayload
             $cashBank = Account::find($cashBankAccountId);
 
             if ($cashBankAccountId && $cashBank) {
-                if (!in_array($cashBank->transaction_mode, ['cash', 'bank', 'od'], true)) {
+                if (!$cashBank->isCashBankOd()) {
                     $validator->errors()->add('cash_bank_account_id', 'Select a Cash / Bank / OD account.');
                 }
             }
@@ -212,10 +212,6 @@ trait ValidatesVoucherPayload
 
     protected function validatePaymentBalance($validator, Account $cashBank, int $cashBankAccountId): void
     {
-        if ($cashBank->transaction_mode === 'od') {
-            return;
-        }
-
         $totalPayment = 0.0;
         foreach ((array) $this->input('payment_rows', []) as $row) {
             $totalPayment += (float) ($row['amount'] ?? 0);

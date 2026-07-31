@@ -76,11 +76,15 @@
                                 @foreach(collect($particularsOptions ?? [])->groupBy('group') as $group => $options)
                                     <optgroup label="{{ $group }}">
                                     @foreach($options as $option)
-                                        <option value="{{ $option['id'] }}">{{ $option['text'] }}</option>
+                                        <option value="{{ $option['id'] }}"
+                                            data-kind="{{ $option['kind'] ?? 'account' }}"
+                                            data-party-balance="{{ $option['party_balance'] ?? '' }}"
+                                            data-party-balance-type="{{ $option['party_balance_type'] ?? '' }}">{{ $option['text'] }}</option>
                                     @endforeach
                                     </optgroup>
                                 @endforeach
                             </select>
+                            <small class="text-muted d-block mt-1 pr-balance-hint"></small>
                         </div>
                         <div class="col-md-3">
                             <label class="form-label">Amount <span class="text-danger">*</span></label>
@@ -289,7 +293,10 @@ $(document).ready(function() {
             html += `<optgroup label="${group}">`;
             options.forEach((option) => {
                 const selected = String(selectedValue) === String(option.id) ? 'selected' : '';
-                html += `<option value="${option.id}" ${selected}>${option.text}</option>`;
+                const kind = option.kind || 'account';
+                const partyBalance = option.party_balance ?? '';
+                const partyBalanceType = option.party_balance_type || '';
+                html += `<option value="${option.id}" ${selected} data-kind="${kind}" data-party-balance="${partyBalance}" data-party-balance-type="${partyBalanceType}">${option.text}</option>`;
             });
             html += '</optgroup>';
         });
@@ -424,6 +431,7 @@ $(document).ready(function() {
                         <select class="form-select pr-particular" name="payment_rows[${index}][account_id]" required>
                             ${particularsOptionsHtml()}
                         </select>
+                        <small class="text-muted d-block mt-1 pr-balance-hint"></small>
                     </div>
                     <div class="col-md-3">
                         <input type="number" class="form-control pr-amount" name="payment_rows[${index}][amount]" value="" step="0.01" min="0.01" placeholder="0.00" required>
@@ -468,6 +476,27 @@ $(document).ready(function() {
             });
         }
 
+        function updateParticularBalanceHint($select) {
+            const $hint = $select.closest('.col-md-8').find('.pr-balance-hint');
+            if (!$hint.length) {
+                return;
+            }
+
+            const $selected = $select.find('option:selected');
+            const kind = String($selected.data('kind') || '');
+            const rawBalance = $selected.data('party-balance');
+            const balanceType = String($selected.data('party-balance-type') || '');
+
+            if (kind !== 'party' || rawBalance === undefined || rawBalance === null || rawBalance === '') {
+                $hint.text('');
+                return;
+            }
+
+            const balance = parseFloat(rawBalance) || 0;
+            const suffix = balanceType === 'credit' ? 'Cr' : 'Dr';
+            $hint.text(`Party balance: ₹${balance.toFixed(2)} ${suffix}`);
+        }
+
         $('#addPaymentReceiptRow').on('click', function() {
             const row = buildPaymentReceiptRow(paymentReceiptRowIndex);
             $('#paymentReceiptRows').append(row);
@@ -510,12 +539,16 @@ $(document).ready(function() {
             }
 
             refreshParticularsAvailability();
+            updateParticularBalanceHint($select);
         });
 
         $('#cash_bank_account_id').on('change', updateCashBankBalanceHint);
         refreshCashBankDropdown();
         updatePaymentReceiptRemoveButtons();
         refreshParticularsAvailability();
+        $('.pr-particular').each(function() {
+            updateParticularBalanceHint($(this));
+        });
     } else if (isAdjustment) {
         function updateAdjustmentRemoveButtons() {
             if ($('.adjustment-row').length <= 2) {

@@ -12,7 +12,7 @@
                 <span class="report-eyebrow"><i class="bi bi-journal-check"></i> Closing Control</span>
                 <h1 class="report-title">Trial Balance</h1>
                 <p class="report-subtitle">
-                    Basis for Balance Sheet and Profit &amp; Loss — Opening, period transactions, and Closing for every ledger (Tally style).
+                    Basis for Balance Sheet and Profit &amp; Loss — closing debit/credit balances for each ledger.
                 </p>
             </div>
             <div class="col-lg-4">

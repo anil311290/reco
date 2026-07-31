@@ -137,11 +137,10 @@ Route::prefix('v1')->middleware('auth:sanctum')->group(function () {
 
     // Reports
     Route::get('/reports/day-book', [ReportApiController::class, 'dayBook']);
-    Route::get('/reports/cash-book', [ReportApiController::class, 'cashBook']);
-    Route::get('/reports/bank-book', [ReportApiController::class, 'bankBook']);
     Route::get('/reports/ledger', [ReportApiController::class, 'ledger']);
     Route::get('/reports/trial-balance', [ReportApiController::class, 'trialBalance']);
     Route::get('/reports/profit-loss', [ReportApiController::class, 'profitLoss']);
+    Route::get('/reports/receipt-payment', [ReportApiController::class, 'receiptPayment']);
     Route::get('/reports/balance-sheet', [ReportApiController::class, 'balanceSheet']);
     Route::get('/reports/debtors-outstanding', [ReportApiController::class, 'debtorsOutstanding']);
     Route::get('/reports/creditors-outstanding', [ReportApiController::class, 'creditorsOutstanding']);
@@ -175,10 +174,8 @@ Route::prefix('v1')->middleware('auth:sanctum')->group(function () {
     Route::get('/export/trial-balance/excel', [ExportApiController::class, 'trialBalanceExcel']);
     Route::get('/export/day-book/pdf', [ExportApiController::class, 'dayBookPdf']);
     Route::get('/export/day-book/excel', [ExportApiController::class, 'dayBookExcel']);
-    Route::get('/export/cash-book/pdf', [ExportApiController::class, 'cashBookPdf']);
-    Route::get('/export/cash-book/excel', [ExportApiController::class, 'cashBookExcel']);
-    Route::get('/export/bank-book/pdf', [ExportApiController::class, 'bankBookPdf']);
-    Route::get('/export/bank-book/excel', [ExportApiController::class, 'bankBookExcel']);
+    Route::get('/export/receipt-payment/pdf', [ExportApiController::class, 'receiptPaymentPdf']);
+    Route::get('/export/receipt-payment/excel', [ExportApiController::class, 'receiptPaymentExcel']);
     Route::get('/export/ledger/pdf', [ExportApiController::class, 'ledgerPdf']);
     Route::get('/export/ledger/excel', [ExportApiController::class, 'ledgerExcel']);
     Route::get('/export/debtors-outstanding/pdf', [ExportApiController::class, 'debtorsOutstandingPdf']);

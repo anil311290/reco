@@ -129,7 +129,9 @@ class PartyService
         try {
             DB::beginTransaction();
 
-            $data['account_id'] = $this->resolveControlAccount($data)->id;
+            if (empty($data['account_id'])) {
+                $data['account_id'] = $this->resolveControlAccount($data)->id;
+            }
 
             $party = Party::create($data);
 
@@ -293,6 +295,218 @@ class PartyService
                 ];
             })
             ->toArray();
+    }
+
+    /**
+     * Build invoice party dropdown options with existing parties and
+     * Cash/Bank/OD ledgers as selectable entries.
+     */
+    public function getInvoicePartyOptions(int $companyId, string $type): array
+    {
+        $partyOptions = Party::query()
+            ->where('company_id', $companyId)
+            ->where('type', $type)
+            ->where('is_active', true)
+            ->orderBy('name')
+            ->get()
+            ->map(function (Party $party) {
+                return [
+                    'value' => 'party:' . $party->id,
+                    'label' => "{$party->name} ({$party->party_code})",
+                    'kind' => 'party',
+                ];
+            })
+            ->values()
+            ->toArray();
+
+        $ledgerOptions = Account::query()
+            ->where('company_id', $companyId)
+            ->where('is_active', true)
+            ->cashBankOd()
+            ->orderBy('account_code')
+            ->get()
+            ->map(function (Account $account) {
+                return [
+                    'value' => 'account:' . $account->id,
+                    'label' => "{$account->account_name} ({$account->account_code})",
+                    'kind' => 'cash_bank_od',
+                ];
+            })
+            ->values()
+            ->toArray();
+
+        return [
+            'parties' => $partyOptions,
+            'cash_bank_od_accounts' => $ledgerOptions,
+        ];
+    }
+
+    /**
+     * Resolve invoice party selection token to a concrete party ID.
+     */
+    public function resolveInvoicePartySelection(
+        $selection,
+        int $companyId,
+        string $type,
+        ?int $userId = null,
+        ?string $ip = null
+    ): int {
+        $selection = trim((string) $selection);
+
+        if (str_starts_with($selection, 'party:')) {
+            $partyId = (int) substr($selection, 6);
+            $party = Party::query()
+                ->where('company_id', $companyId)
+                ->where('type', $type)
+                ->where('is_active', true)
+                ->find($partyId);
+
+            if (!$party) {
+                throw new \RuntimeException('Selected party is invalid for this company.');
+            }
+
+            return (int) $party->id;
+        }
+
+        if (!str_starts_with($selection, 'account:')) {
+            throw new \RuntimeException('Select a valid customer/supplier option.');
+        }
+
+        $accountId = (int) substr($selection, 8);
+        $account = Account::query()
+            ->where('company_id', $companyId)
+            ->where('id', $accountId)
+            ->where('is_active', true)
+            ->cashBankOd()
+            ->first();
+
+        if (!$account) {
+            throw new \RuntimeException('Selected ledger is invalid for this invoice.');
+        }
+
+        $normalizedName = mb_strtolower(trim($account->account_name));
+
+        $existingParty = Party::query()
+            ->where('company_id', $companyId)
+            ->where('type', $type)
+            ->whereRaw('LOWER(TRIM(name)) = ?', [$normalizedName])
+            ->orderByDesc('id')
+            ->first();
+
+        if ($existingParty) {
+            $existingParty->update([
+                'account_id' => $account->id,
+                'is_active' => true,
+                'updated_by' => $userId,
+                'updated_by_ip' => $ip,
+            ]);
+
+            return (int) $existingParty->id;
+        }
+
+        $deletedParty = Party::onlyTrashed()
+            ->where('company_id', $companyId)
+            ->where('type', $type)
+            ->whereRaw('LOWER(TRIM(name)) = ?', [$normalizedName])
+            ->latest('deleted_at')
+            ->first();
+
+        if ($deletedParty) {
+            $deletedParty->restore();
+            $deletedParty->update([
+                'account_id' => $account->id,
+                'is_active' => true,
+                'updated_by' => $userId,
+                'updated_by_ip' => $ip,
+                'deleted_by' => null,
+                'deleted_by_id' => null,
+            ]);
+
+            return (int) $deletedParty->id;
+        }
+
+        throw new \RuntimeException(
+            'Selected ledger is not mapped to any party. Please choose an existing party or create one first.'
+        );
+    }
+
+    /**
+     * Resolve invoice selector token into party/account ids for posting.
+     *
+     * - party token: returns that party and its mapped account
+     * - account token: returns mapped party if found, else party_id=null with direct account_id
+     *
+     * @return array{party_id:int|null,account_id:int}
+     */
+    public function resolveInvoiceSelectionForPosting(
+        $selection,
+        int $companyId,
+        string $type
+    ): array {
+        $selection = trim((string) $selection);
+
+        if (ctype_digit($selection)) {
+            $selection = 'party:' . $selection;
+        }
+
+        if (str_starts_with($selection, 'party:')) {
+            $partyId = (int) substr($selection, 6);
+            $party = Party::query()
+                ->where('company_id', $companyId)
+                ->where('type', $type)
+                ->where('is_active', true)
+                ->find($partyId);
+
+            if (!$party) {
+                throw new \RuntimeException('Selected party is invalid for this company.');
+            }
+
+            $accountId = (int) ($party->account_id ?: 0);
+            if ($accountId <= 0) {
+                $accountId = (int) $this->resolveControlAccount([
+                    'type' => $type,
+                    'company_id' => $companyId,
+                    'financial_year_id' => FinancialYear::getCurrent($companyId)?->id,
+                    'created_by' => request()->user()?->id,
+                    'created_by_ip' => request()->ip(),
+                ])->id;
+            }
+
+            return [
+                'party_id' => (int) $party->id,
+                'account_id' => $accountId,
+            ];
+        }
+
+        if (!str_starts_with($selection, 'account:')) {
+            throw new \RuntimeException('Select a valid customer/supplier option.');
+        }
+
+        $accountId = (int) substr($selection, 8);
+
+        $account = Account::query()
+            ->where('company_id', $companyId)
+            ->where('id', $accountId)
+            ->where('is_active', true)
+            ->cashBankOd()
+            ->first();
+
+        if (!$account) {
+            throw new \RuntimeException('Selected ledger is invalid for this invoice.');
+        }
+
+        $mappedParty = Party::query()
+            ->where('company_id', $companyId)
+            ->where('type', $type)
+            ->where('is_active', true)
+            ->where('account_id', $account->id)
+            ->orderByDesc('id')
+            ->first();
+
+        return [
+            'party_id' => $mappedParty ? (int) $mappedParty->id : null,
+            'account_id' => (int) $account->id,
+        ];
     }
 
     /**

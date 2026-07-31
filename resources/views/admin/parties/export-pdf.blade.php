@@ -80,7 +80,7 @@
             <td>
                 <strong>Closing:</strong>
                 &#8377; {{ number_format($ledger['closing_balance'], 2) }}
-                {{ strtoupper($ledger['closing_type']) }}
+                @drCr($ledger['closing_type'])
             </td>
         </tr>
     </table>
@@ -107,7 +107,7 @@
                     <td class="num">{{ $entry->credit > 0 ? number_format((float) $entry->credit, 2) : '—' }}</td>
                     <td class="num">
                         {{ number_format($row['running_balance'], 2) }}
-                        {{ strtoupper($row['running_type']) }}
+                        @drCr($row['running_type'])
                     </td>
                 </tr>
             @empty
@@ -124,7 +124,7 @@
                 <td class="num">{{ number_format($ledger['total_credit'], 2) }}</td>
                 <td class="num">
                     {{ number_format($ledger['closing_balance'], 2) }}
-                    {{ strtoupper($ledger['closing_type']) }}
+                    @drCr($ledger['closing_type'])
                 </td>
             </tr>
         </tfoot>

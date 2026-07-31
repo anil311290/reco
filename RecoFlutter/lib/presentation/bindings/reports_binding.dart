@@ -1,13 +1,12 @@
 import 'package:get/get.dart';
 
 import '../controllers/reports/balance_sheet_report_controller.dart';
-import '../controllers/reports/bank_book_report_controller.dart';
-import '../controllers/reports/cash_book_report_controller.dart';
 import '../controllers/reports/creditors_outstanding_report_controller.dart';
 import '../controllers/reports/day_book_report_controller.dart';
 import '../controllers/reports/debtors_outstanding_report_controller.dart';
 import '../controllers/reports/ledger_report_controller.dart';
 import '../controllers/reports/profit_loss_report_controller.dart';
+import '../controllers/reports/receipt_payment_report_controller.dart';
 import '../controllers/reports/report_lookup_controller.dart';
 import '../controllers/reports/trial_balance_report_controller.dart';
 
@@ -22,14 +21,6 @@ class ReportsBinding extends Bindings {
       () => DayBookReportController(Get.find(), Get.find()),
       fenix: true,
     );
-    Get.lazyPut<CashBookReportController>(
-      () => CashBookReportController(Get.find(), Get.find()),
-      fenix: true,
-    );
-    Get.lazyPut<BankBookReportController>(
-      () => BankBookReportController(Get.find(), Get.find()),
-      fenix: true,
-    );
     Get.lazyPut<LedgerReportController>(
       () => LedgerReportController(Get.find(), Get.find()),
       fenix: true,
@@ -40,6 +31,10 @@ class ReportsBinding extends Bindings {
     );
     Get.lazyPut<ProfitLossReportController>(
       () => ProfitLossReportController(Get.find(), Get.find()),
+      fenix: true,
+    );
+    Get.lazyPut<ReceiptPaymentReportController>(
+      () => ReceiptPaymentReportController(Get.find(), Get.find()),
       fenix: true,
     );
     Get.lazyPut<BalanceSheetReportController>(

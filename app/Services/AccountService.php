@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\Account;
 use App\Models\FinancialYear;
+use App\Models\Ledger;
 use App\Models\Party;
 use App\Models\Setting;
 use Illuminate\Database\Eloquent\Collection;
@@ -128,9 +129,7 @@ class AccountService
         for ($attempt = 1; $attempt <= $maxAttempts; $attempt++) {
             try {
                 return DB::transaction(function () use ($data) {
-                    if (($data['account_type'] ?? null) !== 'asset') {
-                        $data['transaction_mode'] = null;
-                    }
+                    $data = $this->normalizeCashBankModePayload($data);
 
                     // Always generate a fresh company-scoped code on server.
                     $data['account_code'] = Account::generateCode(
@@ -192,9 +191,7 @@ class AccountService
             $data['created_by_ip']
         );
 
-        if (($data['account_type'] ?? $account->account_type) !== 'asset') {
-            $data['transaction_mode'] = null;
-        }
+        $data = $this->normalizeCashBankModePayload($data, $account->account_type);
 
         if (empty($data['balance_type'])) {
             $data['balance_type'] = in_array(
@@ -263,12 +260,15 @@ class AccountService
         if ($isInUse) {
             unset(
                 $data['account_type'],
-                $data['transaction_mode']
+                $data['is_cash_bank_od']
             );
         }
 
-        if (($data['account_type'] ?? $account->account_type) !== 'asset') {
-            $data['transaction_mode'] = null;
+        if (
+            array_key_exists('is_cash_bank_od', $data)
+            || array_key_exists('account_type', $data)
+        ) {
+            $data = $this->normalizeCashBankModePayload($data, $account->account_type);
         }
 
         // Prevent updating system accounts type
@@ -384,27 +384,23 @@ class AccountService
                     'id' => $account->id,
                     'text' => "{$account->account_code} - {$account->account_name}",
                     'type' => $account->account_type,
-                    'transaction_mode' => $account->transaction_mode,
+                    'is_cash_bank_od' => (bool) $account->is_cash_bank_od,
                 ];
             })
             ->toArray();
     }
 
     /**
-     * Cash / Bank / OD accounts for payment/receipt header (by payment mode).
+     * Cash / Bank / OD accounts for payment/receipt header.
      */
     public function getCashBankAccountsForMode(
         int $companyId,
-        ?string $transactionMode = null,
         ?int $financialYearId = null
     ): array {
-        $query = Account::where('company_id', $companyId)
+        $query = Account::query()
+            ->where('company_id', $companyId)
             ->where('is_active', true)
-            ->whereIn('transaction_mode', ['cash', 'bank', 'od']);
-
-        if ($transactionMode) {
-            $query->where('transaction_mode', $transactionMode);
-        }
+            ->cashBankOd();
 
         $financialYearId ??= FinancialYear::getCurrent($companyId)?->id ?? 0;
         $ledgerService = app(LedgerService::class);
@@ -425,7 +421,7 @@ class AccountService
                 return [
                     'id' => $account->id,
                     'text' => "{$account->account_code} - {$account->account_name}{$balanceHint}",
-                    'transaction_mode' => $account->transaction_mode,
+                    'is_cash_bank_od' => (bool) $account->is_cash_bank_od,
                     'available_balance' => $available,
                 ];
             })
@@ -485,14 +481,42 @@ class AccountService
     {
         $options = collect();
 
+        $partyBalances = collect();
+        $financialYearId = FinancialYear::getCurrent($companyId)?->id;
+
+        if ($financialYearId && $parties->isNotEmpty()) {
+            $partyIds = $parties->pluck('id')->all();
+
+            $partyBalances = Ledger::query()
+                ->where('company_id', $companyId)
+                ->where('financial_year_id', $financialYearId)
+                ->whereIn('party_id', $partyIds)
+                ->selectRaw('party_id, COALESCE(SUM(debit), 0) as debit_total, COALESCE(SUM(credit), 0) as credit_total')
+                ->groupBy('party_id')
+                ->get()
+                ->keyBy('party_id');
+        }
+
         foreach ($parties as $party) {
+            $balanceRow = $partyBalances->get($party->id);
+            $debit = (float) ($balanceRow->debit_total ?? 0);
+            $credit = (float) ($balanceRow->credit_total ?? 0);
+            $signedBalance = round($debit - $credit, 2);
+            $balanceAmount = abs($signedBalance);
+            $balanceType = $signedBalance >= 0 ? 'debit' : 'credit';
+            $balanceSuffix = $balanceAmount >= 0.01
+                ? ' | Bal: ₹' . number_format($balanceAmount, 2) . ' ' . ($balanceType === 'debit' ? 'Dr' : 'Cr')
+                : ' | Bal: ₹0.00';
+
             $options->push([
                 'id' => 'party:' . $party->id,
                 'party_id' => $party->id,
-                'text' => "{$party->party_code} - {$party->name}",
+                'text' => "{$party->party_code} - {$party->name}{$balanceSuffix}",
                 'kind' => 'party',
                 'group' => 'Parties',
                 'sort_order' => 10,
+                'party_balance' => round($balanceAmount, 2),
+                'party_balance_type' => $balanceType,
             ]);
         }
 
@@ -502,12 +526,9 @@ class AccountService
             ->whereNotIn('account_code', [Account::CODE_AR, Account::CODE_AP])
             ->when(
                 $excludedTransactionModes !== [],
-                // Keep every ledger except the cash/bank/OD contra accounts.
-                // NULL transaction_mode (normal ledgers) must be retained, so a
-                // plain whereNotIn is unsafe (NULL NOT IN (...) is never true).
-                fn ($query) => $query->where(fn ($q) => $q
-                    ->whereNull('transaction_mode')
-                    ->orWhereNotIn('transaction_mode', $excludedTransactionModes))
+                // Cash / Bank / OD contra ledgers are controlled by the boolean
+                // switch and should not appear in line-level particulars.
+                fn ($query) => $query->where('is_cash_bank_od', false)
             )
             ->orderBy('account_code')
             ->get()
@@ -533,9 +554,29 @@ class AccountService
     }
 
     /**
+     * Normalize cash/bank toggle payload.
+     */
+    protected function normalizeCashBankModePayload(array $data, ?string $fallbackType = null): array
+    {
+        unset($data['transaction_mode']);
+
+        $accountType = $data['account_type'] ?? $fallbackType;
+
+        if ($accountType !== 'asset') {
+            $data['is_cash_bank_od'] = 0;
+
+            return $data;
+        }
+
+        $data['is_cash_bank_od'] = !empty($data['is_cash_bank_od']) ? 1 : 0;
+
+        return $data;
+    }
+
+    /**
      * @deprecated Prefer getCashBankAccountsForMode + getPaymentParticularsOptions
      */
-    public function getCombinedPaymentDropdownOptions(int $companyId, ?string $transactionMode = null, ?string $voucherType = null): array
+    public function getCombinedPaymentDropdownOptions(int $companyId, ?string $voucherType = null): array
     {
         return $this->getPaymentParticularsOptions($companyId, $voucherType);
     }

@@ -452,18 +452,6 @@
                                 </a>
                             </li>
                             <li class="nav-item">
-                                <a class="nav-link {{ request()->routeIs('admin.reports.cash-book') ? 'active' : '' }}" href="{{ route('admin.reports.cash-book') }}">
-                                    <i class="bi bi-cash-coin"></i>
-                                    <span>Cash Book</span>
-                                </a>
-                            </li>
-                            <li class="nav-item">
-                                <a class="nav-link {{ request()->routeIs('admin.reports.bank-book') ? 'active' : '' }}" href="{{ route('admin.reports.bank-book') }}">
-                                    <i class="bi bi-bank"></i>
-                                    <span>Bank Book</span>
-                                </a>
-                            </li>
-                            <li class="nav-item">
                                 <a class="nav-link {{ request()->routeIs('admin.reports.ledger') ? 'active' : '' }}" href="{{ route('admin.reports.ledger') }}">
                                     <i class="bi bi-book"></i>
                                     <span>Ledger</span>
@@ -479,6 +467,12 @@
                                 <a class="nav-link {{ request()->routeIs('admin.reports.profit-loss') ? 'active' : '' }}" href="{{ route('admin.reports.profit-loss') }}">
                                     <i class="bi bi-graph-up"></i>
                                     <span>Profit & Loss</span>
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link {{ request()->routeIs('admin.reports.receipt-payment') ? 'active' : '' }}" href="{{ route('admin.reports.receipt-payment') }}">
+                                    <i class="bi bi-cash-coin"></i>
+                                    <span>Receipt & Payment</span>
                                 </a>
                             </li>
                             <li class="nav-item">
@@ -789,6 +783,68 @@
     </div>
     @endpermission
 
+    @permission('accounts.create')
+    <div class="modal fade" id="accountQuickAddModal" tabindex="-1" aria-hidden="true" data-store-url="{{ route('admin.accounts.store') }}">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <div>
+                        <h5 class="modal-title mb-0">Quick Add Cash / Bank Ledger</h5>
+                        <small class="text-muted">Create a Cash/Bank/OD ledger without leaving this form.</small>
+                    </div>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="accountQuickAddForm">
+                        @csrf
+                        <input type="hidden" name="account_target" value="">
+                        <input type="hidden" name="account_type" value="asset">
+                        <input type="hidden" name="duplicate_action" value="">
+                        <input type="hidden" name="is_active" value="1">
+
+                        <div class="mb-3">
+                            <label class="form-label">Ledger Name <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" name="account_name" required placeholder="e.g., Cash Counter, HDFC Bank, OD Account">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Opening Date</label>
+                            <input type="date" class="form-control" name="opening_date" value="{{ date('Y-m-d') }}">
+                        </div>
+                        <div class="row g-3 mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label">Opening Balance</label>
+                                <div class="input-group">
+                                    <span class="input-group-text">₹</span>
+                                    <input type="number" class="form-control" name="opening_balance" value="0" min="0" step="0.01" placeholder="0.00">
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Balance Type</label>
+                                <select class="form-select" name="balance_type">
+                                    <option value="debit" selected>Debit</option>
+                                    <option value="credit">Credit</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="form-check form-switch mb-3">
+                            <input class="form-check-input" type="checkbox" id="account_quick_is_cash_bank_od" checked>
+                            <label class="form-check-label" for="account_quick_is_cash_bank_od">Is Cash / Bank / OD?</label>
+                        </div>
+                        <div class="mb-0">
+                            <label class="form-label">Remarks</label>
+                            <input type="text" class="form-control" name="remarks" maxlength="500" placeholder="Optional note">
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" form="accountQuickAddForm" class="btn btn-primary">Create Ledger</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    @endpermission
+
     <!-- Scripts -->
     <!-- Local Vendor JS (offline-safe) -->
     <script src="{{ asset('assets/vendor/jquery/jquery.min.js') }}"></script>
@@ -831,6 +887,315 @@
     
     <!-- Custom JS -->
     <script src="{{ asset('assets/js/common.js') }}"></script>
+
+    <script>
+        $(function() {
+            function applySelectValue($select, value) {
+                $select.val(value);
+                $select.trigger('change');
+
+                if ($select.hasClass('select2-hidden-accessible')) {
+                    $select.trigger('change.select2');
+                }
+            }
+
+            function getSelectValueMode($select) {
+                return ($select.data('quick-add-value-mode') || '').toString().trim().toLowerCase();
+            }
+
+            function tokenAwareValue($select, type, id) {
+                if (getSelectValueMode($select) !== 'token') {
+                    return String(id);
+                }
+
+                return `${type}:${id}`;
+            }
+
+            function appendPartyOption($select, party) {
+                const value = tokenAwareValue($select, 'party', party.id);
+                const label = `${party.name} (${party.party_code})`;
+
+                if ($select.find(`option[value="${value}"]`).length) {
+                    return value;
+                }
+
+                const $optgroup = $select.find('optgroup[label="Cash / Bank / OD Ledgers"]').first();
+                const $option = $('<option>', { value, text: label });
+
+                if ($optgroup.length) {
+                    $optgroup.before($option);
+                } else {
+                    $select.append($option);
+                }
+
+                return value;
+            }
+
+            function appendLedgerOption($select, account) {
+                const value = tokenAwareValue($select, 'account', account.id);
+                const label = `${account.account_name} (${account.account_code})`;
+
+                if ($select.find(`option[value="${value}"]`).length) {
+                    return value;
+                }
+
+                let $optgroup = $select.find('optgroup[label="Cash / Bank / OD Ledgers"]').first();
+                if (!$optgroup.length) {
+                    $optgroup = $('<optgroup>', { label: 'Cash / Bank / OD Ledgers' }).appendTo($select);
+                }
+
+                $optgroup.append($('<option>', { value, text: label }));
+
+                return value;
+            }
+
+            const $partyModal = $('#partyQuickAddModal');
+            const partyModalEl = $partyModal.get(0);
+            const partyModal = partyModalEl ? bootstrap.Modal.getOrCreateInstance(partyModalEl) : null;
+            const $partyForm = $('#partyQuickAddForm');
+            let partyTargetSelector = '';
+            let statesLoaded = false;
+            let currentCountryId = null;
+
+            function loadPartyStates(resetCities) {
+                if (!$partyForm.length) {
+                    return;
+                }
+
+                const $state = $partyForm.find('[name="state_id"]');
+                const $city = $partyForm.find('[name="city_id"]');
+
+                const loadStates = function(countryId) {
+                    currentCountryId = countryId;
+                    return $.get(`/api/locations/${countryId}/states`).done(function(states) {
+                        $state.empty().append('<option value="">Select State</option>');
+                        (states || []).forEach(function(state) {
+                            $state.append(new Option(state.name, state.id));
+                        });
+
+                        if (resetCities) {
+                            $city.empty().append('<option value="">Select City</option>').prop('disabled', true);
+                        }
+
+                        statesLoaded = true;
+                    });
+                };
+
+                if (currentCountryId) {
+                    loadStates(currentCountryId);
+                    return;
+                }
+
+                $.get('/api/locations/countries').done(function(countries) {
+                    const fallback = Array.isArray(countries) && countries.length ? countries[0].id : 101;
+                    loadStates(fallback);
+                }).fail(function() {
+                    loadStates(101);
+                });
+            }
+
+            if ($partyForm.length) {
+                $(document).on('click', '.quick-add-party-btn', function() {
+                    partyTargetSelector = $(this).data('party-quick-add-target') || '';
+                    const partyType = ($(this).data('party-quick-add-type') || 'debtor').toString();
+                    const label = partyType === 'creditor' ? 'Supplier' : 'Customer';
+
+                    $partyForm[0].reset();
+                    clearValidationErrors('#partyQuickAddForm');
+                    $partyForm.find('[name="party_target"]').val(partyTargetSelector);
+                    $partyForm.find('[name="type"]').val(partyType);
+                    $partyForm.find('[name="opening_balance"]').val('0');
+                    $partyForm.find('[name="opening_balance_type"]').val(partyType === 'creditor' ? 'credit' : 'debit');
+                    $partyModal.find('.party-quick-add-title').text(`Quick Add ${label}`);
+
+                    if (!statesLoaded) {
+                        loadPartyStates(true);
+                    } else {
+                        $partyForm.find('[name="city_id"]').empty().append('<option value="">Select City</option>').prop('disabled', true);
+                    }
+
+                    if (partyModal) {
+                        partyModal.show();
+                    }
+                });
+
+                $partyForm.on('change', '[name="state_id"]', function() {
+                    const stateId = $(this).val();
+                    const $city = $partyForm.find('[name="city_id"]');
+
+                    $city.empty().append('<option value="">Loading cities...</option>').prop('disabled', true);
+
+                    if (!stateId) {
+                        $city.empty().append('<option value="">Select City</option>').prop('disabled', true);
+                        return;
+                    }
+
+                    $.get(`/api/locations/${stateId}/cities`).done(function(cities) {
+                        $city.empty().append('<option value="">Select City</option>');
+                        (cities || []).forEach(function(city) {
+                            $city.append(new Option(city.name, city.id));
+                        });
+                        $city.prop('disabled', false);
+                    }).fail(function() {
+                        $city.empty().append('<option value="">Select City</option>').prop('disabled', true);
+                        toastr.error('Unable to load cities.');
+                    });
+                });
+
+                ajaxFormSubmit(
+                    '#partyQuickAddForm',
+                    $partyModal.data('store-url'),
+                    'POST',
+                    function(response) {
+                        const party = response.data;
+                        const target = partyTargetSelector || $partyForm.find('[name="party_target"]').val();
+                        const $target = target ? $(target) : $();
+
+                        if (!$target.length) {
+                            toastr.warning('Party created but target dropdown was not found.');
+                            if (partyModal) {
+                                partyModal.hide();
+                            }
+                            return;
+                        }
+
+                        const value = appendPartyOption($target, party);
+                        applySelectValue($target, value);
+
+                        if (partyModal) {
+                            partyModal.hide();
+                        }
+                    },
+                    function(xhr) {
+                        const response = xhr.responseJSON;
+
+                        if (xhr.status !== 409 || response?.code !== 'SOFT_DELETED_PARTY_EXISTS') {
+                            return false;
+                        }
+
+                        Swal.fire({
+                            title: 'Deleted Party Found',
+                            text: `${response.data.party_name} (${response.data.party_code}) exists in deleted records.`,
+                            icon: 'question',
+                            showCancelButton: true,
+                            showDenyButton: true,
+                            confirmButtonText: 'Restore Party',
+                            denyButtonText: 'Create New Entry',
+                            cancelButtonText: 'Cancel',
+                            confirmButtonColor: '#16a34a',
+                            denyButtonColor: '#4f46e5',
+                            cancelButtonColor: '#6b7280'
+                        }).then(function(result) {
+                            if (!result.isConfirmed && !result.isDenied) {
+                                return;
+                            }
+
+                            $partyForm.find('[name="duplicate_action"]').remove();
+                            $('<input>', {
+                                type: 'hidden',
+                                name: 'duplicate_action',
+                                value: result.isConfirmed ? 'restore' : 'new_entry'
+                            }).appendTo($partyForm);
+
+                            $partyForm.trigger('submit');
+                        });
+
+                        return true;
+                    }
+                );
+            }
+
+            const $accountModal = $('#accountQuickAddModal');
+            const accountModalEl = $accountModal.get(0);
+            const accountModal = accountModalEl ? bootstrap.Modal.getOrCreateInstance(accountModalEl) : null;
+            const $accountForm = $('#accountQuickAddForm');
+            let accountTargetSelector = '';
+
+            if ($accountForm.length) {
+                $(document).on('click', '.quick-add-ledger-btn', function() {
+                    accountTargetSelector = $(this).data('account-quick-add-target') || '';
+
+                    $accountForm[0].reset();
+                    clearValidationErrors('#accountQuickAddForm');
+                    $accountForm.find('[name="account_target"]').val(accountTargetSelector);
+                    $accountForm.find('[name="opening_date"]').val('{{ date('Y-m-d') }}');
+                    $accountForm.find('[name="opening_balance"]').val('0');
+                    $accountForm.find('[name="balance_type"]').val('debit');
+                    $accountForm.find('[name="duplicate_action"]').val('');
+                    $('#account_quick_is_cash_bank_od').prop('checked', true);
+
+                    if (accountModal) {
+                        accountModal.show();
+                    }
+                });
+
+                ajaxFormSubmit(
+                    '#accountQuickAddForm',
+                    $accountModal.data('store-url'),
+                    'POST',
+                    function(response) {
+                        const account = response.data;
+                        const target = accountTargetSelector || $accountForm.find('[name="account_target"]').val();
+                        const $target = target ? $(target) : $();
+
+                        if (!$target.length) {
+                            toastr.warning('Ledger created but target dropdown was not found.');
+                            if (accountModal) {
+                                accountModal.hide();
+                            }
+                            return;
+                        }
+
+                        const value = appendLedgerOption($target, account);
+                        applySelectValue($target, value);
+
+                        if (accountModal) {
+                            accountModal.hide();
+                        }
+                    },
+                    function(xhr) {
+                        const response = xhr.responseJSON;
+
+                        if (xhr.status !== 409 || response?.code !== 'SOFT_DELETED_ACCOUNT_EXISTS') {
+                            return false;
+                        }
+
+                        Swal.fire({
+                            title: 'Deleted Account Found',
+                            text: `${response.data.account_name} (${response.data.account_code}) exists in deleted records.`,
+                            icon: 'question',
+                            showCancelButton: true,
+                            showDenyButton: true,
+                            confirmButtonText: 'Restore Account',
+                            denyButtonText: 'Create New Entry',
+                            cancelButtonText: 'Cancel',
+                            confirmButtonColor: '#16a34a',
+                            denyButtonColor: '#4f46e5',
+                            cancelButtonColor: '#6b7280'
+                        }).then(function(result) {
+                            if (!result.isConfirmed && !result.isDenied) {
+                                return;
+                            }
+
+                            $accountForm.find('[name="duplicate_action"]').val(result.isConfirmed ? 'restore' : 'new_entry');
+                            $accountForm.trigger('submit');
+                        });
+
+                        return true;
+                    }
+                );
+
+                $('#account_quick_is_cash_bank_od').on('change', function() {
+                    const enabled = $(this).is(':checked');
+                    let $hidden = $accountForm.find('input[name="is_cash_bank_od"]');
+                    if (!$hidden.length) {
+                        $hidden = $('<input>', { type: 'hidden', name: 'is_cash_bank_od' }).appendTo($accountForm);
+                    }
+                    $hidden.val(enabled ? '1' : '0');
+                }).trigger('change');
+            }
+        });
+    </script>
 
     <script>
         // Sidebar Toggle

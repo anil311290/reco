@@ -148,29 +148,77 @@ use OpenApi\Annotations as OA;
  * )
  *
  * @OA\Get(
- *     path="/reports/cash-book",
+ *     path="/reports/receipt-payment",
  *     tags={"Reports"},
- *     summary="Get Cash Book report",
- *     operationId="getCashBook",
+ *     summary="Get Receipt & Payment report",
+ *     description="Cash, bank, and OD movement for the period grouped by contra ledger head. Opening + Receipts always equals Payments + Closing; transfers between two cash / bank ledgers are excluded from both sides. Dates default to the financial year range.",
+ *     operationId="getReceiptPayment",
  *     security={{"bearerAuth":{}}},
- *     @OA\Parameter(name="date_from", in="query", @OA\Schema(type="string", format="date")),
- *     @OA\Parameter(name="date_to", in="query", @OA\Schema(type="string", format="date")),
- *     @OA\Parameter(name="account_id", in="query", @OA\Schema(type="integer")),
+ *     @OA\Parameter(name="date_from", in="query", description="From date (default: financial year start)", @OA\Schema(type="string", format="date")),
+ *     @OA\Parameter(name="date_to", in="query", description="To date (default: financial year end)", @OA\Schema(type="string", format="date")),
  *     @OA\Parameter(name="financial_year_id", in="query", description="Financial year ID (default: current)", @OA\Schema(type="integer")),
- *     @OA\Response(response=200, description="Success", @OA\JsonContent(ref="#/components/schemas/SuccessResponse"))
- * )
- *
- * @OA\Get(
- *     path="/reports/bank-book",
- *     tags={"Reports"},
- *     summary="Get Bank Book report",
- *     operationId="getBankBook",
- *     security={{"bearerAuth":{}}},
- *     @OA\Parameter(name="date_from", in="query", @OA\Schema(type="string", format="date")),
- *     @OA\Parameter(name="date_to", in="query", @OA\Schema(type="string", format="date")),
- *     @OA\Parameter(name="account_id", in="query", @OA\Schema(type="integer")),
- *     @OA\Parameter(name="financial_year_id", in="query", description="Financial year ID (default: current)", @OA\Schema(type="integer")),
- *     @OA\Response(response=200, description="Success", @OA\JsonContent(ref="#/components/schemas/SuccessResponse"))
+ *     @OA\Response(
+ *         response=200,
+ *         description="Success",
+ *         @OA\JsonContent(
+ *             @OA\Property(property="success", type="boolean", example=true),
+ *             @OA\Property(property="data", type="object",
+ *                 @OA\Property(property="date_from", type="string", format="date", example="2025-04-01"),
+ *                 @OA\Property(property="date_to", type="string", format="date", example="2026-03-31"),
+ *                 @OA\Property(property="financial_year_id", type="integer", example=1),
+ *                 @OA\Property(
+ *                     property="accounts",
+ *                     type="array",
+ *                     description="Per cash / bank / OD ledger movement",
+ *                     @OA\Items(
+ *                         @OA\Property(property="account", ref="#/components/schemas/Account"),
+ *                         @OA\Property(property="opening", type="number", example=15000.00),
+ *                         @OA\Property(property="received", type="number", example=48000.00),
+ *                         @OA\Property(property="paid", type="number", example=32000.00),
+ *                         @OA\Property(property="closing", type="number", example=31000.00)
+ *                     )
+ *                 ),
+ *                 @OA\Property(
+ *                     property="receipts",
+ *                     type="object",
+ *                     @OA\Property(
+ *                         property="rows",
+ *                         type="array",
+ *                         @OA\Items(
+ *                             @OA\Property(property="account", ref="#/components/schemas/Account"),
+ *                             @OA\Property(property="code", type="string", example="4001"),
+ *                             @OA\Property(property="label", type="string", example="Sales"),
+ *                             @OA\Property(property="amount", type="number", example=48000.00)
+ *                         )
+ *                     ),
+ *                     @OA\Property(property="total", type="number", example=48000.00)
+ *                 ),
+ *                 @OA\Property(
+ *                     property="payments",
+ *                     type="object",
+ *                     @OA\Property(
+ *                         property="rows",
+ *                         type="array",
+ *                         @OA\Items(
+ *                             @OA\Property(property="account", ref="#/components/schemas/Account"),
+ *                             @OA\Property(property="code", type="string", example="5001"),
+ *                             @OA\Property(property="label", type="string", example="Rent"),
+ *                             @OA\Property(property="amount", type="number", example=32000.00)
+ *                         )
+ *                     ),
+ *                     @OA\Property(property="total", type="number", example=32000.00)
+ *                 ),
+ *                 @OA\Property(property="opening_total", type="number", example=15000.00),
+ *                 @OA\Property(property="closing_total", type="number", example=31000.00),
+ *                 @OA\Property(property="receipts_side_total", type="number", description="opening_total + receipts.total", example=63000.00),
+ *                 @OA\Property(property="payments_side_total", type="number", description="payments.total + closing_total", example=63000.00),
+ *                 @OA\Property(property="is_balanced", type="boolean", example=true),
+ *                 @OA\Property(property="message", type="string", nullable=true, description="Set when no cash / bank / OD ledger exists")
+ *             )
+ *         )
+ *     ),
+ *     @OA\Response(response=401, description="Unauthorized", @OA\JsonContent(ref="#/components/schemas/ErrorResponse")),
+ *     @OA\Response(response=422, description="Validation error", @OA\JsonContent(ref="#/components/schemas/ErrorResponse"))
  * )
  *
  * @OA\Get(

@@ -90,7 +90,7 @@ class VoucherController extends Controller
             : $this->accountService->getForDropdown($companyId);
         $parties = $this->partyService->getForDropdown($companyId);
         $cashBankAccounts = in_array($type, ['payment', 'receipt'], true)
-            ? $this->accountService->getCashBankAccountsForMode($companyId, null, $financialYearId)
+            ? $this->accountService->getCashBankAccountsForMode($companyId, $financialYearId)
             : [];
         $particularsOptions = in_array($type, ['payment', 'receipt'], true)
             ? $this->accountService->getPaymentParticularsOptions($companyId, $type)
@@ -157,7 +157,7 @@ class VoucherController extends Controller
             : $this->accountService->getForDropdown($companyId);
         $parties = $this->partyService->getForDropdown($companyId);
         $cashBankAccounts = in_array($voucher->voucher_type, ['payment', 'receipt'], true)
-            ? $this->accountService->getCashBankAccountsForMode($companyId, null, $financialYearId)
+            ? $this->accountService->getCashBankAccountsForMode($companyId, $financialYearId)
             : [];
         $particularsOptions = in_array($voucher->voucher_type, ['payment', 'receipt'], true)
             ? $this->accountService->getPaymentParticularsOptions($companyId, $voucher->voucher_type)

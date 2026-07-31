@@ -17,6 +17,7 @@ class PurchaseInvoiceResource extends JsonResource
             'invoice_date' => $this->invoice_date?->toISOString(),
             'due_date' => $this->due_date?->toISOString(),
             'party_id' => $this->party_id,
+            'account_id' => $this->account_id,
             'party' => new PartyResource($this->whenLoaded('party')),
             'financial_year_id' => $this->financial_year_id,
             'notes' => $this->notes,

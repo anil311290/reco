@@ -213,6 +213,8 @@ class SyncService
     {
         unset($payload['id'], $payload['uuid'], $payload['company_id'], $payload['created_at'], $payload['updated_at']);
 
+        $payload['company_id'] = $companyId;
+
         return $payload;
     }
 

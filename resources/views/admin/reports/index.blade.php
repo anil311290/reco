@@ -15,7 +15,7 @@
             </div>
             <div class="col-lg-4">
                 <div class="report-toolbar">
-                    <span class="report-pill report-pill--info"><i class="bi bi-grid-1x2"></i> 9 report views</span>
+                    <span class="report-pill report-pill--info"><i class="bi bi-grid-1x2"></i> 8 report views</span>
                 </div>
             </div>
         </div>
@@ -27,18 +27,6 @@
             <h5 class="report-feature-title">Day Book</h5>
             <p class="report-feature-text">All posted voucher lines for a selected date with debit / credit particulars.</p>
             <a href="{{ route('admin.reports.day-book') }}" class="btn btn-outline-primary"><i class="bi bi-eye me-2"></i>Open</a>
-        </div>
-        <div class="report-feature-card" style="--report-icon-start:#059669; --report-icon-end:#34d399;">
-            <div class="report-feature-icon"><i class="bi bi-cash-coin"></i></div>
-            <h5 class="report-feature-title">Cash Book</h5>
-            <p class="report-feature-text">Cash ledger movement with opening, receipts, payments, and closing balance.</p>
-            <a href="{{ route('admin.reports.cash-book') }}" class="btn btn-outline-primary"><i class="bi bi-eye me-2"></i>Open</a>
-        </div>
-        <div class="report-feature-card" style="--report-icon-start:#2563eb; --report-icon-end:#60a5fa;">
-            <div class="report-feature-icon"><i class="bi bi-bank"></i></div>
-            <h5 class="report-feature-title">Bank Book</h5>
-            <p class="report-feature-text">Bank and OD account statements for the selected period.</p>
-            <a href="{{ route('admin.reports.bank-book') }}" class="btn btn-outline-primary"><i class="bi bi-eye me-2"></i>Open</a>
         </div>
         <div class="report-feature-card" style="--report-icon-start:#475569; --report-icon-end:#94a3b8;">
             <div class="report-feature-icon"><i class="bi bi-book"></i></div>
@@ -57,6 +45,12 @@
             <h5 class="report-feature-title">Profit &amp; Loss</h5>
             <p class="report-feature-text">Income and expense summary with net profit / loss for the financial year.</p>
             <a href="{{ route('admin.reports.profit-loss') }}" class="btn btn-outline-primary"><i class="bi bi-eye me-2"></i>Open</a>
+        </div>
+        <div class="report-feature-card" style="--report-icon-start:#059669; --report-icon-end:#34d399;">
+            <div class="report-feature-icon"><i class="bi bi-cash-coin"></i></div>
+            <h5 class="report-feature-title">Receipt &amp; Payment</h5>
+            <p class="report-feature-text">Cash, bank, and OD movement head-wise with opening and closing balances.</p>
+            <a href="{{ route('admin.reports.receipt-payment') }}" class="btn btn-outline-primary"><i class="bi bi-eye me-2"></i>Open</a>
         </div>
         <div class="report-feature-card" style="--report-icon-start:#2563eb; --report-icon-end:#60a5fa;">
             <div class="report-feature-icon"><i class="bi bi-file-earmark-bar-graph"></i></div>

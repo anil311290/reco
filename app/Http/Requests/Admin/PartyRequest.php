@@ -23,6 +23,7 @@ class PartyRequest extends BaseFormRequest
     public function rules(): array
     {
         $partyId = $this->route('party') ?? $this->route('id');
+        $isCreate = $this->isMethod('post');
 
         return [
             'party_code' => [
@@ -30,7 +31,9 @@ class PartyRequest extends BaseFormRequest
                 'nullable',
                 'string',
                 'max:20',
-                Rule::unique('parties', 'party_code')->ignore($partyId),
+                Rule::unique('parties', 'party_code')
+                    ->ignore($partyId)
+                    ->where(fn ($query) => $query->where('company_id', $this->user()?->company_id)),
             ],
             'name' => 'required|string|max:255',
             'type' => ['required', Rule::in(['debtor', 'creditor'])],
@@ -43,7 +46,10 @@ class PartyRequest extends BaseFormRequest
             'gstin' => 'nullable|string|max:20',
             'pan_number' => 'nullable|string|max:20',
             'opening_balance' => 'nullable|numeric|min:0',
-            'opening_balance_type' => ['required', Rule::in(['debit', 'credit'])],
+            'opening_balance_type' => [
+                $isCreate ? 'required' : 'nullable',
+                Rule::in(['debit', 'credit']),
+            ],
             'opening_date' => 'nullable|date',
             'remarks' => 'nullable|string|max:500',
             'is_active' => 'boolean',
@@ -60,7 +66,7 @@ class PartyRequest extends BaseFormRequest
             'name.required' => 'Party name is required',
             'type.required' => 'Party type is required',
             'type.in' => 'Invalid party type',
-            'party_code.unique' => 'This party code is already taken',
+            'party_code.unique' => 'This party code is already taken for your company',
             'state_id.required' => 'State is required',
             'state_id.exists' => 'Invalid state selected',
             'city_id.required' => 'City is required',

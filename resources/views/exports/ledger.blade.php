@@ -38,8 +38,8 @@
         <h1>Ledger Report</h1>
         <div class="meta">
             <strong>Account:</strong> {{ $report['account']->account_code }} - {{ $report['account']->account_name }}<br>
-            <strong>Opening Balance:</strong> ₹{{ number_format($report['opening_balance']['balance'], 2) }} {{ strtoupper($report['opening_balance']['type']) }}<br>
-            <strong>Closing Balance:</strong> ₹{{ number_format($report['closing_balance']['balance'], 2) }} {{ strtoupper($report['closing_balance']['type']) }}
+            <strong>Opening Balance:</strong> ₹{{ number_format($report['opening_balance']['balance'], 2) }} @drCr($report['opening_balance']['type'])<br>
+            <strong>Closing Balance:</strong> ₹{{ number_format($report['closing_balance']['balance'], 2) }} @drCr($report['closing_balance']['type'])
         </div>
     </div>
 
@@ -62,7 +62,7 @@
                 <td>{{ $entry->voucher?->narration ?? '-' }}</td>
                 <td class="text-right">{{ $entry->debit > 0 ? number_format($entry->debit, 2) : '-' }}</td>
                 <td class="text-right">{{ $entry->credit > 0 ? number_format($entry->credit, 2) : '-' }}</td>
-                <td class="text-right">{{ number_format(abs($entry->running_balance), 2) }} {{ strtoupper($entry->balance_type) }}</td>
+                <td class="text-right">{{ number_format(abs($entry->running_balance), 2) }} @drCr($entry->balance_type)</td>
             </tr>
         @empty
             <tr><td colspan="6">No entries found</td></tr>

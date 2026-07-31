@@ -14,11 +14,14 @@ class VoucherRepository extends BaseRepository implements VoucherRepositoryInter
     }
 
     /**
-     * Find voucher by number
+     * Find voucher by number within a company
      */
-    public function findByNumber(string $number): ?Voucher
+    public function findByNumber(string $number, int $companyId): ?Voucher
     {
-        return $this->model->where('voucher_number', $number)->first();
+        return $this->model
+            ->where('company_id', $companyId)
+            ->where('voucher_number', $number)
+            ->first();
     }
 
     /**

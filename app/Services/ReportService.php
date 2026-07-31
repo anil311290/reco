@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\Account;
 use App\Models\FinancialYear;
+use App\Models\Ledger;
 use App\Models\Party;
 use App\Models\Voucher;
 use App\Interfaces\LedgerRepositoryInterface;
@@ -218,62 +219,257 @@ class ReportService
     }
 
     /**
-     * Cash Book / Bank Book (Tally style) for mode: cash | bank.
-     * Bank book includes OD accounts.
+     * Receipt & Payment account — every cash, bank, and OD movement of a period
+     * grouped by the contra ledger head, with opening and closing balances.
+     *
+     * Opening + Receipts always equals Payments + Closing: each voucher's cash
+     * movement is attributed to its non-cash heads, so transfers between two
+     * cash / bank ledgers cancel out and never inflate either side.
      */
-    public function getCashBankBook(
+    public function getReceiptPayment(
         int $companyId,
-        string $mode,
-        ?int $accountId = null,
         ?string $dateFrom = null,
         ?string $dateTo = null,
         ?int $financialYearId = null
     ): array {
-        $modes = $mode === 'bank' ? ['bank', 'od'] : ['cash'];
+        $financialYear = $financialYearId
+            ? FinancialYear::where('company_id', $companyId)->find($financialYearId)
+            : FinancialYear::getCurrent($companyId);
 
-        $accountsQuery = Account::where('company_id', $companyId)
-            ->whereIn('transaction_mode', $modes)
-            ->orderBy('account_code');
+        $dateFrom = $dateFrom ?: $financialYear?->start_date?->format('Y-m-d');
+        $dateTo = $dateTo ?: $financialYear?->end_date?->format('Y-m-d');
 
-        $accounts = $accountsQuery->get();
+        $cashAccounts = Account::query()
+            ->where('company_id', $companyId)
+            ->cashBankOd()
+            ->orderBy('account_code')
+            ->get();
 
-        if ($accounts->isEmpty()) {
+        if ($cashAccounts->isEmpty()) {
             return [
-                'mode' => $mode,
-                'accounts' => collect(),
-                'account' => null,
-                'report' => null,
-                'message' => $mode === 'cash'
-                    ? 'No Cash ledger found. Create an account with Payment Mode = Cash.'
-                    : 'No Bank / OD ledger found. Create an account with Payment Mode = Bank or OD.',
+                'date_from' => $dateFrom,
+                'date_to' => $dateTo,
+                'financial_year_id' => $financialYear?->id,
+                'accounts' => [],
+                'receipts' => ['rows' => [], 'total' => 0.0],
+                'payments' => ['rows' => [], 'total' => 0.0],
+                'opening_total' => 0.0,
+                'closing_total' => 0.0,
+                'receipts_side_total' => 0.0,
+                'payments_side_total' => 0.0,
+                'is_balanced' => true,
+                'message' => 'No Cash / Bank / OD ledger found. Enable Is Cash/Bank/OD on at least one asset ledger first.',
             ];
         }
 
-        $selectedAccount = $accountId
-            ? $accounts->firstWhere('id', $accountId)
-            : $accounts->first();
+        $cashAccountIds = $cashAccounts->pluck('id')->all();
+        $fyId = $financialYear?->id;
 
-        if (!$selectedAccount) {
-            $selectedAccount = $accounts->first();
+        $entries = Ledger::where('company_id', $companyId)
+            ->whereIn('account_id', $cashAccountIds)
+            ->when($fyId, fn ($query) => $query->where('financial_year_id', $fyId))
+            ->when($dateFrom, fn ($query) => $query->where('transaction_date', '>=', $dateFrom))
+            ->when($dateTo, fn ($query) => $query->where('transaction_date', '<=', $dateTo))
+            ->get(['id', 'account_id', 'voucher_id', 'debit', 'credit', 'description', 'reference_type']);
+
+        $accountRows = [];
+        $openingTotal = 0.0;
+        $closingTotal = 0.0;
+
+        foreach ($cashAccounts as $account) {
+            $opening = $this->ledgerService->getOpeningBalance(
+                (int) $account->id,
+                $companyId,
+                $fyId,
+                $dateFrom
+            );
+
+            $openingAmount = $opening['type'] === 'credit'
+                ? -1 * (float) $opening['balance']
+                : (float) $opening['balance'];
+
+            $accountEntries = $entries->where('account_id', $account->id);
+            $received = round((float) $accountEntries->sum('debit'), 2);
+            $paid = round((float) $accountEntries->sum('credit'), 2);
+            $closingAmount = round($openingAmount + $received - $paid, 2);
+
+            // Hide ledgers with no movement in the selected report period.
+            if (abs($received) < 0.01 && abs($paid) < 0.01) {
+                continue;
+            }
+
+            $accountRows[] = [
+                'account' => $account,
+                'opening' => round($openingAmount, 2),
+                'received' => $received,
+                'paid' => $paid,
+                'closing' => $closingAmount,
+            ];
+
+            $openingTotal += $openingAmount;
+            $closingTotal += $closingAmount;
         }
 
-        $fyId = $financialYearId ?? FinancialYear::getCurrent($companyId)?->id;
-        $ledger = $this->ledgerService->getAccountLedger(
-            (int) $selectedAccount->id,
-            $companyId,
-            $fyId,
-            $dateFrom,
-            $dateTo
-        );
+        [$receiptRows, $paymentRows] = $this->splitReceiptPaymentHeads($entries, $cashAccountIds);
+
+        [$receiptRows, $receiptSuspenseTotal] = $this->extractOpeningDifferenceRows($receiptRows);
+        [$paymentRows, $paymentSuspenseTotal] = $this->extractOpeningDifferenceRows($paymentRows);
+
+        // Treat Opening Balance Difference as part of opening, not period head movement.
+        $openingTotal = round($openingTotal + $receiptSuspenseTotal - $paymentSuspenseTotal, 2);
+
+        $receiptsTotal = round(array_sum(array_column($receiptRows, 'amount')), 2);
+        $paymentsTotal = round(array_sum(array_column($paymentRows, 'amount')), 2);
+        $openingTotal = round($openingTotal, 2);
+        $closingTotal = round($closingTotal, 2);
+
+        $receiptsSide = round($openingTotal + $receiptsTotal, 2);
+        $paymentsSide = round($paymentsTotal + $closingTotal, 2);
 
         return [
-            'mode' => $mode,
-            'title' => $mode === 'cash' ? 'Cash Book' : 'Bank Book',
-            'accounts' => $accounts,
-            'account' => $selectedAccount,
-            'report' => $ledger,
+            'date_from' => $dateFrom,
+            'date_to' => $dateTo,
+            'financial_year_id' => $fyId,
+            'accounts' => $accountRows,
+            'receipts' => ['rows' => $receiptRows, 'total' => $receiptsTotal],
+            'payments' => ['rows' => $paymentRows, 'total' => $paymentsTotal],
+            'opening_total' => $openingTotal,
+            'closing_total' => $closingTotal,
+            'receipts_side_total' => $receiptsSide,
+            'payments_side_total' => $paymentsSide,
+            'is_balanced' => abs($receiptsSide - $paymentsSide) < 0.01,
             'message' => null,
         ];
+    }
+
+    /**
+     * Remove Opening Balance Difference heads from side rows and return their total.
+     *
+     * @param  array<int, array<string, mixed>>  $rows
+     * @return array{0: array<int, array<string, mixed>>, 1: float}
+     */
+    protected function extractOpeningDifferenceRows(array $rows): array
+    {
+        $filtered = [];
+        $suspenseTotal = 0.0;
+
+        foreach ($rows as $row) {
+            $isSuspense = (string) ($row['code'] ?? '') === Account::CODE_SUSPENSE
+                || strtolower((string) ($row['label'] ?? '')) === 'opening balance difference';
+
+            if ($isSuspense) {
+                $suspenseTotal += (float) ($row['amount'] ?? 0);
+                continue;
+            }
+
+            $filtered[] = $row;
+        }
+
+        return [$filtered, round($suspenseTotal, 2)];
+    }
+
+    /**
+     * Attribute cash / bank movement to the contra heads of each voucher.
+     *
+     * @param  \Illuminate\Support\Collection<int, Ledger>  $entries
+     * @return array{0: array<int, array<string, mixed>>, 1: array<int, array<string, mixed>>}
+     */
+    protected function splitReceiptPaymentHeads($entries, array $cashAccountIds): array
+    {
+        $voucherIds = $entries->pluck('voucher_id')->filter()->unique()->values();
+
+        $contraByVoucher = $voucherIds->isEmpty()
+            ? collect()
+            : Ledger::whereIn('voucher_id', $voucherIds)
+                ->whereNotIn('account_id', $cashAccountIds)
+                ->with('account:id,account_code,account_name,account_type')
+                ->get(['id', 'voucher_id', 'account_id', 'debit', 'credit'])
+                ->groupBy('voucher_id');
+
+        $receiptHeads = [];
+        $paymentHeads = [];
+
+        foreach ($contraByVoucher as $voucherLines) {
+            foreach ($voucherLines as $line) {
+                if (!$line->account) {
+                    continue;
+                }
+
+                $key = 'account:' . $line->account_id;
+
+                // Credit on the contra head funds the cash movement (receipt).
+                if ((float) $line->credit > 0) {
+                    $receiptHeads[$key] ??= [
+                        'account' => $line->account,
+                        'code' => $line->account->account_code,
+                        'label' => $line->account->account_name,
+                        'amount' => 0.0,
+                    ];
+                    $receiptHeads[$key]['amount'] += (float) $line->credit;
+                }
+
+                // Debit on the contra head consumes cash movement (payment).
+                if ((float) $line->debit > 0) {
+                    $paymentHeads[$key] ??= [
+                        'account' => $line->account,
+                        'code' => $line->account->account_code,
+                        'label' => $line->account->account_name,
+                        'amount' => 0.0,
+                    ];
+                    $paymentHeads[$key]['amount'] += (float) $line->debit;
+                }
+            }
+        }
+
+        foreach ($entries->whereNull('voucher_id') as $entry) {
+            $label = str_contains((string) $entry->reference_type, 'opening')
+                ? 'Opening Balance Entries'
+                : ($entry->description ?: 'Unclassified');
+
+            $key = 'direct:' . $label;
+            if ((float) $entry->debit > 0) {
+                $receiptHeads[$key] ??= [
+                    'account' => null,
+                    'code' => '',
+                    'label' => $label,
+                    'amount' => 0.0,
+                ];
+                $receiptHeads[$key]['amount'] += (float) $entry->debit;
+            }
+
+            if ((float) $entry->credit > 0) {
+                $paymentHeads[$key] ??= [
+                    'account' => null,
+                    'code' => '',
+                    'label' => $label,
+                    'amount' => 0.0,
+                ];
+                $paymentHeads[$key]['amount'] += (float) $entry->credit;
+            }
+        }
+
+        $normalize = static function (array $heads): array {
+            $rows = [];
+            foreach ($heads as $head) {
+                $amount = round((float) ($head['amount'] ?? 0), 2);
+                if ($amount < 0.01) {
+                    continue;
+                }
+                $head['amount'] = $amount;
+                $rows[] = $head;
+            }
+
+            return $rows;
+        };
+
+        $receipts = $normalize($receiptHeads);
+        $payments = $normalize($paymentHeads);
+
+        $sorter = static fn (array $a, array $b) => [$a['code'], $a['label']] <=> [$b['code'], $b['label']];
+        usort($receipts, $sorter);
+        usort($payments, $sorter);
+
+        return [$receipts, $payments];
     }
 
     /**

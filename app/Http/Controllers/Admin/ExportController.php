@@ -76,6 +76,25 @@ class ExportController extends Controller
     }
 
     /**
+     * Export Receipt & Payment to PDF
+     */
+    public function receiptPaymentPdf(Request $request): Response
+    {
+        $companyId = $this->getCompanyId($request);
+
+        $pdf = $this->exportService->exportReceiptPaymentPdf(
+            $companyId,
+            $request->input('date_from'),
+            $request->input('date_to'),
+            $request->filled('financial_year_id') ? (int) $request->input('financial_year_id') : null
+        );
+
+        return response($pdf)
+            ->header('Content-Type', 'application/pdf')
+            ->header('Content-Disposition', 'attachment; filename="receipt-payment-report.pdf"');
+    }
+
+    /**
      * Export Ledger to PDF
      */
     public function ledgerPdf(Request $request): Response|RedirectResponse

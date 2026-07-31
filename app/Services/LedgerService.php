@@ -727,10 +727,13 @@ class LedgerService
             $closingDebit = $closingType === 'debit' ? $closingBalance : 0.0;
             $closingCredit = $closingType === 'credit' ? $closingBalance : 0.0;
 
-            $hasMovement = $openingBalance > 0.001
+            // Hide rows only when every trial-balance amount is zero.
+            $hasMovement = $openingDebit > 0.001
+                || $openingCredit > 0.001
                 || $transactionDebit > 0.001
                 || $transactionCredit > 0.001
-                || $closingBalance > 0.001;
+                || $closingDebit > 0.001
+                || $closingCredit > 0.001;
 
             if (!$hasMovement) {
                 continue;
@@ -810,8 +813,8 @@ class LedgerService
     }
 
     /**
-     * Spendable balance for payment vouchers (Cash / Bank).
-     * OD accounts return null (no limit). Credit balance on cash/bank = 0 available.
+     * Spendable balance for payment vouchers (Cash / Bank / OD).
+     * Credit balance returns 0 available.
      */
     public function getAvailablePaymentBalance(int $accountId, int $companyId, int $financialYearId): ?float
     {
@@ -819,10 +822,6 @@ class LedgerService
 
         if (!$account) {
             return 0.0;
-        }
-
-        if ($account->transaction_mode === 'od') {
-            return null;
         }
 
         $balance = $this->getAccountBalance($accountId, $companyId, $financialYearId);

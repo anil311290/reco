@@ -9,9 +9,27 @@ use OpenApi\Annotations as OA;
  *     path="/dashboard",
  *     tags={"Dashboard"},
  *     summary="Get dashboard statistics",
- *     description="Get main dashboard statistics including income, expense, profit, receivables, payables",
+ *     description="Dashboard statistics computed from posted ledger entries, so figures match the Profit & Loss report. Taxes are excluded from income and expense because they sit on their own tax ledgers.",
  *     operationId="getDashboard",
  *     security={{"bearerAuth":{}}},
+ *     @OA\Parameter(
+ *         name="range",
+ *         in="query",
+ *         description="Period filter. this_year means the current financial year.",
+ *         @OA\Schema(type="string", enum={"this_month", "last_month", "this_quarter", "this_year"}, example="this_year")
+ *     ),
+ *     @OA\Parameter(
+ *         name="group",
+ *         in="query",
+ *         description="Chart bucket size",
+ *         @OA\Schema(type="string", enum={"monthly", "quarterly", "yearly"}, example="monthly")
+ *     ),
+ *     @OA\Parameter(
+ *         name="limit",
+ *         in="query",
+ *         description="Recent transactions to return (1-20)",
+ *         @OA\Schema(type="integer", example=10)
+ *     ),
  *     @OA\Response(
  *         response=200,
  *         description="Dashboard data",
@@ -19,17 +37,31 @@ use OpenApi\Annotations as OA;
  *             @OA\Property(property="success", type="boolean", example=true),
  *             @OA\Property(property="data", type="object",
  *                 @OA\Property(property="statistics", type="object",
- *                     @OA\Property(property="income", type="number", format="float", example=150000.00, description="Total income"),
- *                     @OA\Property(property="expense", type="number", format="float", example=80000.00, description="Total expense"),
- *                     @OA\Property(property="profit", type="number", format="float", example=70000.00, description="Net profit"),
- *                     @OA\Property(property="receivables", type="number", format="float", example=45000.00, description="Total receivables"),
- *                     @OA\Property(property="payables", type="number", format="float", example=25000.00, description="Total payables"),
- *                     @OA\Property(property="cash_balance", type="number", format="float", example=120000.00, description="Cash balance"),
- *                     @OA\Property(property="total_vouchers", type="integer", example=150, description="Total vouchers"),
+ *                     @OA\Property(property="income", type="number", format="float", example=150000.00, description="Income ledger movement for the period, excluding tax"),
+ *                     @OA\Property(property="expense", type="number", format="float", example=80000.00, description="Expense ledger movement for the period, excluding tax"),
+ *                     @OA\Property(property="profit", type="number", format="float", example=70000.00, description="Income - expense. Negative means net loss"),
+ *                     @OA\Property(property="receivables", type="number", format="float", example=45000.00, description="Outstanding receivables"),
+ *                     @OA\Property(property="payables", type="number", format="float", example=25000.00, description="Outstanding payables"),
+ *                     @OA\Property(property="cash_balance", type="number", format="float", example=120000.00, description="Cash + Bank + OD balance"),
+ *                     @OA\Property(property="total_vouchers", type="integer", example=150, description="Posted vouchers in the period"),
  *                     @OA\Property(property="total_parties", type="integer", example=45, description="Total parties"),
- *                     @OA\Property(property="total_accounts", type="integer", example=30, description="Total accounts")
+ *                     @OA\Property(property="total_accounts", type="integer", example=30, description="Total accounts"),
+ *                     @OA\Property(property="period", type="object",
+ *                         @OA\Property(property="start", type="string", format="date", example="2026-04-01"),
+ *                         @OA\Property(property="end", type="string", format="date", example="2027-03-31"),
+ *                         @OA\Property(property="label", type="string", example="FY 2026-27")
+ *                     )
  *                 ),
- *                 @OA\Property(property="recent_transactions", type="array", @OA\Items(ref="#/components/schemas/Voucher"))
+ *                 @OA\Property(property="recent_transactions", type="array", @OA\Items(ref="#/components/schemas/Voucher")),
+ *                 @OA\Property(property="chart_data", type="object",
+ *                     @OA\Property(property="labels", type="array", @OA\Items(type="string"), example={"Apr 2026", "May 2026"}),
+ *                     @OA\Property(property="income", type="array", @OA\Items(type="number"), example={15000, 18000}),
+ *                     @OA\Property(property="expense", type="array", @OA\Items(type="number"), example={8000, 9500})
+ *                 ),
+ *                 @OA\Property(property="period", type="object",
+ *                     @OA\Property(property="start", type="string", format="date", example="2026-04-01"),
+ *                     @OA\Property(property="end", type="string", format="date", example="2027-03-31")
+ *                 )
  *             )
  *         )
  *     ),
@@ -44,7 +76,7 @@ use OpenApi\Annotations as OA;
  *     path="/dashboard/monthly-data",
  *     tags={"Dashboard"},
  *     summary="Get monthly income/expense data",
- *     description="Get monthly income and expense data for charts",
+ *     description="Monthly income and expense ledger movement for a calendar year, excluding tax",
  *     operationId="getMonthlyData",
  *     security={{"bearerAuth":{}}},
  *     @OA\Parameter(
@@ -76,7 +108,7 @@ use OpenApi\Annotations as OA;
  *     path="/dashboard/receivables-trend",
  *     tags={"Dashboard"},
  *     summary="Get receivables trend",
- *     description="Get receivables trend data for the last N months",
+ *     description="Outstanding receivables balance at each month end for the last N months",
  *     operationId="getReceivablesTrend",
  *     security={{"bearerAuth":{}}},
  *     @OA\Parameter(
@@ -107,7 +139,7 @@ use OpenApi\Annotations as OA;
  *     path="/dashboard/payables-trend",
  *     tags={"Dashboard"},
  *     summary="Get payables trend",
- *     description="Get payables trend data for the last N months",
+ *     description="Outstanding payables balance at each month end for the last N months",
  *     operationId="getPayablesTrend",
  *     security={{"bearerAuth":{}}},
  *     @OA\Parameter(

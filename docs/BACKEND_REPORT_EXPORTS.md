@@ -7,18 +7,16 @@ Mobile app ke reports me PDF aur Excel export ko web/admin ke same flow par sync
 - `routes/api.php`
 - `app/Http/Controllers/Api/ExportApiController.php`
 - `app/Services/ExportService.php`
-- `resources/views/exports/cash-bank-book.blade.php`
+- `resources/views/exports/receipt-payment.blade.php`
 
 ## Added API endpoints
 
 ### PDF
-- `/api/v1/export/cash-book/pdf`
-- `/api/v1/export/bank-book/pdf`
+- `/api/v1/export/receipt-payment/pdf`
 
 ### Excel
 - `/api/v1/export/day-book/excel`
-- `/api/v1/export/cash-book/excel`
-- `/api/v1/export/bank-book/excel`
+- `/api/v1/export/receipt-payment/excel`
 - `/api/v1/export/ledger/excel`
 - `/api/v1/export/trial-balance/excel`
 - `/api/v1/export/profit-loss/excel`
@@ -27,9 +25,8 @@ Mobile app ke reports me PDF aur Excel export ko web/admin ke same flow par sync
 - `/api/v1/export/creditors-outstanding/excel`
 
 ## Backend logic added
-- Cash Book PDF export generation
-- Bank Book PDF export generation
-- Bank Book Excel dataset mapping
+- Receipt & Payment PDF export generation
+- Receipt & Payment Excel dataset mapping
 - Shared Excel response helper for report exports
 
 ## Notes
@@ -50,11 +47,10 @@ Mobile app ke reports me PDF aur Excel export ko web/admin ke same flow par sync
    - `php artisan cache:clear`
 4. PDF/Excel buttons ko app se verify karein for:
    - Day Book
-   - Cash Book
-   - Bank Book
    - Ledger
    - Trial Balance
    - Profit & Loss
+   - Receipt & Payment
    - Balance Sheet
    - Receivables
    - Payables

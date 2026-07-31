@@ -73,7 +73,7 @@
                         <th>Name</th>
                         <th>Type</th>
                         <th>Balance Type</th>
-                        <th>Mode</th>
+                        <th>Is Cash/Bank/OD</th>
                         <th>Balance</th>
                         <th>Status</th>
                         <th>Actions</th>
@@ -127,20 +127,16 @@ $(document).ready(function() {
             }
         },
         {
-            data: 'transaction_mode',
-            name: 'transaction_mode',
+            data: 'is_cash_bank_od',
+            name: 'is_cash_bank_od',
             render: function(data, type, row) {
-                if (row.account_type !== 'asset' || !data) {
+                if (row.account_type !== 'asset') {
                     return '<span class="text-muted">-</span>';
                 }
 
-                const labels = {
-                    'cash': 'Cash',
-                    'bank': 'Bank',
-                    'od': 'OD'
-                };
-
-                return `<span class="badge bg-dark">${labels[data] || data}</span>`;
+                return data
+                    ? '<span class="badge bg-success">Yes</span>'
+                    : '<span class="badge bg-secondary">No</span>';
             }
         },
         { 

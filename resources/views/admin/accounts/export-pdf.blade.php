@@ -57,7 +57,7 @@
                 <th>Code</th>
                 <th>Name</th>
                 <th>Type</th>
-                <th>Mode</th>
+                <th>Is Cash/Bank/OD</th>
                 <th>Opening Balance</th>
                 <th>Balance Type</th>
                 <th>Opening Date</th>
@@ -71,7 +71,7 @@
                 <td>{{ $account->account_code }}</td>
                 <td>{{ $account->account_name }}</td>
                 <td class="center">{{ ucfirst($account->account_type) }}</td>
-                <td class="center">{{ $account->transaction_mode_label }}</td>
+                <td class="center">{{ $account->account_type === 'asset' ? ($account->is_cash_bank_od ? 'Yes' : 'No') : '-' }}</td>
                 <td class="currency">₹ {{ number_format($account->opening_balance, 2) }}</td>
                 <td class="center">{{ ucfirst($account->balance_type ?? 'Debit') }}</td>
                 <td class="center">{{ $account->opening_date?->format('d-m-Y') ?? '-' }}</td>

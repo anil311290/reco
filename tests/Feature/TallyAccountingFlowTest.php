@@ -30,7 +30,7 @@ class TallyAccountingFlowTest extends TestCase
             'financial_year_id' => $financialYear->id,
             'account_name' => 'Cash',
             'account_type' => 'asset',
-            'transaction_mode' => 'cash',
+            'is_cash_bank_od' => true,
             'opening_balance' => 0,
             'balance_type' => 'debit',
         ]);

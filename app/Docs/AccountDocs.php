@@ -28,7 +28,7 @@ use OpenApi\Annotations as OA;
  *         required={"account_name","account_type"},
  *         @OA\Property(property="account_name", type="string"),
  *         @OA\Property(property="account_type", type="string", enum={"asset","liability","income","expense","equity"}),
- *         @OA\Property(property="transaction_mode", type="string", enum={"cash","bank","od"}),
+ *         @OA\Property(property="is_cash_bank_od", type="boolean", example=true),
  *         @OA\Property(property="opening_balance", type="number"),
  *         @OA\Property(property="balance_type", type="string", enum={"debit","credit"}),
  *         @OA\Property(property="is_active", type="boolean")
@@ -105,7 +105,6 @@ use OpenApi\Annotations as OA;
  *     description="Dropdown helper matching web Paid From / Received In. Includes available_balance (null for OD).",
  *     operationId="getCashBankAccounts",
  *     security={{"bearerAuth":{}}},
- *     @OA\Parameter(name="mode", in="query", description="Filter by transaction mode", @OA\Schema(type="string", enum={"cash","bank","od"})),
  *     @OA\Parameter(name="financial_year_id", in="query", @OA\Schema(type="integer")),
  *     @OA\Response(response=200, description="Success", @OA\JsonContent(ref="#/components/schemas/SuccessResponse"))
  * )
@@ -114,7 +113,7 @@ use OpenApi\Annotations as OA;
  *     path="/accounts/payment-particulars",
  *     tags={"Accounts"},
  *     summary="Particulars for payment/receipt lines",
- *     description="Grouped list of all parties (encoded as party:{id}) plus selectable ledger accounts. Cash/Bank/OD accounts are excluded because they are the fixed contra side. The type parameter is accepted for parity but no longer filters parties.",
+ *     description="Grouped list of all parties (encoded as party:{id}) plus selectable ledger accounts. Cash/Bank/OD accounts are excluded because they are the fixed contra side. The type parameter is accepted for parity but no longer filters parties. Party rows also include party_balance and party_balance_type for UI hints.",
  *     operationId="getPaymentParticulars",
  *     security={{"bearerAuth":{}}},
  *     @OA\Parameter(name="type", in="query", required=true, @OA\Schema(type="string", enum={"payment","receipt"})),

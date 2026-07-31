@@ -209,17 +209,19 @@ class Party extends Model
     {
         $prefix = $type === 'debtor' ? 'AR' : 'AP';
 
-        $lastParty = static::withTrashed()
+        $numbers = static::withTrashed()
             ->where('company_id', $companyId)
             ->where('party_code', 'like', "{$prefix}%")
-            ->orderBy('party_code', 'desc')
-            ->first();
+            ->pluck('party_code');
 
-        if ($lastParty) {
-            $lastNumber = intval(substr($lastParty->party_code, strlen($prefix)));
-            return $prefix . str_pad($lastNumber + 1, 3, '0', STR_PAD_LEFT);
+        $max = 0;
+        foreach ($numbers as $code) {
+            $seq = (int) substr((string) $code, strlen($prefix));
+            if ($seq > $max) {
+                $max = $seq;
+            }
         }
 
-        return $prefix . '001';
+        return $prefix . str_pad((string) ($max + 1), 3, '0', STR_PAD_LEFT);
     }
 }

@@ -112,7 +112,7 @@
                 <div class="value">
                     &#8377; {{ number_format($ledger['closing_balance'], 2) }}
                     <span class="badge bg-{{ $ledger['closing_type'] === 'debit' ? 'primary' : 'success' }} ms-1">
-                        {{ strtoupper($ledger['closing_type']) }}
+                        @drCr($ledger['closing_type'])
                     </span>
                 </div>
             </div>
@@ -129,7 +129,7 @@
                     Debit &#8377; {{ number_format($ledger['total_debit'], 2) }}
                     &middot; Credit &#8377; {{ number_format($ledger['total_credit'], 2) }}
                     &middot; Closing &#8377; {{ number_format($ledger['closing_balance'], 2) }}
-                    {{ strtoupper($ledger['closing_type']) }}
+                    @drCr($ledger['closing_type'])
                 </small>
             </div>
             <div class="btn-group" role="group">
@@ -176,7 +176,7 @@
                             <td class="text-end tabular-nums">{{ $entry->credit > 0 ? number_format($entry->credit, 2) : '—' }}</td>
                             <td class="text-end fw-semibold tabular-nums">
                                 {{ number_format($row['running_balance'], 2) }}
-                                <small class="text-muted fw-normal">{{ strtoupper($row['running_type']) }}</small>
+                                <small class="text-muted fw-normal">@drCr($row['running_type'])</small>
                             </td>
                         </tr>
                     @empty
@@ -193,7 +193,7 @@
                         <td class="text-end tabular-nums">{{ number_format($ledger['total_credit'], 2) }}</td>
                         <td class="text-end tabular-nums">
                             {{ number_format($ledger['closing_balance'], 2) }}
-                            <small class="text-muted fw-normal">{{ strtoupper($ledger['closing_type']) }}</small>
+                            <small class="text-muted fw-normal">@drCr($ledger['closing_type'])</small>
                         </td>
                     </tr>
                 </tfoot>

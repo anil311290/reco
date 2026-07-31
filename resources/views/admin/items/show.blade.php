@@ -96,10 +96,12 @@
                 <div class="label">HSN / SAC</div>
                 <div class="value">{{ $item->hsn_sac_code ?: '-' }}</div>
             </div>
+            @if($item->type === 'goods')
             <div>
                 <div class="label">Unit</div>
                 <div class="value">{{ $item->unit ?: '-' }}</div>
             </div>
+            @endif
             <div>
                 <div class="label">Purchase Price</div>
                 <div class="value">&#8377; {{ number_format((float) $item->purchase_price, 2) }}</div>

@@ -23,7 +23,7 @@ class AccountApiSoftDeleteConflictTest extends TestCase
             'company_id' => $company->id,
             'account_name' => 'Petty Cash',
             'account_type' => 'asset',
-            'transaction_mode' => 'cash',
+            'is_cash_bank_od' => true,
         ]);
         $originalCode = $account->account_code;
         $service->delete($account->id);
@@ -33,7 +33,7 @@ class AccountApiSoftDeleteConflictTest extends TestCase
         $payload = [
             'account_name' => 'Petty Cash',
             'account_type' => 'asset',
-            'transaction_mode' => 'cash',
+            'is_cash_bank_od' => true,
             'opening_balance' => 500,
             'balance_type' => 'debit',
             'opening_date' => '2026-07-30',
@@ -92,6 +92,29 @@ class AccountApiSoftDeleteConflictTest extends TestCase
         $this->assertNotSame($deletedAccount->id, $newAccount->id);
         $this->assertNotSame($deletedAccount->account_code, $newAccount->account_code);
         $this->assertTrue(Account::onlyTrashed()->whereKey($deletedAccount->id)->exists());
+    }
+
+    public function test_api_account_list_exposes_deletion_control_fields(): void
+    {
+        [$company, $user, $service] = $this->createAccountContext();
+
+        $account = $service->create([
+            'company_id' => $company->id,
+            'account_name' => 'Manual Ledger',
+            'account_type' => 'expense',
+        ]);
+
+        Sanctum::actingAs($user);
+
+        $this->getJson('/api/v1/accounts')
+            ->assertOk()
+            ->assertJsonFragment([
+                'id' => $account->id,
+                'uuid' => $account->uuid,
+                'version' => (int) $account->version,
+                'entry_source' => 'manual',
+                'is_system' => false,
+            ]);
     }
 
     private function createAccountContext(): array

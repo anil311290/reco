@@ -34,7 +34,7 @@ class DashboardApiController extends Controller
         $range = $validated['range'] ?? 'this_year';
         $group = $validated['group'] ?? 'monthly';
         $limit = (int) ($validated['limit'] ?? 10);
-        $dateRange = $this->dashboardService->resolveDateRange($range);
+        $dateRange = $this->dashboardService->resolveDateRange($range, $companyId);
 
         $statistics = $this->dashboardService->getStatistics(
             $companyId,
@@ -67,6 +67,7 @@ class DashboardApiController extends Controller
             'payables_trend' => $payablesTrend,
             'range' => $range,
             'group' => $group,
+            'period' => $dateRange,
         ]);
     }
 
@@ -76,7 +77,10 @@ class DashboardApiController extends Controller
     public function monthlyData(Request $request): JsonResponse
     {
         $companyId = $request->user()->company_id;
-        $year = $request->input('year', date('Y'));
+        $validated = $request->validate([
+            'year' => 'nullable|integer|min:2000|max:2100',
+        ]);
+        $year = (int) ($validated['year'] ?? date('Y'));
 
         $data = $this->dashboardService->getMonthlyData($companyId, $year);
 
@@ -89,9 +93,9 @@ class DashboardApiController extends Controller
     public function receivablesTrend(Request $request): JsonResponse
     {
         $companyId = $request->user()->company_id;
-        $months = $request->input('months', 6);
+        $months = $this->resolveMonths($request);
 
-        $data = $this->dashboardService->getReceivablesTrend($companyId, $months);
+        $data = $this->dashboardService->getReceivablesTrend($companyId, null, null, $months);
 
         return ResponseHelper::success($data);
     }
@@ -102,10 +106,19 @@ class DashboardApiController extends Controller
     public function payablesTrend(Request $request): JsonResponse
     {
         $companyId = $request->user()->company_id;
-        $months = $request->input('months', 6);
+        $months = $this->resolveMonths($request);
 
-        $data = $this->dashboardService->getPayablesTrend($companyId, $months);
+        $data = $this->dashboardService->getPayablesTrend($companyId, null, null, $months);
 
         return ResponseHelper::success($data);
+    }
+
+    protected function resolveMonths(Request $request): int
+    {
+        $validated = $request->validate([
+            'months' => 'nullable|integer|min:1|max:36',
+        ]);
+
+        return (int) ($validated['months'] ?? 6);
     }
 }
