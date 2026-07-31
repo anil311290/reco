@@ -20,6 +20,7 @@ class SalesInvoice extends Model
         'company_id',
         'financial_year_id',
         'party_id',
+        'account_id',
         'invoice_number',
         'invoice_date',
         'due_date',
@@ -73,6 +74,11 @@ class SalesInvoice extends Model
     public function party()
     {
         return $this->belongsTo(Party::class);
+    }
+
+    public function account()
+    {
+        return $this->belongsTo(Account::class);
     }
 
     public function lines()

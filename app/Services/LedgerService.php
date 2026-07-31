@@ -727,9 +727,13 @@ class LedgerService
             $closingDebit = $closingType === 'debit' ? $closingBalance : 0.0;
             $closingCredit = $closingType === 'credit' ? $closingBalance : 0.0;
 
-            // Show only ledgers that actually moved in the selected period.
-            $hasMovement = $transactionDebit > 0.001
-                || $transactionCredit > 0.001;
+            // Hide rows only when every trial-balance amount is zero.
+            $hasMovement = $openingDebit > 0.001
+                || $openingCredit > 0.001
+                || $transactionDebit > 0.001
+                || $transactionCredit > 0.001
+                || $closingDebit > 0.001
+                || $closingCredit > 0.001;
 
             if (!$hasMovement) {
                 continue;

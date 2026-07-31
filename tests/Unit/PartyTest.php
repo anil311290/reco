@@ -404,4 +404,99 @@ class PartyTest extends TestCase
             'party_code' => 'DEB0001',
         ]);
     }
+
+    public function test_invoice_account_selection_does_not_auto_create_party(): void
+    {
+        $cash = Account::factory()->create([
+            'company_id' => $this->company->id,
+            'financial_year_id' => $this->financialYear->id,
+            'account_code' => 'CASH01',
+            'account_name' => 'Cash',
+            'account_type' => 'asset',
+            'is_cash_bank_od' => true,
+            'is_active' => true,
+        ]);
+
+        $beforeCount = Party::where('company_id', $this->company->id)->count();
+
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage('not mapped to any party');
+
+        try {
+            $this->partyService->resolveInvoicePartySelection(
+                'account:' . $cash->id,
+                $this->company->id,
+                'debtor'
+            );
+        } finally {
+            $afterCount = Party::where('company_id', $this->company->id)->count();
+            $this->assertSame($beforeCount, $afterCount);
+        }
+    }
+
+    public function test_invoice_account_selection_reuses_existing_party_and_updates_linked_account(): void
+    {
+        $cash = Account::factory()->create([
+            'company_id' => $this->company->id,
+            'financial_year_id' => $this->financialYear->id,
+            'account_code' => 'CASH02',
+            'account_name' => 'Cash',
+            'account_type' => 'asset',
+            'is_cash_bank_od' => true,
+            'is_active' => true,
+        ]);
+
+        $party = Party::factory()->create([
+            'company_id' => $this->company->id,
+            'financial_year_id' => $this->financialYear->id,
+            'type' => 'debtor',
+            'name' => 'Cash',
+            'account_id' => Account::where('company_id', $this->company->id)
+                ->where('account_code', Account::CODE_AR)
+                ->value('id'),
+            'is_active' => true,
+        ]);
+
+        $resolvedId = $this->partyService->resolveInvoicePartySelection(
+            'account:' . $cash->id,
+            $this->company->id,
+            'debtor'
+        );
+
+        $this->assertSame((int) $party->id, $resolvedId);
+        $this->assertSame((int) $cash->id, (int) $party->fresh()->account_id);
+    }
+
+    public function test_purchase_invoice_account_selection_does_not_auto_create_party(): void
+    {
+        $bank = Account::factory()->create([
+            'company_id' => $this->company->id,
+            'financial_year_id' => $this->financialYear->id,
+            'account_code' => 'BANK99',
+            'account_name' => 'Test Bank',
+            'account_type' => 'asset',
+            'is_cash_bank_od' => true,
+            'is_active' => true,
+        ]);
+
+        $beforeCount = Party::where('company_id', $this->company->id)
+            ->where('type', 'creditor')
+            ->count();
+
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage('not mapped to any party');
+
+        try {
+            $this->partyService->resolveInvoicePartySelection(
+                'account:' . $bank->id,
+                $this->company->id,
+                'creditor'
+            );
+        } finally {
+            $afterCount = Party::where('company_id', $this->company->id)
+                ->where('type', 'creditor')
+                ->count();
+            $this->assertSame($beforeCount, $afterCount);
+        }
+    }
 }

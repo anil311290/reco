@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\PurchaseInvoiceResource;
 use App\Models\Item;
+use App\Services\PartyService;
 use App\Services\PurchaseInvoiceService;
 use App\Helpers\ResponseHelper;
 use Illuminate\Http\JsonResponse;
@@ -16,10 +17,12 @@ use Illuminate\Validation\ValidationException;
 class PurchaseInvoiceApiController extends Controller
 {
     protected PurchaseInvoiceService $purchaseInvoiceService;
+    protected PartyService $partyService;
 
-    public function __construct(PurchaseInvoiceService $purchaseInvoiceService)
+    public function __construct(PurchaseInvoiceService $purchaseInvoiceService, PartyService $partyService)
     {
         $this->purchaseInvoiceService = $purchaseInvoiceService;
+        $this->partyService = $partyService;
     }
 
     public function index(Request $request): JsonResponse
@@ -57,12 +60,18 @@ class PurchaseInvoiceApiController extends Controller
         $this->assertGoodsOnlyLines($companyId, $validated['lines']);
 
         $fyId = $request->user()->company->currentFinancialYear?->id;
+        $resolvedSelection = $this->partyService->resolveInvoiceSelectionForPosting(
+            $validated['party_id'],
+            $companyId,
+            'creditor'
+        );
 
         $data = [
             'uuid' => Str::uuid(),
             'company_id' => $companyId,
             'financial_year_id' => $fyId,
-            'party_id' => $validated['party_id'],
+            'party_id' => $resolvedSelection['party_id'],
+            'account_id' => $resolvedSelection['account_id'],
             'supplier_invoice_number' => $validated['supplier_invoice_number'] ?? null,
             'invoice_date' => $validated['invoice_date'],
             'due_date' => $validated['due_date'],
@@ -129,8 +138,15 @@ class PurchaseInvoiceApiController extends Controller
         $this->assertGoodsOnlyLines($companyId, $validated['lines']);
 
         try {
+            $resolvedSelection = $this->partyService->resolveInvoiceSelectionForPosting(
+                $validated['party_id'],
+                $companyId,
+                'creditor'
+            );
+
             $data = [
-                'party_id' => $validated['party_id'],
+                'party_id' => $resolvedSelection['party_id'],
+                'account_id' => $resolvedSelection['account_id'],
                 'supplier_invoice_number' => $validated['supplier_invoice_number'] ?? null,
                 'invoice_date' => $validated['invoice_date'],
                 'due_date' => $validated['due_date'],
@@ -191,10 +207,7 @@ class PurchaseInvoiceApiController extends Controller
     protected function purchaseRules(int $companyId): array
     {
         return [
-            'party_id' => [
-                'required',
-                Rule::exists('parties', 'id')->where('company_id', $companyId),
-            ],
+            'party_id' => ['required'],
             'supplier_invoice_number' => 'nullable|string|max:100',
             'invoice_date' => 'required|date',
             'due_date' => 'required|date|after_or_equal:invoice_date',

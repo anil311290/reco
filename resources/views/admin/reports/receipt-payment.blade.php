@@ -97,10 +97,12 @@
                     <div class="report-panel-body report-panel-body--flush">
                         <table class="table report-table table-hover mb-0">
                             <tbody>
+                                @if(abs((float) $report['opening_total']) >= 0.01)
                                 <tr class="report-row-emphasis">
                                     <td class="fw-semibold">Opening Balance b/f</td>
                                     <td class="text-end fw-bold">₹{{ number_format($report['opening_total'], 2) }}</td>
                                 </tr>
+                                @endif
                                 @forelse($report['receipts']['rows'] as $row)
                                 <tr>
                                     <td>

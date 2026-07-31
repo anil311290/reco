@@ -129,7 +129,9 @@ class PartyService
         try {
             DB::beginTransaction();
 
-            $data['account_id'] = $this->resolveControlAccount($data)->id;
+            if (empty($data['account_id'])) {
+                $data['account_id'] = $this->resolveControlAccount($data)->id;
+            }
 
             $party = Party::create($data);
 
@@ -317,17 +319,24 @@ class PartyService
             ->values()
             ->toArray();
 
+        $controlCode = $type === 'creditor'
+            ? Account::CODE_AP
+            : Account::CODE_AR;
+
         $ledgerOptions = Account::query()
             ->where('company_id', $companyId)
             ->where('is_active', true)
-            ->cashBankOd()
+            ->where(function ($query) use ($controlCode) {
+                $query->cashBankOd()
+                    ->orWhere('account_code', $controlCode);
+            })
             ->orderBy('account_code')
             ->get()
             ->map(function (Account $account) {
                 return [
                     'value' => 'account:' . $account->id,
                     'label' => "{$account->account_name} ({$account->account_code})",
-                    'kind' => 'cash_bank_od',
+                    'kind' => $account->isCashBankOd() ? 'cash_bank_od' : 'control_account',
                 ];
             })
             ->values()
@@ -371,15 +380,22 @@ class PartyService
         }
 
         $accountId = (int) substr($selection, 8);
+        $controlCode = $type === 'creditor'
+            ? Account::CODE_AP
+            : Account::CODE_AR;
+
         $account = Account::query()
             ->where('company_id', $companyId)
             ->where('id', $accountId)
             ->where('is_active', true)
-            ->cashBankOd()
+            ->where(function ($query) use ($controlCode) {
+                $query->cashBankOd()
+                    ->orWhere('account_code', $controlCode);
+            })
             ->first();
 
         if (!$account) {
-            throw new \RuntimeException('Selected Cash/Bank/OD ledger is invalid.');
+            throw new \RuntimeException('Selected ledger is invalid for this invoice.');
         }
 
         $normalizedName = mb_strtolower(trim($account->account_name));
@@ -392,13 +408,12 @@ class PartyService
             ->first();
 
         if ($existingParty) {
-            if (!$existingParty->is_active) {
-                $existingParty->update([
-                    'is_active' => true,
-                    'updated_by' => $userId,
-                    'updated_by_ip' => $ip,
-                ]);
-            }
+            $existingParty->update([
+                'account_id' => $account->id,
+                'is_active' => true,
+                'updated_by' => $userId,
+                'updated_by_ip' => $ip,
+            ]);
 
             return (int) $existingParty->id;
         }
@@ -413,6 +428,7 @@ class PartyService
         if ($deletedParty) {
             $deletedParty->restore();
             $deletedParty->update([
+                'account_id' => $account->id,
                 'is_active' => true,
                 'updated_by' => $userId,
                 'updated_by_ip' => $ip,
@@ -423,24 +439,91 @@ class PartyService
             return (int) $deletedParty->id;
         }
 
-        $party = $this->create([
-            'company_id' => $companyId,
-            'financial_year_id' => FinancialYear::getCurrent($companyId)?->id,
-            'name' => $account->account_name,
-            'type' => $type,
-            'mobile' => null,
-            'email' => null,
-            'address' => '',
-            'opening_balance' => 0,
-            'opening_balance_type' => $type === 'creditor' ? 'credit' : 'debit',
-            'opening_date' => now()->toDateString(),
-            'remarks' => 'Auto-created from Cash/Bank/OD ledger selection in invoice form.',
-            'is_active' => true,
-            'created_by' => $userId,
-            'created_by_ip' => $ip,
-        ]);
+        throw new \RuntimeException(
+            'Selected ledger is not mapped to any party. Please choose an existing party or create one first.'
+        );
+    }
 
-        return (int) $party->id;
+    /**
+     * Resolve invoice selector token into party/account ids for posting.
+     *
+     * - party token: returns that party and its mapped account
+     * - account token: returns mapped party if found, else party_id=null with direct account_id
+     *
+     * @return array{party_id:int|null,account_id:int}
+     */
+    public function resolveInvoiceSelectionForPosting(
+        $selection,
+        int $companyId,
+        string $type
+    ): array {
+        $selection = trim((string) $selection);
+
+        if (ctype_digit($selection)) {
+            $selection = 'party:' . $selection;
+        }
+
+        if (str_starts_with($selection, 'party:')) {
+            $partyId = (int) substr($selection, 6);
+            $party = Party::query()
+                ->where('company_id', $companyId)
+                ->where('type', $type)
+                ->where('is_active', true)
+                ->find($partyId);
+
+            if (!$party) {
+                throw new \RuntimeException('Selected party is invalid for this company.');
+            }
+
+            $accountId = (int) ($party->account_id ?: 0);
+            if ($accountId <= 0) {
+                $accountId = (int) $this->resolveControlAccount([
+                    'type' => $type,
+                    'company_id' => $companyId,
+                    'financial_year_id' => FinancialYear::getCurrent($companyId)?->id,
+                    'created_by' => request()->user()?->id,
+                    'created_by_ip' => request()->ip(),
+                ])->id;
+            }
+
+            return [
+                'party_id' => (int) $party->id,
+                'account_id' => $accountId,
+            ];
+        }
+
+        if (!str_starts_with($selection, 'account:')) {
+            throw new \RuntimeException('Select a valid customer/supplier option.');
+        }
+
+        $accountId = (int) substr($selection, 8);
+        $controlCode = $type === 'creditor' ? Account::CODE_AP : Account::CODE_AR;
+
+        $account = Account::query()
+            ->where('company_id', $companyId)
+            ->where('id', $accountId)
+            ->where('is_active', true)
+            ->where(function ($query) use ($controlCode) {
+                $query->cashBankOd()->orWhere('account_code', $controlCode);
+            })
+            ->first();
+
+        if (!$account) {
+            throw new \RuntimeException('Selected ledger is invalid for this invoice.');
+        }
+
+        $mappedParty = Party::query()
+            ->where('company_id', $companyId)
+            ->where('type', $type)
+            ->where('is_active', true)
+            ->where('account_id', $account->id)
+            ->orderByDesc('id')
+            ->first();
+
+        return [
+            'party_id' => $mappedParty ? (int) $mappedParty->id : null,
+            'account_id' => (int) $account->id,
+        ];
     }
 
     /**

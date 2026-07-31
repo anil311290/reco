@@ -421,6 +421,27 @@ class InvoiceAccountingService
 
     protected function resolveDebtorAccount(SalesInvoice $invoice): Account
     {
+        $invoice->loadMissing(['account', 'party.account']);
+
+        if (
+            $invoice->account
+            && (int) $invoice->account->company_id === (int) $invoice->company_id
+            && (bool) $invoice->account->is_active
+        ) {
+            return $invoice->account;
+        }
+
+        $partyAccount = $invoice->party?->account;
+
+        if (
+            $partyAccount
+            && (int) $partyAccount->company_id === (int) $invoice->company_id
+            && (bool) $partyAccount->is_active
+            && (bool) $partyAccount->is_cash_bank_od
+        ) {
+            return $partyAccount;
+        }
+
         return $this->resolveSystemAccount(
             Account::CODE_AR,
             $invoice->company_id,
@@ -436,6 +457,27 @@ class InvoiceAccountingService
 
     protected function resolveCreditorAccount(PurchaseInvoice $invoice): Account
     {
+        $invoice->loadMissing(['account', 'party.account']);
+
+        if (
+            $invoice->account
+            && (int) $invoice->account->company_id === (int) $invoice->company_id
+            && (bool) $invoice->account->is_active
+        ) {
+            return $invoice->account;
+        }
+
+        $partyAccount = $invoice->party?->account;
+
+        if (
+            $partyAccount
+            && (int) $partyAccount->company_id === (int) $invoice->company_id
+            && (bool) $partyAccount->is_active
+            && (bool) $partyAccount->is_cash_bank_od
+        ) {
+            return $partyAccount;
+        }
+
         return $this->resolveSystemAccount(
             Account::CODE_AP,
             $invoice->company_id,

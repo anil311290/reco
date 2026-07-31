@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Http\Resources\SalesInvoiceResource;
+use App\Services\PartyService;
 use App\Services\SalesInvoiceService;
 use App\Helpers\ResponseHelper;
 use Illuminate\Http\JsonResponse;
@@ -15,10 +16,12 @@ use Illuminate\Validation\Rule;
 class SalesInvoiceApiController extends Controller
 {
     protected SalesInvoiceService $salesInvoiceService;
+    protected PartyService $partyService;
 
-    public function __construct(SalesInvoiceService $salesInvoiceService)
+    public function __construct(SalesInvoiceService $salesInvoiceService, PartyService $partyService)
     {
         $this->salesInvoiceService = $salesInvoiceService;
+        $this->partyService = $partyService;
     }
 
     public function index(Request $request): JsonResponse
@@ -65,11 +68,18 @@ class SalesInvoiceApiController extends Controller
             return ResponseHelper::error('No active financial year found. Cannot create invoice.', 422);
         }
 
+        $resolvedSelection = $this->partyService->resolveInvoiceSelectionForPosting(
+            $validated['party_id'],
+            $companyId,
+            'debtor'
+        );
+
         $data = [
             'uuid' => Str::uuid(),
             'company_id' => $companyId,
             'financial_year_id' => $fyId,
-            'party_id' => $validated['party_id'],
+            'party_id' => $resolvedSelection['party_id'],
+            'account_id' => $resolvedSelection['account_id'],
             'invoice_date' => $validated['invoice_date'],
             'due_date' => $validated['due_date'],
             'reference_number' => $validated['reference_number'] ?? null,
@@ -142,8 +152,15 @@ class SalesInvoiceApiController extends Controller
         }
 
         try {
+            $resolvedSelection = $this->partyService->resolveInvoiceSelectionForPosting(
+                $validated['party_id'],
+                $companyId,
+                'debtor'
+            );
+
             $data = [
-                'party_id' => $validated['party_id'],
+                'party_id' => $resolvedSelection['party_id'],
+                'account_id' => $resolvedSelection['account_id'],
                 'invoice_date' => $validated['invoice_date'],
                 'due_date' => $validated['due_date'],
                 'reference_number' => $validated['reference_number'] ?? null,
@@ -238,10 +255,7 @@ class SalesInvoiceApiController extends Controller
     protected function salesInvoiceRules(int $companyId): array
     {
         return [
-            'party_id' => [
-                'required',
-                Rule::exists('parties', 'id')->where('company_id', $companyId),
-            ],
+            'party_id' => ['required'],
             'invoice_date' => 'required|date',
             'due_date' => 'required|date|after_or_equal:invoice_date',
             'reference_number' => 'nullable|string|max:100',

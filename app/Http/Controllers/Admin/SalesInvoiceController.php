@@ -172,19 +172,18 @@ class SalesInvoiceController extends Controller
         try {
             $companyId = auth()->user()->company_id;
             $fyId = auth()->user()->company->currentFinancialYear?->id;
-            $resolvedPartyId = $this->partyService->resolveInvoicePartySelection(
+            $resolvedSelection = $this->partyService->resolveInvoiceSelectionForPosting(
                 $validated['party_id'],
                 $companyId,
-                'debtor',
-                auth()->id(),
-                $request->ip()
+                'debtor'
             );
 
             $data = [
                 'uuid' => \Illuminate\Support\Str::uuid(),
                 'company_id' => $companyId,
                 'financial_year_id' => $fyId,
-                'party_id' => $resolvedPartyId,
+                'party_id' => $resolvedSelection['party_id'],
+                'account_id' => $resolvedSelection['account_id'],
                 'invoice_date' => $validated['invoice_date'],
                 'due_date' => $validated['due_date'],
                 'reference_number' => $validated['reference_number'] ?? null,
@@ -304,16 +303,15 @@ class SalesInvoiceController extends Controller
         $validated['service_lines'] = $validated['service_lines'] ?? [];
 
         try {
-            $resolvedPartyId = $this->partyService->resolveInvoicePartySelection(
+            $resolvedSelection = $this->partyService->resolveInvoiceSelectionForPosting(
                 $validated['party_id'],
                 auth()->user()->company_id,
-                'debtor',
-                auth()->id(),
-                $request->ip()
+                'debtor'
             );
 
             $data = [
-                'party_id' => $resolvedPartyId,
+                'party_id' => $resolvedSelection['party_id'],
+                'account_id' => $resolvedSelection['account_id'],
                 'invoice_date' => $validated['invoice_date'],
                 'due_date' => $validated['due_date'],
                 'reference_number' => $validated['reference_number'] ?? null,

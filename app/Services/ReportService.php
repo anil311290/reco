@@ -312,6 +312,12 @@ class ReportService
 
         [$receiptRows, $paymentRows] = $this->splitReceiptPaymentHeads($entries, $cashAccountIds);
 
+        [$receiptRows, $receiptSuspenseTotal] = $this->extractOpeningDifferenceRows($receiptRows);
+        [$paymentRows, $paymentSuspenseTotal] = $this->extractOpeningDifferenceRows($paymentRows);
+
+        // Treat Opening Balance Difference as part of opening, not period head movement.
+        $openingTotal = round($openingTotal + $receiptSuspenseTotal - $paymentSuspenseTotal, 2);
+
         $receiptsTotal = round(array_sum(array_column($receiptRows, 'amount')), 2);
         $paymentsTotal = round(array_sum(array_column($paymentRows, 'amount')), 2);
         $openingTotal = round($openingTotal, 2);
@@ -334,6 +340,32 @@ class ReportService
             'is_balanced' => abs($receiptsSide - $paymentsSide) < 0.01,
             'message' => null,
         ];
+    }
+
+    /**
+     * Remove Opening Balance Difference heads from side rows and return their total.
+     *
+     * @param  array<int, array<string, mixed>>  $rows
+     * @return array{0: array<int, array<string, mixed>>, 1: float}
+     */
+    protected function extractOpeningDifferenceRows(array $rows): array
+    {
+        $filtered = [];
+        $suspenseTotal = 0.0;
+
+        foreach ($rows as $row) {
+            $isSuspense = (string) ($row['code'] ?? '') === Account::CODE_SUSPENSE
+                || strtolower((string) ($row['label'] ?? '')) === 'opening balance difference';
+
+            if ($isSuspense) {
+                $suspenseTotal += (float) ($row['amount'] ?? 0);
+                continue;
+            }
+
+            $filtered[] = $row;
+        }
+
+        return [$filtered, round($suspenseTotal, 2)];
     }
 
     /**

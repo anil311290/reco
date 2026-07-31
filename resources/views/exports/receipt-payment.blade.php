@@ -78,10 +78,12 @@
                             </tr>
                         </thead>
                         <tbody>
+                            @if(abs((float) $report['opening_total']) >= 0.01)
                             <tr>
                                 <td>Opening Balance b/f</td>
                                 <td class="text-right">{{ number_format((float) $report['opening_total'], 2) }}</td>
                             </tr>
+                            @endif
                             @forelse($report['receipts']['rows'] as $row)
                                 <tr>
                                     <td>{{ $row['label'] }}</td>

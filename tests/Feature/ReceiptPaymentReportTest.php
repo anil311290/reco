@@ -224,7 +224,6 @@ class ReceiptPaymentReportTest extends TestCase
 
         $response->assertOk()
             ->assertSee('Receipt &amp; Payment', false)
-            ->assertSee('Opening Balance b/f')
             ->assertSee('Closing Balance c/f');
     }
 

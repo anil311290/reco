@@ -52,7 +52,7 @@
                                 <option value="{{ $option['value'] }}">{{ $option['label'] }}</option>
                                 @endforeach
                                 @if(!empty($partyOptions['cash_bank_od_accounts']))
-                                <optgroup label="Cash / Bank / OD Ledgers">
+                                <optgroup label="Ledger Accounts (AR + Cash/Bank/OD)">
                                     @foreach($partyOptions['cash_bank_od_accounts'] as $option)
                                     <option value="{{ $option['value'] }}">{{ $option['label'] }}</option>
                                     @endforeach

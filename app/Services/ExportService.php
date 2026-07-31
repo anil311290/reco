@@ -512,11 +512,15 @@ class ExportService
                 : FinancialYear::getCurrent($companyId)?->id
         );
 
-        $rows = [[
-            'section' => 'Receipt',
-            'particulars' => 'Opening Balance b/f',
-            'amount' => $report['opening_total'],
-        ]];
+        $rows = [];
+
+        if (abs((float) ($report['opening_total'] ?? 0)) >= 0.01) {
+            $rows[] = [
+                'section' => 'Receipt',
+                'particulars' => 'Opening Balance b/f',
+                'amount' => $report['opening_total'],
+            ];
+        }
 
         foreach ($report['receipts']['rows'] as $row) {
             $rows[] = [

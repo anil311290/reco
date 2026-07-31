@@ -59,6 +59,7 @@
                         <th>Code</th>
                         <th>Name</th>
                         <th>Type</th>
+                        <th>Linked Ledger</th>
                         <th>Mobile</th>
                         <th>Opening Balance</th>
                         <th>Status</th>
@@ -93,6 +94,31 @@ $(document).ready(function() {
                 const badge = data === 'debtor' ? 'bg-success' : 'bg-danger';
                 const label = data === 'debtor' ? 'Debtor' : 'Creditor';
                 return `<span class="badge ${badge}">${label}</span>`;
+            }
+        },
+        {
+            data: 'account',
+            name: 'account.account_name',
+            orderable: false,
+            searchable: false,
+            render: function(data) {
+                if (!data) {
+                    return '<span class="text-muted">Not linked</span>';
+                }
+
+                const code = data.account_code || '-';
+                const name = data.account_name || '-';
+                const isDirect = !!data.is_cash_bank_od;
+                const badge = isDirect
+                    ? '<span class="badge bg-primary-subtle text-primary border border-primary-subtle">Direct Ledger</span>'
+                    : '<span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle">Control Ledger</span>';
+
+                return `
+                    <div class="d-flex flex-column gap-1">
+                        <span class="small">${code} - ${name}</span>
+                        ${badge}
+                    </div>
+                `;
             }
         },
         { data: 'mobile', name: 'mobile' },

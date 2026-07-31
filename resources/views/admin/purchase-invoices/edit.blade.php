@@ -16,6 +16,10 @@
 
 <form id="invoiceForm">
     @method('PUT')
+    @php
+        $supplierPartyOptions = $partyOptions['parties'] ?? [];
+        $supplierLedgerOptions = $partyOptions['cash_bank_od_accounts'] ?? [];
+    @endphp
     <div id="builtPayload"></div>
     <div class="row g-4">
         <div class="col-md-8">
@@ -40,30 +44,33 @@
                             <input type="date" class="form-control" name="due_date" value="{{ $invoice->due_date->format('Y-m-d') }}" required>
                         </div>
                         <div class="col-md-4">
-                            <div class="d-flex justify-content-between align-items-center mb-1">
-                                <label class="form-label mb-0">Supplier <span class="text-danger">*</span></label>
-                                <div class="d-flex gap-2">
-                                    @permission('accounts.create')
-                                    <button type="button" class="btn btn-link btn-sm p-0 quick-add-ledger-btn" data-account-quick-add-target="#party_id">Quick Add Ledger</button>
-                                    @endpermission
-                                    @permission('parties.create')
-                                    <button type="button" class="btn btn-link btn-sm p-0 quick-add-party-btn" data-party-quick-add-target="#party_id" data-party-quick-add-type="creditor">Quick Add Party</button>
-                                    @endpermission
-                                </div>
-                            </div>
+                            <label class="form-label mb-1">Supplier / Ledger <span class="text-danger">*</span></label>
                             <select class="form-select" name="party_id" id="party_id" data-quick-add-value-mode="token" required>
-                                <option value="">Select Supplier</option>
-                                @foreach(($partyOptions['parties'] ?? []) as $option)
+                                <option value="">Select Supplier or Ledger Account</option>
+                                @if(!empty($supplierPartyOptions))
+                                <optgroup label="Suppliers (Parties)">
+                                @foreach($supplierPartyOptions as $option)
                                 <option value="{{ $option['value'] }}" {{ ('party:' . $invoice->party_id) === $option['value'] ? 'selected' : '' }}>{{ $option['label'] }}</option>
                                 @endforeach
-                                @if(!empty($partyOptions['cash_bank_od_accounts']))
-                                <optgroup label="Cash / Bank / OD Ledgers">
-                                    @foreach($partyOptions['cash_bank_od_accounts'] as $option)
+                                </optgroup>
+                                @endif
+                                @if(!empty($supplierLedgerOptions))
+                                <optgroup label="Ledger Accounts (AP + Cash/Bank/OD)">
+                                    @foreach($supplierLedgerOptions as $option)
                                     <option value="{{ $option['value'] }}">{{ $option['label'] }}</option>
                                     @endforeach
                                 </optgroup>
                                 @endif
                             </select>
+                            <div class="d-flex align-items-center gap-3 mt-1 small">
+                                @permission('accounts.create')
+                                <button type="button" class="btn btn-link btn-sm p-0 text-nowrap quick-add-ledger-btn" data-account-quick-add-target="#party_id">Quick Add Ledger</button>
+                                @endpermission
+                                @permission('parties.create')
+                                <button type="button" class="btn btn-link btn-sm p-0 text-nowrap quick-add-party-btn" data-party-quick-add-target="#party_id" data-party-quick-add-type="creditor">Quick Add Party</button>
+                                @endpermission
+                            </div>
+                            <small class="text-muted d-block mt-1">Choose an existing supplier party or select a ledger account for direct posting.</small>
                         </div>
                         <div class="col-md-4">
                             <label class="form-label">Payment/Delivery Terms</label>

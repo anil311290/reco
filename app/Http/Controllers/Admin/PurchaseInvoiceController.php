@@ -147,19 +147,18 @@ class PurchaseInvoiceController extends Controller
         try {
             $this->assertGoodsOnlyLines($companyId, $validated['lines']);
             $fyId = auth()->user()->company->currentFinancialYear?->id;
-            $resolvedPartyId = $this->partyService->resolveInvoicePartySelection(
+            $resolvedSelection = $this->partyService->resolveInvoiceSelectionForPosting(
                 $validated['party_id'],
                 $companyId,
-                'creditor',
-                auth()->id(),
-                $request->ip()
+                'creditor'
             );
 
             $data = [
                 'uuid' => \Illuminate\Support\Str::uuid(),
                 'company_id' => $companyId,
                 'financial_year_id' => $fyId,
-                'party_id' => $resolvedPartyId,
+                'party_id' => $resolvedSelection['party_id'],
+                'account_id' => $resolvedSelection['account_id'],
                 'supplier_invoice_number' => $validated['supplier_invoice_number'] ?? null,
                 'invoice_date' => $validated['invoice_date'],
                 'due_date' => $validated['due_date'],
@@ -260,16 +259,15 @@ class PurchaseInvoiceController extends Controller
 
         try {
             $this->assertGoodsOnlyLines($companyId, $validated['lines']);
-            $resolvedPartyId = $this->partyService->resolveInvoicePartySelection(
+            $resolvedSelection = $this->partyService->resolveInvoiceSelectionForPosting(
                 $validated['party_id'],
                 $companyId,
-                'creditor',
-                auth()->id(),
-                $request->ip()
+                'creditor'
             );
 
             $data = [
-                'party_id' => $resolvedPartyId,
+                'party_id' => $resolvedSelection['party_id'],
+                'account_id' => $resolvedSelection['account_id'],
                 'supplier_invoice_number' => $validated['supplier_invoice_number'] ?? null,
                 'invoice_date' => $validated['invoice_date'],
                 'due_date' => $validated['due_date'],

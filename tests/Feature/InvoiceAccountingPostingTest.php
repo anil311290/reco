@@ -493,4 +493,112 @@ class InvoiceAccountingPostingTest extends TestCase
         $this->assertEquals(590.0, (float) $invoice->total);
         $this->assertEquals(590.0, $debit);
     }
+
+    public function test_sales_invoice_with_cash_linked_party_posts_debit_to_cash_ledger(): void
+    {
+        $company = Company::factory()->create();
+        $fy = FinancialYear::factory()->create(['company_id' => $company->id, 'is_current' => true]);
+        $accounts = $this->seedCoreAccounts($company, $fy);
+
+        $cash = Account::factory()->create([
+            'company_id' => $company->id,
+            'financial_year_id' => $fy->id,
+            'account_code' => 'CASH01',
+            'account_name' => 'Cash',
+            'account_type' => 'asset',
+            'balance_type' => 'debit',
+            'is_cash_bank_od' => true,
+            'is_active' => true,
+        ]);
+
+        $party = Party::factory()->create([
+            'company_id' => $company->id,
+            'financial_year_id' => $fy->id,
+            'type' => 'debtor',
+            'account_id' => $cash->id,
+        ]);
+
+        $invoice = app(SalesInvoiceService::class)->create([
+            'uuid' => (string) Str::uuid(),
+            'company_id' => $company->id,
+            'financial_year_id' => $fy->id,
+            'party_id' => $party->id,
+            'invoice_number' => 'INV-CASH-001',
+            'invoice_date' => '2026-08-01',
+            'due_date' => '2026-08-08',
+            'status' => 'draft',
+        ], [
+            [
+                'description' => 'Cash sale',
+                'quantity' => 1,
+                'unit_price' => 100,
+            ],
+        ]);
+
+        $voucher = app(SalesInvoiceService::class)->generateVoucher($invoice->fresh());
+        $this->assertNotNull($voucher);
+
+        $voucher->load('lines');
+
+        $cashDebit = $voucher->lines->firstWhere('account_id', $cash->id);
+        $this->assertNotNull($cashDebit);
+        $this->assertEquals(100.0, (float) $cashDebit->debit);
+
+        $arDebit = $voucher->lines->firstWhere('account_id', $accounts['ar']->id);
+        $this->assertNull($arDebit);
+    }
+
+    public function test_purchase_invoice_with_cash_linked_party_posts_credit_to_cash_ledger(): void
+    {
+        $company = Company::factory()->create();
+        $fy = FinancialYear::factory()->create(['company_id' => $company->id, 'is_current' => true]);
+        $accounts = $this->seedCoreAccounts($company, $fy);
+
+        $cash = Account::factory()->create([
+            'company_id' => $company->id,
+            'financial_year_id' => $fy->id,
+            'account_code' => 'CASH02',
+            'account_name' => 'Petty Cash',
+            'account_type' => 'asset',
+            'balance_type' => 'debit',
+            'is_cash_bank_od' => true,
+            'is_active' => true,
+        ]);
+
+        $party = Party::factory()->create([
+            'company_id' => $company->id,
+            'financial_year_id' => $fy->id,
+            'type' => 'creditor',
+            'account_id' => $cash->id,
+        ]);
+
+        $invoice = app(PurchaseInvoiceService::class)->create([
+            'uuid' => (string) Str::uuid(),
+            'company_id' => $company->id,
+            'financial_year_id' => $fy->id,
+            'party_id' => $party->id,
+            'invoice_number' => 'PUR-CASH-001',
+            'invoice_date' => '2026-08-01',
+            'due_date' => '2026-08-08',
+            'status' => 'draft',
+        ], [
+            [
+                'description' => 'Cash purchase',
+                'quantity' => 1,
+                'unit_price' => 250,
+            ],
+        ]);
+
+        $voucher = app(PurchaseInvoiceService::class)->generateVoucher($invoice->fresh());
+        $this->assertNotNull($voucher);
+
+        $voucher->load('lines');
+
+        $cashCredit = $voucher->lines->firstWhere('account_id', $cash->id);
+        $this->assertNotNull($cashCredit);
+        $this->assertEquals(250.0, (float) $cashCredit->credit);
+
+        $apCredit = $voucher->lines->firstWhere('account_id', $accounts['ap']->id);
+        $this->assertNull($apCredit);
+    }
 }

@@ -17,6 +17,7 @@ class SalesInvoiceResource extends JsonResource
             'due_date' => $this->due_date?->toISOString(),
             'reference_number' => $this->reference_number,
             'party_id' => $this->party_id,
+            'account_id' => $this->account_id,
             'party' => new PartyResource($this->whenLoaded('party')),
             'financial_year_id' => $this->financial_year_id,
             'notes' => $this->notes,
