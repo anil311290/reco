@@ -46,6 +46,51 @@ class TransactionStatusChip extends StatelessWidget {
   }
 }
 
+class VoucherTypeChip extends StatelessWidget {
+  const VoucherTypeChip({required this.type, super.key});
+
+  final String type;
+
+  @override
+  Widget build(BuildContext context) {
+    final normalized = type.toLowerCase();
+    final (label, color) = switch (normalized) {
+      'income' => ('Sales', const Color(0xFF16A34A)),
+      'expense' => ('Purchase', const Color(0xFFEF4444)),
+      'receipt' => ('Receipt', const Color(0xFF38BDF8)),
+      'payment' => ('Payment', const Color(0xFFF59E0B)),
+      'journal' || 'adjustment' => ('Adjustment', const Color(0xFF6B7280)),
+      _ => (_titleCase(normalized), Theme.of(context).colorScheme.primary),
+    };
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      decoration: BoxDecoration(
+        color: color,
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Text(
+        label,
+        style: Theme.of(context).textTheme.labelSmall?.copyWith(
+          color: Colors.white,
+          fontWeight: FontWeight.w800,
+        ),
+      ),
+    );
+  }
+
+  String _titleCase(String value) {
+    if (value.isEmpty) {
+      return value;
+    }
+    return value
+        .split('_')
+        .where((part) => part.isNotEmpty)
+        .map((part) => '${part[0].toUpperCase()}${part.substring(1)}')
+        .join(' ');
+  }
+}
+
 class TransactionOptionCard extends StatelessWidget {
   const TransactionOptionCard({
     required this.item,

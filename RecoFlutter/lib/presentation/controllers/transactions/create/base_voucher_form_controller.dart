@@ -393,9 +393,14 @@ abstract class BaseVoucherFormController extends GetxController {
         return;
       }
       if ((totalDebit - totalCredit).abs() > 0.01) {
-      AppSnackbar.error('Total debit and credit must be equal.');
+        AppSnackbar.error('Total debit and credit must be equal.');
         return;
       }
+    }
+
+    final shouldContinue = await _confirmVoucherReview();
+    if (!shouldContinue) {
+      return;
     }
 
     isSubmitting.value = true;
@@ -435,6 +440,14 @@ abstract class BaseVoucherFormController extends GetxController {
     }
   }
 
+  Future<bool> _confirmVoucherReview() async {
+    final result = await Get.dialog<bool>(
+      _VoucherReviewDialog(controller: this),
+      barrierDismissible: true,
+    );
+    return result ?? false;
+  }
+
   Map<String, dynamic> _buildPaymentPayload() {
     final validRows = paymentRows
         .where((row) => row.account.value != null && row.amount > 0)
@@ -451,7 +464,7 @@ abstract class BaseVoucherFormController extends GetxController {
     }
 
     return <String, dynamic>{
-      if (recordId case final currentRecordId?) 'id': currentRecordId,
+      if (recordId != null) 'id': recordId,
       'voucher_type': voucherType,
       'voucher_date': dateController.text.trim(),
       'payment_mode': paymentMode.value,
@@ -484,7 +497,7 @@ abstract class BaseVoucherFormController extends GetxController {
         .toList();
     final recordId = _lookupInt(_editingPayload?['id']);
     return <String, dynamic>{
-      if (recordId case final currentRecordId?) 'id': currentRecordId,
+      if (recordId != null) 'id': recordId,
       'voucher_type': 'journal',
       'voucher_date': dateController.text.trim(),
       'narration': narrationController.text.trim().isEmpty
@@ -560,6 +573,403 @@ abstract class BaseVoucherFormController extends GetxController {
       return '';
     }
     return value.length >= 10 ? value.substring(0, 10) : value;
+  }
+}
+
+class _VoucherReviewDialog extends StatelessWidget {
+  const _VoucherReviewDialog({required this.controller});
+
+  final BaseVoucherFormController controller;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    final isEditing = controller.isEditing;
+
+    return Dialog(
+      insetPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 24),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxHeight: 560),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              Row(
+                children: <Widget>[
+                  Container(
+                    width: 42,
+                    height: 42,
+                    decoration: BoxDecoration(
+                      color: scheme.primary.withValues(alpha: .12),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Icon(
+                      Icons.fact_check_outlined,
+                      color: scheme.primary,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: <Widget>[
+                        Text(
+                          isEditing
+                              ? 'Review voucher update'
+                              : 'Confirm voucher details',
+                          style: theme.textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                        const SizedBox(height: 3),
+                        Text(
+                          'Please verify the values before ${isEditing ? 'updating' : 'creating'} this voucher.',
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: scheme.onSurfaceVariant,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              Expanded(
+                child: SingleChildScrollView(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: <Widget>[
+                      _VoucherReviewSection(
+                        title: 'Voucher Details',
+                        rows: <_VoucherReviewItem>[
+                          _VoucherReviewItem(
+                            label: 'Type',
+                            value: controller.title.replaceAll(' Voucher', ''),
+                          ),
+                          _VoucherReviewItem(
+                            label: 'Date',
+                            value: controller.dateController.text.trim(),
+                          ),
+                          if (controller.isPaymentReceipt)
+                            _VoucherReviewItem(
+                              label: 'Mode',
+                              value: controller.paymentMode.value
+                                          .trim()
+                                          .isEmpty
+                                  ? '-'
+                                  : _capitalize(controller.paymentMode.value),
+                            ),
+                          if (controller.isPaymentReceipt)
+                            _VoucherReviewItem(
+                              label: controller.cashBankLabel,
+                              value: controller.selectedCashBankAccount.value?.label ??
+                                  '-',
+                            ),
+                          _VoucherReviewItem(
+                            label: 'Narration',
+                            value: controller.narrationController.text.trim().isEmpty
+                                ? '-'
+                                : controller.narrationController.text.trim(),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      _VoucherReviewSection(
+                        title: controller.isPaymentReceipt
+                            ? 'Particulars Summary'
+                            : 'Voucher Lines Summary',
+                        child: Column(
+                          children: controller.isPaymentReceipt
+                              ? _buildPaymentRows(theme, scheme)
+                              : _buildAdjustmentRows(theme, scheme),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      _VoucherReviewSection(
+                        title: 'Totals',
+                        rows: controller.isPaymentReceipt
+                            ? <_VoucherReviewItem>[
+                                _VoucherReviewItem(
+                                  label: 'Total Amount',
+                                  value:
+                                      'Rs ${controller.paymentTotal.toStringAsFixed(2)}',
+                                ),
+                              ]
+                            : <_VoucherReviewItem>[
+                                _VoucherReviewItem(
+                                  label: 'Total Debit',
+                                  value:
+                                      'Rs ${controller.totalDebit.toStringAsFixed(2)}',
+                                ),
+                                _VoucherReviewItem(
+                                  label: 'Total Credit',
+                                  value:
+                                      'Rs ${controller.totalCredit.toStringAsFixed(2)}',
+                                ),
+                              ],
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+              Row(
+                children: <Widget>[
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: () => Get.back(result: false),
+                      child: const Text('Review Again'),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: FilledButton(
+                      onPressed: () => Get.back(result: true),
+                      child: Text(
+                        isEditing ? 'Update Voucher' : 'Create Voucher',
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  List<Widget> _buildPaymentRows(ThemeData theme, ColorScheme scheme) {
+    final rows = controller.paymentRows
+        .where((row) => row.account.value != null && row.amount > 0)
+        .toList();
+
+    return List<Widget>.generate(rows.length, (index) {
+      final row = rows[index];
+      final description = row.descriptionController.text.trim();
+      return _VoucherReviewLineCard(
+        index: index + 1,
+        title: row.account.value?.label ?? '-',
+        amount: 'Rs ${row.amount.toStringAsFixed(2)}',
+        typeLabel: 'Amount',
+        note: description.isEmpty ? null : description,
+        accentColor: scheme.primary,
+      );
+    });
+  }
+
+  List<Widget> _buildAdjustmentRows(ThemeData theme, ColorScheme scheme) {
+    final rows = controller.adjustmentRows
+        .where((row) => row.account.value != null && row.amount > 0)
+        .toList();
+
+    return List<Widget>.generate(rows.length, (index) {
+      final row = rows[index];
+      final description = row.descriptionController.text.trim();
+      final entryType = row.entryType.value == 'credit' ? 'Credit' : 'Debit';
+      final accentColor = row.entryType.value == 'credit'
+          ? const Color(0xFFF29B38)
+          : const Color(0xFF16A36A);
+      return _VoucherReviewLineCard(
+        index: index + 1,
+        title: row.account.value?.label ?? '-',
+        amount: 'Rs ${row.amount.toStringAsFixed(2)}',
+        typeLabel: entryType,
+        note: description.isEmpty ? null : description,
+        accentColor: accentColor,
+      );
+    });
+  }
+
+  static String _capitalize(String value) {
+    if (value.isEmpty) {
+      return value;
+    }
+    return '${value[0].toUpperCase()}${value.substring(1)}';
+  }
+}
+
+class _VoucherReviewSection extends StatelessWidget {
+  const _VoucherReviewSection({
+    required this.title,
+    this.rows = const <_VoucherReviewItem>[],
+    this.child,
+  });
+
+  final String title;
+  final List<_VoucherReviewItem> rows;
+  final Widget? child;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: theme.cardColor,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: scheme.outlineVariant.withValues(alpha: .7)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          Text(
+            title,
+            style: theme.textTheme.titleSmall?.copyWith(
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+          if (rows.isNotEmpty) ...<Widget>[
+            const SizedBox(height: 10),
+            for (final row in rows) ...<Widget>[
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: <Widget>[
+                  Expanded(
+                    child: Text(
+                      row.label,
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: scheme.onSurfaceVariant,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      row.value,
+                      textAlign: TextAlign.right,
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              if (row != rows.last) const SizedBox(height: 9),
+            ],
+          ],
+          if (child != null) ...<Widget>[
+            const SizedBox(height: 10),
+            child!,
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _VoucherReviewItem {
+  const _VoucherReviewItem({
+    required this.label,
+    required this.value,
+  });
+
+  final String label;
+  final String value;
+}
+
+class _VoucherReviewLineCard extends StatelessWidget {
+  const _VoucherReviewLineCard({
+    required this.index,
+    required this.title,
+    required this.amount,
+    required this.typeLabel,
+    required this.accentColor,
+    this.note,
+  });
+
+  final int index;
+  final String title;
+  final String amount;
+  final String typeLabel;
+  final String? note;
+  final Color accentColor;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(14),
+        color: accentColor.withValues(alpha: .06),
+        border: Border.all(color: accentColor.withValues(alpha: .2)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          Row(
+            children: <Widget>[
+              Container(
+                width: 24,
+                height: 24,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: accentColor.withValues(alpha: .14),
+                  shape: BoxShape.circle,
+                ),
+                child: Text(
+                  '$index',
+                  style: theme.textTheme.labelSmall?.copyWith(
+                    color: accentColor,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  title,
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: <Widget>[
+              Text(
+                typeLabel,
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: accentColor,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const Spacer(),
+              Text(
+                amount,
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ],
+          ),
+          if (note != null && note!.isNotEmpty) ...<Widget>[
+            const SizedBox(height: 6),
+            Text(
+              note!,
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+                height: 1.35,
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
   }
 }
 

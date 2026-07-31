@@ -2,6 +2,7 @@
 
 namespace App\Http\Resources;
 
+use App\Services\PartyService;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -14,6 +15,8 @@ class PartyResource extends JsonResource
      */
     public function toArray(Request $request): array
     {
+        $typeLocked = app(PartyService::class)->isTransactionallyUsed($this->id);
+
         return [
             'id' => $this->id,
             'party_code' => $this->party_code,
@@ -34,6 +37,7 @@ class PartyResource extends JsonResource
             'opening_date' => $this->opening_date?->toISOString(),
             'remarks' => $this->remarks,
             'is_active' => $this->is_active,
+            'type_locked' => $typeLocked,
             'created_at' => $this->created_at?->toISOString(),
             'updated_at' => $this->updated_at?->toISOString(),
         ];

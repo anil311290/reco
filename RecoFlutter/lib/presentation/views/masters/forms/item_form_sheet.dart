@@ -1,15 +1,21 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 
+import '../../../../core/utils/app_snackbar.dart';
 import '../../../../data/models/masters/master_entities.dart';
+import '../../../controllers/masters/categories_controller.dart';
 import '../../../controllers/masters/items_controller.dart';
 import '../../../controllers/masters/masters_lookup_controller.dart';
 import '../../../widgets/common/common_button.dart';
 import '../../../widgets/common/custom_text_field.dart';
 
 class ItemFormSheet extends StatefulWidget {
-  const ItemFormSheet({super.key, this.entity});
+  const ItemFormSheet({super.key, this.entity, this.initialType});
+
   final ItemEntity? entity;
+  final String? initialType;
+
   @override
   State<ItemFormSheet> createState() => _ItemFormSheetState();
 }
@@ -21,47 +27,59 @@ class _ItemFormSheetState extends State<ItemFormSheet> {
   final _hsnController = TextEditingController();
   final _purchaseController = TextEditingController(text: '0');
   final _sellingController = TextEditingController(text: '0');
-  final _unitController = TextEditingController();
   final _descriptionController = TextEditingController();
   final _barcodeController = TextEditingController();
   final _stockController = TextEditingController(text: '0');
+  final _quickCategoryNameController = TextEditingController();
+  final _quickCategoryDescriptionController = TextEditingController();
+
   late final ItemsController controller;
+  late final CategoriesController categoriesController;
   late final MastersLookupController lookupController;
+
   bool isSaving = false;
+  bool isQuickAddingCategory = false;
   String type = 'goods';
   int? categoryId;
   int? taxRateId;
-  int? incomeAccountId;
-  int? expenseAccountId;
   String _unit = 'nos';
-  bool _isStockable = true;
   bool _isActive = true;
 
   bool get _isServiceType => type == 'service';
+  bool get _isEditMode => widget.entity != null;
 
   @override
   void initState() {
     super.initState();
     controller = Get.find<ItemsController>();
+    categoriesController = Get.find<CategoriesController>();
     lookupController = Get.find<MastersLookupController>();
+
     final entity = widget.entity;
     _codeController.text = entity?.itemCode ?? '';
     _nameController.text = entity?.name ?? '';
     _hsnController.text = entity?.hsnSacCode ?? '';
-    _purchaseController.text = '${entity?.purchasePrice ?? 0}';
-    _sellingController.text = '${entity?.sellingPrice ?? 0}';
-    _unitController.text = entity?.unit ?? 'nos';
+    _purchaseController.text = _formatNumber(entity?.purchasePrice ?? 0);
+    _sellingController.text = _formatNumber(entity?.sellingPrice ?? 0);
     _descriptionController.text = entity?.description ?? '';
     _barcodeController.text = entity?.barcode ?? '';
-    _stockController.text = '${entity?.openingStock ?? 0}';
-    type = entity?.type ?? 'goods';
+    _stockController.text = _formatNumber(entity?.openingStock ?? 0);
+    type = entity?.type ?? widget.initialType ?? 'goods';
     categoryId = entity?.categoryId;
     taxRateId = entity?.taxRateId;
-    incomeAccountId = entity?.incomeAccountId;
-    expenseAccountId = entity?.expenseAccountId;
-    _unit = entity?.unit ?? 'nos';
-    _isStockable = entity?.isStockable ?? true;
+    _unit = entity?.unit.isNotEmpty == true
+        ? entity!.unit
+        : (_isServiceType ? 'hrs' : 'nos');
     _isActive = entity?.isActive ?? true;
+
+    if (_isServiceType) {
+      _purchaseController.text = '0';
+      _barcodeController.clear();
+      _stockController.text = '0';
+      if (!const <String>['hrs', 'nos'].contains(_unit)) {
+        _unit = 'hrs';
+      }
+    }
   }
 
   @override
@@ -71,22 +89,28 @@ class _ItemFormSheetState extends State<ItemFormSheet> {
     _hsnController.dispose();
     _purchaseController.dispose();
     _sellingController.dispose();
-    _unitController.dispose();
     _descriptionController.dispose();
     _barcodeController.dispose();
     _stockController.dispose();
+    _quickCategoryNameController.dispose();
+    _quickCategoryDescriptionController.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+
     return Scaffold(
       appBar: AppBar(
         title: Text(
-          widget.entity == null ? 'Create Item' : 'Edit Item',
-          style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                fontWeight: FontWeight.w800,
-              ),
+          _isEditMode
+              ? (_isServiceType ? 'Edit Service' : 'Edit Item')
+              : (_isServiceType ? 'Create Service' : 'Create Item'),
+          style: theme.textTheme.titleMedium?.copyWith(
+            fontWeight: FontWeight.w700,
+          ),
         ),
       ),
       body: SafeArea(
@@ -94,55 +118,72 @@ class _ItemFormSheetState extends State<ItemFormSheet> {
           key: _formKey,
           child: ListView(
             padding: const EdgeInsets.all(16),
-            children: [
+            children: <Widget>[
+              if (_isEditMode || _isServiceType)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: Row(
+                    children: <Widget>[
+                      if (_isEditMode)
+                        Expanded(
+                          child: Text(
+                            _isServiceType ? 'Edit Service' : 'Edit Item',
+                            style: theme.textTheme.titleMedium?.copyWith(
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        )
+                      else
+                        const Spacer(),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 4,
+                        ),
+                        decoration: BoxDecoration(
+                          color: (_isServiceType
+                                  ? const Color(0xFF0EA5E9)
+                                  : scheme.primary)
+                              .withValues(alpha: .10),
+                          borderRadius: BorderRadius.circular(999),
+                        ),
+                        child: Text(
+                          _isServiceType ? 'Service' : 'Goods',
+                          style: theme.textTheme.labelSmall?.copyWith(
+                            color: _isServiceType
+                                ? const Color(0xFF0EA5E9)
+                                : scheme.primary,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
               CustomTextField(
                 controller: _codeController,
                 label: 'Item Code',
-                hintText: 'Item code',
-                validator: _required,
+                hintText: 'Auto-generated on save',
+                readOnly: true,
+                bottomPadding: 14,
               ),
-              const SizedBox(height: 12),
               CustomTextField(
                 controller: _nameController,
-                label: 'Item Name',
-                hintText: 'Item name',
+                label: 'Name',
+                hintText: 'Enter item or service name',
+                requiredField: true,
                 validator: _required,
+                keyboardType: TextInputType.name,
+                textInputAction: TextInputAction.next,
+                bottomPadding: 14,
               ),
-              const SizedBox(height: 12),
-              CustomTextField(
-                controller: _hsnController,
-                label: 'HSN / SAC',
-                hintText: 'HSN/SAC',
+              _QuickAddCategoryAction(
+                onTap: _showQuickAddCategoryDialog,
               ),
-              const SizedBox(height: 12),
-              CustomDropdown<String>(
-                label: 'Item Type',
-                items: const ['goods', 'service'],
-                value: type,
-                itemLabelBuilder: _capitalize,
-                onChanged: (value) {
-                  setState(() {
-                    type = value ?? type;
-                    if (_isServiceType) {
-                      _isStockable = false;
-                      _stockController.text = '0';
-                    } else {
-                      _isStockable = true;
-                    }
-                  });
-                },
-              ),
-              if (_isServiceType) ...[
-                const SizedBox(height: 12),
-                _InfoNoteCard(
-                  text:
-                      'Stock tracking is not available for service items, so opening stock and stockable controls are hidden.',
-                ),
-              ],
-              const SizedBox(height: 12),
               Obx(
                 () => CustomDropdown<int>(
                   label: 'Category',
+                  hint: 'Select Category',
                   items: lookupController.categories
                       .map((item) => item.id)
                       .toList(),
@@ -153,11 +194,20 @@ class _ItemFormSheetState extends State<ItemFormSheet> {
                   onChanged: (value) => setState(() => categoryId = value),
                 ),
               ),
-              const SizedBox(height: 12),
+              CustomTextField(
+                controller: _hsnController,
+                label: _isServiceType ? 'SAC Code' : 'HSN/SAC Code',
+                hintText: '',
+                textInputAction: TextInputAction.next,
+                bottomPadding: 14,
+              ),
               Obx(
                 () => CustomDropdown<int>(
                   label: 'Tax Rate',
-                  items: lookupController.taxes.map((item) => item.id).toList(),
+                  hint: 'Select Tax Rate',
+                  items: lookupController.taxes
+                      .map((item) => item.id)
+                      .toList(),
                   value: taxRateId,
                   itemLabelBuilder: (id) => lookupController.taxes
                       .firstWhere((item) => item.id == id)
@@ -165,114 +215,126 @@ class _ItemFormSheetState extends State<ItemFormSheet> {
                   onChanged: (value) => setState(() => taxRateId = value),
                 ),
               ),
-              const SizedBox(height: 12),
-              Obx(
-                () => CustomDropdown<int>(
-                  label: 'Income Account',
-                  items: lookupController.incomeAccounts
-                      .map((item) => item.id)
-                      .toList(),
-                  value: incomeAccountId,
-                  itemLabelBuilder: (id) => lookupController.incomeAccounts
-                      .firstWhere((item) => item.id == id)
-                      .label,
-                  onChanged: (value) => setState(() => incomeAccountId = value),
-                ),
+              CustomDropdown<String>(
+                label: 'Unit',
+                hint: 'Select Unit',
+                items: _unitOptions.map((item) => item.value).toList(),
+                value: _unit,
+                itemLabelBuilder: (value) => _unitLabel(value),
+                onChanged: (value) => setState(() => _unit = value ?? _unit),
               ),
-              const SizedBox(height: 12),
-              Obx(
-                () => CustomDropdown<int>(
-                  label: 'Expense Account',
-                  items: lookupController.expenseAccounts
-                      .map((item) => item.id)
-                      .toList(),
-                  value: expenseAccountId,
-                  itemLabelBuilder: (id) => lookupController.expenseAccounts
-                      .firstWhere((item) => item.id == id)
-                      .label,
-                  onChanged: (value) =>
-                      setState(() => expenseAccountId = value),
+              if (!_isServiceType)
+                CustomTextField(
+                  controller: _purchaseController,
+                  label: 'Purchase Price',
+                  hintText: '0',
+                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                  inputFormatters: <TextInputFormatter>[
+                    FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d{0,2}')),
+                  ],
+                  bottomPadding: 14,
                 ),
+              if (!_isServiceType)
+                CustomTextField(
+                  controller: _stockController,
+                  label: 'Opening Qty.',
+                  hintText: '0',
+                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                  inputFormatters: <TextInputFormatter>[
+                    FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d{0,2}')),
+                  ],
+                  bottomPadding: 14,
+                ),
+              if (!_isServiceType)
+                CustomTextField(
+                  controller: _sellingController,
+                  label: 'Selling Price',
+                  hintText: '0',
+                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                  inputFormatters: <TextInputFormatter>[
+                    FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d{0,2}')),
+                  ],
+                  bottomPadding: 14,
+                ),
+              if (_isServiceType)
+                CustomTextField(
+                  controller: _sellingController,
+                  label: 'Default Rate',
+                  hintText: '0',
+                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                  inputFormatters: <TextInputFormatter>[
+                    FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d{0,2}')),
+                  ],
+                  bottomPadding: 0,
+                ),
+              if (_isServiceType) ...<Widget>[
+                const SizedBox(height: 4),
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    'Optional default rate for sales invoice; amount can still be changed per bill.',
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant,
+                      fontSize: 11.5,
+                    ),
+                  ),
+                ),
+                if (_isEditMode) ...<Widget>[
+                  const SizedBox(height: 10),
+                  _InlineInfo(
+                    text:
+                        'Stock does not apply to service items. They are non-stockable and post to Service Revenue via income account.',
+                  ),
+                ],
+              ],
+              if (!_isServiceType)
+                CustomTextField(
+                  controller: _barcodeController,
+                  label: 'Barcode',
+                  hintText: '',
+                  textInputAction: TextInputAction.next,
+                  keyboardType: TextInputType.text,
+                  bottomPadding: 14,
+                ),
+              CustomTextField(
+                controller: _descriptionController,
+                label: 'Description',
+                hintText: '',
+                maxLines: 2,
+                keyboardType: TextInputType.multiline,
+                textInputAction: TextInputAction.newline,
+                bottomPadding: 0,
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: 16),
               Row(
                 children: <Widget>[
                   Expanded(
-                    child: CustomTextField(
-                      controller: _purchaseController,
-                      label: 'Purchase Price',
-                      hintText: '0',
+                    child: OutlinedButton(
+                      onPressed: () => Navigator.of(context).pop(),
+                      style: OutlinedButton.styleFrom(
+                        side: BorderSide(
+                          color: theme.colorScheme.secondary,
+                        ),
+                        foregroundColor: theme.colorScheme.secondary,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                      ),
+                      child: const Text('Cancel'),
                     ),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
-                    child: CustomTextField(
-                      controller: _sellingController,
-                      label: 'Selling Price',
-                      hintText: '0',
+                    flex: 2,
+                    child: CommonButton(
+                      text: _isEditMode
+                          ? (_isServiceType ? 'Update Service' : 'Update Item')
+                          : (_isServiceType ? 'Save Service' : 'Save Item'),
+                      isLoading: isSaving,
+                      onPressed: _submit,
                     ),
                   ),
                 ],
-              ),
-              const SizedBox(height: 12),
-              Row(
-                children: <Widget>[
-                  Expanded(
-                    child: CustomDropdown<String>(
-                      label: 'Unit',
-                      items: const ['nos', 'kg', 'ltr', 'mtr', 'pcs', 'box', 'set'],
-                      value: _unit,
-                      itemLabelBuilder: _capitalize,
-                      onChanged: (v) => setState(() => _unit = v ?? _unit),
-                    ),
-                  ),
-                  if (!_isServiceType) ...[
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: CustomTextField(
-                        controller: _stockController,
-                        label: 'Opening Stock',
-                        hintText: '0',
-                      ),
-                    ),
-                  ],
-                ],
-              ),
-              const SizedBox(height: 12),
-              CustomTextField(
-                controller: _barcodeController,
-                label: 'Barcode',
-                hintText: 'Barcode',
-              ),
-              const SizedBox(height: 12),
-              CustomTextField(
-                controller: _descriptionController,
-                label: 'Description',
-                hintText: 'Description',
-              ),
-              const SizedBox(height: 12),
-              if (!_isServiceType)
-                SwitchListTile(
-                  contentPadding: EdgeInsets.zero,
-                  title: const Text('Stockable Item'),
-                  subtitle: const Text('Enable stock tracking for this item'),
-                  value: _isStockable,
-                  onChanged: (v) => setState(() => _isStockable = v),
-                  dense: true,
-                ),
-              SwitchListTile(
-                contentPadding: EdgeInsets.zero,
-                title: const Text('Active Item'),
-                subtitle: const Text('Inactive items won\'t appear in dropdowns'),
-                value: _isActive,
-                onChanged: (v) => setState(() => _isActive = v),
-                dense: true,
-              ),
-              const SizedBox(height: 8),
-              CommonButton(
-                text: 'Save',
-                isLoading: isSaving,
-                onPressed: _submit,
               ),
             ],
           ),
@@ -281,13 +343,129 @@ class _ItemFormSheetState extends State<ItemFormSheet> {
     );
   }
 
-  String _capitalize(String value) {
-    if (value.isEmpty) return value;
-    return '${value[0].toUpperCase()}${value.substring(1)}';
+  Future<void> _showQuickAddCategoryDialog() async {
+    _quickCategoryNameController.clear();
+    _quickCategoryDescriptionController.clear();
+    isQuickAddingCategory = false;
+
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) {
+        final theme = Theme.of(dialogContext);
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              insetPadding: const EdgeInsets.symmetric(horizontal: 20),
+              contentPadding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+              titlePadding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+              title: Text(
+                'Quick Add Category',
+                style: theme.textTheme.titleLarge?.copyWith(
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+              content: SizedBox(
+                width: double.maxFinite,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: <Widget>[
+                    CustomTextField(
+                      controller: _quickCategoryNameController,
+                      label: 'Category Name',
+                      hintText: 'Enter category name',
+                      requiredField: true,
+                      keyboardType: TextInputType.name,
+                    ),
+                    CustomTextField(
+                      controller: _quickCategoryDescriptionController,
+                      label: 'Description',
+                      hintText: 'Enter category description',
+                      maxLines: 3,
+                      keyboardType: TextInputType.multiline,
+                      textInputAction: TextInputAction.newline,
+                      bottomPadding: 0,
+                    ),
+                  ],
+                ),
+              ),
+              actions: <Widget>[
+                TextButton(
+                  onPressed: isQuickAddingCategory
+                      ? null
+                      : () => Navigator.of(dialogContext).pop(),
+                  child: const Text('Cancel'),
+                ),
+                FilledButton(
+                  onPressed: isQuickAddingCategory
+                      ? null
+                      : () => _submitQuickCategory(setDialogState, dialogContext),
+                  child: isQuickAddingCategory
+                      ? const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Text('Add Category'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Future<void> _submitQuickCategory(
+    void Function(void Function()) setDialogState,
+    BuildContext dialogContext,
+  ) async {
+    final name = _quickCategoryNameController.text.trim();
+    if (name.isEmpty) {
+      AppSnackbar.warning('Category name is required.');
+      return;
+    }
+
+    setDialogState(() => isQuickAddingCategory = true);
+    try {
+      await categoriesController.save(
+        ItemCategoryEntity(
+          name: name,
+          description: _quickCategoryDescriptionController.text.trim(),
+          sortOrder: 0,
+          isActive: true,
+        ),
+      );
+      await lookupController.loadItemLookups();
+
+      final created = lookupController.categories.firstWhereOrNull(
+        (item) => item.label.trim().toLowerCase() == name.toLowerCase(),
+      );
+      if (created != null && mounted) {
+        setState(() => categoryId = created.id);
+      } else {
+        AppSnackbar.warning(
+          'Category saved. It will appear after server sync completes.',
+        );
+      }
+
+      if (dialogContext.mounted) {
+        Navigator.of(dialogContext).pop();
+      }
+    } finally {
+      if (mounted) {
+        setDialogState(() => isQuickAddingCategory = false);
+      }
+    }
   }
 
   Future<void> _submit() async {
-    if (!_formKey.currentState!.validate()) return;
+    if (!_formKey.currentState!.validate()) {
+      return;
+    }
+
     setState(() => isSaving = true);
     try {
       await controller.save(
@@ -300,67 +478,140 @@ class _ItemFormSheetState extends State<ItemFormSheet> {
           type: type,
           categoryId: categoryId,
           taxRateId: taxRateId,
-          incomeAccountId: incomeAccountId,
-          expenseAccountId: expenseAccountId,
-          purchasePrice: double.tryParse(_purchaseController.text.trim()) ?? 0,
+          purchasePrice:
+              _isServiceType ? 0 : (double.tryParse(_purchaseController.text.trim()) ?? 0),
           sellingPrice: double.tryParse(_sellingController.text.trim()) ?? 0,
           unit: _unit,
           description: _descriptionController.text.trim(),
-          barcode: _barcodeController.text.trim(),
-          openingStock: double.tryParse(_stockController.text.trim()) ?? 0,
-          isStockable: _isStockable,
+          barcode: _isServiceType ? '' : _barcodeController.text.trim(),
+          openingStock:
+              _isServiceType ? 0 : (double.tryParse(_stockController.text.trim()) ?? 0),
+          isStockable: !_isServiceType,
           isActive: _isActive,
         ),
       );
-      if (mounted) Navigator.of(context).pop();
+      if (mounted) {
+        Navigator.of(context).pop(true);
+      }
     } finally {
-      if (mounted) setState(() => isSaving = false);
+      if (mounted) {
+        setState(() => isSaving = false);
+      }
     }
   }
 
-  String? _required(String? value) =>
-      (value ?? '').trim().isEmpty ? 'Required field' : null;
+  String _formatNumber(num value) {
+    if (value == value.roundToDouble()) {
+      return value.toInt().toString();
+    }
+    return value.toString();
+  }
+
+  String _unitLabel(String value) {
+    const labels = <String, String>{
+      'nos': 'Numbers (Nos)',
+      'hrs': 'Hours (Hrs)',
+      'kg': 'Kilogram (Kg)',
+      'ltr': 'Litre (Ltr)',
+      'mtr': 'Metre (Mtr)',
+      'pcs': 'Pieces (Pcs)',
+      'box': 'Box',
+      'set': 'Set',
+    };
+    return labels[value] ?? value;
+  }
+
+  String? _required(String? value) {
+    return (value ?? '').trim().isEmpty ? 'Required field' : null;
+  }
 }
 
-class _InfoNoteCard extends StatelessWidget {
-  const _InfoNoteCard({required this.text});
+const List<_UnitOption> _unitOptions = <_UnitOption>[
+  _UnitOption('nos'),
+  _UnitOption('hrs'),
+  _UnitOption('kg'),
+  _UnitOption('ltr'),
+  _UnitOption('mtr'),
+  _UnitOption('pcs'),
+  _UnitOption('box'),
+  _UnitOption('set'),
+];
+
+class _UnitOption {
+  const _UnitOption(this.value);
+  final String value;
+}
+
+class _QuickAddCategoryAction extends StatelessWidget {
+  const _QuickAddCategoryAction({required this.onTap});
+
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Align(
+        alignment: Alignment.centerRight,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(999),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: <Widget>[
+                Icon(
+                  Icons.add_circle_outline_rounded,
+                  size: 16,
+                  color: theme.colorScheme.primary,
+                ),
+                const SizedBox(width: 4),
+                Text(
+                  'Quick Add',
+                  style: theme.textTheme.labelLarge?.copyWith(
+                    color: theme.colorScheme.primary,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _InlineInfo extends StatelessWidget {
+  const _InlineInfo({required this.text});
 
   final String text;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: theme.colorScheme.primary.withValues(alpha: .06),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(
-          color: theme.colorScheme.primary.withValues(alpha: .10),
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: <Widget>[
+        Icon(
+          Icons.info_outline_rounded,
+          size: 15,
+          color: theme.colorScheme.primary,
         ),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: <Widget>[
-          Icon(
-            Icons.info_outline_rounded,
-            size: 18,
-            color: theme.colorScheme.primary,
-          ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Text(
-              text,
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
-                fontWeight: FontWeight.w500,
-                height: 1.35,
-              ),
+        const SizedBox(width: 6),
+        Expanded(
+          child: Text(
+            text,
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+              fontWeight: FontWeight.w500,
+              height: 1.35,
             ),
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 }

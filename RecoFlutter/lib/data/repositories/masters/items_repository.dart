@@ -102,7 +102,8 @@ class ItemsRepository extends OfflineFirstRepository {
 
   Future<Map<String, List<Map<String, dynamic>>>> getSalesLineCatalog() async {
     final localItems = await getItems();
-    final fallbackItems = localItems
+    final localGoods = localItems
+        .where((item) => item.type != 'service')
         .map(
           (item) => <String, dynamic>{
             ...item.toPayload(),
@@ -114,14 +115,32 @@ class ItemsRepository extends OfflineFirstRepository {
             'tax_rate_id': item.taxRateId,
             'income_account_id': item.incomeAccountId,
             'is_active': item.isActive,
+            'type': item.type,
+          },
+        )
+        .toList();
+    final localServices = localItems
+        .where((item) => item.type == 'service')
+        .map(
+          (item) => <String, dynamic>{
+            ...item.toPayload(),
+            'id': item.id,
+            'name': item.name,
+            'item_code': item.itemCode,
+            'selling_price': item.sellingPrice,
+            'description': item.description,
+            'tax_rate_id': item.taxRateId,
+            'income_account_id': item.incomeAccountId,
+            'is_active': item.isActive,
+            'type': item.type,
           },
         )
         .toList();
 
     if (!await networkMonitorService.hasInternetNow()) {
       return <String, List<Map<String, dynamic>>>{
-        'items': fallbackItems,
-        'services': <Map<String, dynamic>>[],
+        'items': localGoods,
+        'services': localServices,
       };
     }
 
@@ -131,8 +150,8 @@ class ItemsRepository extends OfflineFirstRepository {
     final data = response.data?['data'];
     if (data is! Map<String, dynamic>) {
       return <String, List<Map<String, dynamic>>>{
-        'items': fallbackItems,
-        'services': <Map<String, dynamic>>[],
+        'items': localGoods,
+        'services': localServices,
       };
     }
 
@@ -140,8 +159,8 @@ class ItemsRepository extends OfflineFirstRepository {
     final serviceRecords = _extractList(data['services']);
 
     return <String, List<Map<String, dynamic>>>{
-      'items': itemRecords.isNotEmpty ? itemRecords : fallbackItems,
-      'services': serviceRecords,
+      'items': itemRecords.isNotEmpty ? itemRecords : localGoods,
+      'services': serviceRecords.isNotEmpty ? serviceRecords : localServices,
     };
   }
 

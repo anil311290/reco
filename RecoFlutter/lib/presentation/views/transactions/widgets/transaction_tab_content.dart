@@ -4,6 +4,7 @@ import 'package:get/get.dart';
 
 import '../../../../data/models/transactions/transaction_entities.dart';
 import '../../../../presentation/widgets/common/custom_text_field.dart';
+import '../../../controllers/transactions/all_vouchers_controller.dart';
 import '../../../controllers/transactions/base_transactions_tab_controller.dart';
 import '../../../controllers/transactions/transactions_lookup_controller.dart';
 import '../../masters/widgets/masters_ui_components.dart';
@@ -79,6 +80,9 @@ class _TransactionFilterSheet<T extends BaseTransactionsTabController>
     final lookups = Get.find<TransactionsLookupController>();
     var status = controller.selectedStatus.value;
     var partyId = controller.selectedPartyId.value;
+    var voucherType = controller is AllVouchersController
+        ? (controller as AllVouchersController).selectedType.value
+        : 'All';
     final fromDateController = TextEditingController(
       text: controller.selectedFromDate.value,
     );
@@ -118,6 +122,21 @@ class _TransactionFilterSheet<T extends BaseTransactionsTabController>
                     onChanged: (value) =>
                         setModalState(() => status = value ?? 'All'),
                   ),
+                  if (controller is AllVouchersController)
+                    CustomDropdown<String>(
+                      label: 'Type',
+                      value: voucherType,
+                      items: (controller as AllVouchersController).typeOptions,
+                      itemLabelBuilder: (value) => switch (value) {
+                        'All' => 'All Types',
+                        'income' => 'Sales',
+                        'expense' => 'Purchase',
+                        'journal' => 'Adjustment',
+                        _ => _titleCase(value),
+                      },
+                      onChanged: (value) =>
+                          setModalState(() => voucherType = value ?? 'All'),
+                    ),
                   if (controller.supportsPartyFilter)
                     Obx(
                       () => CustomDropdown<int>(
@@ -195,12 +214,22 @@ class _TransactionFilterSheet<T extends BaseTransactionsTabController>
                       Expanded(
                         child: FilledButton(
                           onPressed: () async {
-                            await controller.applyFilters(
-                              status: status,
-                              partyId: partyId,
-                              fromDate: fromDateController.text.trim(),
-                              toDate: toDateController.text.trim(),
-                            );
+                            if (controller is AllVouchersController) {
+                              await (controller as AllVouchersController)
+                                  .applyAllVoucherFilters(
+                                type: voucherType,
+                                status: status,
+                                fromDate: fromDateController.text.trim(),
+                                toDate: toDateController.text.trim(),
+                              );
+                            } else {
+                              await controller.applyFilters(
+                                status: status,
+                                partyId: partyId,
+                                fromDate: fromDateController.text.trim(),
+                                toDate: toDateController.text.trim(),
+                              );
+                            }
                             if (context.mounted) {
                               Navigator.of(context).pop();
                             }

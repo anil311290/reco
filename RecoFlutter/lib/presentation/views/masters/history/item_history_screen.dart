@@ -3,8 +3,11 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
 import '../../../../data/models/masters/master_entities.dart';
+import '../../../../data/models/transactions/transaction_entities.dart';
 import '../../../controllers/masters/item_history_controller.dart';
-import '../../../widgets/common/custom_text_field.dart';
+import '../history/party_history_screen.dart';
+import '../../reports/widgets/report_ui_components.dart';
+import '../../transactions/details/transaction_detail_screen.dart';
 import '../widgets/masters_ui_components.dart';
 
 class ItemHistoryScreen extends StatefulWidget {
@@ -54,7 +57,7 @@ class _ItemHistoryScreenState extends State<ItemHistoryScreen> {
     return Scaffold(
       appBar: AppBar(
         title: Text(
-          'Item History',
+          'Item Details',
           style: theme.textTheme.titleMedium?.copyWith(
             fontWeight: FontWeight.w600,
           ),
@@ -66,115 +69,12 @@ class _ItemHistoryScreenState extends State<ItemHistoryScreen> {
           children: <Widget>[
             _buildItemDetailCard(theme),
             const SizedBox(height: 12),
-            _buildFilterRow(theme),
-            const SizedBox(height: 12),
             _buildHistorySection(theme),
           ],
         ),
       ),
     );
   }
-
-  Widget _buildFilterRow(ThemeData theme) {
-    final accent = theme.colorScheme.primary;
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(12),
-        gradient: LinearGradient(
-          colors: <Color>[
-            accent.withValues(alpha: .06),
-            theme.colorScheme.surface,
-          ],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        border: Border.all(color: accent.withValues(alpha: .12)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: <Widget>[
-          Row(
-            children: <Widget>[
-              Icon(Icons.tune_rounded, size: 16, color: accent),
-              const SizedBox(width: 8),
-              Text(
-                'Filters',
-                style: theme.textTheme.titleSmall?.copyWith(
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 4),
-          Text(
-            'Select date range to review item movement history.',
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: theme.colorScheme.onSurfaceVariant,
-              fontSize: 11.5,
-            ),
-          ),
-          const SizedBox(height: 12),
-          Row(
-            children: <Widget>[
-              Expanded(
-                child: CustomTextField(
-                  controller: controller.fromDateController,
-                  label: 'From Date',
-                  hintText: 'YYYY-MM-DD',
-                  readOnly: true,
-                  suffixIcon: Icons.calendar_today_outlined,
-                  bottomPadding: 0,
-                  onTap: () => _pickDate(controller.fromDateController),
-                ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: CustomTextField(
-                  controller: controller.toDateController,
-                  label: 'To Date',
-                  hintText: 'YYYY-MM-DD',
-                  readOnly: true,
-                  suffixIcon: Icons.calendar_today_outlined,
-                  bottomPadding: 0,
-                  onTap: () => _pickDate(controller.toDateController),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Align(
-            alignment: Alignment.centerLeft,
-            child: SizedBox(
-              height: 38,
-              child: FilledButton.icon(
-                onPressed: controller.loadHistory,
-                style: FilledButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 14,
-                    vertical: 8,
-                  ),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  textStyle: theme.textTheme.labelLarge?.copyWith(
-                    fontWeight: FontWeight.w700,
-                    fontSize: 12.5,
-                  ),
-                ),
-                icon: const Icon(Icons.filter_alt_rounded, size: 15),
-                label: const Text('Apply'),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // ─────────────────────────────────────────────
-  // Item Detail Card (matches web item-summary-grid)
-  // ─────────────────────────────────────────────
   Widget _buildItemDetailCard(ThemeData theme) {
     final item = controller.item.value;
 
@@ -182,29 +82,243 @@ class _ItemHistoryScreenState extends State<ItemHistoryScreen> {
       return const Center(child: CircularProgressIndicator());
     }
 
+    final accentColor = item.type == 'service'
+        ? const Color(0xFF0284C7)
+        : theme.colorScheme.primary;
+    final primarySummary = <MapEntry<String, String>>[
+      MapEntry<String, String>('Category', item.categoryName.isEmpty ? '-' : item.categoryName),
+      MapEntry<String, String>('HSN / SAC', item.hsnSacCode.isEmpty ? '-' : item.hsnSacCode),
+      MapEntry<String, String>('Unit', item.unit.isEmpty ? '-' : item.unit.toUpperCase()),
+      MapEntry<String, String>('Tax Rate', item.taxLabel.isEmpty ? '-' : item.taxLabel),
+    ];
+    final priceSummary = <MapEntry<String, String>>[
+      if (item.type == 'goods')
+        MapEntry<String, String>('Purchase Price', _plainCurrency(item.purchasePrice)),
+      MapEntry<String, String>(
+        item.type == 'service' ? 'Default Rate' : 'Selling Price',
+        _plainCurrency(item.sellingPrice),
+      ),
+      if (item.type == 'goods')
+        MapEntry<String, String>(
+          'Opening Stock',
+          '${controller.formatQuantity(item.openingStock)} ${item.unit}',
+        ),
+      if (item.type == 'goods')
+        MapEntry<String, String>(
+          'Current Stock',
+          '${controller.formatQuantity(item.currentStock)} ${item.unit}',
+        ),
+      MapEntry<String, String>(
+        'Total Purchases',
+        _plainCurrency(controller.totalPurchaseAmount.value),
+      ),
+      MapEntry<String, String>(
+        'Total Sales',
+        _plainCurrency(controller.totalSalesAmount.value),
+      ),
+    ];
+
+    return Column(
+      children: <Widget>[
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(22),
+            gradient: LinearGradient(
+              colors: <Color>[
+                accentColor.withValues(alpha: .14),
+                theme.colorScheme.surface,
+              ],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            border: Border.all(
+              color: accentColor.withValues(alpha: .16),
+            ),
+          ),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              Container(
+                width: 58,
+                height: 58,
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.surface,
+                  borderRadius: BorderRadius.circular(18),
+                ),
+                alignment: Alignment.center,
+                child: Icon(
+                  item.type == 'service'
+                      ? Icons.design_services_rounded
+                      : Icons.inventory_2_rounded,
+                  color: accentColor,
+                  size: 28,
+                ),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: <Widget>[
+                    Row(
+                      children: <Widget>[
+                        Expanded(
+                          child: Text(
+                            item.name,
+                            style: theme.textTheme.titleLarge?.copyWith(
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                        ),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 5,
+                          ),
+                          decoration: BoxDecoration(
+                            color: item.isActive
+                                ? const Color(0xFFDCFCE7)
+                                : theme.colorScheme.surfaceContainerHighest,
+                            borderRadius: BorderRadius.circular(999),
+                          ),
+                          child: Text(
+                            item.isActive ? 'Active' : 'Inactive',
+                            style: TextStyle(
+                              fontSize: 11.5,
+                              fontWeight: FontWeight.w700,
+                              color: item.isActive
+                                  ? const Color(0xFF15803D)
+                                  : theme.colorScheme.onSurfaceVariant,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      '${item.itemCode} • ${_titleCase(item.type)}',
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: theme.colorScheme.onSurfaceVariant,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    if (item.description.trim().isNotEmpty) ...<Widget>[
+                      const SizedBox(height: 8),
+                      Text(
+                        item.description.trim(),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: theme.colorScheme.onSurfaceVariant,
+                          height: 1.35,
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 12),
+        _buildSummaryCard(
+          theme: theme,
+          title: 'Overview',
+          values: primarySummary,
+        ),
+        const SizedBox(height: 12),
+        _buildSummaryCard(
+          theme: theme,
+          title: item.type == 'service' ? 'Rates' : 'Stock & Amounts',
+          values: priceSummary,
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSummaryCard({
+    required ThemeData theme,
+    required String title,
+    required List<MapEntry<String, String>> values,
+  }) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(10),
+      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(12),
-        gradient: LinearGradient(
-          colors: <Color>[
-            theme.cardColor,
-            theme.colorScheme.primary.withValues(alpha: .03),
-          ],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
+        color: theme.cardColor,
+        borderRadius: BorderRadius.circular(18),
         border: Border.all(
-          color: theme.colorScheme.primary.withValues(alpha: .10),
+          color: theme.dividerColor.withValues(alpha: .28),
         ),
-        boxShadow: <BoxShadow>[
-          BoxShadow(
-            color: theme.colorScheme.shadow.withValues(alpha: .04),
-            blurRadius: 14,
-            offset: const Offset(0, 6),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          Text(
+            title,
+            style: theme.textTheme.titleMedium?.copyWith(
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 10,
+            runSpacing: 10,
+            children: values
+                .map(
+                  (entry) => _summaryTile(
+                    theme,
+                    entry.key,
+                    entry.value,
+                  ),
+                )
+                .toList(),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _summaryTile(ThemeData theme, String label, String value) {
+    return Container(
+      width: (MediaQuery.of(context).size.width - 46) / 2,
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: .42),
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          Text(
+            label,
+            style: theme.textTheme.labelSmall?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: 5),
+          Text(
+            value,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: theme.textTheme.bodyMedium?.copyWith(
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+  Widget _buildHistorySection(ThemeData theme) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: theme.cardColor,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: theme.dividerColor.withValues(alpha: .35)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -216,14 +330,16 @@ class _ItemHistoryScreenState extends State<ItemHistoryScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: <Widget>[
                     Text(
-                      item.name,
+                      'Stock & Transaction History',
                       style: theme.textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w700,
+                        fontWeight: FontWeight.w600,
                       ),
                     ),
-                    const SizedBox(height: 4),
+                    const SizedBox(height: 2),
                     Text(
-                      '${item.itemCode} • ${item.type.toUpperCase()}',
+                      'Qty In ${controller.formatQuantity(controller.totalIn.value)}'
+                      ' • Qty Out ${controller.formatQuantity(controller.totalOut.value)}'
+                      ' • Closing ${controller.formatQuantity(controller.closingQty.value)}',
                       style: theme.textTheme.bodySmall?.copyWith(
                         color: theme.colorScheme.onSurfaceVariant,
                         fontSize: 11.5,
@@ -232,154 +348,32 @@ class _ItemHistoryScreenState extends State<ItemHistoryScreen> {
                   ],
                 ),
               ),
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 10,
-                  vertical: 5,
-                ),
-                decoration: BoxDecoration(
-                  color: item.isActive
-                      ? const Color(0xFFDCFCE7)
-                      : theme.colorScheme.surfaceContainerHighest,
-                  borderRadius: BorderRadius.circular(999),
-                  border: Border.all(
-                    color: item.isActive
-                        ? const Color(0xFF86EFAC)
-                        : theme.dividerColor.withValues(alpha: .55),
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: <Widget>[
+                  _ExportActionChip(
+                    label: 'Excel',
+                    icon: Icons.table_view_rounded,
+                    color: const Color(0xFF15803D),
+                    onTap: controller.exportExcel,
                   ),
-                ),
-                child: Text(
-                  item.isActive ? 'Active' : 'Inactive',
-                  style: TextStyle(
-                    fontSize: 11.5,
-                    fontWeight: FontWeight.w600,
-                    color: item.isActive
-                        ? const Color(0xFF15803D)
-                        : theme.colorScheme.onSurfaceVariant,
+                  const SizedBox(width: 8),
+                  _ExportActionChip(
+                    label: 'PDF',
+                    icon: Icons.picture_as_pdf_rounded,
+                    color: const Color(0xFFDC2626),
+                    onTap: controller.exportPdf,
                   ),
-                ),
+                ],
               ),
             ],
           ),
           const SizedBox(height: 12),
-          Wrap(
-            alignment: WrapAlignment.center,
-            crossAxisAlignment: WrapCrossAlignment.center,
-            spacing: 5,
-            runSpacing: 5,
-            children: <Widget>[
-              _detailTile(theme, 'Code', item.itemCode),
-              _detailTile(theme, 'Type', item.type.toUpperCase()),
-              _detailTile(theme, 'Category', item.categoryName.isEmpty ? '-' : item.categoryName),
-              _detailTile(theme, 'HSN / SAC', item.hsnSacCode.isEmpty ? '-' : item.hsnSacCode),
-              _detailTile(theme, 'Unit', item.unit.isEmpty ? '-' : item.unit),
-              _detailTile(theme, 'Purchase Price', controller.formatCurrency(item.purchasePrice)),
-              _detailTile(theme, 'Selling Price', controller.formatCurrency(item.sellingPrice)),
-              _detailTile(theme, 'Tax Rate', item.taxLabel.isEmpty ? '-' : item.taxLabel),
-              if (item.type == 'goods') ...<Widget>[
-                _detailTile(theme, 'Opening Stock', controller.formatQuantity(item.openingStock)),
-                _detailTile(theme, 'Current Stock', controller.formatQuantity(item.currentStock)),
-              ],
-              _detailTile(theme, 'Total Purchases', controller.formatCurrency(controller.totalPurchaseAmount.value)),
-              _detailTile(theme, 'Total Sales', controller.formatCurrency(controller.totalSalesAmount.value)),
-            ],
-          ),
+          _buildHistoryTable(theme),
+          const SizedBox(height: 12),
+          _buildPaginationFooter(theme),
         ],
       ),
-    );
-  }
-
-  Widget _detailTile(ThemeData theme, String label, String value) {
-    return SizedBox(
-      width: Get.width *0.43,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-        decoration: BoxDecoration(
-          color: theme.colorScheme.surfaceContainerLowest,
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: theme.dividerColor.withValues(alpha: .35)),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: <Widget>[
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 10.5,
-                color: theme.colorScheme.onSurfaceVariant,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-            const SizedBox(height: 2),
-            Text(
-              value,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
-                fontSize: 13.5,
-                fontWeight: FontWeight.w600,
-                height: 1.2,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  // ─────────────────────────────────────────────
-  // History Section (matches web)
-  // ─────────────────────────────────────────────
-  Widget _buildHistorySection(ThemeData theme) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: <Widget>[
-        Text(
-          'Stock & Transaction History',
-          style: theme.textTheme.titleSmall?.copyWith(
-            fontWeight: FontWeight.w700,
-          ),
-        ),
-        const SizedBox(height: 4),
-        Text(
-          'Qty In ${controller.formatQuantity(controller.totalIn.value)}'
-          ' • Qty Out ${controller.formatQuantity(controller.totalOut.value)}'
-          ' • Closing ${controller.formatQuantity(controller.closingQty.value)}',
-          style: theme.textTheme.bodySmall?.copyWith(
-            color: theme.colorScheme.onSurfaceVariant,
-            fontSize: 11.5,
-          ),
-        ),
-        const SizedBox(height: 12),
-        Wrap(
-          spacing: 10,
-          runSpacing: 10,
-          children: <Widget>[
-            _summaryChip(
-              theme,
-              'Total Purchases',
-              controller.formatCurrency(controller.totalPurchaseAmount.value),
-              const Color(0xFF15803D),
-            ),
-            _summaryChip(
-              theme,
-              'Total Sales',
-              controller.formatCurrency(controller.totalSalesAmount.value),
-              const Color(0xFF2563EB),
-            ),
-            _summaryChip(
-              theme,
-              'Closing Qty',
-              controller.formatQuantity(controller.closingQty.value),
-              const Color(0xFF7C3AED),
-            ),
-          ],
-        ),
-        const SizedBox(height: 12),
-        _buildHistoryTable(theme),
-        const SizedBox(height: 12),
-        _buildPaginationFooter(theme),
-      ],
     );
   }
 
@@ -409,31 +403,55 @@ class _ItemHistoryScreenState extends State<ItemHistoryScreen> {
         final row = rows[index];
         return DataRow(
           cells: <DataCell>[
-            masterTextCell(controller.formatDate((row['date'] ?? '').toString())),
+            masterTextCell(_formatWebDate((row['date'] ?? '').toString())),
             DataCell(Center(child: _typeBadge(theme, row))),
-            masterTextCell((row['invoice_number'] ?? '-').toString()),
-            masterTextCell((row['party_name'] ?? '-').toString()),
+            DataCell(
+              _buildLinkedText(
+                theme,
+                label: (row['invoice_number'] ?? '—').toString(),
+                onTap: _invoiceRecord(row) == null
+                    ? null
+                    : () => Get.to(
+                          () => TransactionDetailScreen(
+                            record: _invoiceRecord(row)!,
+                          ),
+                        ),
+              ),
+            ),
+            DataCell(
+              _buildLinkedText(
+                theme,
+                label: (row['party_name'] ?? '—').toString(),
+                onTap: _partyId(row) == null
+                    ? null
+                    : () => Get.to(
+                          () => PartyHistoryScreen(
+                            partyId: _partyId(row)!,
+                          ),
+                        ),
+              ),
+            ),
             DataCell(Center(child: Text(_fmtQty(row['qty_in']), textAlign: TextAlign.center, style: const TextStyle(fontSize: 13)))),
             DataCell(Center(child: Text(_fmtQty(row['qty_out']), textAlign: TextAlign.center, style: const TextStyle(fontSize: 13)))),
-            DataCell(Center(child: Text(_fmtRate(row['rate']), textAlign: TextAlign.center, style: const TextStyle(fontSize: 13)))),
-            DataCell(Center(child: Text(_fmtAmount(row['amount']), textAlign: TextAlign.center, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)))),
-            DataCell(Center(child: Text(_fmtQty(row['running_qty']), textAlign: TextAlign.center, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13)))),
+            DataCell(Center(child: Text(_fmtRatePlain(row['rate']), textAlign: TextAlign.center, style: const TextStyle(fontSize: 13)))),
+            DataCell(Center(child: Text(_fmtAmountPlain(row['amount']), textAlign: TextAlign.center, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)))),
+            DataCell(Center(child: Text(controller.formatQuantity(_num(row['running_qty'])), textAlign: TextAlign.center, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13)))),
           ],
         );
       }),
       // Total Footer Row (matches web <tfoot>)
       DataRow(
-        color: WidgetStatePropertyAll(theme.colorScheme.surfaceContainerHighest.withValues(alpha: .5)),
+        color: reportTotalRowColor(context),
         cells: <DataCell>[
           const DataCell(Text('')),
           const DataCell(Text('')),
           const DataCell(Text('')),
-          DataCell(Center(child: Text('Total', style: TextStyle(fontWeight: FontWeight.w700, color: theme.colorScheme.onSurfaceVariant, fontSize: 13)))),
-          DataCell(Center(child: Text(controller.formatQuantity(controller.totalIn.value), style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13)))),
-          DataCell(Center(child: Text(controller.formatQuantity(controller.totalOut.value), style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13)))),
+          DataCell(Center(child: Text('Total', style: reportTotalRowTextStyle(context)?.copyWith(fontSize: 13)))),
+          DataCell(Center(child: Text(controller.formatQuantity(controller.totalIn.value), style: reportTotalRowTextStyle(context)?.copyWith(fontSize: 13)))),
+          DataCell(Center(child: Text(controller.formatQuantity(controller.totalOut.value), style: reportTotalRowTextStyle(context)?.copyWith(fontSize: 13)))),
           const DataCell(Text('')),
           const DataCell(Text('')),
-          DataCell(Center(child: Text(controller.formatQuantity(controller.closingQty.value), style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13)))),
+          DataCell(Center(child: Text(controller.formatQuantity(controller.closingQty.value), style: reportTotalRowTextStyle(context)?.copyWith(fontSize: 13)))),
         ],
       ),
     ];
@@ -458,7 +476,7 @@ class _ItemHistoryScreenState extends State<ItemHistoryScreen> {
         height: tableHeight,
         child: MastersTableShell(
           isLoading: controller.isLoading.value,
-          emptyText: 'No related invoice rows found',
+          emptyText: 'No transactions found for this item.',
           minWidth: 1180,
           columns: <DataColumn2>[
             masterColumn(context, 'Date'),
@@ -519,38 +537,6 @@ class _ItemHistoryScreenState extends State<ItemHistoryScreen> {
     );
   }
 
-  Widget _summaryChip(ThemeData theme, String label, String value, Color accent) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-      decoration: BoxDecoration(
-        color: accent.withValues(alpha: .08),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: accent.withValues(alpha: .14)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: <Widget>[
-          Text(
-            label,
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: theme.colorScheme.onSurfaceVariant,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-          const SizedBox(height: 2),
-          Text(
-            value,
-            style: theme.textTheme.titleSmall?.copyWith(
-              color: accent,
-              fontWeight: FontWeight.w700,
-              fontSize: 15,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
   Widget _typeBadge(ThemeData theme, Map<String, dynamic> row) {
     final type = (row['type'] ?? '').toString();
     final label = (row['type_label'] ?? '-').toString();
@@ -602,25 +588,159 @@ class _ItemHistoryScreenState extends State<ItemHistoryScreen> {
     return q > 0 ? controller.formatQuantity(q) : '—';
   }
 
-  String _fmtRate(dynamic value) {
-    final r = value is num ? value.toDouble() : double.tryParse('$value') ?? 0;
-    return r > 0 ? controller.formatCurrency(r) : '—';
+  String _plainCurrency(num value) => '₹ ${value.toStringAsFixed(2)}';
+
+  String _fmtRatePlain(dynamic value) {
+    final r = _num(value);
+    return r > 0 ? r.toStringAsFixed(2) : '—';
   }
 
-  String _fmtAmount(dynamic value) {
-    final a = value is num ? value.toDouble() : double.tryParse('$value') ?? 0;
-    return a > 0 ? controller.formatCurrency(a) : '—';
+  String _fmtAmountPlain(dynamic value) {
+    final a = _num(value);
+    return a > 0 ? a.toStringAsFixed(2) : '—';
   }
 
-  Future<void> _pickDate(TextEditingController target) async {
-    final selected = await showDatePicker(
-      context: context,
-      initialDate: DateTime.now(),
-      firstDate: DateTime(2000),
-      lastDate: DateTime(2100),
-    );
-    if (selected != null) {
-      target.text = selected.toIso8601String().substring(0, 10);
+  double _num(dynamic value) {
+    if (value is num) return value.toDouble();
+    return double.tryParse('$value') ?? 0;
+  }
+
+  String _titleCase(String value) {
+    if (value.isEmpty) return value;
+    return value[0].toUpperCase() + value.substring(1);
+  }
+
+  String _formatWebDate(String value) {
+    final parsed = DateTime.tryParse(value);
+    if (parsed == null) {
+      return controller.formatDate(value);
     }
+    const months = <String>[
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
+    ];
+    final day = parsed.day.toString().padLeft(2, '0');
+    return '$day ${months[parsed.month - 1]} ${parsed.year}';
+  }
+
+  Widget _buildLinkedText(
+    ThemeData theme, {
+    required String label,
+    required VoidCallback? onTap,
+  }) {
+    final text = label.trim().isEmpty ? '—' : label.trim();
+    if (onTap == null || text == '—') {
+      return Text(
+        text,
+        maxLines: 2,
+        overflow: TextOverflow.ellipsis,
+        style: theme.textTheme.bodyMedium,
+      );
+    }
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(8),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 2),
+        child: Text(
+          text,
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
+          style: theme.textTheme.bodyMedium?.copyWith(
+            color: theme.colorScheme.primary,
+            fontWeight: FontWeight.w700,
+            decoration: TextDecoration.underline,
+          ),
+        ),
+      ),
+    );
+  }
+
+  int? _partyId(Map<String, dynamic> row) {
+    final value = row['party_id'];
+    if (value is int) return value;
+    return int.tryParse(value?.toString() ?? '');
+  }
+
+  TransactionRecord? _invoiceRecord(Map<String, dynamic> row) {
+    final route = (row['invoice_route'] ?? '').toString();
+    final idValue = row['invoice_id'];
+    final id = idValue is int ? idValue : int.tryParse(idValue?.toString() ?? '');
+    if (id == null || route.isEmpty) return null;
+    final type = route.contains('sales') ? 'income' : 'expense';
+    return TransactionRecord.fromVoucher(
+      <String, dynamic>{
+        'payload': <String, dynamic>{
+          'id': id,
+          'voucher_number': (row['invoice_number'] ?? '').toString(),
+          'voucher_type': type,
+          'type_label': route.contains('sales') ? 'Sales' : 'Purchase',
+          'voucher_date': (row['date'] ?? '').toString(),
+          'party_id': row['party_id'],
+          'party': <String, dynamic>{
+            'id': row['party_id'],
+            'name': (row['party_name'] ?? '').toString(),
+          },
+          'total_debit': _num(row['amount']),
+          'total_credit': _num(row['amount']),
+          'status': 'posted',
+        },
+      },
+    );
+  }
+}
+
+class _ExportActionChip extends StatelessWidget {
+  const _ExportActionChip({
+    required this.label,
+    required this.icon,
+    required this.color,
+    required this.onTap,
+  });
+
+  final String label;
+  final IconData icon;
+  final Color color;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(10),
+      child: Container(
+        height: 34,
+        padding: const EdgeInsets.symmetric(horizontal: 10),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: .10),
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: color.withValues(alpha: .24)),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: <Widget>[
+            Icon(icon, size: 16, color: color),
+            const SizedBox(width: 6),
+            Text(
+              label,
+              style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                    color: color,
+                    fontWeight: FontWeight.w700,
+                  ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }

@@ -58,11 +58,57 @@ class PartiesTabScreen extends GetView<PartiesController> {
                     cells: <DataCell>[
                       masterTextCell('${index + 1}'),
                       masterTextCell(item.partyCode),
-                      masterTextCell(item.name),
-                      masterTextCell(item.type.toUpperCase()),
+                      DataCell(
+                        Align(
+                          alignment: Alignment.centerLeft,
+                          child: item.id == null
+                              ? Text(
+                                  item.name,
+                                  style: Theme.of(context).textTheme.bodyMedium
+                                      ?.copyWith(
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                )
+                              : InkWell(
+                                  borderRadius: BorderRadius.circular(8),
+                                  onTap: () => _openDetails(item),
+                                  child: Padding(
+                                    padding: const EdgeInsets.symmetric(
+                                      vertical: 4,
+                                    ),
+                                    child: Text(
+                                      item.name,
+                                      maxLines: 2,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .bodyMedium
+                                          ?.copyWith(
+                                            color: const Color(0xFF2563EB),
+                                            fontWeight: FontWeight.w700,
+                                            decoration:
+                                                TextDecoration.underline,
+                                            decorationColor:
+                                                const Color(0xFF2563EB),
+                                          ),
+                                    ),
+                                  ),
+                                ),
+                        ),
+                      ),
+                      DataCell(
+                        Center(
+                          child: _PartyBadge(
+                            label: item.type == 'debtor' ? 'Debtor' : 'Creditor',
+                            color: item.type == 'debtor'
+                                ? const Color(0xFF23955B)
+                                : const Color(0xFFE24B5B),
+                          ),
+                        ),
+                      ),
                       masterTextCell(item.mobile.isEmpty ? '-' : item.mobile),
                       masterTextCell(
-                        '${item.openingBalance.toStringAsFixed(2)} ${item.openingBalanceType.toUpperCase()}',
+                        '₹${item.openingBalance.toStringAsFixed(2)}',
                       ),
                       DataCell(
                         Center(
@@ -87,12 +133,7 @@ class PartiesTabScreen extends GetView<PartiesController> {
                                 color: const Color(0xFF2563EB),
                                 onTap: item.id == null
                                     ? null
-                                    : () => Get.to(
-                                          () => PartyHistoryScreen(
-                                            partyId: item.id!,
-                                            seedParty: item,
-                                          ),
-                                        ),
+                                    : () => _openDetails(item),
                               ),
                               const SizedBox(width: 8),
                               MasterActionButton(
@@ -127,6 +168,16 @@ class PartiesTabScreen extends GetView<PartiesController> {
     await Get.to(() => PartyFormSheet(entity: entity));
   }
 
+  Future<void> _openDetails(PartyEntity item) async {
+    if (item.id == null) return;
+    await Get.to(
+      () => PartyHistoryScreen(
+        partyId: item.id!,
+        seedParty: item,
+      ),
+    );
+  }
+
   Future<void> _confirmDelete(PartyEntity item) async {
     final confirmed = await AppAlertDialog.confirmDelete(
       title: 'Delete Party',
@@ -143,6 +194,34 @@ class PartiesTabScreen extends GetView<PartiesController> {
       isScrollControlled: true,
       useSafeArea: true,
       builder: (_) => _PartyFilterSheet(controller: controller),
+    );
+  }
+}
+
+class _PartyBadge extends StatelessWidget {
+  const _PartyBadge({
+    required this.label,
+    required this.color,
+  });
+
+  final String label;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      decoration: BoxDecoration(
+        color: color,
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Text(
+        label,
+        style: Theme.of(context).textTheme.labelMedium?.copyWith(
+              color: Colors.white,
+              fontWeight: FontWeight.w700,
+            ),
+      ),
     );
   }
 }

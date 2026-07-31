@@ -80,6 +80,7 @@ class PartyEntity {
     this.openingDate = '',
     this.remarks = '',
     this.isActive = true,
+    this.typeLocked = false,
   });
 
   final int? id;
@@ -104,6 +105,7 @@ class PartyEntity {
   final String openingDate;
   final String remarks;
   final bool isActive;
+  final bool typeLocked;
 
   factory PartyEntity.fromRecord(Map<String, dynamic> record) {
     final payload = _recordPayload(record);
@@ -131,6 +133,7 @@ class PartyEntity {
       openingDate: (payload['opening_date'] ?? '').toString(),
       remarks: (payload['remarks'] ?? '').toString(),
       isActive: _parseBool(payload['is_active'], fallback: true),
+      typeLocked: _parseBool(payload['type_locked'], fallback: false),
     );
   }
 
@@ -174,6 +177,9 @@ class AccountEntity {
     this.openingDate = '',
     this.remarks = '',
     this.isActive = true,
+    this.isSystem = false,
+    this.isInUse = false,
+    this.entrySource = '',
   });
 
   final int? id;
@@ -189,6 +195,9 @@ class AccountEntity {
   final String openingDate;
   final String remarks;
   final bool isActive;
+  final bool isSystem;
+  final bool isInUse;
+  final String entrySource;
 
   factory AccountEntity.fromRecord(Map<String, dynamic> record) {
     final payload = _recordPayload(record);
@@ -206,6 +215,9 @@ class AccountEntity {
       openingDate: (payload['opening_date'] ?? '').toString(),
       remarks: (payload['remarks'] ?? '').toString(),
       isActive: _parseBool(payload['is_active'], fallback: true),
+      isSystem: _parseBool(payload['is_system'], fallback: false),
+      isInUse: _parseBool(payload['is_in_use'], fallback: false),
+      entrySource: (payload['entry_source'] ?? '').toString(),
     );
   }
 

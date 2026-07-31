@@ -59,19 +59,65 @@ class ItemsTabScreen extends GetView<ItemsController> {
                     cells: <DataCell>[
                       masterTextCell('${index + 1}'),
                       masterTextCell(item.itemCode),
-                      masterTextCell(item.name),
+                      DataCell(
+                        Align(
+                          alignment: Alignment.centerLeft,
+                          child: item.id == null
+                              ? Text(
+                                  item.name,
+                                  style: Theme.of(context).textTheme.bodyMedium
+                                      ?.copyWith(
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                )
+                              : InkWell(
+                                  borderRadius: BorderRadius.circular(8),
+                                  onTap: () => _openDetails(item),
+                                  child: Padding(
+                                    padding: const EdgeInsets.symmetric(
+                                      vertical: 4,
+                                    ),
+                                    child: Text(
+                                      item.name,
+                                      maxLines: 2,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .bodyMedium
+                                          ?.copyWith(
+                                            color: const Color(0xFF2563EB),
+                                            fontWeight: FontWeight.w700,
+                                            decoration:
+                                                TextDecoration.underline,
+                                            decorationColor:
+                                                const Color(0xFF2563EB),
+                                          ),
+                                    ),
+                                  ),
+                                ),
+                        ),
+                      ),
                       masterTextCell(
                         item.categoryName.isEmpty ? '-' : item.categoryName,
                       ),
-                      masterTextCell(item.type),
+                      DataCell(
+                        Center(
+                          child: _ItemBadge(
+                            label: item.type == 'service' ? 'Service' : 'Goods',
+                            color: item.type == 'service'
+                                ? const Color(0xFF0EA5E9)
+                                : const Color(0xFF2E74F0),
+                          ),
+                        ),
+                      ),
                       masterTextCell(
                         item.hsnSacCode.isEmpty ? 'NA' : item.hsnSacCode,
                       ),
-                      masterTextCell(item.sellingPrice.toStringAsFixed(2)),
+                      masterTextCell('₹${item.sellingPrice.toStringAsFixed(2)}'),
                       masterTextCell(
                         item.type == 'service' || item.isStockable == false
                             ? '-'
-                            : item.currentStock.toStringAsFixed(2),
+                            : item.currentStock.toStringAsFixed(3),
                       ),
                       DataCell(
                         Center(
@@ -103,12 +149,7 @@ class ItemsTabScreen extends GetView<ItemsController> {
                                 color: const Color(0xFF2563EB),
                                 onTap: item.id == null
                                     ? null
-                                    : () => Get.to(
-                                          () => ItemHistoryScreen(
-                                            itemId: item.id!,
-                                            seedItem: item,
-                                          ),
-                                        ),
+                                    : () => _openDetails(item),
                               ),
                               const SizedBox(width: 8),
                               MasterActionButton(
@@ -140,7 +181,20 @@ class ItemsTabScreen extends GetView<ItemsController> {
   }
 
   Future<void> _openForm(BuildContext context, {ItemEntity? entity}) async {
-    await Get.to(() => ItemFormSheet(entity: entity));
+    final result = await Get.to<bool>(() => ItemFormSheet(entity: entity));
+    if (result == true) {
+      await controller.refreshData();
+    }
+  }
+
+  Future<void> _openDetails(ItemEntity item) async {
+    if (item.id == null) return;
+    await Get.to(
+      () => ItemHistoryScreen(
+        itemId: item.id!,
+        seedItem: item,
+      ),
+    );
   }
 
   Future<void> _confirmDelete(ItemEntity item) async {
@@ -159,6 +213,34 @@ class ItemsTabScreen extends GetView<ItemsController> {
       isScrollControlled: true,
       useSafeArea: true,
       builder: (_) => _MasterFilterSheet(controller: controller),
+    );
+  }
+}
+
+class _ItemBadge extends StatelessWidget {
+  const _ItemBadge({
+    required this.label,
+    required this.color,
+  });
+
+  final String label;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      decoration: BoxDecoration(
+        color: color,
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Text(
+        label,
+        style: Theme.of(context).textTheme.labelMedium?.copyWith(
+              color: Colors.white,
+              fontWeight: FontWeight.w700,
+            ),
+      ),
     );
   }
 }

@@ -125,11 +125,14 @@ class TransactionFormLookupController extends GetxController {
         await _loadItems();
       }
 
-      final mappedServices = _mapLookupOptions(serviceRecords);
+      final mappedServices = serviceRecords
+          .map(ItemEntity.fromRecord)
+          .where((item) => item.isActive)
+          .toList();
       if (mappedServices.isNotEmpty) {
-        serviceAccounts.assignAll(mappedServices);
+        items.assignAll(<ItemEntity>[...mappedItems, ...mappedServices]);
       } else {
-        await _loadServiceAccounts('income');
+        items.assignAll(mappedItems);
       }
     } finally {
       isItemsLoading.value = false;

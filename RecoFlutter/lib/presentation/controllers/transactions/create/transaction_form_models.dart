@@ -7,15 +7,15 @@ enum InvoiceCatalogOptionKind { item, service }
 class InvoiceCatalogOption {
   const InvoiceCatalogOption.item(this.item)
     : kind = InvoiceCatalogOptionKind.item,
-      account = null;
+      serviceItem = null;
 
-  const InvoiceCatalogOption.service(this.account)
+  const InvoiceCatalogOption.service(this.serviceItem)
     : kind = InvoiceCatalogOptionKind.service,
       item = null;
 
   final InvoiceCatalogOptionKind kind;
   final ItemEntity? item;
-  final LookupOption? account;
+  final ItemEntity? serviceItem;
 
   bool get isItem => kind == InvoiceCatalogOptionKind.item;
   bool get isService => kind == InvoiceCatalogOptionKind.service;
@@ -26,14 +26,16 @@ class InvoiceCatalogOption {
       final name = item?.name ?? '';
       return code.isEmpty ? '[Item] $name' : '[Item] $code - $name';
     }
-    return '[Service] ${account?.label ?? ''}';
+    final code = serviceItem?.itemCode.trim() ?? '';
+    final name = serviceItem?.name ?? '';
+    return code.isEmpty ? '[Service] $name' : '[Service] $code - $name';
   }
 
   String get identityKey {
     if (isItem) {
       return 'item:${item?.id ?? item?.itemCode ?? item?.name ?? ''}';
     }
-    return 'service:${account?.valueKey ?? account?.id ?? account?.label ?? ''}';
+    return 'service:${serviceItem?.id ?? serviceItem?.itemCode ?? serviceItem?.name ?? ''}';
   }
 
   @override

@@ -2,6 +2,7 @@
 
 namespace App\Http\Resources;
 
+use App\Services\AccountService;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -14,6 +15,8 @@ class AccountResource extends JsonResource
      */
     public function toArray(Request $request): array
     {
+        $isInUse = app(AccountService::class)->isAccountInUse($this->id);
+
         return [
             'id' => $this->id,
             'account_code' => $this->account_code,
@@ -26,6 +29,8 @@ class AccountResource extends JsonResource
             'opening_date' => $this->opening_date?->toISOString(),
             'remarks' => $this->remarks,
             'is_active' => $this->is_active,
+            'is_system' => (bool) $this->is_system,
+            'is_in_use' => $isInUse,
             'created_at' => $this->created_at?->toISOString(),
             'updated_at' => $this->updated_at?->toISOString(),
         ];

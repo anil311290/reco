@@ -1,7 +1,11 @@
+import 'package:data_table_2/data_table_2.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
 import '../../../../data/models/transactions/transaction_entities.dart';
+import '../../masters/history/party_history_screen.dart';
+import '../../masters/widgets/masters_ui_components.dart';
+import '../../reports/widgets/report_ui_components.dart';
 
 typedef TransactionActionCallback = Future<void> Function();
 
@@ -69,193 +73,179 @@ class TransactionDetailScreen extends StatelessWidget {
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.fromLTRB(16, 14, 16, 24),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: <Widget>[
-            _HeroCard(record: record),
-            const SizedBox(height: 14),
-            _SectionCard(
-              title: 'Overview',
-              children: <Widget>[
-                _InfoTile(
-                  label: record.kind == TransactionRecordKind.voucher
-                      ? 'Voucher Number'
-                      : 'Invoice Number',
-                  value: _fallback(record.number),
-                ),
-                _InfoTile(label: 'Date', value: _fallback(_shortDate(record.date))),
-                if (record.dueDate.isNotEmpty)
-                  _InfoTile(
-                    label: 'Due Date',
-                    value: _fallback(_shortDate(record.dueDate)),
-                  ),
-                if (record.kind == TransactionRecordKind.voucher)
-                  _InfoTile(label: 'Type', value: _fallback(record.typeLabel)),
-                _InfoTile(label: 'Party', value: _fallback(record.partyName)),
-                if (referenceNumber.isNotEmpty)
-                  _InfoTile(
-                    label: 'Reference',
-                    value: _fallback(referenceNumber),
-                  ),
-                if (financialYearName.isNotEmpty)
-                  _InfoTile(
-                    label: 'Financial Year',
-                    value: _fallback(financialYearName),
-                  ),
-                _InfoTile(label: 'Status', value: _fallback(record.statusLabel)),
-                _InfoTile(
-                  label: 'Sync Status',
-                  value: record.isDirty
-                      ? 'Pending sync (${record.syncStatus})'
-                      : _fallback(record.syncStatus),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            _SectionCard(
-              title: 'Amounts',
-              children: <Widget>[
-                _InfoTile(label: 'Total Amount', value: _currency(record.amount)),
-                if (record.amountPaid > 0)
-                  _InfoTile(label: 'Amount Paid', value: _currency(record.amountPaid)),
-                if (record.balanceDue > 0 || record.kind != TransactionRecordKind.voucher)
-                  _InfoTile(label: 'Balance Due', value: _currency(record.balanceDue)),
-              ],
-            ),
-            if (invoiceLines.isNotEmpty) ...<Widget>[
-              const SizedBox(height: 12),
-              _SectionCard(
-                title: 'Invoice Lines',
-                children: invoiceLines
-                    .asMap()
-                    .entries
-                    .map(
-                      (entry) => _InvoiceLineCard(
-                        index: entry.key + 1,
-                        line: entry.value,
+        child: record.kind == TransactionRecordKind.voucher
+            ? _VoucherDetailBody(
+                record: record,
+                voucherLines: voucherLines,
+                voucherDebitTotal: voucherDebitTotal,
+                voucherCreditTotal: voucherCreditTotal,
+                financialYearName: financialYearName,
+                onPost: onPost,
+                onCancel: onCancel,
+                onDelete: onDelete,
+                onEdit: onEdit,
+                onPrint: onPrint,
+              )
+            : Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: <Widget>[
+                  _HeroCard(record: record),
+                  const SizedBox(height: 14),
+                  _SectionCard(
+                    title: 'Overview',
+                    children: <Widget>[
+                      _InfoTile(
+                        label: 'Invoice Number',
+                        value: _fallback(record.number),
                       ),
-                    )
-                    .toList(),
-              ),
-            ],
-            if (voucherLines.isNotEmpty) ...<Widget>[
-              const SizedBox(height: 12),
-              _SectionCard(
-                title: 'Voucher Lines',
-                children: <Widget>[
-                  ...voucherLines.map((line) => _VoucherLineCard(line: line)),
-                  if (voucherLines.isNotEmpty)
-                    _VoucherTotalsCard(
-                      totalDebit: voucherDebitTotal,
-                      totalCredit: voucherCreditTotal,
+                      _InfoTile(label: 'Date', value: _fallback(_shortDate(record.date))),
+                      if (record.dueDate.isNotEmpty)
+                        _InfoTile(
+                          label: 'Due Date',
+                          value: _fallback(_shortDate(record.dueDate)),
+                        ),
+                      _InfoTile(label: 'Party', value: _fallback(record.partyName)),
+                      if (referenceNumber.isNotEmpty)
+                        _InfoTile(
+                          label: 'Reference',
+                          value: _fallback(referenceNumber),
+                        ),
+                      if (financialYearName.isNotEmpty)
+                        _InfoTile(
+                          label: 'Financial Year',
+                          value: _fallback(financialYearName),
+                        ),
+                      _InfoTile(label: 'Status', value: _fallback(record.statusLabel)),
+                      _InfoTile(
+                        label: 'Sync Status',
+                        value: record.isDirty
+                            ? 'Pending sync (${record.syncStatus})'
+                            : _fallback(record.syncStatus),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  _SectionCard(
+                    title: 'Amounts',
+                    children: <Widget>[
+                      _InfoTile(label: 'Total Amount', value: _currency(record.amount)),
+                      if (record.amountPaid > 0)
+                        _InfoTile(label: 'Amount Paid', value: _currency(record.amountPaid)),
+                      _InfoTile(label: 'Balance Due', value: _currency(record.balanceDue)),
+                    ],
+                  ),
+                  if (invoiceLines.isNotEmpty) ...<Widget>[
+                    const SizedBox(height: 12),
+                    Text("Invoice Lines",style:  theme.textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w600,
+                    ),),
+                    const SizedBox(height: 12),
+                    _InvoiceLinesTable(lines: invoiceLines),
+                  ],
+                  if (record.supplierReference.isNotEmpty || record.narration.isNotEmpty) ...[
+                    const SizedBox(height: 12),
+                    _SectionCard(
+                      title: 'Notes',
+                      children: <Widget>[
+                        if (record.supplierReference.isNotEmpty)
+                          _InfoTile(
+                            label: 'Reference',
+                            value: _fallback(record.supplierReference),
+                          ),
+                        if (record.narration.isNotEmpty)
+                          _InfoTile(
+                            label: 'Narration / Notes',
+                            value: _fallback(record.narration),
+                            maxLines: 6,
+                          ),
+                      ],
                     ),
+                  ],
+                  if (createdAt.isNotEmpty ||
+                      updatedAt.isNotEmpty ||
+                      financialYearName.isNotEmpty) ...[
+                    const SizedBox(height: 12),
+                    _SectionCard(
+                      title: 'Status Details',
+                      children: <Widget>[
+                        if (createdAt.isNotEmpty)
+                          _InfoTile(label: 'Created', value: createdAt),
+                        if (updatedAt.isNotEmpty)
+                          _InfoTile(label: 'Updated', value: updatedAt),
+                        if (financialYearName.isNotEmpty)
+                          _InfoTile(
+                            label: 'Financial Year',
+                            value: financialYearName,
+                          ),
+                      ],
+                    ),
+                  ],
+                  if (_hasActions) ...<Widget>[
+                    const SizedBox(height: 16),
+                    Text(
+                      'Actions',
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    Wrap(
+                      spacing: 10,
+                      runSpacing: 10,
+                      children: <Widget>[
+                        if (onPost != null)
+                          _ActionChipButton(
+                            label: 'Post',
+                            icon: Icons.check_circle_outline_rounded,
+                            background: const Color(0xFFDCFCE7),
+                            foreground: const Color(0xFF166534),
+                            onTap: () => _runAction(onPost!),
+                          ),
+                        if (onCancel != null)
+                          _ActionChipButton(
+                            label: 'Cancel',
+                            icon: Icons.cancel_outlined,
+                            background: const Color(0xFFFFEDD5),
+                            foreground: const Color(0xFF9A3412),
+                            onTap: () => _runAction(onCancel!),
+                          ),
+                        if (onDelete != null)
+                          _ActionChipButton(
+                            label: 'Delete',
+                            icon: Icons.delete_outline_rounded,
+                            background: scheme.errorContainer,
+                            foreground: scheme.onErrorContainer,
+                            onTap: () => _runAction(onDelete!),
+                          ),
+                        if (onEdit != null)
+                          _ActionChipButton(
+                            label: 'Edit',
+                            icon: Icons.edit_outlined,
+                            background: const Color(0xFFDBEAFE),
+                            foreground: const Color(0xFF1D4ED8),
+                            onTap: () => _runAction(onEdit!),
+                          ),
+                        if (onRecordPayment != null)
+                          _ActionChipButton(
+                            label: 'Record Payment',
+                            icon: Icons.payments_outlined,
+                            background: const Color(0xFFDCFCE7),
+                            foreground: const Color(0xFF15803D),
+                            onTap: () => _runAction(onRecordPayment!),
+                          ),
+                        if (onPrint != null)
+                          _ActionChipButton(
+                            label: 'Print',
+                            icon: Icons.picture_as_pdf_outlined,
+                            background: const Color(0xFFFEE2E2),
+                            foreground: const Color(0xFFB91C1C),
+                            onTap: () => _runAction(onPrint!),
+                          ),
+                      ],
+                    ),
+                  ],
                 ],
               ),
-            ],
-            if (record.supplierReference.isNotEmpty || record.narration.isNotEmpty) ...[
-              const SizedBox(height: 12),
-              _SectionCard(
-                title: 'Notes',
-                children: <Widget>[
-                  if (record.supplierReference.isNotEmpty)
-                    _InfoTile(
-                      label: 'Reference',
-                      value: _fallback(record.supplierReference),
-                    ),
-                  if (record.narration.isNotEmpty)
-                    _InfoTile(
-                      label: 'Narration / Notes',
-                      value: _fallback(record.narration),
-                      maxLines: 6,
-                    ),
-                ],
-              ),
-            ],
-            if (createdAt.isNotEmpty ||
-                updatedAt.isNotEmpty ||
-                financialYearName.isNotEmpty) ...[
-              const SizedBox(height: 12),
-              _SectionCard(
-                title: 'Status Details',
-                children: <Widget>[
-                  if (createdAt.isNotEmpty)
-                    _InfoTile(label: 'Created', value: createdAt),
-                  if (updatedAt.isNotEmpty)
-                    _InfoTile(label: 'Updated', value: updatedAt),
-                  if (financialYearName.isNotEmpty && record.kind != TransactionRecordKind.voucher)
-                    _InfoTile(
-                      label: 'Financial Year',
-                      value: financialYearName,
-                    ),
-                ],
-              ),
-            ],
-            if (_hasActions) ...<Widget>[
-              const SizedBox(height: 16),
-              Text(
-                'Actions',
-                style: theme.textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              const SizedBox(height: 10),
-              Wrap(
-                spacing: 10,
-                runSpacing: 10,
-                children: <Widget>[
-                  if (onPost != null)
-                    _ActionChipButton(
-                      label: 'Post',
-                      icon: Icons.check_circle_outline_rounded,
-                      background: const Color(0xFFDCFCE7),
-                      foreground: const Color(0xFF166534),
-                      onTap: () => _runAction(onPost!),
-                    ),
-                  if (onCancel != null)
-                    _ActionChipButton(
-                      label: 'Cancel',
-                      icon: Icons.cancel_outlined,
-                      background: const Color(0xFFFFEDD5),
-                      foreground: const Color(0xFF9A3412),
-                      onTap: () => _runAction(onCancel!),
-                    ),
-                  if (onDelete != null)
-                    _ActionChipButton(
-                      label: 'Delete',
-                      icon: Icons.delete_outline_rounded,
-                      background: scheme.errorContainer,
-                      foreground: scheme.onErrorContainer,
-                      onTap: () => _runAction(onDelete!),
-                    ),
-                  if (onEdit != null)
-                    _ActionChipButton(
-                      label: 'Edit',
-                      icon: Icons.edit_outlined,
-                      background: const Color(0xFFDBEAFE),
-                      foreground: const Color(0xFF1D4ED8),
-                      onTap: () => _runAction(onEdit!),
-                    ),
-                  if (onRecordPayment != null)
-                    _ActionChipButton(
-                      label: 'Record Payment',
-                      icon: Icons.payments_outlined,
-                      background: const Color(0xFFDCFCE7),
-                      foreground: const Color(0xFF15803D),
-                      onTap: () => _runAction(onRecordPayment!),
-                    ),
-                  if (onPrint != null)
-                    _ActionChipButton(
-                      label: 'Print',
-                      icon: Icons.picture_as_pdf_outlined,
-                      background: const Color(0xFFFEE2E2),
-                      foreground: const Color(0xFFB91C1C),
-                      onTap: () => _runAction(onPrint!),
-                    ),
-                ],
-              ),
-            ],
-          ],
-        ),
       ),
     );
   }
@@ -278,7 +268,7 @@ class TransactionDetailScreen extends StatelessWidget {
   static String _screenTitle(TransactionRecord record) {
     switch (record.kind) {
       case TransactionRecordKind.voucher:
-        return '${record.typeLabel.isEmpty ? 'Voucher' : record.typeLabel} Details';
+        return '${record.typeLabel.isEmpty ? 'Voucher' : record.typeLabel} Voucher';
       case TransactionRecordKind.salesInvoice:
         return 'Sales Invoice Details';
       case TransactionRecordKind.purchaseInvoice:
@@ -312,14 +302,23 @@ class TransactionDetailScreen extends StatelessWidget {
     if (record.kind != TransactionRecordKind.voucher) {
       return const <Map<String, dynamic>>[];
     }
-    final lines = record.rawPayload['lines'];
-    if (lines is! List) {
-      return const <Map<String, dynamic>>[];
+    final payload = record.rawPayload;
+    final candidates = <dynamic>[
+      payload['lines'],
+      payload['voucher_lines'],
+      payload['adjustment_rows'],
+      payload['payment_rows'],
+      payload['entries'],
+    ];
+    for (final lines in candidates) {
+      if (lines is List) {
+        return lines
+            .whereType<Map>()
+            .map((item) => Map<String, dynamic>.from(item))
+            .toList();
+      }
     }
-    return lines
-        .whereType<Map>()
-        .map((item) => Map<String, dynamic>.from(item))
-        .toList();
+    return const <Map<String, dynamic>>[];
   }
 
   static String _extractReferenceNumber(TransactionRecord record) {
@@ -354,6 +353,335 @@ class TransactionDetailScreen extends StatelessWidget {
 
   static double _voucherCreditTotal(List<Map<String, dynamic>> lines) {
     return lines.fold<double>(0, (sum, line) => sum + _asDouble(line['credit']));
+  }
+}
+
+class _VoucherDetailBody extends StatelessWidget {
+  const _VoucherDetailBody({
+    required this.record,
+    required this.voucherLines,
+    required this.voucherDebitTotal,
+    required this.voucherCreditTotal,
+    required this.financialYearName,
+    this.onPost,
+    this.onCancel,
+    this.onDelete,
+    this.onEdit,
+    this.onPrint,
+  });
+
+  final TransactionRecord record;
+  final List<Map<String, dynamic>> voucherLines;
+  final double voucherDebitTotal;
+  final double voucherCreditTotal;
+  final String financialYearName;
+  final TransactionActionCallback? onPost;
+  final TransactionActionCallback? onCancel;
+  final TransactionActionCallback? onDelete;
+  final TransactionActionCallback? onEdit;
+  final TransactionActionCallback? onPrint;
+
+  @override
+  Widget build(BuildContext context) {
+    final details = _voucherDetailsItems(record, financialYearName);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: <Widget>[
+        Text(
+          record.typeLabel.isEmpty ? 'Voucher' : '${record.typeLabel} Voucher',
+          style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                fontWeight: FontWeight.w800,
+                fontSize: 17,
+              ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          TransactionDetailScreen._fallback(record.number),
+          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+                fontSize: 12.5,
+              ),
+        ),
+        const SizedBox(height: 14),
+        LayoutBuilder(
+          builder: (context, constraints) {
+            final stacked = constraints.maxWidth < 900;
+            final detailsCard = _SectionCard(
+              title: 'Voucher Details',
+              children: details
+                  .map(
+                    (item) => _VoucherDetailItem(
+                      label: item.$1,
+                      value: item.$2,
+                      child: item.$3,
+                    ),
+                  )
+                  .toList(),
+            );
+            final linesCard = _VoucherLinesTableCard(
+              record: record,
+              lines: voucherLines,
+              totalDebit: voucherDebitTotal,
+              totalCredit: voucherCreditTotal,
+            );
+            if (stacked) {
+              return Column(
+                children: <Widget>[
+                  detailsCard,
+                  const SizedBox(height: 12),
+                  linesCard,
+                ],
+              );
+            }
+            return Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                Expanded(flex: 4, child: detailsCard),
+                const SizedBox(width: 12),
+                Expanded(flex: 8, child: linesCard),
+              ],
+            );
+          },
+        ),
+      ],
+    );
+  }
+
+  List<(String, String, Widget?)> _voucherDetailsItems(
+    TransactionRecord record,
+    String financialYearName,
+  ) {
+    final items = <(String, String, Widget?)>[
+      ('Voucher Number', TransactionDetailScreen._fallback(record.number), null),
+      ('Type', TransactionDetailScreen._fallback(record.typeLabel), null),
+      ('Date', TransactionDetailScreen._fallback(TransactionDetailScreen._shortDate(record.date)), null),
+      (
+        'Status',
+        '',
+        _StatusPill(
+          label: TransactionDetailScreen._fallback(record.statusLabel),
+          color: _statusColor(record.status, Get.theme.colorScheme),
+        ),
+      ),
+    ];
+
+    if (record.partyName.trim().isNotEmpty) {
+      items.add(('Party', record.partyName, null));
+    }
+    items.add(('Amount', TransactionDetailScreen._currency(record.amount), null));
+    if (financialYearName.trim().isNotEmpty) {
+      items.add(('Financial Year', financialYearName, null));
+    }
+    items.add(('Narration', TransactionDetailScreen._fallback(record.narration), null));
+    return items;
+  }
+}
+
+class _VoucherDetailItem extends StatelessWidget {
+  const _VoucherDetailItem({
+    required this.label,
+    required this.value,
+    this.child,
+  });
+
+  final String label;
+  final String value;
+  final Widget? child;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          Text(
+            label,
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  fontSize: 11,
+                ),
+          ),
+          const SizedBox(height: 4),
+          child ??
+              Text(
+                value,
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w600,
+                      fontSize: 14,
+                    ),
+              ),
+        ],
+      ),
+    );
+  }
+}
+
+class _VoucherLinesTableCard extends StatelessWidget {
+  const _VoucherLinesTableCard({
+    required this.record,
+    required this.lines,
+    required this.totalDebit,
+    required this.totalCredit,
+  });
+
+  final TransactionRecord record;
+  final List<Map<String, dynamic>> lines;
+  final double totalDebit;
+  final double totalCredit;
+
+  @override
+  Widget build(BuildContext context) {
+    final tableRows = <DataRow>[
+      ...lines.map((line) => _buildLineRow(context, line)),
+      if (lines.isNotEmpty) _buildTotalRow(context),
+    ];
+    final calculatedHeight = 42.0 + (tableRows.length * 56.0);
+    final tableHeight = calculatedHeight.clamp(170.0, 520.0);
+
+    return _SectionCard(
+      title: 'Voucher Lines',
+      children: <Widget>[
+        SizedBox(
+          height: tableHeight,
+          child: MastersTableShell(
+            isLoading: false,
+            emptyText: 'No voucher lines found.',
+            minWidth: 760,
+            columns: <DataColumn2>[
+              masterColumn(context, 'Particulars', size: ColumnSize.L),
+              masterColumn(context, 'Debit (₹)', size: ColumnSize.M),
+              masterColumn(context, 'Credit (₹)', size: ColumnSize.M),
+            ],
+            rows: tableRows,
+          ),
+        ),
+      ],
+    );
+  }
+
+  DataRow _buildLineRow(BuildContext context, Map<String, dynamic> line) {
+    final theme = Theme.of(context);
+    final account = line['account'];
+    final party = line['party'];
+    final accountName = account is Map<String, dynamic>
+        ? (account['account_name'] ?? account['name'] ?? '').toString()
+        : (line['account_name'] ??
+                  line['particulars'] ??
+                  line['ledger_name'] ??
+                  line['name'] ??
+                  '—')
+              .toString();
+    final partyName = party is Map<String, dynamic>
+        ? (party['name'] ?? '').toString()
+        : (line['party_name'] ?? '').toString();
+    final partyId = party is Map<String, dynamic>
+        ? _parsePartyId(party['id'])
+        : null;
+    final debit = _asDouble(line['debit']);
+    final credit = _asDouble(line['credit']);
+
+    return DataRow(
+      cells: <DataCell>[
+        DataCell(
+          Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+                Text(
+                  accountName,
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    fontWeight: FontWeight.w700,
+                    fontSize: 13.5,
+                  ),
+                ),
+                if (partyName.trim().isNotEmpty) ...<Widget>[
+                  const SizedBox(height: 3),
+                InkWell(
+                  onTap: partyId == null
+                      ? null
+                      : () => Get.to(() => PartyHistoryScreen(partyId: partyId)),
+                  child: Text(
+                    partyName,
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: theme.colorScheme.primary,
+                      decoration: TextDecoration.underline,
+                      fontSize: 11.5,
+                    ),
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+        DataCell(
+          Align(
+            alignment: Alignment.centerRight,
+            child: Text(
+              debit > 0 ? debit.toStringAsFixed(2) : '—',
+              style: theme.textTheme.bodyMedium?.copyWith(
+                fontWeight: FontWeight.w700,
+                fontSize: 13.5,
+              ),
+            ),
+          ),
+        ),
+        DataCell(
+          Align(
+            alignment: Alignment.centerRight,
+            child: Text(
+              credit > 0 ? credit.toStringAsFixed(2) : '—',
+              style: theme.textTheme.bodyMedium?.copyWith(
+                fontWeight: FontWeight.w700,
+                fontSize: 13.5,
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  DataRow _buildTotalRow(BuildContext context) {
+    return DataRow(
+      color: reportTotalRowColor(context),
+      cells: <DataCell>[
+        DataCell(
+          Align(
+            alignment: Alignment.centerRight,
+            child: Text(
+              'Total',
+              style: reportTotalRowTextStyle(context)?.copyWith(fontSize: 13),
+            ),
+          ),
+        ),
+        DataCell(
+          Align(
+            alignment: Alignment.centerRight,
+            child: Text(
+              totalDebit.toStringAsFixed(2),
+              style: reportTotalRowTextStyle(context)?.copyWith(fontSize: 13),
+            ),
+          ),
+        ),
+        DataCell(
+          Align(
+            alignment: Alignment.centerRight,
+            child: Text(
+              totalCredit.toStringAsFixed(2),
+              style: reportTotalRowTextStyle(context)?.copyWith(fontSize: 13),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  int? _parsePartyId(dynamic value) {
+    if (value is int) {
+      return value;
+    }
+    return int.tryParse(value?.toString() ?? '');
   }
 }
 
@@ -621,21 +949,50 @@ class _ActionChipButton extends StatelessWidget {
   }
 }
 
-class _InvoiceLineCard extends StatelessWidget {
-  const _InvoiceLineCard({
-    required this.index,
-    required this.line,
-  });
+class _InvoiceLinesTable extends StatelessWidget {
+  const _InvoiceLinesTable({required this.lines});
 
-  final int index;
-  final Map<String, dynamic> line;
+  final List<Map<String, dynamic>> lines;
 
   @override
   Widget build(BuildContext context) {
+    final rows = <DataRow>[
+      ...lines.asMap().entries.map(
+            (entry) => _buildRow(context, entry.key + 1, entry.value),
+          ),
+      if (lines.isNotEmpty) _buildTotalRow(context),
+    ];
+    final tableHeight = (42.0 + (rows.length * 56.0)).clamp(180.0, 520.0);
+
+    return SizedBox(
+      height: tableHeight,
+      child: MastersTableShell(
+        isLoading: false,
+        emptyText: 'No invoice lines found.',
+        minWidth: 980,
+        columns: <DataColumn2>[
+          masterColumn(context, '#', fixedWidth: 48, size: ColumnSize.S),
+          masterColumn(context, 'Item / Service', size: ColumnSize.L),
+          masterColumn(context, 'Description', size: ColumnSize.L),
+          masterColumn(context, 'Qty', size: ColumnSize.S),
+          masterColumn(context, 'Rate', size: ColumnSize.M),
+          masterColumn(context, 'Amount', size: ColumnSize.M),
+          masterColumn(context, 'Tax', size: ColumnSize.M),
+          masterColumn(context, 'Total', size: ColumnSize.M),
+        ],
+        rows: rows,
+      ),
+    );
+  }
+
+  DataRow _buildRow(
+    BuildContext context,
+    int index,
+    Map<String, dynamic> line,
+  ) {
     final theme = Theme.of(context);
     final item = line['item'];
     final account = line['account'];
-    final lineType = (line['kind'] ?? line['line_type'] ?? 'item').toString();
     final title = item is Map<String, dynamic>
         ? (item['name'] ?? '').toString()
         : account is Map<String, dynamic>
@@ -648,263 +1005,144 @@ class _InvoiceLineCard extends StatelessWidget {
     final tax = _asDouble(line['tax_amount']);
     final total = _asDouble(line['total']);
 
-    return Container(
-      margin: const EdgeInsets.only(bottom: 10),
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: theme.colorScheme.surfaceContainerLowest,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(
-          color: theme.colorScheme.outlineVariant.withValues(alpha: .6),
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: <Widget>[
-          Row(
-            children: <Widget>[
-              Expanded(
-                child: Text(
-                  '$index. ${title.trim().isEmpty ? 'Line Item' : title}',
-                  style: theme.textTheme.titleSmall?.copyWith(
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-              ),
-              _MiniBadge(
-                label: lineType == 'service' ? 'Service' : 'Item',
-                color: lineType == 'service'
-                    ? const Color(0xFF7C3AED)
-                    : const Color(0xFF2563EB),
-              ),
-            ],
-          ),
-          if (description.isNotEmpty) ...<Widget>[
-            const SizedBox(height: 4),
-            Text(
-              description,
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
-              ),
-            ),
-          ],
-          const SizedBox(height: 10),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: <Widget>[
-              _LineMeta(label: 'Qty', value: qty > 0 ? qty.toStringAsFixed(2) : '-'),
-              _LineMeta(label: 'Rate', value: 'Rs ${unitPrice.toStringAsFixed(2)}'),
-              _LineMeta(label: 'Amount', value: 'Rs ${amount.toStringAsFixed(2)}'),
-              _LineMeta(label: 'Tax', value: 'Rs ${tax.toStringAsFixed(2)}'),
-              _LineMeta(label: 'Total', value: 'Rs ${total.toStringAsFixed(2)}'),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _VoucherLineCard extends StatelessWidget {
-  const _VoucherLineCard({required this.line});
-
-  final Map<String, dynamic> line;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final account = line['account'];
-    final party = line['party'];
-    final title = account is Map<String, dynamic>
-        ? (account['account_name'] ?? account['name'] ?? '').toString()
-        : 'Ledger';
-    final subtitle = party is Map<String, dynamic>
-        ? (party['name'] ?? '').toString()
-        : '';
-    final debit = _asDouble(line['debit']);
-    final credit = _asDouble(line['credit']);
-
-    return Container(
-      margin: const EdgeInsets.only(bottom: 10),
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: theme.colorScheme.surfaceContainerLowest,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(
-          color: theme.colorScheme.outlineVariant.withValues(alpha: .6),
-        ),
-      ),
-      child: Row(
-        children: <Widget>[
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: <Widget>[
-                Text(
-                  title,
-                  style: theme.textTheme.titleSmall?.copyWith(
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-                if (subtitle.trim().isNotEmpty) ...<Widget>[
-                  const SizedBox(height: 3),
-                  Text(
-                    subtitle,
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: theme.colorScheme.onSurfaceVariant,
-                    ),
-                  ),
-                ],
-              ],
+    return DataRow(
+      cells: <DataCell>[
+        masterTextCell('$index'),
+        DataCell(
+          Text(
+            title.trim().isEmpty ? 'Line Item' : title,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: theme.textTheme.bodyMedium?.copyWith(
+              fontWeight: FontWeight.w700,
             ),
           ),
-          const SizedBox(width: 12),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: <Widget>[
-              Text(
-                debit > 0 ? 'Dr Rs ${debit.toStringAsFixed(2)}' : 'Dr -',
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  fontWeight: FontWeight.w700,
-                  color: const Color(0xFF15803D),
-                ),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                credit > 0 ? 'Cr Rs ${credit.toStringAsFixed(2)}' : 'Cr -',
-                style: theme.textTheme.bodySmall?.copyWith(
-                  fontWeight: FontWeight.w700,
-                  color: const Color(0xFFB91C1C),
-                ),
-              ),
-            ],
+        ),
+        DataCell(
+          Text(
+            description.isEmpty ? '-' : description,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: theme.textTheme.bodyMedium,
           ),
-        ],
-      ),
-    );
-  }
-}
-
-class _VoucherTotalsCard extends StatelessWidget {
-  const _VoucherTotalsCard({
-    required this.totalDebit,
-    required this.totalCredit,
-  });
-
-  final double totalDebit;
-  final double totalCredit;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Container(
-      margin: const EdgeInsets.only(top: 4),
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: const Color(0xFF23263A),
-        borderRadius: BorderRadius.circular(14),
-      ),
-      child: Row(
-        children: <Widget>[
-          Expanded(
+        ),
+        DataCell(
+          Align(
+            alignment: Alignment.centerRight,
             child: Text(
-              'Totals',
-              style: theme.textTheme.titleSmall?.copyWith(
-                color: Colors.white,
+              qty > 0 ? qty.toStringAsFixed(2) : '-',
+              style: theme.textTheme.bodyMedium?.copyWith(
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ),
+        DataCell(
+          Align(
+            alignment: Alignment.centerRight,
+            child: Text(
+              'Rs ${unitPrice.toStringAsFixed(2)}',
+              style: theme.textTheme.bodyMedium?.copyWith(
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ),
+        DataCell(
+          Align(
+            alignment: Alignment.centerRight,
+            child: Text(
+              'Rs ${amount.toStringAsFixed(2)}',
+              style: theme.textTheme.bodyMedium?.copyWith(
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ),
+        DataCell(
+          Align(
+            alignment: Alignment.centerRight,
+            child: Text(
+              'Rs ${tax.toStringAsFixed(2)}',
+              style: theme.textTheme.bodyMedium?.copyWith(
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ),
+        DataCell(
+          Align(
+            alignment: Alignment.centerRight,
+            child: Text(
+              'Rs ${total.toStringAsFixed(2)}',
+              style: theme.textTheme.bodyMedium?.copyWith(
                 fontWeight: FontWeight.w700,
               ),
             ),
           ),
-          Text(
-            'Dr Rs ${totalDebit.toStringAsFixed(2)}',
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: Colors.white,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-          const SizedBox(width: 12),
-          Text(
-            'Cr Rs ${totalCredit.toStringAsFixed(2)}',
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: Colors.white,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-        ],
-      ),
+        ),
+      ],
     );
   }
-}
 
-class _MiniBadge extends StatelessWidget {
-  const _MiniBadge({
-    required this.label,
-    required this.color,
-  });
-
-  final String label;
-  final Color color;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: .12),
-        borderRadius: BorderRadius.circular(999),
-      ),
-      child: Text(
-        label,
-        style: Theme.of(context).textTheme.labelSmall?.copyWith(
-          color: color,
-          fontWeight: FontWeight.w700,
-        ),
-      ),
+  DataRow _buildTotalRow(BuildContext context) {
+    final totalAmount = lines.fold<double>(
+      0,
+      (sum, line) => sum + _asDouble(line['amount']),
     );
-  }
-}
+    final totalTax = lines.fold<double>(
+      0,
+      (sum, line) => sum + _asDouble(line['tax_amount']),
+    );
+    final grandTotal = lines.fold<double>(
+      0,
+      (sum, line) => sum + _asDouble(line['total']),
+    );
 
-class _LineMeta extends StatelessWidget {
-  const _LineMeta({
-    required this.label,
-    required this.value,
-  });
-
-  final String label;
-  final String value;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-      decoration: BoxDecoration(
-        color: theme.cardColor,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: theme.colorScheme.outlineVariant.withValues(alpha: .45),
+    return DataRow(
+      color: reportTotalRowColor(context),
+      cells: <DataCell>[
+        const DataCell(SizedBox.shrink()),
+        const DataCell(SizedBox.shrink()),
+        DataCell(
+          Align(
+            alignment: Alignment.centerRight,
+            child: Text(
+              'Total',
+              style: reportTotalRowTextStyle(context)?.copyWith(fontSize: 13),
+            ),
+          ),
         ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: <Widget>[
-          Text(
-            label,
-            style: theme.textTheme.labelSmall?.copyWith(
-              color: theme.colorScheme.onSurfaceVariant,
-              fontWeight: FontWeight.w600,
+        const DataCell(SizedBox.shrink()),
+        const DataCell(SizedBox.shrink()),
+        DataCell(
+          Align(
+            alignment: Alignment.centerRight,
+            child: Text(
+              'Rs ${totalAmount.toStringAsFixed(2)}',
+              style: reportTotalRowTextStyle(context)?.copyWith(fontSize: 13),
             ),
           ),
-          const SizedBox(height: 3),
-          Text(
-            value,
-            style: theme.textTheme.bodySmall?.copyWith(
-              fontWeight: FontWeight.w700,
+        ),
+        DataCell(
+          Align(
+            alignment: Alignment.centerRight,
+            child: Text(
+              'Rs ${totalTax.toStringAsFixed(2)}',
+              style: reportTotalRowTextStyle(context)?.copyWith(fontSize: 13),
             ),
           ),
-        ],
-      ),
+        ),
+        DataCell(
+          Align(
+            alignment: Alignment.centerRight,
+            child: Text(
+              'Rs ${grandTotal.toStringAsFixed(2)}',
+              style: reportTotalRowTextStyle(context)?.copyWith(fontSize: 13),
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

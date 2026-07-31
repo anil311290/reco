@@ -128,13 +128,18 @@ class AccountsRepository extends OfflineFirstRepository {
 
     return accounts
         .whereType<Map>()
-        .map(
-          (item) => LookupOption(
+        .map((item) {
+          final code = (item['account_code'] ?? item['code'] ?? '').toString();
+          final name = (item['account_name'] ?? item['name'] ?? '').toString();
+          final label = name.trim().isNotEmpty
+              ? name.trim()
+              : (code.trim().isNotEmpty ? code.trim() : 'Account');
+          return LookupOption(
             id: int.tryParse(item['id'].toString()) ?? 0,
-            label: (item['account_name'] ?? item['name'] ?? '').toString(),
-            code: (item['account_code'] ?? item['code'] ?? '').toString(),
-          ),
-        )
+            label: label,
+            code: code,
+          );
+        })
         .toList();
   }
 

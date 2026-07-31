@@ -33,39 +33,101 @@ class AccountsTabScreen extends GetView<AccountsController> {
               child: MastersTableShell(
                 isLoading: controller.isLoading.value,
                 emptyText: 'No accounts found',
-                minWidth: 980,
+                minWidth: 1120,
                 columns: <DataColumn2>[
+                  masterColumn(
+                    context,
+                    '#',
+                    fixedWidth: 52,
+                    size: ColumnSize.S,
+                  ),
                   masterColumn(context, 'Code', size: ColumnSize.S),
                   masterColumn(context, 'Name', size: ColumnSize.L),
-                  masterColumn(context, 'Type', size: ColumnSize.M),
+                  masterColumn(context, 'Type', size: ColumnSize.S),
+                  masterColumn(context, 'Balance Type', size: ColumnSize.M),
                   masterColumn(context, 'Mode', size: ColumnSize.S),
-                  masterColumn(context, 'Opening Balance', size: ColumnSize.M),
+                  masterColumn(context, 'Balance', size: ColumnSize.M),
                   masterColumn(context, 'Status', fixedWidth: 120),
                   masterColumn(context, 'Actions', fixedWidth: 170),
                 ],
-                rows: controller.filteredItems.map((item) {
+                rows: List<DataRow>.generate(controller.filteredItems.length, (
+                  index,
+                ) {
+                  final item = controller.filteredItems[index];
+                  final canDelete =
+                      item.entrySource.toLowerCase() != 'system';
+
                   return DataRow(
                     cells: <DataCell>[
+                      masterTextCell('${index + 1}'),
                       masterTextCell(item.accountCode),
                       masterTextCell(item.accountName),
-                      masterTextCell(item.accountType),
-                      masterTextCell(
-                        item.transactionMode.isEmpty
-                            ? '-'
-                            : item.transactionMode,
-                      ),
-                      masterTextCell(
-                        '${item.openingBalance.toStringAsFixed(2)} ${item.balanceType.toUpperCase()}',
+                      DataCell(
+                        Center(
+                          child: _MasterBadge(
+                            label: _labelize(item.accountType),
+                            color: _accountTypeColor(item.accountType),
+                          ),
+                        ),
                       ),
                       DataCell(
                         Center(
-                          child: Transform.scale(
-                            scale: .72,
-                            child: CupertinoSwitch(
-                              value: item.isActive,
-                              onChanged: (value) =>
-                                  controller.toggleStatus(item, value),
-                            ),
+                          child: _MasterBadge(
+                            label: item.balanceType.toLowerCase() == 'credit'
+                                ? 'Credit (CR)'
+                                : 'Debit (DR)',
+                            color: item.balanceType.toLowerCase() == 'credit'
+                                ? const Color(0xFFE24B5B)
+                                : const Color(0xFF23955B),
+                          ),
+                        ),
+                      ),
+                      DataCell(
+                        Center(
+                          child: item.accountType == 'asset' &&
+                                  item.transactionMode.isNotEmpty
+                              ? _MasterBadge(
+                                  label: _labelize(item.transactionMode),
+                                  color: const Color(0xFF2E333A),
+                                )
+                              : Text(
+                                  '-',
+                                  style: Theme.of(context)
+                                      .textTheme
+                                      .bodyMedium
+                                      ?.copyWith(
+                                        color: Theme.of(context)
+                                            .colorScheme
+                                            .onSurfaceVariant,
+                                      ),
+                                ),
+                        ),
+                      ),
+                      masterTextCell(
+                        '₹${item.openingBalance.toStringAsFixed(2)}',
+                      ),
+                      DataCell(
+                        Center(
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: <Widget>[
+                              Transform.scale(
+                                scale: .72,
+                                child: CupertinoSwitch(
+                                  value: item.isActive,
+                                  onChanged: (value) =>
+                                      controller.toggleStatus(item, value),
+                                ),
+                              ),
+                              const SizedBox(width: 4),
+                              Text(
+                                item.isActive ? 'Active' : 'Inactive',
+                                style: Theme.of(context)
+                                    .textTheme
+                                    .bodyMedium
+                                    ?.copyWith(fontWeight: FontWeight.w600),
+                              ),
+                            ],
                           ),
                         ),
                       ),
@@ -75,9 +137,9 @@ class AccountsTabScreen extends GetView<AccountsController> {
                             mainAxisSize: MainAxisSize.min,
                             children: <Widget>[
                               MasterActionButton(
-                                icon: Icons.assessment_outlined,
-                                tooltip: 'Ledger Report',
-                                color: const Color(0xFF2563EB),
+                                icon: Icons.article_outlined,
+                                tooltip: 'Logs',
+                                color: const Color(0xFF38BDF8),
                                 onTap: item.id == null
                                     ? null
                                     : () => Get.to(
@@ -93,20 +155,22 @@ class AccountsTabScreen extends GetView<AccountsController> {
                                 color: Theme.of(context).colorScheme.primary,
                                 onTap: () => _openForm(context, entity: item),
                               ),
-                              const SizedBox(width: 8),
-                              MasterActionButton(
-                                icon: Icons.delete_outline_rounded,
-                                tooltip: 'Delete',
-                                color: Theme.of(context).colorScheme.error,
-                                onTap: () => _confirmDelete(item),
-                              ),
+                              if (canDelete) ...<Widget>[
+                                const SizedBox(width: 8),
+                                MasterActionButton(
+                                  icon: Icons.delete_outline_rounded,
+                                  tooltip: 'Delete',
+                                  color: Theme.of(context).colorScheme.error,
+                                  onTap: () => _confirmDelete(item),
+                                ),
+                              ],
                             ],
                           ),
                         ),
                       ),
                     ],
                   );
-                }).toList(),
+                }),
               ),
             ),
           ],
@@ -136,6 +200,56 @@ class AccountsTabScreen extends GetView<AccountsController> {
       isScrollControlled: true,
       useSafeArea: true,
       builder: (_) => _MasterFilterSheet(controller: controller),
+    );
+  }
+}
+
+String _labelize(String value) {
+  if (value.isEmpty) return value;
+  return '${value[0].toUpperCase()}${value.substring(1)}';
+}
+
+Color _accountTypeColor(String type) {
+  switch (type.toLowerCase()) {
+    case 'asset':
+      return const Color(0xFF2E74F0);
+    case 'liability':
+      return const Color(0xFFE24B5B);
+    case 'income':
+      return const Color(0xFF23955B);
+    case 'expense':
+      return const Color(0xFFFFB703);
+    case 'equity':
+      return const Color(0xFF0EA5A4);
+    default:
+      return const Color(0xFF64748B);
+  }
+}
+
+class _MasterBadge extends StatelessWidget {
+  const _MasterBadge({
+    required this.label,
+    required this.color,
+  });
+
+  final String label;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      decoration: BoxDecoration(
+        color: color,
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Text(
+        label,
+        style: Theme.of(context).textTheme.labelMedium?.copyWith(
+              color: Colors.white,
+              fontWeight: FontWeight.w700,
+            ),
+      ),
     );
   }
 }

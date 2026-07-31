@@ -108,6 +108,41 @@ class ItemCategoriesRepository extends OfflineFirstRepository {
   }
 
   Future<List<LookupOption>> getDropdownOptions() async {
+    final local = await getLocalModuleRecords(_module);
+    final localOptions = local
+        .map(ItemCategoryEntity.fromRecord)
+        .where((item) => item.id != null && item.isActive)
+        .map(
+          (item) => LookupOption(
+            id: item.id!,
+            label: item.name,
+            rawId: item.id!.toString(),
+          ),
+        )
+        .toList()
+      ..sort((a, b) => a.label.toLowerCase().compareTo(b.label.toLowerCase()));
+
+    final hasInternet = await networkMonitorService.hasInternetNow();
+
+    if (hasInternet) {
+      try {
+        return await _refreshDropdownOptions();
+      } catch (_) {
+        if (localOptions.isNotEmpty) {
+          return localOptions;
+        }
+        rethrow;
+      }
+    }
+
+    if (localOptions.isNotEmpty) {
+      return localOptions;
+    }
+
+    return <LookupOption>[];
+  }
+
+  Future<List<LookupOption>> _refreshDropdownOptions() async {
     final response = await apiClient.get<Map<String, dynamic>>(
       ApiEndpoints.itemCategoriesDropdown,
     );

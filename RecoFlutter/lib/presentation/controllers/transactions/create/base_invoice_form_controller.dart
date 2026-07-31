@@ -45,6 +45,7 @@ abstract class BaseInvoiceFormController extends GetxController {
   String get temporaryPrefix;
   bool get supportsItems;
   bool get supportsServices;
+  bool get isServiceInvoice => false;
   bool get isPurchaseInvoice => false;
   bool get isEditing => initialPayload != null;
   bool get usesUnifiedSalesRows =>
@@ -55,8 +56,12 @@ abstract class BaseInvoiceFormController extends GetxController {
   List<TaxRateEntity> get taxRates => lookupController.taxRates;
   List<LookupOption> get serviceAccounts => lookupController.serviceAccounts;
   List<InvoiceCatalogOption> get salesCatalogOptions => <InvoiceCatalogOption>[
-    ...items.map(InvoiceCatalogOption.item),
-    ...serviceAccounts.map(InvoiceCatalogOption.service),
+    ...items
+        .where((item) => item.type != 'service')
+        .map(InvoiceCatalogOption.item),
+    ...items
+        .where((item) => item.type == 'service')
+        .map(InvoiceCatalogOption.service),
   ];
 
   double get summarySubtotal {
@@ -201,8 +206,14 @@ abstract class BaseInvoiceFormController extends GetxController {
     if (supportsServices) {
       final targetList = usesUnifiedSalesRows ? itemRows : serviceRows;
       for (final line in serviceLineMaps) {
+        final itemId = _toInt(line['item_id']);
         final accountId = _toInt(line['account_id']);
         final taxRateId = _toInt(line['tax_rate_id']);
+        final serviceItem = items.firstWhereOrNull(
+          (entry) =>
+              entry.type == 'service' &&
+              (entry.id == itemId || (itemId == null && entry.id == accountId)),
+        );
         final account =
             serviceAccounts.firstWhereOrNull((entry) => entry.id == accountId);
         final taxRate =
@@ -211,10 +222,17 @@ abstract class BaseInvoiceFormController extends GetxController {
         if (usesUnifiedSalesRows) {
           targetList.add(
             InvoiceItemRowModel(
+              item: serviceItem,
               serviceAccount: account,
-              catalogOption: account == null ? null : InvoiceCatalogOption.service(account),
+              catalogOption: serviceItem == null
+                  ? null
+                  : InvoiceCatalogOption.service(serviceItem),
               taxRate: taxRate,
-              description: (line['description'] ?? '').toString(),
+              description: (line['description'] ??
+                      serviceItem?.description ??
+                      serviceItem?.name ??
+                      '')
+                  .toString(),
               quantity: '1',
               unitPrice: _formatEditableNumber(
                 line['amount'] ?? line['unit_price'],
@@ -362,12 +380,21 @@ abstract class BaseInvoiceFormController extends GetxController {
       return;
     }
 
-    row.item.value = null;
-    row.serviceAccount.value = option.account;
+    row.item.value = option.serviceItem;
+    row.serviceAccount.value = null;
     row.quantityController.text = '1';
     row.unitPriceController.text = '0.00';
     row.discountController.text = '0';
-    row.descriptionController.text = option.account?.label ?? '';
+    row.descriptionController.text =
+        option.serviceItem?.description.trim().isNotEmpty == true
+            ? option.serviceItem!.description
+            : option.serviceItem?.name ?? '';
+    row.unitPriceController.text = formatAmount(option.serviceItem?.sellingPrice ?? 0);
+    row.taxRate.value = option.serviceItem?.taxRateId == null
+        ? null
+        : taxRates.firstWhereOrNull(
+            (entry) => entry.id == option.serviceItem?.taxRateId,
+          );
     update();
   }
 
@@ -704,7 +731,7 @@ class PurchaseInvoiceFormController extends BaseInvoiceFormController {
   bool get supportsItems => true;
 
   @override
-  bool get supportsServices => true;
+  bool get supportsServices => false;
 
   @override
   bool get isPurchaseInvoice => true;

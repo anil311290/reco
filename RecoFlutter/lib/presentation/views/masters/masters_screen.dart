@@ -156,9 +156,12 @@ class MastersScreen extends StatelessWidget {
             children: <Widget>[
               Expanded(
                 child: FilledButton.icon(
-                  onPressed: () {
+                  onPressed: () async {
                     Navigator.of(ctx).pop();
-                    Get.to(() => const ItemFormSheet());
+                    final result = await Get.to<bool>(() => const ItemFormSheet());
+                    if (result == true && Get.isRegistered<MastersShellController>()) {
+                      await Get.find<MastersShellController>().refreshAll();
+                    }
                   },
                   icon: const Icon(Icons.inventory_2_outlined, size: 18),
                   label: const Text('Goods'),
@@ -174,9 +177,14 @@ class MastersScreen extends StatelessWidget {
               const SizedBox(width: 12),
               Expanded(
                 child: FilledButton.icon(
-                  onPressed: () {
+                  onPressed: () async {
                     Navigator.of(ctx).pop();
-                    Get.to(() => const AccountFormSheet());
+                    final result = await Get.to<bool>(
+                      () => const ItemFormSheet(initialType: 'service'),
+                    );
+                    if (result == true && Get.isRegistered<MastersShellController>()) {
+                      await Get.find<MastersShellController>().refreshAll();
+                    }
                   },
                   icon: const Icon(Icons.miscellaneous_services_outlined, size: 18),
                   label: const Text('Service'),

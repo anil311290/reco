@@ -5,8 +5,8 @@ import 'package:get/get.dart';
 import '../../../../data/models/masters/master_entities.dart';
 import '../../../../data/models/transactions/transaction_entities.dart';
 import '../../../controllers/masters/party_history_controller.dart';
+import '../../reports/widgets/report_ui_components.dart';
 import '../../../views/transactions/details/transaction_detail_screen.dart';
-import '../../../widgets/common/custom_text_field.dart';
 import '../widgets/masters_ui_components.dart';
 
 class PartyHistoryScreen extends StatefulWidget {
@@ -56,7 +56,7 @@ class _PartyHistoryScreenState extends State<PartyHistoryScreen> {
     return Scaffold(
       appBar: AppBar(
         title: Text(
-          'AR / AP History',
+          'Party Details',
           style: theme.textTheme.titleMedium?.copyWith(
             fontWeight: FontWeight.w600,
           ),
@@ -67,8 +67,6 @@ class _PartyHistoryScreenState extends State<PartyHistoryScreen> {
           padding: const EdgeInsets.all(10),
           children: <Widget>[
             _buildPartyDetailCard(theme),
-            const SizedBox(height: 12),
-            _buildFilterRow(theme),
             const SizedBox(height: 12),
             _buildHistorySection(theme),
           ],
@@ -84,22 +82,12 @@ class _PartyHistoryScreenState extends State<PartyHistoryScreen> {
       return const Center(child: CircularProgressIndicator());
     }
 
-    final isReceivable = party.type.toLowerCase() == 'customer' ||
-        party.type.toLowerCase() == 'both';
-
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(10),
+      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(12),
-        gradient: LinearGradient(
-          colors: <Color>[
-            theme.cardColor,
-            theme.colorScheme.primary.withValues(alpha: .03),
-          ],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
+        color: theme.cardColor,
         border: Border.all(
           color: theme.colorScheme.primary.withValues(alpha: .10),
         ),
@@ -128,7 +116,7 @@ class _PartyHistoryScreenState extends State<PartyHistoryScreen> {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      '${party.partyCode} • ${party.type.toUpperCase()}',
+                      '${party.partyCode} • ${_titleCase(party.type)}',
                       style: theme.textTheme.bodySmall?.copyWith(
                         color: theme.colorScheme.onSurfaceVariant,
                         fontSize: 11.5,
@@ -167,34 +155,36 @@ class _PartyHistoryScreenState extends State<PartyHistoryScreen> {
             ],
           ),
           const SizedBox(height: 12),
-          GridView.count(
-            crossAxisCount: 2,
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            mainAxisSpacing: 8,
-            crossAxisSpacing: 8,
-            childAspectRatio: 1.9,
+          Wrap(
+            spacing: 10,
+            runSpacing: 10,
             children: <Widget>[
-              _detailTile(theme, 'Code', party.partyCode),
-              _detailTile(theme, 'Type', party.type.toUpperCase()),
-              _detailTile(theme, 'Mobile', party.mobile.isEmpty ? '-' : party.mobile),
-              _detailTile(theme, 'Email', party.email.isEmpty ? '-' : party.email),
-              _detailTile(theme, 'City', party.city.isEmpty ? '-' : party.city),
-              _detailTile(theme, 'State', party.state.isEmpty ? '-' : party.state),
-              _detailTile(
+              _summaryTile(theme, 'Code', party.partyCode),
+              _summaryTile(theme, 'Type', _titleCase(party.type)),
+              _summaryTile(theme, 'Mobile', party.mobile.isEmpty ? '—' : party.mobile),
+              _summaryTile(theme, 'Email', party.email.isEmpty ? '—' : party.email),
+              if (party.gstin.isNotEmpty) _summaryTile(theme, 'GSTIN', party.gstin),
+              _summaryTile(
                 theme,
-                isReceivable ? 'Total Debit' : 'Debit',
-                controller.formatCurrency(controller.totalDebit.value),
+                'Status',
+                party.isActive ? 'Active' : 'Inactive',
+                valueColor: party.isActive
+                    ? const Color(0xFF15803D)
+                    : theme.colorScheme.onSurfaceVariant,
               ),
-              _detailTile(
+              _summaryTile(
                 theme,
-                isReceivable ? 'Total Credit' : 'Credit',
-                controller.formatCurrency(controller.totalCredit.value),
-              ),
-              _detailTile(
-                theme,
-                'Closing',
-                '${controller.formatCurrency(controller.closingBalance.value)} ${controller.closingType.value.toUpperCase()}',
+                'Closing Balance',
+                controller.formatCurrency(controller.closingBalance.value),
+                trailing: _typeBadge(
+                  theme,
+                  controller.closingType.value.toLowerCase() == 'debit'
+                      ? 'Debit'
+                      : 'Credit',
+                  controller.closingType.value.toLowerCase() == 'debit'
+                      ? const Color(0xFF2563EB)
+                      : const Color(0xFF16A34A),
+                ),
               ),
             ],
           ),
@@ -203,104 +193,77 @@ class _PartyHistoryScreenState extends State<PartyHistoryScreen> {
     );
   }
 
-  Widget _buildFilterRow(ThemeData theme) {
-    final accent = theme.colorScheme.primary;
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(12),
-        gradient: LinearGradient(
-          colors: <Color>[
-            accent.withValues(alpha: .06),
-            theme.colorScheme.surface,
-          ],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        border: Border.all(color: accent.withValues(alpha: .12)),
-      ),
+  Widget _summaryTile(
+    ThemeData theme,
+    String label,
+    String value, {
+    Color? valueColor,
+    Widget? trailing,
+  }) {
+    return SizedBox(
+      width: (MediaQuery.of(context).size.width - 42) / 2,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
-          Row(
-            children: <Widget>[
-              Icon(Icons.tune_rounded, size: 16, color: accent),
-              const SizedBox(width: 8),
-              Text(
-                'Filters',
-                style: theme.textTheme.titleSmall?.copyWith(
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 4),
           Text(
-            'Select date range to review linked voucher movement.',
-            style: theme.textTheme.bodySmall?.copyWith(
+            label,
+            style: theme.textTheme.labelSmall?.copyWith(
               color: theme.colorScheme.onSurfaceVariant,
-              fontSize: 11.5,
+              fontWeight: FontWeight.w600,
+              fontSize: 10.5,
             ),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 3),
           Row(
             children: <Widget>[
               Expanded(
-                child: CustomTextField(
-                  controller: controller.fromDateController,
-                  label: 'From Date',
-                  hintText: 'YYYY-MM-DD',
-                  readOnly: true,
-                  suffixIcon: Icons.calendar_today_outlined,
-                  bottomPadding: 0,
-                  onTap: () => _pickDate(controller.fromDateController),
-                ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: CustomTextField(
-                  controller: controller.toDateController,
-                  label: 'To Date',
-                  hintText: 'YYYY-MM-DD',
-                  readOnly: true,
-                  suffixIcon: Icons.calendar_today_outlined,
-                  bottomPadding: 0,
-                  onTap: () => _pickDate(controller.toDateController),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Align(
-            alignment: Alignment.centerLeft,
-            child: SizedBox(
-              height: 38,
-              child: FilledButton.icon(
-                onPressed: controller.loadHistory,
-                style: FilledButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 14,
-                    vertical: 8,
-                  ),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  textStyle: theme.textTheme.labelLarge?.copyWith(
+                child: Text(
+                  value,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: theme.textTheme.bodyMedium?.copyWith(
                     fontWeight: FontWeight.w700,
-                    fontSize: 12.5,
+                    color: valueColor,
                   ),
                 ),
-                icon: const Icon(Icons.filter_alt_rounded, size: 15),
-                label: const Text('Apply'),
               ),
-            ),
+              if (trailing != null) ...<Widget>[
+                const SizedBox(width: 6),
+                trailing,
+              ],
+            ],
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _typeBadge(ThemeData theme, String text, Color color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: .10),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: color.withValues(alpha: .24)),
+      ),
+      child: Text(
+        text,
+        style: theme.textTheme.labelSmall?.copyWith(
+          color: color,
+          fontWeight: FontWeight.w700,
+        ),
       ),
     );
   }
 
   Widget _buildHistorySection(ThemeData theme) {
+    final tableRows = <DataRow>[
+      ...controller.transactions.map(_buildTransactionRow),
+      _buildTotalRow(context, theme),
+    ];
+    final calculatedHeight = 44.0 + (tableRows.length * 56.0);
+    final tableHeight = calculatedHeight.clamp(170.0, 520.0);
+
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(10),
@@ -331,176 +294,199 @@ class _PartyHistoryScreenState extends State<PartyHistoryScreen> {
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
-                  'Voucher Movement',
+                  'Transaction History',
                   style: theme.textTheme.titleSmall?.copyWith(
                     fontWeight: FontWeight.w700,
                   ),
                 ),
               ),
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 10,
-                  vertical: 5,
-                ),
-                decoration: BoxDecoration(
-                  color: theme.colorScheme.primary.withValues(alpha: .08),
-                  borderRadius: BorderRadius.circular(999),
-                ),
-                child: Text(
-                  '${controller.transactions.length} entries',
-                  style: theme.textTheme.labelSmall?.copyWith(
-                    color: theme.colorScheme.primary,
-                    fontWeight: FontWeight.w700,
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: <Widget>[
+                  _ExportActionChip(
+                    label: 'Excel',
+                    icon: Icons.table_view_rounded,
+                    color: const Color(0xFF15803D),
+                    onTap: controller.exportExcel,
                   ),
-                ),
+                  const SizedBox(width: 8),
+                  _ExportActionChip(
+                    label: 'PDF',
+                    icon: Icons.picture_as_pdf_rounded,
+                    color: const Color(0xFFDC2626),
+                    onTap: controller.exportPdf,
+                  ),
+                ],
               ),
             ],
           ),
           const SizedBox(height: 4),
           Text(
-            'Voucher links, running balance, debit, and credit movement.',
+            'Debit ${controller.formatCurrency(controller.totalDebit.value)} • '
+            'Credit ${controller.formatCurrency(controller.totalCredit.value)} • '
+            'Closing ${controller.formatCurrency(controller.closingBalance.value)} '
+            '${controller.closingType.value.toUpperCase()}',
             style: theme.textTheme.bodySmall?.copyWith(
               color: theme.colorScheme.onSurfaceVariant,
               fontSize: 11.5,
             ),
           ),
           const SizedBox(height: 10),
-          MastersTableShell(
-            isLoading: controller.isLoading.value,
-            emptyText: 'No voucher relation found',
-            minWidth: 1040,
-            columns: <DataColumn2>[
-              masterColumn(context, 'Date'),
-              masterColumn(context, 'Voucher #'),
-              masterColumn(context, 'Type'),
-              masterColumn(context, 'Description', size: ColumnSize.L),
-              masterColumn(context, 'Debit'),
-              masterColumn(context, 'Credit'),
-              masterColumn(context, 'Balance'),
-            ],
-            rows: controller.transactions.map((row) {
-              final debit = _amount(row['debit']);
-              final credit = _amount(row['credit']);
-              return DataRow(
-                cells: <DataCell>[
-                  masterTextCell(
-                    controller.formatDate((row['date'] ?? '').toString()),
-                  ),
-                  DataCell(
-                    InkWell(
-                      onTap: () => _openVoucher(row),
-                      borderRadius: BorderRadius.circular(8),
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 2),
-                        child: Text(
-                          (row['voucher_number'] ?? '-').toString(),
-                          style: theme.textTheme.bodyMedium?.copyWith(
-                            color: theme.colorScheme.primary,
-                            fontWeight: FontWeight.w700,
-                            decoration: TextDecoration.underline,
-                            decorationColor: theme.colorScheme.primary.withValues(alpha: .45),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                  DataCell(
-                    Center(
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 4,
-                        ),
-                        decoration: BoxDecoration(
-                          color: theme.colorScheme.primary.withValues(alpha: .08),
-                          borderRadius: BorderRadius.circular(999),
-                        ),
-                        child: Text(
-                          _titleCase((row['voucher_type'] ?? '-').toString()),
-                          style: theme.textTheme.labelSmall?.copyWith(
-                            color: theme.colorScheme.primary,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                  masterTextCell((row['description'] ?? '-').toString()),
-                  DataCell(
-                    Center(
-                      child: Text(
-                        debit > 0 ? controller.formatCurrency(debit) : '-',
-                        style: theme.textTheme.bodyMedium?.copyWith(
-                          fontWeight: FontWeight.w700,
-                          color: debit > 0 ? const Color(0xFF2563EB) : null,
-                        ),
-                      ),
-                    ),
-                  ),
-                  DataCell(
-                    Center(
-                      child: Text(
-                        credit > 0 ? controller.formatCurrency(credit) : '-',
-                        style: theme.textTheme.bodyMedium?.copyWith(
-                          fontWeight: FontWeight.w700,
-                          color: credit > 0 ? const Color(0xFFF59E0B) : null,
-                        ),
-                      ),
-                    ),
-                  ),
-                  masterTextCell(
-                    '${controller.formatCurrency(row['running_balance'])} ${(row['running_type'] ?? '').toString().toUpperCase()}',
-                  ),
-                ],
-              );
-            }).toList(),
+          SizedBox(
+            height: tableHeight,
+            child: MastersTableShell(
+              isLoading: controller.isLoading.value && controller.transactions.isEmpty,
+              emptyText: 'No voucher relation found',
+              minWidth: 980,
+              columns: <DataColumn2>[
+                masterColumn(context, 'Date', size: ColumnSize.M),
+                masterColumn(context, 'Voucher #', size: ColumnSize.M),
+                masterColumn(context, 'Particulars', size: ColumnSize.L),
+                masterColumn(context, 'Debit (₹)', size: ColumnSize.M),
+                masterColumn(context, 'Credit (₹)', size: ColumnSize.M),
+                masterColumn(context, 'Balance (₹)', size: ColumnSize.M),
+              ],
+              rows: tableRows,
+            ),
+          ),
+          const SizedBox(height: 10),
+          Text(
+            'Showing ${controller.transactions.isEmpty ? 0 : 1} to ${controller.transactions.length} of ${controller.transactions.length} entries',
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+              fontSize: 11.5,
+            ),
           ),
         ],
       ),
     );
   }
 
-  Widget _detailTile(ThemeData theme, String label, String value) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-      decoration: BoxDecoration(
-        color: theme.cardColor,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: theme.dividerColor.withValues(alpha: .18),
-        ),
-        boxShadow: <BoxShadow>[
-          BoxShadow(
-            color: theme.colorScheme.shadow.withValues(alpha: .025),
-            blurRadius: 8,
-            offset: const Offset(0, 3),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: <Widget>[
-          Text(
-            label,
-            style: theme.textTheme.labelSmall?.copyWith(
-              color: theme.colorScheme.onSurfaceVariant,
-              fontWeight: FontWeight.w600,
-              fontSize: 10.5,
+  DataRow _buildTransactionRow(Map<String, dynamic> row) {
+    final theme = Theme.of(context);
+    final debit = _amount(row['debit']);
+    final credit = _amount(row['credit']);
+
+    return DataRow(
+      cells: <DataCell>[
+        masterTextCell(_formatHistoryDate((row['date'] ?? '').toString())),
+        DataCell(
+          InkWell(
+            onTap: () => _openVoucher(row),
+            borderRadius: BorderRadius.circular(8),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 2),
+              child: Text(
+                (row['voucher_number'] ?? '-').toString(),
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: theme.colorScheme.primary,
+                  fontWeight: FontWeight.w700,
+                  decoration: TextDecoration.underline,
+                  decorationColor: theme.colorScheme.primary.withValues(alpha: .45),
+                ),
+              ),
             ),
           ),
-          const SizedBox(height: 4),
+        ),
+        DataCell(
           Text(
-            value,
+            (row['description'] ?? '-').toString(),
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
             style: theme.textTheme.bodyMedium?.copyWith(
-              fontWeight: FontWeight.w700,
-              fontSize: 12.5,
+              color: theme.colorScheme.onSurfaceVariant,
             ),
           ),
-        ],
-      ),
+        ),
+        DataCell(
+          Center(
+            child: Text(
+              debit > 0 ? _plainAmount(debit) : '—',
+              style: theme.textTheme.bodyMedium?.copyWith(
+                fontWeight: FontWeight.w700,
+                color: debit > 0 ? const Color(0xFF111827) : null,
+              ),
+            ),
+          ),
+        ),
+        DataCell(
+          Center(
+            child: Text(
+              credit > 0 ? _plainAmount(credit) : '—',
+              style: theme.textTheme.bodyMedium?.copyWith(
+                fontWeight: FontWeight.w700,
+                color: credit > 0 ? const Color(0xFF111827) : null,
+              ),
+            ),
+          ),
+        ),
+        DataCell(
+          Center(
+            child: RichText(
+              textAlign: TextAlign.center,
+              text: TextSpan(
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  fontWeight: FontWeight.w800,
+                  color: theme.colorScheme.onSurface,
+                ),
+                children: <InlineSpan>[
+                  TextSpan(text: _plainAmount(row['running_balance'])),
+                  TextSpan(
+                    text:
+                        ' ${((row["running_type"] ?? '').toString()).toUpperCase()}',
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      fontWeight: FontWeight.w500,
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  DataRow _buildTotalRow(BuildContext context, ThemeData theme) {
+    return DataRow(
+      color: reportTotalRowColor(context),
+      cells: <DataCell>[
+        const DataCell(SizedBox.shrink()),
+        const DataCell(SizedBox.shrink()),
+        DataCell(
+          Center(
+            child: Text(
+              'Total',
+              style: reportTotalRowTextStyle(context)?.copyWith(fontSize: 13),
+            ),
+          ),
+        ),
+        DataCell(
+          Center(
+            child: Text(
+              _plainAmount(controller.totalDebit.value),
+              style: reportTotalRowTextStyle(context)?.copyWith(fontSize: 13),
+            ),
+          ),
+        ),
+        DataCell(
+          Center(
+            child: Text(
+              _plainAmount(controller.totalCredit.value),
+              style: reportTotalRowTextStyle(context)?.copyWith(fontSize: 13),
+            ),
+          ),
+        ),
+        DataCell(
+          Center(
+            child: Text(
+              '${_plainAmount(controller.closingBalance.value)} ${controller.closingType.value.toUpperCase()}',
+              style: reportTotalRowTextStyle(context)?.copyWith(fontSize: 13),
+            ),
+          ),
+        ),
+      ],
     );
   }
 
@@ -509,6 +495,34 @@ class _PartyHistoryScreenState extends State<PartyHistoryScreen> {
       return value.toDouble();
     }
     return double.tryParse(value?.toString() ?? '') ?? 0;
+  }
+
+  String _plainAmount(dynamic value) => _amount(value).toStringAsFixed(2);
+
+  String _formatHistoryDate(String value) {
+    if (value.trim().isEmpty) {
+      return '—';
+    }
+    final parsed = DateTime.tryParse(value);
+    if (parsed == null) {
+      return controller.formatDate(value);
+    }
+    const months = <String>[
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
+    ];
+    final day = parsed.day.toString().padLeft(2, '0');
+    return '$day ${months[parsed.month - 1]} ${parsed.year}';
   }
 
   void _openVoucher(Map<String, dynamic> row) {
@@ -531,22 +545,54 @@ class _PartyHistoryScreenState extends State<PartyHistoryScreen> {
     );
   }
 
-  Future<void> _pickDate(TextEditingController target) async {
-    final current = DateTime.tryParse(target.text) ?? DateTime.now();
-    final selected = await showDatePicker(
-      context: context,
-      initialDate: current,
-      firstDate: DateTime(2000),
-      lastDate: DateTime(2100),
-    );
-    if (selected != null) {
-      target.text = selected.toIso8601String().substring(0, 10);
-    }
-  }
-
   String _titleCase(String value) => value
       .split('_')
       .where((part) => part.isNotEmpty)
       .map((part) => '${part[0].toUpperCase()}${part.substring(1)}')
       .join(' ');
+}
+
+class _ExportActionChip extends StatelessWidget {
+  const _ExportActionChip({
+    required this.label,
+    required this.icon,
+    required this.color,
+    required this.onTap,
+  });
+
+  final String label;
+  final IconData icon;
+  final Color color;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(10),
+      child: Container(
+        height: 34,
+        padding: const EdgeInsets.symmetric(horizontal: 10),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: .10),
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: color.withValues(alpha: .24)),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: <Widget>[
+            Icon(icon, size: 16, color: color),
+            const SizedBox(width: 6),
+            Text(
+              label,
+              style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                    color: color,
+                    fontWeight: FontWeight.w700,
+                  ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }
