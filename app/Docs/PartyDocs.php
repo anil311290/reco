@@ -92,6 +92,7 @@ use OpenApi\Annotations as OA;
  *     path="/parties/{id}",
  *     tags={"Parties"},
  *     summary="Update party",
+ *     description="Opening fields are immutable after creation. opening_balance, opening_balance_type, and opening_date are ignored on update.",
  *     operationId="updateParty",
  *     security={{"bearerAuth":{}}},
  *     @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")),

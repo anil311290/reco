@@ -23,6 +23,7 @@ class PartyRequest extends BaseFormRequest
     public function rules(): array
     {
         $partyId = $this->route('party') ?? $this->route('id');
+        $isCreate = $this->isMethod('post');
 
         return [
             'party_code' => [
@@ -45,7 +46,10 @@ class PartyRequest extends BaseFormRequest
             'gstin' => 'nullable|string|max:20',
             'pan_number' => 'nullable|string|max:20',
             'opening_balance' => 'nullable|numeric|min:0',
-            'opening_balance_type' => ['required', Rule::in(['debit', 'credit'])],
+            'opening_balance_type' => [
+                $isCreate ? 'required' : 'nullable',
+                Rule::in(['debit', 'credit']),
+            ],
             'opening_date' => 'nullable|date',
             'remarks' => 'nullable|string|max:500',
             'is_active' => 'boolean',
