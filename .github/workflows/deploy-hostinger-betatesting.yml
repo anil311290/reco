@@ -58,25 +58,25 @@ jobs:
       - name: Check deployment secrets
         id: check-secrets
         env:
-          HOSTINGER_HOST: ${{ secrets.HOSTINGER_HOST }}
-          HOSTINGER_USER: ${{ secrets.HOSTINGER_USER }}
+          HOSTINGER_HOST: ${{ vars.HOSTINGER_HOST }}
+          HOSTINGER_USER: ${{ vars.HOSTINGER_USER }}
           HOSTINGER_SSH_KEY: ${{ secrets.HOSTINGER_SSH_KEY }}
-          HOSTINGER_PORT: ${{ secrets.HOSTINGER_PORT }}
-          HOSTINGER_APP_PATH: ${{ secrets.HOSTINGER_APP_PATH }}
-          HOSTINGER_PUBLIC_PATH: ${{ secrets.HOSTINGER_PUBLIC_PATH }}
+          HOSTINGER_PORT: ${{ vars.HOSTINGER_PORT }}
+          HOSTINGER_APP_PATH: ${{ vars.HOSTINGER_APP_PATH }}
+          HOSTINGER_PUBLIC_PATH: ${{ vars.HOSTINGER_PUBLIC_PATH }}
         run: |
           missing=0
           for secret in HOSTINGER_HOST HOSTINGER_USER HOSTINGER_SSH_KEY HOSTINGER_PORT HOSTINGER_APP_PATH HOSTINGER_PUBLIC_PATH; do
             if [ -z "${!secret}" ]; then
-              echo "::warning::Deployment secret '$secret' is not configured."
+              echo "::warning::Deployment setting '$secret' is not configured."
               missing=$((missing+1))
             fi
           done
           if [ $missing -gt 0 ]; then
-            echo "::warning::$missing deployment secret(s) are missing. Skipping deployment. Configure them in: Settings > Secrets and variables > Actions"
+            echo "::warning::$missing deployment setting(s) are missing. Skipping deployment. Configure them in: Settings > Secrets and variables > Actions"
             echo "can_deploy=false" >> "$GITHUB_OUTPUT"
           else
-            echo "All required deployment secrets are present."
+            echo "All required deployment settings are present."
             echo "can_deploy=true" >> "$GITHUB_OUTPUT"
           fi
 
