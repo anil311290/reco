@@ -58,42 +58,42 @@ jobs:
       - name: Ensure remote directories exist
         uses: appleboy/ssh-action@v1.2.0
         with:
-          host: ${{ secrets.HOSTINGER_HOST }}
-          username: ${{ secrets.HOSTINGER_USER }}
+          host: ${{ vars.HOSTINGER_HOST }}
+          username: ${{ vars.HOSTINGER_USER }}
           key: ${{ secrets.HOSTINGER_SSH_KEY }}
-          port: ${{ secrets.HOSTINGER_PORT }}
+          port: ${{ vars.HOSTINGER_PORT }}
           script: |
-            mkdir -p "${{ secrets.HOSTINGER_APP_PATH }}"
-            mkdir -p "${{ secrets.HOSTINGER_PUBLIC_PATH }}"
-            mkdir -p "${{ secrets.HOSTINGER_APP_PATH }}/storage/framework/cache"
-            mkdir -p "${{ secrets.HOSTINGER_APP_PATH }}/storage/framework/sessions"
-            mkdir -p "${{ secrets.HOSTINGER_APP_PATH }}/storage/framework/views"
-            mkdir -p "${{ secrets.HOSTINGER_APP_PATH }}/storage/logs"
-            mkdir -p "${{ secrets.HOSTINGER_APP_PATH }}/bootstrap/cache"
+            mkdir -p "${{ vars.HOSTINGER_APP_PATH }}"
+            mkdir -p "${{ vars.HOSTINGER_PUBLIC_PATH }}"
+            mkdir -p "${{ vars.HOSTINGER_APP_PATH }}/storage/framework/cache"
+            mkdir -p "${{ vars.HOSTINGER_APP_PATH }}/storage/framework/sessions"
+            mkdir -p "${{ vars.HOSTINGER_APP_PATH }}/storage/framework/views"
+            mkdir -p "${{ vars.HOSTINGER_APP_PATH }}/storage/logs"
+            mkdir -p "${{ vars.HOSTINGER_APP_PATH }}/bootstrap/cache"
 
       - name: Upload release archive
         uses: appleboy/scp-action@v0.1.7
         with:
-          host: ${{ secrets.HOSTINGER_HOST }}
-          username: ${{ secrets.HOSTINGER_USER }}
+          host: ${{ vars.HOSTINGER_HOST }}
+          username: ${{ vars.HOSTINGER_USER }}
           key: ${{ secrets.HOSTINGER_SSH_KEY }}
-          port: ${{ secrets.HOSTINGER_PORT }}
+          port: ${{ vars.HOSTINGER_PORT }}
           source: ".deploy/release.tar.gz"
-          target: ${{ secrets.HOSTINGER_APP_PATH }}
+          target: ${{ vars.HOSTINGER_APP_PATH }}
           strip_components: 1
 
       - name: Deploy release
         uses: appleboy/ssh-action@v1.2.0
         with:
-          host: ${{ secrets.HOSTINGER_HOST }}
-          username: ${{ secrets.HOSTINGER_USER }}
+          host: ${{ vars.HOSTINGER_HOST }}
+          username: ${{ vars.HOSTINGER_USER }}
           key: ${{ secrets.HOSTINGER_SSH_KEY }}
-          port: ${{ secrets.HOSTINGER_PORT }}
+          port: ${{ vars.HOSTINGER_PORT }}
           script: |
             set -e
 
-            APP_PATH="${{ secrets.HOSTINGER_APP_PATH }}"
-            PUBLIC_PATH="${{ secrets.HOSTINGER_PUBLIC_PATH }}"
+            APP_PATH="${{ vars.HOSTINGER_APP_PATH }}"
+            PUBLIC_PATH="${{ vars.HOSTINGER_PUBLIC_PATH }}"
 
             cd "$APP_PATH"
             tar -xzf release.tar.gz
@@ -118,15 +118,15 @@ jobs:
             define('LARAVEL_START', microtime(true));
 
             if (file_exists(
-                \$maintenance = '${{ secrets.HOSTINGER_APP_PATH }}/storage/framework/maintenance.php'
+              \$maintenance = '${{ vars.HOSTINGER_APP_PATH }}/storage/framework/maintenance.php'
             )) {
                 require \$maintenance;
             }
 
-            require '${{ secrets.HOSTINGER_APP_PATH }}/vendor/autoload.php';
+            require '${{ vars.HOSTINGER_APP_PATH }}/vendor/autoload.php';
 
             /** @var Application \$app */
-            \$app = require_once '${{ secrets.HOSTINGER_APP_PATH }}/bootstrap/app.php';
+            \$app = require_once '${{ vars.HOSTINGER_APP_PATH }}/bootstrap/app.php';
 
             \$app->handleRequest(Request::capture());
             PHP

@@ -26,16 +26,21 @@ git remote set-url reco_web_dev https://github.com/sahrudayamys-png/reco_web_dev
 git push reco_web_dev main
 ```
 
-## GitHub Actions secrets
+## GitHub Actions configuration
 
-Add these secrets in the `reco_web_dev` repository under `Settings > Secrets and variables > Actions`:
+Add these under `reco_web_dev > Settings > Secrets and variables > Actions`:
+
+Repository Variables:
 
 - `HOSTINGER_HOST` = `217.21.87.106`
 - `HOSTINGER_PORT` = `65002`
 - `HOSTINGER_USER` = `u787932101`
-- `HOSTINGER_SSH_KEY` = private SSH deploy key
 - `HOSTINGER_APP_PATH` = `/home/u787932101/domains/sahrudaya.online/reco_betatesting_app`
 - `HOSTINGER_PUBLIC_PATH` = `/home/u787932101/domains/sahrudaya.online/public_html/betatesting`
+
+Repository Secret:
+
+- `HOSTINGER_SSH_KEY` = private SSH deploy key
 
 ## First-time server preparation
 
@@ -134,7 +139,7 @@ What it does on every push to `main`:
 ## First deployment checklist
 
 1. Push the repo to `reco_web_dev`.
-2. Add the GitHub secrets.
+2. Add the GitHub Variables and the `HOSTINGER_SSH_KEY` secret.
 3. Ensure the SSH key works.
 4. Trigger the GitHub Actions workflow.
 5. Create and verify `.env` on the server.
