@@ -1,0 +1,144 @@
+name: Deploy Betatesting To Hostinger
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+concurrency:
+  group: hostinger-betatesting-deploy
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          coverage: none
+          tools: composer:v2
+          extensions: mbstring, bcmath, ctype, fileinfo, json, openssl, pdo, tokenizer, xml
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+
+      - name: Install PHP dependencies
+        run: composer install --no-dev --prefer-dist --no-interaction --optimize-autoloader
+
+      - name: Install Node dependencies
+        run: npm ci
+
+      - name: Build frontend assets
+        run: npm run build
+
+      - name: Prepare deployment archive
+        run: |
+          mkdir -p .deploy
+          tar \
+            --exclude=.deploy \
+            --exclude=.env \
+            --exclude=.git \
+            --exclude=.github \
+            --exclude=node_modules \
+            --exclude=tests \
+            --exclude=storage/logs \
+            --exclude=storage/framework/cache/data \
+            -czf .deploy/release.tar.gz .
+
+      - name: Ensure remote directories exist
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.HOSTINGER_HOST }}
+          username: ${{ secrets.HOSTINGER_USER }}
+          key: ${{ secrets.HOSTINGER_SSH_KEY }}
+          port: ${{ secrets.HOSTINGER_PORT }}
+          script: |
+            mkdir -p "${{ secrets.HOSTINGER_APP_PATH }}"
+            mkdir -p "${{ secrets.HOSTINGER_PUBLIC_PATH }}"
+            mkdir -p "${{ secrets.HOSTINGER_APP_PATH }}/storage/framework/cache"
+            mkdir -p "${{ secrets.HOSTINGER_APP_PATH }}/storage/framework/sessions"
+            mkdir -p "${{ secrets.HOSTINGER_APP_PATH }}/storage/framework/views"
+            mkdir -p "${{ secrets.HOSTINGER_APP_PATH }}/storage/logs"
+            mkdir -p "${{ secrets.HOSTINGER_APP_PATH }}/bootstrap/cache"
+
+      - name: Upload release archive
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.HOSTINGER_HOST }}
+          username: ${{ secrets.HOSTINGER_USER }}
+          key: ${{ secrets.HOSTINGER_SSH_KEY }}
+          port: ${{ secrets.HOSTINGER_PORT }}
+          source: ".deploy/release.tar.gz"
+          target: ${{ secrets.HOSTINGER_APP_PATH }}
+          strip_components: 1
+
+      - name: Deploy release
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.HOSTINGER_HOST }}
+          username: ${{ secrets.HOSTINGER_USER }}
+          key: ${{ secrets.HOSTINGER_SSH_KEY }}
+          port: ${{ secrets.HOSTINGER_PORT }}
+          script: |
+            set -e
+
+            APP_PATH="${{ secrets.HOSTINGER_APP_PATH }}"
+            PUBLIC_PATH="${{ secrets.HOSTINGER_PUBLIC_PATH }}"
+
+            cd "$APP_PATH"
+            tar -xzf release.tar.gz
+            rm -f release.tar.gz
+
+            if [ ! -f .env ]; then
+              cp .env.example .env
+              echo "Created .env from .env.example. Update production values before using the site."
+            fi
+
+            php artisan down || true
+
+            find "$PUBLIC_PATH" -mindepth 1 -maxdepth 1 ! -name '.well-known' -exec rm -rf {} +
+            cp -R public/. "$PUBLIC_PATH/"
+
+            cat > "$PUBLIC_PATH/index.php" <<PHP
+            <?php
+
+            use Illuminate\Foundation\Application;
+            use Illuminate\Http\Request;
+
+            define('LARAVEL_START', microtime(true));
+
+            if (file_exists(
+                \$maintenance = '${{ secrets.HOSTINGER_APP_PATH }}/storage/framework/maintenance.php'
+            )) {
+                require \$maintenance;
+            }
+
+            require '${{ secrets.HOSTINGER_APP_PATH }}/vendor/autoload.php';
+
+            /** @var Application \$app */
+            \$app = require_once '${{ secrets.HOSTINGER_APP_PATH }}/bootstrap/app.php';
+
+            \$app->handleRequest(Request::capture());
+            PHP
+
+            if [ -L "$PUBLIC_PATH/storage" ] || [ -e "$PUBLIC_PATH/storage" ]; then
+              rm -rf "$PUBLIC_PATH/storage"
+            fi
+            ln -s "$APP_PATH/storage/app/public" "$PUBLIC_PATH/storage" || true
+
+            php artisan migrate --force
+            php artisan optimize:clear
+            php artisan config:cache
+            php artisan route:cache
+            php artisan view:cache
+            php artisan up || true
