@@ -55,6 +55,28 @@ jobs:
             --exclude=storage/framework/cache/data \
             -czf .deploy/release.tar.gz .
 
+      - name: Validate deployment secrets
+        env:
+          HOSTINGER_HOST: ${{ secrets.HOSTINGER_HOST }}
+          HOSTINGER_USER: ${{ secrets.HOSTINGER_USER }}
+          HOSTINGER_SSH_KEY: ${{ secrets.HOSTINGER_SSH_KEY }}
+          HOSTINGER_PORT: ${{ secrets.HOSTINGER_PORT }}
+          HOSTINGER_APP_PATH: ${{ secrets.HOSTINGER_APP_PATH }}
+          HOSTINGER_PUBLIC_PATH: ${{ secrets.HOSTINGER_PUBLIC_PATH }}
+        run: |
+          errors=0
+          for secret in HOSTINGER_HOST HOSTINGER_USER HOSTINGER_SSH_KEY HOSTINGER_PORT HOSTINGER_APP_PATH HOSTINGER_PUBLIC_PATH; do
+            if [ -z "${!secret}" ]; then
+              echo "::error::Required secret '$secret' is not configured."
+              errors=$((errors+1))
+            fi
+          done
+          if [ $errors -gt 0 ]; then
+            echo "::error::$errors required secret(s) are missing. Configure them in: Settings > Secrets and variables > Actions"
+            exit 1
+          fi
+          echo "All required deployment secrets are present."
+
       - name: Ensure remote directories exist
         uses: appleboy/ssh-action@v1.2.0
         with:
