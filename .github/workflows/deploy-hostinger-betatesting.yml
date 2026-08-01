@@ -55,7 +55,33 @@ jobs:
             --exclude=storage/framework/cache/data \
             -czf .deploy/release.tar.gz .
 
+      - name: Check deployment secrets
+        id: check-secrets
+        env:
+          HOSTINGER_HOST: ${{ secrets.HOSTINGER_HOST }}
+          HOSTINGER_USER: ${{ secrets.HOSTINGER_USER }}
+          HOSTINGER_SSH_KEY: ${{ secrets.HOSTINGER_SSH_KEY }}
+          HOSTINGER_PORT: ${{ secrets.HOSTINGER_PORT }}
+          HOSTINGER_APP_PATH: ${{ secrets.HOSTINGER_APP_PATH }}
+          HOSTINGER_PUBLIC_PATH: ${{ secrets.HOSTINGER_PUBLIC_PATH }}
+        run: |
+          missing=0
+          for secret in HOSTINGER_HOST HOSTINGER_USER HOSTINGER_SSH_KEY HOSTINGER_PORT HOSTINGER_APP_PATH HOSTINGER_PUBLIC_PATH; do
+            if [ -z "${!secret}" ]; then
+              echo "::warning::Deployment secret '$secret' is not configured."
+              missing=$((missing+1))
+            fi
+          done
+          if [ $missing -gt 0 ]; then
+            echo "::warning::$missing deployment secret(s) are missing. Skipping deployment. Configure them in: Settings > Secrets and variables > Actions"
+            echo "can_deploy=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "All required deployment secrets are present."
+            echo "can_deploy=true" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Ensure remote directories exist
+        if: steps.check-secrets.outputs.can_deploy == 'true'
         uses: appleboy/ssh-action@v1.2.0
         with:
           host: ${{ vars.HOSTINGER_HOST }}
@@ -72,6 +98,7 @@ jobs:
             mkdir -p "${{ vars.HOSTINGER_APP_PATH }}/bootstrap/cache"
 
       - name: Upload release archive
+        if: steps.check-secrets.outputs.can_deploy == 'true'
         uses: appleboy/scp-action@v0.1.7
         with:
           host: ${{ vars.HOSTINGER_HOST }}
@@ -83,6 +110,7 @@ jobs:
           strip_components: 1
 
       - name: Deploy release
+        if: steps.check-secrets.outputs.can_deploy == 'true'
         uses: appleboy/ssh-action@v1.2.0
         with:
           host: ${{ vars.HOSTINGER_HOST }}
