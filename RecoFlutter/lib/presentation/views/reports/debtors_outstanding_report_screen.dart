@@ -24,7 +24,7 @@ class DebtorsOutstandingReportScreen
     return Scaffold(
       appBar: AppBar(
         title: const ReportPageTitle(
-          title: 'Receivables',
+          title: 'Receivables Outstanding',
           icon: FontAwesomeIcons.handHoldingDollar,
           color: _primaryColor,
         ),
@@ -51,7 +51,7 @@ class DebtorsOutstandingReportScreen
           children: <Widget>[
             ReportFilterPanel(
               title: 'Export',
-              subtitle: 'Download or share the receivables snapshot.',
+              subtitle: 'Debtors with debit balances on their linked ledgers (Accounts Receivable).',
               icon: FontAwesomeIcons.fileExport,
               iconColor: _primaryColor,
               child: ReportActionBar(
@@ -89,7 +89,7 @@ class DebtorsOutstandingReportScreen
                       value: controller.formatCurrency(
                         report['total'],
                       ),
-                      note: 'Open receivables',
+                      note: 'Open receivables from all debtors.',
                       color: _primaryColor,
                       icon: FontAwesomeIcons.sackDollar,
                     ),
@@ -99,7 +99,7 @@ class DebtorsOutstandingReportScreen
                     child: ReportStatCard(
                       label: 'Debtors Count',
                       value: '${rows.length}',
-                      note: 'Customers with balance',
+                      note: 'Customers with outstanding balances.',
                       color: _secondaryColor,
                       icon: FontAwesomeIcons.users,
                     ),

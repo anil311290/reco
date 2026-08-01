@@ -93,11 +93,45 @@ class TransactionsScreen extends StatelessWidget {
             ],
           ),
           floatingActionButton: MasterFab(
-            label: 'Add Transaction',
-            onPressed: () => Get.to(() => const TransactionOptionsScreen()),
+            label: _fabLabel(controller.selectedTab.value),
+            onPressed: () => _openCreateFlow(controller.selectedTab.value),
           ),
         );
       },
     );
+  }
+
+  String _fabLabel(TransactionsTab tab) {
+    return switch (tab) {
+      TransactionsTab.all => 'Create Voucher',
+      TransactionsTab.sales => 'Add Sales Invoice',
+      TransactionsTab.purchases => 'Add Purchase Invoice',
+      TransactionsTab.payments => 'Add Payment Voucher',
+      TransactionsTab.receipts => 'Add Receipt Voucher',
+      TransactionsTab.adjustments => 'Add Adjustment Voucher',
+    };
+  }
+
+  void _openCreateFlow(TransactionsTab tab) {
+    switch (tab) {
+      case TransactionsTab.all:
+        Get.to(() => const TransactionOptionsScreen());
+        break;
+      case TransactionsTab.sales:
+        openTransactionForm('sales');
+        break;
+      case TransactionsTab.purchases:
+        openTransactionForm('purchase');
+        break;
+      case TransactionsTab.payments:
+        openTransactionForm('payment');
+        break;
+      case TransactionsTab.receipts:
+        openTransactionForm('receipt');
+        break;
+      case TransactionsTab.adjustments:
+        openTransactionForm('adjustment');
+        break;
+    }
   }
 }

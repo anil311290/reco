@@ -7,6 +7,7 @@ import '../../../../data/repositories/accounts/accounts_repository.dart';
 import '../../../../data/repositories/masters/items_repository.dart';
 import '../../../../data/repositories/masters/parties_repository.dart';
 import '../../../../data/repositories/masters/tax_rates_repository.dart';
+import 'transaction_form_models.dart';
 
 class TransactionFormLookupController extends GetxController {
   TransactionFormLookupController(
@@ -30,6 +31,7 @@ class TransactionFormLookupController extends GetxController {
   final isAdjustmentParticularsLoading = false.obs;
   final isServiceAccountsLoading = false.obs;
   final parties = <PartyEntity>[].obs;
+  final invoicePartyOptions = <InvoicePartyOption>[].obs;
   final items = <ItemEntity>[].obs;
   final taxRates = <TaxRateEntity>[].obs;
   final cashBankAccounts = <LookupOption>[].obs;
@@ -64,7 +66,7 @@ class TransactionFormLookupController extends GetxController {
     isLoading.value = true;
     try {
       final futures = <Future<void>>[
-        _loadParties(type: partyType),
+        _loadInvoicePartyOptions(partyType),
         _loadTaxRates(),
       ];
       if (includeItems && serviceAccountType == 'income') {
@@ -83,6 +85,14 @@ class TransactionFormLookupController extends GetxController {
 
   Future<void> refreshCashBankAccounts(String mode) {
     return _loadCashBankAccounts(mode);
+  }
+
+  Future<void> _loadInvoicePartyOptions(String type) async {
+    await Future.wait(<Future<void>>[
+      _loadParties(type: type),
+      _loadCashBankAccounts(null),
+    ]);
+    _rebuildInvoicePartyOptions();
   }
 
   Future<void> _loadParties({required String type}) async {
@@ -155,6 +165,9 @@ class TransactionFormLookupController extends GetxController {
     try {
       final records = await _accountsRepository.getCashBankAccounts(mode: mode);
       cashBankAccounts.assignAll(_mapLookupOptions(records));
+      if (mode == null) {
+        _rebuildInvoicePartyOptions();
+      }
     } finally {
       isCashBankAccountsLoading.value = false;
     }
@@ -224,5 +237,17 @@ class TransactionFormLookupController extends GetxController {
       return value.toDouble();
     }
     return double.tryParse(value.toString());
+  }
+
+  void _rebuildInvoicePartyOptions() {
+    final options = <InvoicePartyOption>[
+      ...parties
+          .where((item) => item.isActive)
+          .map(InvoicePartyOption.party),
+      ...cashBankAccounts
+          .where((item) => item.id > 0 && item.label.trim().isNotEmpty)
+          .map(InvoicePartyOption.account),
+    ];
+    invoicePartyOptions.assignAll(options);
   }
 }

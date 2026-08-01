@@ -99,7 +99,10 @@ class CategoriesTabScreen extends GetView<CategoriesController> {
   }
 
   Future<void> _openForm(BuildContext context, {ItemCategoryEntity? entity}) async {
-    await Get.to(() => CategoryFormSheet(entity: entity));
+    final result = await Get.to(() => CategoryFormSheet(entity: entity));
+    if (result == true) {
+      await controller.refreshData(forceRemote: true);
+    }
   }
 
   Future<void> _confirmDelete(ItemCategoryEntity item) async {

@@ -37,7 +37,7 @@ class BalanceSheetReportScreen extends GetView<BalanceSheetReportController> {
           children: <Widget>[
             ReportFilterPanel(
               title: 'Filters',
-              subtitle: 'Choose financial year to review assets and liabilities.',
+              subtitle: 'Review assets, liabilities, and equity in a cleaner statement layout with faster year switching and a clearer balance check.',
               icon: FontAwesomeIcons.sliders,
               iconColor: const Color(0xFF2563EB),
               child: Column(
@@ -113,7 +113,7 @@ class BalanceSheetReportScreen extends GetView<BalanceSheetReportController> {
                           value: controller.formatCurrency(
                             (report['assets'] as Map?)?['total'],
                           ),
-                          note: 'Asset side total',
+                          note: 'Current asset-side total for the selected year.',
                           color: _assetColor,
                           icon: FontAwesomeIcons.buildingCircleCheck,
                         ),
@@ -123,7 +123,7 @@ class BalanceSheetReportScreen extends GetView<BalanceSheetReportController> {
                         child: ReportStatCard(
                           label: 'Liabilities + Equity',
                           value: controller.formatCurrency(report['total_liabilities_equity']),
-                          note: 'Source side total',
+                          note: 'Combined closing position on the source side.',
                           color: _liabilityColor,
                           icon: FontAwesomeIcons.scaleBalanced,
                         ),
@@ -136,10 +136,10 @@ class BalanceSheetReportScreen extends GetView<BalanceSheetReportController> {
                       Expanded(
                         child: ReportStatCard(
                           label: 'Balance Status',
-                          value: (report['is_balanced'] == true) ? 'Balanced' : 'Review',
+                          value: (report['is_balanced'] == true) ? 'Balanced' : 'Review Needed',
                           note: (report['is_balanced'] == true)
                               ? 'Assets match liabilities and equity.'
-                              : 'Difference exists',
+                              : 'Difference: ${controller.formatCurrency((((report['assets'] as Map?)?['total'] ?? 0) as num).toDouble() - ((report['total_liabilities_equity'] ?? 0) as num).toDouble()).replaceFirst('-', '')}',
                           color: (report['is_balanced'] == true)
                               ? _equityColor
                               : const Color(0xFFF59E0B),
@@ -497,7 +497,7 @@ class _BalanceHeadlineCard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: <Widget>[
                     Text(
-                      'Statement Overview',
+                      'Financial Position',
                       style: theme.textTheme.titleMedium?.copyWith(
                         fontWeight: FontWeight.w800,
                       ),
@@ -505,8 +505,8 @@ class _BalanceHeadlineCard extends StatelessWidget {
                     const SizedBox(height: 3),
                     Text(
                       isBalanced
-                          ? 'Assets and source side are aligned cleanly.'
-                          : 'There is a mismatch between both sides.',
+                          ? 'Assets match liabilities and equity.'
+                          : 'Difference detected between both sides.',
                       style: theme.textTheme.bodySmall?.copyWith(
                         color: theme.colorScheme.onSurfaceVariant,
                         height: 1.3,
@@ -522,7 +522,7 @@ class _BalanceHeadlineCard extends StatelessWidget {
                   borderRadius: BorderRadius.circular(999),
                 ),
                 child: Text(
-                  isBalanced ? 'Balanced' : 'Review',
+                  isBalanced ? 'Balanced' : 'Not Balanced',
                   style: theme.textTheme.labelLarge?.copyWith(
                     color: accent,
                     fontWeight: FontWeight.w800,
@@ -536,7 +536,7 @@ class _BalanceHeadlineCard extends StatelessWidget {
             children: <Widget>[
               Expanded(
                 child: _MiniMetricCard(
-                  label: 'Asset Side',
+                  label: 'Assets',
                   value: assetTotal,
                   color: const Color(0xFF2563EB),
                 ),
@@ -544,7 +544,7 @@ class _BalanceHeadlineCard extends StatelessWidget {
               const SizedBox(width: 10),
               Expanded(
                 child: _MiniMetricCard(
-                  label: 'Source Side',
+                  label: 'Liabilities + Equity',
                   value: sourceTotal,
                   color: const Color(0xFFEF4444),
                 ),
@@ -555,7 +555,7 @@ class _BalanceHeadlineCard extends StatelessWidget {
           Text(
             isBalanced
                 ? 'Difference: 0.00'
-                : 'Mismatch detected. Please review linked ledgers.',
+                : 'Please review linked ledgers and closing balances.',
             style: theme.textTheme.bodySmall?.copyWith(
               color: accent,
               fontWeight: FontWeight.w700,

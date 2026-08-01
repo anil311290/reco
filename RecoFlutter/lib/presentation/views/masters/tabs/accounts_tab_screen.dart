@@ -4,10 +4,12 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
 import '../../../../core/utils/app_alert_dialog.dart';
+import '../../../../data/repositories/settings/audit_logs_repository.dart';
 import '../../../../data/models/masters/master_entities.dart';
 import '../../../controllers/masters/accounts_controller.dart';
+import '../../../controllers/settings/audit_logs_controller.dart';
 import '../../../widgets/common/custom_text_field.dart';
-import '../../reports/ledger_report_screen.dart';
+import '../../settings/audit_logs_screen.dart';
 import '../forms/account_form_sheet.dart';
 import '../widgets/masters_ui_components.dart';
 
@@ -45,7 +47,7 @@ class AccountsTabScreen extends GetView<AccountsController> {
                   masterColumn(context, 'Name', size: ColumnSize.L),
                   masterColumn(context, 'Type', size: ColumnSize.S),
                   masterColumn(context, 'Balance Type', size: ColumnSize.M),
-                  masterColumn(context, 'Mode', size: ColumnSize.S),
+                  masterColumn(context, 'Is Cash/Bank/OD', size: ColumnSize.M),
                   masterColumn(context, 'Balance', size: ColumnSize.M),
                   masterColumn(context, 'Status', fixedWidth: 120),
                   masterColumn(context, 'Actions', fixedWidth: 170),
@@ -84,11 +86,12 @@ class AccountsTabScreen extends GetView<AccountsController> {
                       ),
                       DataCell(
                         Center(
-                          child: item.accountType == 'asset' &&
-                                  item.transactionMode.isNotEmpty
+                          child: item.accountType == 'asset'
                               ? _MasterBadge(
-                                  label: _labelize(item.transactionMode),
-                                  color: const Color(0xFF2E333A),
+                                  label: item.isCashBankOd ? 'Yes' : 'No',
+                                  color: item.isCashBankOd
+                                      ? const Color(0xFF23955B)
+                                      : const Color(0xFF64748B),
                                 )
                               : Text(
                                   '-',
@@ -143,9 +146,17 @@ class AccountsTabScreen extends GetView<AccountsController> {
                                 onTap: item.id == null
                                     ? null
                                     : () => Get.to(
-                                          () => LedgerReportScreen(
-                                            initialAccountId: item.id,
-                                          ),
+                                          () => const AuditLogsScreen(),
+                                          binding: BindingsBuilder(() {
+                                            Get.put(
+                                              AuditLogsController(
+                                                Get.find<AuditLogsRepository>(),
+                                                initialModule: 'accounts',
+                                                initialRecordId:
+                                                    item.id?.toString(),
+                                              ),
+                                            );
+                                          }),
                                         ),
                               ),
                               const SizedBox(width: 8),
@@ -180,7 +191,10 @@ class AccountsTabScreen extends GetView<AccountsController> {
   }
 
   Future<void> _openForm(BuildContext context, {AccountEntity? entity}) async {
-    await Get.to(() => AccountFormSheet(entity: entity));
+    final result = await Get.to(() => AccountFormSheet(entity: entity));
+    if (result == true) {
+      await controller.refreshData(forceRemote: true);
+    }
   }
 
   Future<void> _confirmDelete(AccountEntity item) async {

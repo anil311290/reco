@@ -4,6 +4,9 @@ import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:get/get.dart';
 
 import '../../../core/config/api_endpoints.dart';
+import '../../../core/utils/app_action_loader.dart';
+import '../../../core/utils/app_snackbar.dart';
+import '../../../data/repositories/transactions/transactions_repository.dart';
 import '../../../data/models/transactions/transaction_entities.dart';
 import '../../controllers/reports/day_book_report_controller.dart';
 import '../../controllers/reports/report_lookup_controller.dart';
@@ -230,11 +233,7 @@ class DayBookReportScreen extends GetView<DayBookReportController> {
                   (row['voucher_number'] ?? '-').toString(),
                   onTap: _asInt(row['voucher_id']) == null
                       ? null
-                      : () => Get.to(
-                            () => TransactionDetailScreen(
-                              record: _buildVoucherRecord(row),
-                            ),
-                          ),
+                      : () => _openVoucherDetail(row),
                 ),
               ),
             ),
@@ -316,6 +315,34 @@ class DayBookReportScreen extends GetView<DayBookReportController> {
   }
 
   int? _asInt(dynamic value) => int.tryParse(value?.toString() ?? '');
+
+  Future<void> _openVoucherDetail(Map<String, dynamic> row) async {
+    final summaryRecord = _buildVoucherRecord(row);
+    final voucherId = _asInt(row['voucher_id']);
+    if (voucherId == null) {
+      Get.to(() => TransactionDetailScreen(record: summaryRecord));
+      return;
+    }
+
+    try {
+      final response = await AppActionLoader.run(
+        () => Get.find<TransactionsRepository>().fetchRecordDetail(
+          endpoint: ApiEndpoints.voucherDetail(voucherId),
+        ),
+        message: 'Loading voucher details...',
+      );
+      final detail = response['data'];
+      final record = detail is Map<String, dynamic>
+          ? TransactionRecord.fromVoucher(detail)
+          : summaryRecord;
+      Get.to(() => TransactionDetailScreen(record: record));
+    } catch (_) {
+      AppSnackbar.warning(
+        'Full voucher details could not be loaded. Showing available data.',
+      );
+      Get.to(() => TransactionDetailScreen(record: summaryRecord));
+    }
+  }
 
   TransactionRecord _buildVoucherRecord(Map<String, dynamic> row) {
     final payload = <String, dynamic>{

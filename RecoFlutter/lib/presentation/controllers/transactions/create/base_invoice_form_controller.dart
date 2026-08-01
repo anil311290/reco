@@ -30,7 +30,7 @@ abstract class BaseInvoiceFormController extends GetxController {
   final notesController = TextEditingController();
   final discountController = TextEditingController(text: '0');
   final supplierInvoiceController = TextEditingController();
-  final selectedParty = Rxn<PartyEntity>();
+  final selectedPartyOption = Rxn<InvoicePartyOption>();
   final itemRows = <InvoiceItemRowModel>[].obs;
   final serviceRows = <InvoiceServiceRowModel>[].obs;
   final isSubmitting = false.obs;
@@ -52,9 +52,12 @@ abstract class BaseInvoiceFormController extends GetxController {
       supportsItems && supportsServices && !isPurchaseInvoice;
 
   List<PartyEntity> get parties => lookupController.parties;
+  List<InvoicePartyOption> get invoicePartyOptions =>
+      lookupController.invoicePartyOptions;
   List<ItemEntity> get items => lookupController.items;
   List<TaxRateEntity> get taxRates => lookupController.taxRates;
   List<LookupOption> get serviceAccounts => lookupController.serviceAccounts;
+  PartyEntity? get selectedParty => selectedPartyOption.value?.party;
   List<InvoiceCatalogOption> get salesCatalogOptions => <InvoiceCatalogOption>[
     ...items
         .where((item) => item.type != 'service')
@@ -161,8 +164,15 @@ abstract class BaseInvoiceFormController extends GetxController {
         (payload['supplier_invoice_number'] ?? '').toString();
 
     final partyId = _toInt(payload['party_id']);
+    final accountId = _toInt(payload['account_id']);
     if (partyId != null) {
-      selectedParty.value = parties.firstWhereOrNull((item) => item.id == partyId);
+      selectedPartyOption.value = invoicePartyOptions.firstWhereOrNull(
+        (item) => item.isParty && item.partyId == partyId,
+      );
+    } else if (accountId != null) {
+      selectedPartyOption.value = invoicePartyOptions.firstWhereOrNull(
+        (item) => item.isAccount && item.accountId == accountId,
+      );
     }
 
     for (final row in itemRows) {
@@ -371,29 +381,30 @@ abstract class BaseInvoiceFormController extends GetxController {
       return;
     }
 
+    row.discountController.text = row.discountController.text.trim().isEmpty
+        ? '0'
+        : row.discountController.text;
+    row.quantityController.text = row.quantityController.text.trim().isEmpty
+        ? '1'
+        : row.quantityController.text;
+
     if (option.isItem) {
-      row.discountController.text =
-          row.discountController.text.trim().isEmpty ? '0' : row.discountController.text;
-      row.quantityController.text =
-          row.quantityController.text.trim().isEmpty ? '1' : row.quantityController.text;
       onItemChanged(row, option.item);
       return;
     }
 
-    row.item.value = option.serviceItem;
+    final serviceItem = option.serviceItem;
+    row.item.value = serviceItem;
     row.serviceAccount.value = null;
-    row.quantityController.text = '1';
-    row.unitPriceController.text = '0.00';
-    row.discountController.text = '0';
     row.descriptionController.text =
-        option.serviceItem?.description.trim().isNotEmpty == true
-            ? option.serviceItem!.description
-            : option.serviceItem?.name ?? '';
-    row.unitPriceController.text = formatAmount(option.serviceItem?.sellingPrice ?? 0);
-    row.taxRate.value = option.serviceItem?.taxRateId == null
+        serviceItem?.description.trim().isNotEmpty == true
+            ? serviceItem!.description
+            : serviceItem?.name ?? '';
+    row.unitPriceController.text = formatAmount(serviceItem?.sellingPrice ?? 0);
+    row.taxRate.value = serviceItem?.taxRateId == null
         ? null
         : taxRates.firstWhereOrNull(
-            (entry) => entry.id == option.serviceItem?.taxRateId,
+            (entry) => entry.id == serviceItem?.taxRateId,
           );
     update();
   }
@@ -409,7 +420,7 @@ abstract class BaseInvoiceFormController extends GetxController {
     if (!formKey.currentState!.validate()) {
       return;
     }
-    if (selectedParty.value == null) {
+    if (selectedPartyOption.value == null) {
       AppSnackbar.error(isPurchaseInvoice
           ? 'Please select a supplier.'
           : 'Please select a customer.');
@@ -422,18 +433,9 @@ abstract class BaseInvoiceFormController extends GetxController {
     final validItemRows = itemRows
         .where(
           (row) =>
-              row.isItemSelection &&
               row.item.value != null &&
               row.quantity > 0 &&
               row.unitPrice >= 0,
-        )
-        .toList();
-    final validMixedServiceRows = itemRows
-        .where(
-          (row) =>
-              row.isServiceSelection &&
-              row.serviceAccount.value != null &&
-              row.unitPrice > 0,
         )
         .toList();
     final validServiceRows = <InvoiceServiceRowModel>[
@@ -441,8 +443,7 @@ abstract class BaseInvoiceFormController extends GetxController {
     ];
     if (supportsItems && supportsServices) {
       if (validItemRows.isEmpty &&
-          validServiceRows.isEmpty &&
-          validMixedServiceRows.isEmpty) {
+          validServiceRows.isEmpty) {
         AppSnackbar.error('Please add at least one line item or service row.');
         return;
       }
@@ -459,7 +460,6 @@ abstract class BaseInvoiceFormController extends GetxController {
       final payload = _buildPayload(
         validItemRows,
         validServiceRows,
-        validMixedServiceRows,
       );
       if (isEditing) {
         final recordId = _toInt(_editingPayload?['id']);
@@ -498,7 +498,6 @@ abstract class BaseInvoiceFormController extends GetxController {
   Map<String, dynamic> _buildPayload(
     List<InvoiceItemRowModel> validItemRows,
     List<InvoiceServiceRowModel> validServiceRows,
-    List<InvoiceItemRowModel> validMixedServiceRows,
   ) {
     final recordId = _toInt(_editingPayload?['id']);
     final currentNumber = draftInvoiceNumber.value.trim();
@@ -510,7 +509,7 @@ abstract class BaseInvoiceFormController extends GetxController {
         (_editingPayload?['status_label'] ?? 'Draft').toString();
     return <String, dynamic>{
       if (recordId case final currentRecordId?) 'id': currentRecordId,
-      'party_id': selectedParty.value?.id,
+      'party_id': selectedPartyOption.value?.token,
       'invoice_date': invoiceDateController.text.trim(),
       'due_date': dueDateController.text.trim(),
       if (isPurchaseInvoice)
@@ -560,18 +559,6 @@ abstract class BaseInvoiceFormController extends GetxController {
               'amount': row.amount,
             },
           )
-          .followedBy(
-            validMixedServiceRows.map(
-              (row) => <String, dynamic>{
-                'account_id': row.serviceAccount.value?.id,
-                'tax_rate_id': row.taxRate.value?.id,
-                'description': row.descriptionController.text.trim().isEmpty
-                    ? row.serviceAccount.value?.label
-                    : row.descriptionController.text.trim(),
-                'amount': row.unitPrice,
-              },
-            ),
-          )
           .toList(),
       'invoice_number': tempNumber,
       'status': currentStatus,
@@ -580,11 +567,11 @@ abstract class BaseInvoiceFormController extends GetxController {
       'amount_paid': _toDouble(_editingPayload?['amount_paid']),
       'balance_due':
           summaryTotal - _toDouble(_editingPayload?['amount_paid']),
-      'party': selectedParty.value == null
+      'party': selectedParty == null
           ? null
           : <String, dynamic>{
-              'id': selectedParty.value!.id,
-              'name': selectedParty.value!.name,
+              'id': selectedParty!.id,
+              'name': selectedParty!.name,
             },
     };
   }

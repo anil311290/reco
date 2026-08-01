@@ -12,7 +12,7 @@ class SubscriptionScreen extends GetView<SubscriptionController> {
     return Scaffold(
       appBar: AppBar(
         title: Text(
-          'Subscription',
+          'Current Subscription',
           style: Theme.of(context).textTheme.titleMedium?.copyWith(
             fontWeight: FontWeight.w600,
           ),
@@ -244,7 +244,7 @@ class _SubscriptionHeroCard extends StatelessWidget {
                     Text(
                       hasSubscription
                           ? (plan['name'] ?? 'Active Subscription').toString()
-                          : 'No active subscription',
+                          : 'No Active Subscription',
                       style: Theme.of(context).textTheme.titleMedium?.copyWith(
                         fontWeight: FontWeight.w800,
                       ),
@@ -252,8 +252,8 @@ class _SubscriptionHeroCard extends StatelessWidget {
                     const SizedBox(height: 4),
                     Text(
                       hasSubscription
-                          ? '${controller.currentSubscription['status']} • ${controller.currentSubscription['billing_cycle']}'
-                          : 'Choose a plan from web or catalog to activate access.',
+                          ? '${_titleCase((controller.currentSubscription['status'] ?? 'active').toString())} • ${_titleCase((controller.currentSubscription['billing_cycle'] ?? '').toString())}'
+                          : 'Choose a plan to get started.',
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
                         color: Theme.of(context).colorScheme.onSurfaceVariant,
                         height: 1.35,
@@ -288,8 +288,10 @@ class _SubscriptionHeroCard extends StatelessWidget {
                 Expanded(
                   child: _MiniInfoCard(
                     label: 'Billing',
-                    value: (controller.currentSubscription['billing_cycle'] ?? '-')
-                        .toString(),
+                    value: _titleCase(
+                      (controller.currentSubscription['billing_cycle'] ?? '-')
+                          .toString(),
+                    ),
                     icon: FontAwesomeIcons.arrowsRotate,
                     color: const Color(0xFF2563EB),
                   ),
@@ -297,9 +299,8 @@ class _SubscriptionHeroCard extends StatelessWidget {
                 const SizedBox(width: 10),
                 Expanded(
                   child: _MiniInfoCard(
-                    label: 'Plan Amount',
-                    value:
-                        '₹${(plan['monthly_price'] ?? plan['price'] ?? 0).toString()}',
+                    label: 'Amount',
+                    value: _planAmountLabel(plan),
                     icon: FontAwesomeIcons.indianRupeeSign,
                     color: const Color(0xFF16A34A),
                   ),
@@ -321,7 +322,14 @@ class _SubscriptionHeroCard extends StatelessWidget {
                 Expanded(
                   child: _MiniInfoCard(
                     label: isTrial ? 'Trial Ends' : 'Next Renewal',
-                    value: isTrial ? _shortDate(periodEnd) : _shortDate(periodEnd),
+                    value: isTrial
+                        ? _shortDate(periodEnd)
+                        : ((controller.currentSubscription['billing_cycle'] ?? '')
+                                    .toString()
+                                    .toLowerCase() ==
+                                'lifetime')
+                            ? 'One-time purchase'
+                            : _shortDate(periodEnd),
                     icon: isTrial
                         ? FontAwesomeIcons.clock
                         : FontAwesomeIcons.rotateRight,
@@ -370,6 +378,24 @@ class _SubscriptionHeroCard extends StatelessWidget {
   }
 
   String _shortDate(String value) {
+    final parsed = DateTime.tryParse(value);
+    if (parsed != null) {
+      const months = <int, String>{
+        1: 'Jan',
+        2: 'Feb',
+        3: 'Mar',
+        4: 'Apr',
+        5: 'May',
+        6: 'Jun',
+        7: 'Jul',
+        8: 'Aug',
+        9: 'Sep',
+        10: 'Oct',
+        11: 'Nov',
+        12: 'Dec',
+      };
+      return '${parsed.day.toString().padLeft(2, '0')} ${months[parsed.month]} ${parsed.year}';
+    }
     if (value.length >= 10) {
       return value.substring(0, 10);
     }
@@ -383,6 +409,38 @@ class _SubscriptionHeroCard extends StatelessWidget {
       return '-';
     }
     return '$normalizedStart to $normalizedEnd';
+  }
+
+  String _titleCase(String value) {
+    final normalized = value.trim();
+    if (normalized.isEmpty || normalized == '-') {
+      return '-';
+    }
+    return normalized
+        .replaceAll('_', ' ')
+        .split(' ')
+        .where((part) => part.isNotEmpty)
+        .map((part) => '${part[0].toUpperCase()}${part.substring(1)}')
+        .join(' ');
+  }
+
+  String _planAmountLabel(Map<String, dynamic> plan) {
+    final monthly = (plan['monthly_price'] ?? '').toString().trim();
+    final yearly = (plan['yearly_price'] ?? '').toString().trim();
+    final price = (plan['price'] ?? '').toString().trim();
+    final cycle = (controller.currentSubscription['billing_cycle'] ?? '')
+        .toString()
+        .toLowerCase();
+
+    if (cycle == 'lifetime') {
+      final amount = price.isNotEmpty ? price : monthly;
+      return amount.isEmpty ? '-' : '₹$amount (Lifetime)';
+    }
+    if (cycle == 'yearly' && yearly.isNotEmpty) {
+      return '₹$yearly /year';
+    }
+    final amount = monthly.isNotEmpty ? monthly : price;
+    return amount.isEmpty ? '-' : '₹$amount /month';
   }
 }
 

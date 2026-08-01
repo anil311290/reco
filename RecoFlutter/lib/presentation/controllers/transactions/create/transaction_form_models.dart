@@ -4,6 +4,67 @@ import '../../../../data/models/masters/master_entities.dart';
 
 enum InvoiceCatalogOptionKind { item, service }
 
+enum InvoicePartyOptionKind { party, cashBankOd }
+
+class InvoicePartyOption {
+  const InvoicePartyOption.party(this.party)
+    : kind = InvoicePartyOptionKind.party,
+      account = null;
+
+  const InvoicePartyOption.account(this.account)
+    : kind = InvoicePartyOptionKind.cashBankOd,
+      party = null;
+
+  final InvoicePartyOptionKind kind;
+  final PartyEntity? party;
+  final LookupOption? account;
+
+  bool get isParty => kind == InvoicePartyOptionKind.party;
+  bool get isAccount => kind == InvoicePartyOptionKind.cashBankOd;
+
+  String get token {
+    if (isParty) {
+      return 'party:${party?.id ?? ''}';
+    }
+    return 'account:${account?.id ?? ''}';
+  }
+
+  String get label {
+    if (isParty) {
+      final entity = party;
+      if (entity == null) {
+        return '';
+      }
+      final code = entity.partyCode.trim();
+      return code.isEmpty ? entity.name : '${entity.name} ($code)';
+    }
+
+    final option = account;
+    if (option == null) {
+      return '';
+    }
+    final code = option.code?.trim() ?? '';
+    return code.isEmpty ? option.label : '${option.label} ($code)';
+  }
+
+  int? get partyId => party?.id;
+  int? get accountId => account?.id;
+  String get displayKindLabel => isParty ? 'Party' : 'Ledger';
+
+  @override
+  bool operator ==(Object other) {
+    if (identical(this, other)) {
+      return true;
+    }
+    return other is InvoicePartyOption &&
+        other.kind == kind &&
+        other.token == token;
+  }
+
+  @override
+  int get hashCode => Object.hash(kind, token);
+}
+
 class InvoiceCatalogOption {
   const InvoiceCatalogOption.item(this.item)
     : kind = InvoiceCatalogOptionKind.item,

@@ -4,21 +4,23 @@ import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:get/get.dart';
 
+import '../../../core/config/api_endpoints.dart';
 import '../../../core/theme/app_colors.dart';
-import '../../bindings/masters_binding.dart';
+import '../../../core/utils/app_action_loader.dart';
+import '../../../core/utils/app_snackbar.dart';
+import '../../../data/repositories/transactions/transactions_repository.dart';
 import '../../bindings/reports_binding.dart';
-import '../../bindings/transactions_binding.dart';
 import '../../../data/models/transactions/transaction_entities.dart';
 import '../../controllers/main/main_controller.dart';
-import '../../controllers/masters/masters_shell_controller.dart';
 import '../../controllers/dashboard/dashboard_controller.dart';
 import '../../controllers/reports/report_lookup_controller.dart';
-import '../../controllers/transactions/transactions_shell_controller.dart';
+import '../masters/forms/party_form_sheet.dart';
 import '../reports/receipt_payment_report_screen.dart';
 import '../reports/creditors_outstanding_report_screen.dart';
 import '../reports/debtors_outstanding_report_screen.dart';
 import '../reports/profit_loss_report_screen.dart';
 import '../transactions/details/transaction_detail_screen.dart';
+import '../transactions/transaction_options_screen.dart';
 
 class DashboardScreen extends GetView<DashboardController> {
   const DashboardScreen({super.key});
@@ -101,16 +103,16 @@ class DashboardScreen extends GetView<DashboardController> {
 
   void _openAction(_DashboardAction action) {
     switch (action) {
-      case _DashboardAction.income:
-        _openTransactionsTab(TransactionsTab.sales);
-      case _DashboardAction.expense:
-        _openTransactionsTab(TransactionsTab.adjustments);
-      case _DashboardAction.receipt:
-        _openTransactionsTab(TransactionsTab.receipts);
       case _DashboardAction.payment:
-        _openTransactionsTab(TransactionsTab.payments);
+        openTransactionForm('payment');
+      case _DashboardAction.receipt:
+        openTransactionForm('receipt');
+      case _DashboardAction.adjustment:
+        openTransactionForm('adjustment');
+      case _DashboardAction.salesInvoice:
+        openTransactionForm('sales');
       case _DashboardAction.party:
-        _openMastersTab(MastersTab.parties);
+        Get.to<bool>(() => const PartyFormSheet());
       case _DashboardAction.reports:
         _openReportsHome();
     }
@@ -118,22 +120,6 @@ class DashboardScreen extends GetView<DashboardController> {
 
   void _openReportsHome() {
     Get.find<MainController>().changeTab(3);
-  }
-
-  void _openMastersTab(MastersTab tab) {
-    if (!Get.isRegistered<MastersShellController>()) {
-      MastersBinding().dependencies();
-    }
-    Get.find<MainController>().changeTab(0);
-    Get.find<MastersShellController>().changeTab(tab);
-  }
-
-  void _openTransactionsTab(TransactionsTab tab) {
-    if (!Get.isRegistered<TransactionsShellController>()) {
-      TransactionsBinding().dependencies();
-    }
-    Get.find<MainController>().changeTab(1);
-    Get.find<TransactionsShellController>().changeTab(tab);
   }
 
 }
@@ -221,7 +207,7 @@ class _DashboardHeader extends StatelessWidget {
       case 'this_quarter':
         return 'This Quarter';
       default:
-        return 'This Year';
+        return 'This Financial Year';
     }
   }
 }
@@ -278,35 +264,41 @@ class _MetricsGrid extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final statistics = controller.statistics;
+    final period = statistics['period'];
+    final periodLabel = period is Map<String, dynamic>
+        ? (period['label']?.toString() ?? '')
+        : '';
+    final profit = _toDouble(statistics['profit']);
+    final isNetLoss = profit < 0;
     final metrics = <_DashboardMetric>[
       _DashboardMetric(
         title: 'TOTAL INCOME',
         value: controller.formatCurrency(statistics['income']),
-        caption: 'year to date',
-        icon: Icons.south_west_rounded,
+        caption: periodLabel.isEmpty ? 'This period' : periodLabel,
+        icon: Icons.arrow_downward_rounded,
         color: const Color(0xFF16A36A),
         target: _DashboardMetricTarget.profitLoss,
       ),
       _DashboardMetric(
         title: 'TOTAL EXPENSE',
         value: controller.formatCurrency(statistics['expense']),
-        caption: 'year to date',
-        icon: Icons.north_east_rounded,
+        caption: periodLabel.isEmpty ? 'This period' : periodLabel,
+        icon: Icons.arrow_upward_rounded,
         color: const Color(0xFFEF5B62),
         target: _DashboardMetricTarget.profitLoss,
       ),
       _DashboardMetric(
-        title: 'NET PROFIT',
-        value: controller.formatCurrency(statistics['profit']),
-        caption: 'since opening',
+        title: isNetLoss ? 'NET LOSS' : 'NET PROFIT',
+        value: controller.formatCurrency(profit.abs()),
+        caption: periodLabel.isEmpty ? 'This period' : periodLabel,
         icon: Icons.trending_up_rounded,
-        color: const Color(0xFF2E7BEF),
+        color: isNetLoss ? const Color(0xFFEF5B62) : const Color(0xFF2E7BEF),
         target: _DashboardMetricTarget.profitLoss,
       ),
       _DashboardMetric(
         title: 'CASH BALANCE',
         value: controller.formatCurrency(statistics['cash_balance']),
-        caption: 'available balance',
+        caption: 'Cash + Bank balance',
         icon: Icons.account_balance_wallet_outlined,
         color: const Color(0xFFF29B38),
         target: _DashboardMetricTarget.receiptPayment,
@@ -348,6 +340,13 @@ class _MetricsGrid extends StatelessWidget {
       },
     );
   }
+
+  double _toDouble(dynamic value) {
+    if (value is num) {
+      return value.toDouble();
+    }
+    return double.tryParse(value?.toString() ?? '') ?? 0;
+  }
 }
 
 enum _DashboardMetricTarget { profitLoss, receiptPayment, receivables, payables }
@@ -373,9 +372,6 @@ void _openDashboardMetricTarget(_DashboardMetricTarget target) {
 }
 
 void _openAllTransactions() {
-  if (!Get.isRegistered<TransactionsShellController>()) {
-    TransactionsBinding().dependencies();
-  }
   Get.find<MainController>().changeTab(1);
 }
 
@@ -471,7 +467,14 @@ class _MetricCard extends StatelessWidget {
   }
 }
 
-enum _DashboardAction { income, expense, receipt, payment, party, reports }
+enum _DashboardAction {
+  payment,
+  receipt,
+  adjustment,
+  salesInvoice,
+  party,
+  reports,
+}
 
 class _QuickActionsCard extends StatelessWidget {
   const _QuickActionsCard({required this.onAction});
@@ -483,9 +486,9 @@ class _QuickActionsCard extends StatelessWidget {
     final actions = <(String, IconData, Color, _DashboardAction)>[
       ('Payment', FontAwesomeIcons.arrowTrendUp, const Color(0xFFF59E0B), _DashboardAction.payment),
       ('Receipt', FontAwesomeIcons.arrowTrendDown, const Color(0xFF2563EB), _DashboardAction.receipt),
-      ('Adjust', FontAwesomeIcons.bookBookmark, const Color(0xFF8B5CF6), _DashboardAction.expense),
-      ('Invoice', FontAwesomeIcons.fileCirclePlus, const Color(0xFF16A36A), _DashboardAction.income),
-      ('Party', FontAwesomeIcons.userPlus, const Color(0xFF475569), _DashboardAction.party),
+      ('Adjustment', FontAwesomeIcons.bookBookmark, const Color(0xFF8B5CF6), _DashboardAction.adjustment),
+      ('Sale Invoice', FontAwesomeIcons.fileCirclePlus, const Color(0xFF16A36A), _DashboardAction.salesInvoice),
+      ('Add Party', FontAwesomeIcons.userPlus, const Color(0xFF475569), _DashboardAction.party),
       ('Reports', FontAwesomeIcons.chartSimple, const Color(0xFFEF5B62), _DashboardAction.reports),
     ];
 
@@ -789,13 +792,10 @@ class _RecentTransactionsCard extends StatelessWidget {
                     ? (party['name'] ?? 'No party').toString()
                     : 'No party';
                 final type = (activity['voucher_type'] ?? '').toString();
+                final voucherId = int.tryParse(activity['id']?.toString() ?? '');
                 return ListTile(
                   contentPadding: EdgeInsets.zero,
-                  onTap: () => Get.to(
-                    () => TransactionDetailScreen(
-                      record: TransactionRecord.fromVoucher(activity),
-                    ),
-                  ),
+                  onTap: () => _openVoucherDetail(activity, voucherId),
                   leading: Container(
                     width: 38,
                     height: 38,
@@ -810,7 +810,8 @@ class _RecentTransactionsCard extends StatelessWidget {
                     ),
                   ),
                   title: Text(
-                    partyName,
+                    (activity['voucher_number'] ?? 'Voucher #${activity['id'] ?? ''}')
+                        .toString(),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(
@@ -819,19 +820,35 @@ class _RecentTransactionsCard extends StatelessWidget {
                     ),
                   ),
                   subtitle: Text(
-                    '${activity['voucher_number'] ?? 'Voucher'} • ${controller.formatDate((activity['voucher_date'] ?? '').toString())}',
+                    '$partyName · ${_voucherLabel(type)}',
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
                       color: Theme.of(context).colorScheme.onSurfaceVariant,
                       fontSize: 10.5,
                     ),
                   ),
-                  trailing: Text(
-                    controller.formatCurrency(activity['total_debit']),
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: _voucherColor(type),
-                      fontWeight: FontWeight.w800,
-                      fontSize: 12,
-                    ),
+                  trailing: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: <Widget>[
+                      Text(
+                        controller.formatDate(
+                          (activity['voucher_date'] ?? '').toString(),
+                        ),
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                          fontSize: 10.5,
+                        ),
+                      ),
+                      const SizedBox(height: 3),
+                      Text(
+                        controller.formatCurrency(activity['total_debit']),
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          color: _voucherColor(type),
+                          fontWeight: FontWeight.w800,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ],
                   ),
                 );
               }),
@@ -866,6 +883,53 @@ class _RecentTransactionsCard extends StatelessWidget {
         return const Color(0xFFEF5B62);
       default:
         return const Color(0xFF2E7BEF);
+    }
+  }
+
+  String _voucherLabel(String type) {
+    switch (type.toLowerCase()) {
+      case 'journal':
+        return 'Adjustment';
+      case 'sales':
+        return 'Sales';
+      case 'purchase':
+        return 'Purchase';
+      case 'payment':
+        return 'Payment';
+      case 'receipt':
+        return 'Receipt';
+      default:
+        return type.isEmpty ? 'Voucher' : type;
+    }
+  }
+
+  Future<void> _openVoucherDetail(
+    Map<String, dynamic> activity,
+    int? voucherId,
+  ) async {
+    final summaryRecord = TransactionRecord.fromVoucher(activity);
+    if (voucherId == null) {
+      Get.to(() => TransactionDetailScreen(record: summaryRecord));
+      return;
+    }
+
+    try {
+      final response = await AppActionLoader.run(
+        () => Get.find<TransactionsRepository>().fetchRecordDetail(
+          endpoint: ApiEndpoints.voucherDetail(voucherId),
+        ),
+        message: 'Loading voucher details...',
+      );
+      final detail = response['data'];
+      final record = detail is Map<String, dynamic>
+          ? TransactionRecord.fromVoucher(detail)
+          : summaryRecord;
+      Get.to(() => TransactionDetailScreen(record: record));
+    } catch (_) {
+      AppSnackbar.warning(
+        'Full voucher details could not be loaded. Showing available data.',
+      );
+      Get.to(() => TransactionDetailScreen(record: summaryRecord));
     }
   }
 }

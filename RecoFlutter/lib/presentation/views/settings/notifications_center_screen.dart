@@ -38,7 +38,7 @@ class NotificationsCenterScreen
                       height: 18,
                       child: CircularProgressIndicator(strokeWidth: 2),
                     )
-                  : const Text('Mark all'),
+                  : const Text('Mark all as read'),
             ),
           ),
         ],
@@ -390,7 +390,7 @@ class _EmptyNotificationsState extends StatelessWidget {
               ),
               const SizedBox(height: 8),
               Text(
-                'Important alerts, reminders, and updates from Reco ERP will appear here when available.',
+                'In-app alerts for sync, support tickets, and account activity will appear here.',
                 textAlign: TextAlign.center,
                 style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                   color: scheme.onSurfaceVariant,

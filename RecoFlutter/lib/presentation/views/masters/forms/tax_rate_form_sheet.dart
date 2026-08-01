@@ -158,7 +158,7 @@ class _TaxRateFormSheetState extends State<TaxRateFormSheet> {
           status: status,
         ),
       );
-      if (mounted) Navigator.of(context).pop();
+      if (mounted) Navigator.of(context).pop(true);
     } finally {
       if (mounted) setState(() => isSaving = false);
     }

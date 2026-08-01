@@ -28,12 +28,15 @@ class _AccountFormSheetState extends State<AccountFormSheet> {
   bool _isActive = true;
   String accountType = 'asset';
   String balanceType = 'debit';
-  String transactionMode = '';
+  bool isCashBankOd = false;
 
   bool get _isCreate => widget.entity == null;
   bool get _isAssetAccount => accountType == 'asset';
-  bool get _isTypeLocked => !_isCreate;
-  bool get _isTransactionModeLocked => !_isCreate;
+  bool get _canEditAccountType =>
+      _isCreate ||
+      (!(widget.entity?.isSystem ?? false) && !(widget.entity?.isInUse ?? false));
+  bool get _canEditCashBankToggle =>
+      _isCreate || !(widget.entity?.isInUse ?? false);
 
   @override
   void initState() {
@@ -46,11 +49,11 @@ class _AccountFormSheetState extends State<AccountFormSheet> {
     _dateController.text = entity?.openingDate ?? _todayText();
     _remarksController.text = entity?.remarks ?? '';
     accountType = entity?.accountType ?? 'asset';
-    transactionMode = entity?.transactionMode ?? '';
+    isCashBankOd = entity?.isCashBankOd ?? false;
     balanceType = entity?.balanceType ?? _defaultBalanceType(accountType);
     _isActive = entity?.isActive ?? true;
 
-    _syncAccountTypeState(accountType, onlyMode: true);
+    _syncAccountTypeState(accountType, onlyCashBank: true);
   }
 
   @override
@@ -123,14 +126,14 @@ class _AccountFormSheetState extends State<AccountFormSheet> {
                     Text(
                       _isCreate
                           ? 'Create a new ledger account'
-                          : 'Update ledger account details',
+                          : 'Edit account details',
                       style: theme.textTheme.titleLarge?.copyWith(
                         fontWeight: FontWeight.w800,
                       ),
                     ),
                     const SizedBox(height: 6),
                     Text(
-                      'Create clean chart-of-accounts entries with smart code generation, opening balance support, and asset-specific transaction mode control.',
+                      'Create clean chart-of-accounts entries with smart code generation, opening balance support, and asset cash-bank eligibility control.',
                       style: theme.textTheme.bodySmall?.copyWith(
                         color: scheme.onSurfaceVariant,
                         height: 1.35,
@@ -158,35 +161,25 @@ class _AccountFormSheetState extends State<AccountFormSheet> {
                 requiredField: true,
                 validator: _required,
               ),
-              if (_isCreate)
-                CustomDropdown<String>(
-                  label: 'Account Type',
-                  items: const <String>[
-                    'asset',
-                    'liability',
-                    'income',
-                    'expense',
-                    'equity',
-                  ],
-                  value: accountType,
-                  itemLabelBuilder: _capitalize,
-                  requiredField: true,
-                  enabled: true,
-                  onChanged: (value) {
-                    if (value == null) return;
-                    setState(() => _syncAccountTypeState(value));
-                  },
-                )
-              else
-                _InfoTile(
-                  title: 'Account Type',
-                  value: _capitalize(accountType),
-                  note: (widget.entity?.isSystem ?? false)
-                      ? 'This is a system ledger. Account type cannot be changed.'
-                      : 'Account type is locked in edit mode to preserve ledger classification.',
-                ),
-              if (!_isCreate)
-                const SizedBox(height: 12),
+              CustomDropdown<String>(
+                label: 'Account Type',
+                items: const <String>[
+                  'asset',
+                  'liability',
+                  'income',
+                  'expense',
+                  'equity',
+                ],
+                value: accountType,
+                itemLabelBuilder: _capitalize,
+                requiredField: true,
+                enabled: _canEditAccountType,
+                onChanged: (value) {
+                  if (value == null || !_canEditAccountType) return;
+                  setState(() => _syncAccountTypeState(value));
+                },
+              ),
+              const SizedBox(height: 12),
               if (!_isCreate && (widget.entity?.isInUse ?? false))
                 Container(
                   margin: const EdgeInsets.only(bottom: 12),
@@ -204,98 +197,75 @@ class _AccountFormSheetState extends State<AccountFormSheet> {
                     ),
                   ),
                 ),
+              if (!_isCreate && (widget.entity?.isSystem ?? false))
+                Container(
+                  margin: const EdgeInsets.only(bottom: 12),
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: scheme.primary.withValues(alpha: .10),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    'This is a system ledger. Some classification fields are locked.',
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: scheme.onSurfaceVariant,
+                      fontWeight: FontWeight.w600,
+                      height: 1.35,
+                    ),
+                  ),
+                ),
               AnimatedSwitcher(
                 duration: const Duration(milliseconds: 180),
                 child: _isAssetAccount
-                    ? (_isCreate
-                        ? Column(
-                            key: const ValueKey<String>('asset-transaction-mode'),
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: <Widget>[
-                              Text(
-                                'Transaction Mode',
-                                style: theme.textTheme.titleSmall?.copyWith(
-                                  fontWeight: FontWeight.w700,
+                    ? Container(
+                        key: const ValueKey<String>('asset-cash-bank-toggle'),
+                        margin: const EdgeInsets.only(bottom: 12),
+                        padding: const EdgeInsets.all(14),
+                        decoration: BoxDecoration(
+                          color: theme.cardColor,
+                          borderRadius: BorderRadius.circular(18),
+                          border: Border.all(
+                            color: scheme.outlineVariant.withValues(alpha: .7),
+                          ),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: <Widget>[
+                            Row(
+                              children: <Widget>[
+                                Expanded(
+                                  child: Text(
+                                    'Is Cash/Bank/OD?',
+                                    style: theme.textTheme.titleSmall?.copyWith(
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                                ),
+                                Text(
+                                  'Yes stores 1, No stores 0.',
+                                  style: theme.textTheme.bodySmall?.copyWith(
+                                    color: scheme.onSurfaceVariant,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 10),
+                            SwitchListTile(
+                              contentPadding: EdgeInsets.zero,
+                              title: Text(
+                                'Yes, this is a Cash/Bank/OD ledger',
+                                style: theme.textTheme.bodyMedium?.copyWith(
+                                  fontWeight: FontWeight.w600,
                                 ),
                               ),
-                              const SizedBox(height: 10),
-                              Wrap(
-                                spacing: 8,
-                                runSpacing: 8,
-                                children: <Widget>[
-                                  _TransactionModeChip(
-                                    label: 'General Asset',
-                                    icon: Icons.inventory_2_outlined,
-                                    isSelected: transactionMode.isEmpty,
-                                    onTap: () =>
-                                        setState(() => transactionMode = ''),
-                                  ),
-                                  _TransactionModeChip(
-                                    label: 'Cash',
-                                    icon: Icons.payments_outlined,
-                                    isSelected: transactionMode == 'cash',
-                                    onTap: () =>
-                                        setState(() => transactionMode = 'cash'),
-                                  ),
-                                  _TransactionModeChip(
-                                    label: 'Bank',
-                                    icon: Icons.account_balance_outlined,
-                                    isSelected: transactionMode == 'bank',
-                                    onTap: () =>
-                                        setState(() => transactionMode = 'bank'),
-                                  ),
-                                  _TransactionModeChip(
-                                    label: 'OD',
-                                    icon: Icons.credit_card_outlined,
-                                    isSelected: transactionMode == 'od',
-                                    onTap: () =>
-                                        setState(() => transactionMode = 'od'),
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: 12),
-                              InkWell(
-                                onTap: () =>
-                                    _showTransactionModeHelp(context),
-                                child: Row(
-                                  children: <Widget>[
-                                    Icon(
-                                      Icons.info_outline_rounded,
-                                      size: 16,
-                                      color: scheme.primary,
-                                    ),
-                                    const SizedBox(width: 6),
-                                    Expanded(
-                                      child: Text(
-                                        'Mode only for Cash, Bank, or OD ledgers.',
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                        style: theme.textTheme.bodySmall?.copyWith(
-                                          color: scheme.onSurfaceVariant,
-                                          fontWeight: FontWeight.w400,
-                                        ),
-                                      ),
-                                    ),
-
-                                  ],
-                                ),
-                              ),
-                              const SizedBox(height: 12),
-                            ],
-                          )
-                        : Column(
-                            key: const ValueKey<String>('asset-transaction-mode-readonly'),
-                            children: <Widget>[
-                              _InfoTile(
-                                title: 'Transaction Mode',
-                                value: transactionMode.isEmpty
-                                    ? 'General Asset'
-                                    : _capitalize(transactionMode),
-                                note: '',
-                              ),
-                              const SizedBox(height: 12),
-                            ],
-                          ))
+                              value: isCashBankOd,
+                              onChanged: _canEditCashBankToggle
+                                  ? (value) => setState(() => isCashBankOd = value)
+                                  : null,
+                            ),
+                          ],
+                        ),
+                      )
                     : const SizedBox.shrink(),
               ),
               Row(
@@ -375,7 +345,7 @@ class _AccountFormSheetState extends State<AccountFormSheet> {
                 title: 'Asset accounts',
                 value: 'Cash / Bank / OD',
                 note:
-                'Use a transaction mode only for liquid asset ledgers. Normal ledgers can stay as General Asset.',
+                'Enable only when this asset should be available in Receipt/Payment selection.',
               ),
               const SizedBox(height: 12),
               const _InfoTile(
@@ -427,13 +397,13 @@ class _AccountFormSheetState extends State<AccountFormSheet> {
     return (type == 'asset' || type == 'expense') ? 'debit' : 'credit';
   }
 
-  void _syncAccountTypeState(String value, {bool onlyMode = false}) {
+  void _syncAccountTypeState(String value, {bool onlyCashBank = false}) {
     accountType = value;
-    if (!onlyMode) {
+    if (!onlyCashBank) {
       balanceType = _defaultBalanceType(value);
     }
     if (value != 'asset') {
-      transactionMode = '';
+      isCashBankOd = false;
     }
   }
 
@@ -453,16 +423,15 @@ class _AccountFormSheetState extends State<AccountFormSheet> {
           localId: widget.entity?.localId,
           accountCode: widget.entity?.accountCode ?? '',
           accountName: _nameController.text.trim(),
-          accountType: _isCreate
+          accountType: _canEditAccountType
               ? accountType
-              : (_isTypeLocked
-                    ? (widget.entity?.accountType ?? accountType)
-                    : accountType),
-          transactionMode: _isCreate
-              ? (_isAssetAccount ? transactionMode : '')
-              : (_isTransactionModeLocked
-                    ? (widget.entity?.transactionMode ?? '')
-                    : (_isAssetAccount ? transactionMode : '')),
+              : (widget.entity?.accountType ?? accountType),
+          transactionMode: widget.entity?.transactionMode ?? '',
+          isCashBankOd: _isAssetAccount
+              ? (_canEditCashBankToggle
+                    ? isCashBankOd
+                    : (widget.entity?.isCashBankOd ?? false))
+              : false,
           openingBalance: _isCreate
               ? (double.tryParse(_amountController.text.trim()) ?? 0)
               : (widget.entity?.openingBalance ?? 0),
@@ -479,7 +448,7 @@ class _AccountFormSheetState extends State<AccountFormSheet> {
         ),
       );
       if (mounted) {
-        Navigator.of(context).pop();
+        Navigator.of(context).pop(true);
       }
     } finally {
       if (mounted) {
@@ -538,68 +507,6 @@ class _AccountFormSheetState extends State<AccountFormSheet> {
 
   String? _required(String? value) =>
       (value ?? '').trim().isEmpty ? 'Required field' : null;
-
-  void _showTransactionModeHelp(BuildContext context) {
-    showDialog<void>(
-      context: context,
-      builder: (dialogContext) {
-        final scheme = Theme.of(dialogContext).colorScheme;
-        return AlertDialog(
-          insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-          titlePadding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-          contentPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-          actionsPadding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-          title: Row(
-            children: <Widget>[
-              Icon(Icons.info_outline_rounded, color: scheme.primary, size: 20),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  'Transaction Mode Help',
-                  style: Theme.of(dialogContext).textTheme.titleMedium
-                      ?.copyWith(
-                        fontWeight: FontWeight.w700,
-                      ),
-                ),
-              ),
-            ],
-          ),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: const <Widget>[
-              _HelpBlock(
-                title: 'Cash',
-                text: 'Use for physical cash accounts and petty cash balances.',
-              ),
-              SizedBox(height: 10),
-              _HelpBlock(
-                title: 'Bank',
-                text:
-                    'Use for current, savings, and online bank ledger accounts.',
-              ),
-              SizedBox(height: 10),
-              _HelpBlock(
-                title: 'OD',
-                text: 'Use for overdraft or cash-credit style accounts.',
-              ),
-              SizedBox(height: 14),
-              _HelpFooter(),
-            ],
-          ),
-          actions: <Widget>[
-            TextButton(
-              onPressed: () => Navigator.of(dialogContext).pop(),
-              child: const Text('Close'),
-            ),
-          ],
-        );
-      },
-    );
-  }
 }
 
 class _InfoTile extends StatelessWidget {
@@ -653,139 +560,6 @@ class _InfoTile extends StatelessWidget {
               ),
             ),
           ],
-        ],
-      ),
-    );
-  }
-}
-
-class _TransactionModeChip extends StatelessWidget {
-  const _TransactionModeChip({
-    required this.label,
-    required this.icon,
-    required this.isSelected,
-    required this.onTap,
-  });
-
-  final String label;
-  final IconData icon;
-  final bool isSelected;
-  final VoidCallback? onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final scheme = theme.colorScheme;
-
-    return InkWell(
-      borderRadius: BorderRadius.circular(10),
-      onTap: onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 160),
-        padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 8),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(10),
-          color: isSelected
-              ? scheme.primary.withValues(alpha: .12)
-              : theme.cardColor,
-          border: Border.all(
-            color: isSelected
-                ? scheme.primary
-                : onTap == null
-                    ? scheme.outlineVariant.withValues(alpha: .55)
-                    : scheme.outlineVariant,
-          ),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: <Widget>[
-            Icon(
-              icon,
-              size: 15,
-              color: isSelected ? scheme.primary : scheme.onSurfaceVariant,
-            ),
-            const SizedBox(width: 6),
-            Text(
-              label,
-              style: theme.textTheme.labelLarge?.copyWith(
-                color: isSelected
-                    ? scheme.primary
-                    : onTap == null
-                        ? scheme.onSurfaceVariant
-                        : scheme.onSurface,
-                fontWeight: FontWeight.w700,
-                fontSize: 12.5,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _HelpFooter extends StatelessWidget {
-  const _HelpFooter();
-
-  @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: <Widget>[
-        Text(
-          'Other info:',
-          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-            fontWeight: FontWeight.w700,
-            color: scheme.onSurfaceVariant,
-          ),
-        ),
-        const SizedBox(height: 6),
-        Text(
-          'Transaction mode appears only for asset accounts. Keep it as General Asset for regular ledgers.',
-          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-            color: scheme.onSurfaceVariant,
-            height: 1.35,
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _HelpBlock extends StatelessWidget {
-  const _HelpBlock({required this.title, required this.text});
-
-  final String title;
-  final String text;
-
-  @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: scheme.surfaceContainerHighest.withValues(alpha: .45),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: <Widget>[
-          Text(
-            title,
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            text,
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-              color: scheme.onSurfaceVariant,
-              height: 1.3,
-            ),
-          ),
         ],
       ),
     );

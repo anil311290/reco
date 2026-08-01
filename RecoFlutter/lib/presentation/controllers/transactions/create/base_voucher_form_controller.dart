@@ -27,7 +27,6 @@ abstract class BaseVoucherFormController extends GetxController {
   final dateController = TextEditingController();
   final narrationController = TextEditingController();
   final isSubmitting = false.obs;
-  final paymentMode = ''.obs;
   final selectedCashBankAccount = Rxn<LookupOption>();
   final paymentRows = <PaymentVoucherRowModel>[].obs;
   final adjustmentRows = <AdjustmentVoucherRowModel>[].obs;
@@ -120,12 +119,6 @@ abstract class BaseVoucherFormController extends GetxController {
     final now = DateTime.now();
     dateController.text =
         '${now.year.toString().padLeft(4, '0')}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
-    if (isPaymentReceipt && initialPayload != null) {
-      final initialMode = initialPayload?['payment_mode']?.toString().trim() ?? '';
-      if (initialMode.isNotEmpty) {
-        paymentMode.value = initialMode;
-      }
-    }
     await _loadLookups();
     if (initialPayload != null) {
       _applyInitialPayload(initialPayload!);
@@ -156,7 +149,6 @@ abstract class BaseVoucherFormController extends GetxController {
   Future<void> _loadLookups() {
     return lookupController.loadVoucherLookups(
       voucherType: voucherType,
-      paymentMode: paymentMode.value.trim().isEmpty ? null : paymentMode.value,
     );
   }
 
@@ -183,21 +175,12 @@ abstract class BaseVoucherFormController extends GetxController {
         : <Map<String, dynamic>>[];
 
     if (isPaymentReceipt) {
-      final selectedMode = (payload['payment_mode'] ?? '').toString().trim();
-      if (selectedMode.isNotEmpty) {
-        paymentMode.value = selectedMode;
-      }
-
       LookupOption? cashBank;
       for (final line in lines) {
         final accountId = _lookupInt(line['account_id']);
         final matchedCashBank = _matchLookup(cashBankAccounts, accountId);
         if (matchedCashBank != null) {
           cashBank = matchedCashBank;
-          paymentMode.value =
-              paymentMode.value.trim().isNotEmpty
-                  ? paymentMode.value
-                  : (matchedCashBank.transactionMode ?? '');
           continue;
         }
 
@@ -258,16 +241,6 @@ abstract class BaseVoucherFormController extends GetxController {
       dateController.text =
           '${selected.year.toString().padLeft(4, '0')}-${selected.month.toString().padLeft(2, '0')}-${selected.day.toString().padLeft(2, '0')}';
     }
-  }
-
-  Future<void> onPaymentModeChanged(String? value) async {
-    if (value == null || value == paymentMode.value) {
-      return;
-    }
-    paymentMode.value = value;
-    selectedCashBankAccount.value = null;
-    await lookupController.refreshCashBankAccounts(value);
-    update();
   }
 
   void onCashBankAccountChanged(LookupOption? value) {
@@ -369,10 +342,6 @@ abstract class BaseVoucherFormController extends GetxController {
       return;
     }
     if (isPaymentReceipt) {
-      if (paymentMode.value.trim().isEmpty) {
-        AppSnackbar.error('Please select a payment mode.');
-        return;
-      }
       if (selectedCashBankAccount.value == null) {
         AppSnackbar.error('Please select a cash/bank account.');
         return;
@@ -467,7 +436,10 @@ abstract class BaseVoucherFormController extends GetxController {
       if (recordId != null) 'id': recordId,
       'voucher_type': voucherType,
       'voucher_date': dateController.text.trim(),
-      'payment_mode': paymentMode.value,
+      'payment_mode':
+          selectedCashBankAccount.value?.transactionMode?.trim().isNotEmpty == true
+              ? selectedCashBankAccount.value!.transactionMode!.trim()
+              : null,
       'cash_bank_account_id': selectedCashBankAccount.value?.id,
       'narration': narrationController.text.trim().isEmpty
           ? null
@@ -656,15 +628,6 @@ class _VoucherReviewDialog extends StatelessWidget {
                           ),
                           if (controller.isPaymentReceipt)
                             _VoucherReviewItem(
-                              label: 'Mode',
-                              value: controller.paymentMode.value
-                                          .trim()
-                                          .isEmpty
-                                  ? '-'
-                                  : _capitalize(controller.paymentMode.value),
-                            ),
-                          if (controller.isPaymentReceipt)
-                            _VoucherReviewItem(
                               label: controller.cashBankLabel,
                               value: controller.selectedCashBankAccount.value?.label ??
                                   '-',
@@ -785,12 +748,6 @@ class _VoucherReviewDialog extends StatelessWidget {
     });
   }
 
-  static String _capitalize(String value) {
-    if (value.isEmpty) {
-      return value;
-    }
-    return '${value[0].toUpperCase()}${value.substring(1)}';
-  }
 }
 
 class _VoucherReviewSection extends StatelessWidget {

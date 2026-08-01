@@ -172,6 +172,7 @@ class AccountEntity {
     this.accountName = '',
     this.accountType = 'asset',
     this.transactionMode = '',
+    this.isCashBankOd = false,
     this.openingBalance = 0,
     this.balanceType = 'debit',
     this.openingDate = '',
@@ -190,6 +191,7 @@ class AccountEntity {
   final String accountName;
   final String accountType;
   final String transactionMode;
+  final bool isCashBankOd;
   final double openingBalance;
   final String balanceType;
   final String openingDate;
@@ -210,6 +212,7 @@ class AccountEntity {
       accountName: (payload['account_name'] ?? '').toString(),
       accountType: (payload['account_type'] ?? 'asset').toString(),
       transactionMode: (payload['transaction_mode'] ?? '').toString(),
+      isCashBankOd: _parseBool(payload['is_cash_bank_od'], fallback: false),
       openingBalance: _parseDouble(payload['opening_balance']),
       balanceType: (payload['balance_type'] ?? 'debit').toString(),
       openingDate: (payload['opening_date'] ?? '').toString(),
@@ -225,9 +228,7 @@ class AccountEntity {
     return <String, dynamic>{
       'account_name': accountName.trim(),
       'account_type': accountType,
-      'transaction_mode': transactionMode.trim().isEmpty
-          ? null
-          : transactionMode.trim(),
+      'is_cash_bank_od': isCashBankOd,
       'opening_balance': openingBalance,
       'balance_type': balanceType,
       'opening_date': openingDate.trim().isEmpty ? null : openingDate.trim(),

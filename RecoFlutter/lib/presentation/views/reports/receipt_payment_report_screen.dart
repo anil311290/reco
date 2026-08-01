@@ -54,7 +54,7 @@ class ReceiptPaymentReportScreen extends GetView<ReceiptPaymentReportController>
           children: <Widget>[
             ReportFilterPanel(
               title: 'Filters',
-              subtitle: 'Choose financial year and date range for cash and bank movement.',
+              subtitle: 'Every cash, bank, and OD movement of the period grouped head-wise, with opening and closing balances.',
               icon: FontAwesomeIcons.sliders,
               iconColor: const Color(0xFF059669),
               child: Column(
@@ -114,7 +114,7 @@ class ReceiptPaymentReportScreen extends GetView<ReceiptPaymentReportController>
             const SizedBox(height: 12),
             if (message != null && message.isNotEmpty)
               ReportSectionCard(
-                title: 'Receipt & Payment Status',
+                title: 'Receipt & Payment unavailable',
                 icon: FontAwesomeIcons.circleInfo,
                 iconColor: const Color(0xFF059669),
                 child: Text(message),
@@ -126,7 +126,7 @@ class ReceiptPaymentReportScreen extends GetView<ReceiptPaymentReportController>
                     child: ReportStatCard(
                       label: 'Opening Balance',
                       value: controller.formatCurrency(report['opening_total']),
-                      note: 'As on ${controller.formatDate((report['date_from'] ?? '').toString())}',
+                      note: 'Cash, bank, and OD as on ${controller.formatDate((report['date_from'] ?? '').toString())}',
                       color: const Color(0xFF2563EB),
                       icon: FontAwesomeIcons.wallet,
                     ),
@@ -134,11 +134,11 @@ class ReceiptPaymentReportScreen extends GetView<ReceiptPaymentReportController>
                   const SizedBox(width: 10),
                   Expanded(
                     child: ReportStatCard(
-                      label: 'Closing Balance',
-                      value: controller.formatCurrency(report['closing_total']),
-                      note: 'As on ${controller.formatDate((report['date_to'] ?? '').toString())}',
-                      color: const Color(0xFFF59E0B),
-                      icon: FontAwesomeIcons.vault,
+                      label: 'Total Receipts',
+                      value: controller.formatCurrency(receipts['total']),
+                      note: 'Money received during the period.',
+                      color: _receiptColor,
+                      icon: FontAwesomeIcons.arrowDownWideShort,
                     ),
                   ),
                 ],
@@ -148,21 +148,21 @@ class ReceiptPaymentReportScreen extends GetView<ReceiptPaymentReportController>
                 children: <Widget>[
                   Expanded(
                     child: ReportStatCard(
-                      label: 'Total Receipts',
-                      value: controller.formatCurrency(receipts['total']),
-                      note: 'Money in',
-                      color: _receiptColor,
-                      icon: FontAwesomeIcons.arrowDownWideShort,
+                      label: 'Total Payments',
+                      value: controller.formatCurrency(payments['total']),
+                      note: 'Money paid during the period.',
+                      color: _paymentColor,
+                      icon: FontAwesomeIcons.arrowUpWideShort,
                     ),
                   ),
                   const SizedBox(width: 10),
                   Expanded(
                     child: ReportStatCard(
-                      label: 'Total Payments',
-                      value: controller.formatCurrency(payments['total']),
-                      note: 'Money out',
-                      color: _paymentColor,
-                      icon: FontAwesomeIcons.arrowUpWideShort,
+                      label: 'Closing Balance',
+                      value: controller.formatCurrency(report['closing_total']),
+                      note: 'Cash, bank, and OD as on ${controller.formatDate((report['date_to'] ?? '').toString())}',
+                      color: const Color(0xFFF59E0B),
+                      icon: FontAwesomeIcons.vault,
                     ),
                   ),
                 ],
@@ -198,6 +198,7 @@ class ReceiptPaymentReportScreen extends GetView<ReceiptPaymentReportController>
                 title: 'Cash / Bank Ledgers',
                 icon: FontAwesomeIcons.tableList,
                 iconColor: const Color(0xFF059669),
+                trailing: _buildBalancePill(context, report['is_balanced'] == true),
                 child: ledgers.isEmpty
                     ? const Text('No cash or bank ledger movement')
                     : _buildLedgerTable(context, ledgers, report),
@@ -371,7 +372,6 @@ class ReceiptPaymentReportScreen extends GetView<ReceiptPaymentReportController>
                 ),
               ),
             ),
-            masterTextCell((row['mode_label'] ?? '-').toString()),
             masterTextCell(controller.formatCurrency(row['opening'])),
             DataCell(
               Center(
@@ -408,7 +408,6 @@ class ReceiptPaymentReportScreen extends GetView<ReceiptPaymentReportController>
         cells: <DataCell>[
           const DataCell(SizedBox.shrink()),
           DataCell(Text('Total', style: reportTotalRowTextStyle(context))),
-          const DataCell(SizedBox.shrink()),
           DataCell(Center(child: Text(controller.formatCurrency(report['opening_total']), style: reportTotalRowTextStyle(context)?.copyWith(fontSize: 13)))),
           DataCell(Center(child: Text(controller.formatCurrency(sumOf('received')), style: reportTotalRowTextStyle(context)?.copyWith(fontSize: 13)))),
           DataCell(Center(child: Text(controller.formatCurrency(sumOf('paid')), style: reportTotalRowTextStyle(context)?.copyWith(fontSize: 13)))),
@@ -426,16 +425,46 @@ class ReceiptPaymentReportScreen extends GetView<ReceiptPaymentReportController>
         isLoading: false,
         emptyText: 'No cash or bank ledger movement',
         minWidth: 900,
-        columns: <DataColumn2>[
-          masterColumn(context, 'Code'),
-          masterColumn(context, 'Ledger', size: ColumnSize.L),
-          masterColumn(context, 'Mode'),
-          masterColumn(context, 'Opening'),
-          masterColumn(context, 'Received'),
-          masterColumn(context, 'Paid'),
-          masterColumn(context, 'Closing'),
+                columns: <DataColumn2>[
+                  masterColumn(context, 'Code'),
+                  masterColumn(context, 'Ledger', size: ColumnSize.L),
+                  masterColumn(context, 'Opening (₹)'),
+                  masterColumn(context, 'Received (₹)'),
+                  masterColumn(context, 'Paid (₹)'),
+                  masterColumn(context, 'Closing (₹)'),
+                ],
+                rows: tableRows,
+              ),
+    );
+  }
+
+  Widget _buildBalancePill(BuildContext context, bool isBalanced) {
+    final color = isBalanced ? const Color(0xFF16A34A) : const Color(0xFFEF4444);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: .12),
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: <Widget>[
+          Icon(
+            isBalanced
+                ? FontAwesomeIcons.circleCheck
+                : FontAwesomeIcons.circleExclamation,
+            size: 12,
+            color: color,
+          ),
+          const SizedBox(width: 6),
+          Text(
+            isBalanced ? 'Balanced' : 'Not balanced',
+            style: Theme.of(context).textTheme.labelMedium?.copyWith(
+              color: color,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
         ],
-        rows: tableRows,
       ),
     );
   }

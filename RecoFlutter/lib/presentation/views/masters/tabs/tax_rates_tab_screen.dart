@@ -108,7 +108,10 @@ class TaxRatesTabScreen extends GetView<TaxRatesController> {
   }
 
   Future<void> _openForm(BuildContext context, {TaxRateEntity? entity}) async {
-    await Get.to(() => TaxRateFormSheet(entity: entity));
+    final result = await Get.to(() => TaxRateFormSheet(entity: entity));
+    if (result == true) {
+      await controller.refreshData(forceRemote: true);
+    }
   }
 
   Future<void> _confirmDelete(TaxRateEntity item) async {

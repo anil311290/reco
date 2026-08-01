@@ -110,7 +110,7 @@ class _CategoryFormSheetState extends State<CategoryFormSheet> {
           isActive: _isActive,
         ),
       );
-      if (mounted) Navigator.of(context).pop();
+      if (mounted) Navigator.of(context).pop(true);
     } finally {
       if (mounted) setState(() => isSaving = false);
     }

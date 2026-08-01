@@ -18,9 +18,8 @@ class AdjustmentsTabScreen extends GetView<AdjustmentsController> {
       emptyText: 'No adjustment vouchers found',
       columnsBuilder: (context) => <DataColumn2>[
         masterColumn(context, '#', fixedWidth: 52, size: ColumnSize.S),
-        masterColumn(context, 'Voucher No', size: ColumnSize.M),
+        masterColumn(context, 'Voucher Number', size: ColumnSize.L),
         masterColumn(context, 'Date', size: ColumnSize.M),
-        masterColumn(context, 'Type', fixedWidth: 120),
         masterColumn(context, 'Party', size: ColumnSize.M),
         masterColumn(context, 'Amount', size: ColumnSize.M),
         masterColumn(context, 'Status', fixedWidth: 120),
@@ -30,10 +29,9 @@ class AdjustmentsTabScreen extends GetView<AdjustmentsController> {
         cells: <DataCell>[
           masterTextCell('${index + 1}'),
           masterTextCell(item.number.isEmpty ? '-' : item.number),
-          masterTextCell(item.date.length >= 10 ? item.date.substring(0, 10) : item.date),
-          masterTextCell(item.typeLabel.isEmpty ? 'Adjustment' : item.typeLabel),
+          masterTextCell(_formatDate(item.date)),
           masterTextCell(item.partyName.isEmpty ? '-' : item.partyName),
-          masterTextCell('Rs ${item.amount.toStringAsFixed(2)}'),
+          masterTextCell(_currency(item.amount)),
           DataCell(Center(child: TransactionStatusChip(status: item.status))),
           DataCell(
             Center(
@@ -43,7 +41,7 @@ class AdjustmentsTabScreen extends GetView<AdjustmentsController> {
                   MasterActionButton(
                     icon: Icons.remove_red_eye_outlined,
                     tooltip: 'View',
-                    color: Theme.of(context).colorScheme.primary,
+                    color: const Color(0xFF38BDF8),
                     onTap: () async {
                       final detailRecord = await resolveTransactionDetailRecord(item);
                       await Get.to(
@@ -116,5 +114,36 @@ class AdjustmentsTabScreen extends GetView<AdjustmentsController> {
         ],
       ),
     );
+  }
+
+  String _currency(double value) => '₹${value.toStringAsFixed(2)}';
+
+  String _formatDate(String value) {
+    if (value.length < 10) {
+      return value;
+    }
+    final date = value.substring(0, 10).split('-');
+    if (date.length != 3) {
+      return value.substring(0, 10);
+    }
+    const months = <String>[
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
+    ];
+    final monthIndex = int.tryParse(date[1]) ?? 1;
+    final month = monthIndex >= 1 && monthIndex <= 12
+        ? months[monthIndex - 1]
+        : date[1];
+    return '${date[2]} $month ${date[0]}';
   }
 }

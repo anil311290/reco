@@ -165,7 +165,10 @@ class PartiesTabScreen extends GetView<PartiesController> {
   }
 
   Future<void> _openForm(BuildContext context, {PartyEntity? entity}) async {
-    await Get.to(() => PartyFormSheet(entity: entity));
+    final result = await Get.to(() => PartyFormSheet(entity: entity));
+    if (result == true) {
+      await controller.refreshData(forceRemote: true);
+    }
   }
 
   Future<void> _openDetails(PartyEntity item) async {

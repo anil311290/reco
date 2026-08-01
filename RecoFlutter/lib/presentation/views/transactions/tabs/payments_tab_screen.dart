@@ -19,7 +19,7 @@ class PaymentsTabScreen extends GetView<PaymentsController> {
       emptyText: 'No payment vouchers found',
       columnsBuilder: (context) => <DataColumn2>[
         masterColumn(context, '#', fixedWidth: 52, size: ColumnSize.S),
-        masterColumn(context, 'Voucher No', size: ColumnSize.M),
+        masterColumn(context, 'Voucher Number', size: ColumnSize.L),
         masterColumn(context, 'Date', size: ColumnSize.M),
         masterColumn(context, 'Party', size: ColumnSize.L),
         masterColumn(context, 'Amount', size: ColumnSize.M),
@@ -55,7 +55,7 @@ class PaymentsTabScreen extends GetView<PaymentsController> {
                 MasterActionButton(
                   icon: Icons.remove_red_eye_outlined,
                   tooltip: 'View',
-                  color: Theme.of(context).colorScheme.primary,
+                  color: const Color(0xFF38BDF8),
                   onTap: () async {
                     final detailRecord = await resolveTransactionDetailRecord(item);
                     await Get.to(
@@ -129,8 +129,34 @@ class PaymentsTabScreen extends GetView<PaymentsController> {
     );
   }
 
-  String _currency(double value) => 'Rs ${value.toStringAsFixed(2)}';
+  String _currency(double value) => '₹${value.toStringAsFixed(2)}';
 
-  String _formatDate(String value) =>
-      value.length >= 10 ? value.substring(0, 10) : value;
+  String _formatDate(String value) {
+    if (value.length < 10) {
+      return value;
+    }
+    final date = value.substring(0, 10).split('-');
+    if (date.length != 3) {
+      return value.substring(0, 10);
+    }
+    const months = <String>[
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
+    ];
+    final monthIndex = int.tryParse(date[1]) ?? 1;
+    final month = monthIndex >= 1 && monthIndex <= 12
+        ? months[monthIndex - 1]
+        : date[1];
+    return '${date[2]} $month ${date[0]}';
+  }
 }

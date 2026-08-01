@@ -68,18 +68,18 @@ class SettingsScreen extends GetView<SettingsController> {
               _ProfileCard(controller: controller),
               const SizedBox(height: 16),
               SettingsGroupCard(
-                title: 'Web Settings',
+                title: 'Configuration',
                 children: <Widget>[
                   SettingsMenuTile(
                     icon: Icons.business_outlined,
                     title: 'Company Settings',
-                    subtitle: 'Company, theme, accounting and financial year',
+                    subtitle: 'Company, theme, accounting, and financial years',
                     onTap: _openAdminSettings,
                   ),
                   SettingsMenuTile(
                     icon: Icons.credit_card_outlined,
-                    title: 'Subscription Plans',
-                    subtitle: 'Current plan, plans, invoices and payments',
+                    title: 'Subscription',
+                    subtitle: 'Current plan, available plans, invoices and payments',
                     onTap: _openSubscription,
                   ),
                   SettingsMenuTile(
@@ -162,7 +162,7 @@ class SettingsScreen extends GetView<SettingsController> {
                   SettingsMenuTile(
                     icon: Icons.help_outline_rounded,
                     title: 'Help & Support',
-                    subtitle: 'Ticket, contact and onboarding help',
+                    subtitle: 'Tickets, contact and onboarding help',
                     onTap: _openSupportTickets,
                   ),
                   SettingsMenuTile(

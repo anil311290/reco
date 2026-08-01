@@ -56,21 +56,6 @@ class VoucherFormScreen<T extends BaseVoucherFormController>
                             : null,
                       ),
                       if (controller.isPaymentReceipt)
-                        CustomDropdown<String>(
-                          label: 'Payment Mode',
-                          value: controller.paymentMode.value.isEmpty
-                              ? null
-                              : controller.paymentMode.value,
-                          items: const <String>['cash', 'bank', 'od'],
-                          itemLabelBuilder: (item) =>
-                              item[0].toUpperCase() + item.substring(1),
-                          onChanged: controller.onPaymentModeChanged,
-                          hint: 'Select Mode',
-                          requiredField: true,
-                          isLoading: controller.lookupController.isLoading.value,
-                          enabled: !controller.lookupController.isLoading.value,
-                        ),
-                      if (controller.isPaymentReceipt)
                         Column(
                           children: <Widget>[
                             CustomDropdown<LookupOption>(
@@ -79,6 +64,7 @@ class VoucherFormScreen<T extends BaseVoucherFormController>
                               items: controller.cashBankAccounts,
                               itemLabelBuilder: (item) => item.label,
                               onChanged: controller.onCashBankAccountChanged,
+                              hint: 'Select Cash / Bank / OD',
                               requiredField: true,
                               isLoading: controller
                                   .lookupController.isCashBankAccountsLoading.value,
@@ -190,6 +176,7 @@ class _PaymentRowCard<T extends BaseVoucherFormController> extends GetView<T> {
                 },
                 onChanged: (next) =>
                     controller.onPaymentParticularChanged(row, next),
+                hint: 'Select Particulars',
                 requiredField: true,
                 isLoading: controller
                     .lookupController.isPaymentParticularsLoading.value,
@@ -207,11 +194,6 @@ class _PaymentRowCard<T extends BaseVoucherFormController> extends GetView<T> {
             ],
             requiredField: true,
             onChanged: (_) => controller.refreshPaymentTotals(),
-          ),
-          CustomTextField(
-            label: 'Description',
-            controller: row.descriptionController,
-            hintText: 'Optional description',
           ),
           if (controller.paymentRows.length > 1)
             Align(

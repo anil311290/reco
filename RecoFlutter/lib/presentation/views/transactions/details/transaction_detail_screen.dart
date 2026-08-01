@@ -91,6 +91,8 @@ class TransactionDetailScreen extends StatelessWidget {
                 children: <Widget>[
                   _HeroCard(record: record),
                   const SizedBox(height: 14),
+                  _InvoiceCounterpartyCard(record: record),
+                  const SizedBox(height: 12),
                   _SectionCard(
                     title: 'Overview',
                     children: <Widget>[
@@ -104,7 +106,12 @@ class TransactionDetailScreen extends StatelessWidget {
                           label: 'Due Date',
                           value: _fallback(_shortDate(record.dueDate)),
                         ),
-                      _InfoTile(label: 'Party', value: _fallback(record.partyName)),
+                      _InfoTile(
+                        label: record.kind == TransactionRecordKind.purchaseInvoice
+                            ? 'Supplier'
+                            : 'Customer',
+                        value: _fallback(record.partyName),
+                      ),
                       if (referenceNumber.isNotEmpty)
                         _InfoTile(
                           label: 'Reference',
@@ -136,7 +143,7 @@ class TransactionDetailScreen extends StatelessWidget {
                   ),
                   if (invoiceLines.isNotEmpty) ...<Widget>[
                     const SizedBox(height: 12),
-                    Text("Invoice Lines",style:  theme.textTheme.titleMedium?.copyWith(
+                    Text("Line Items",style:  theme.textTheme.titleMedium?.copyWith(
                       fontWeight: FontWeight.w600,
                     ),),
                     const SizedBox(height: 12),
@@ -276,12 +283,31 @@ class TransactionDetailScreen extends StatelessWidget {
     }
   }
 
-  static String _currency(double value) => 'Rs ${value.toStringAsFixed(2)}';
+  static String _currency(double value) => '₹${value.toStringAsFixed(2)}';
 
   static String _fallback(String value) => value.trim().isEmpty ? '-' : value.trim();
 
-  static String _shortDate(String value) =>
-      value.length >= 10 ? value.substring(0, 10) : value;
+  static String _shortDate(String value) {
+    final parsed = DateTime.tryParse(value);
+    if (parsed == null) {
+      return value.length >= 10 ? value.substring(0, 10) : value;
+    }
+    const months = <int, String>{
+      1: 'Jan',
+      2: 'Feb',
+      3: 'Mar',
+      4: 'Apr',
+      5: 'May',
+      6: 'Jun',
+      7: 'Jul',
+      8: 'Aug',
+      9: 'Sep',
+      10: 'Oct',
+      11: 'Nov',
+      12: 'Dec',
+    };
+    return '${parsed.day.toString().padLeft(2, '0')} ${months[parsed.month]} ${parsed.year}';
+  }
 
   static List<Map<String, dynamic>> _extractInvoiceLines(TransactionRecord record) {
     if (record.kind == TransactionRecordKind.voucher) {
@@ -465,8 +491,13 @@ class _VoucherDetailBody extends StatelessWidget {
       ),
     ];
 
-    if (record.partyName.trim().isNotEmpty) {
-      items.add(('Party', record.partyName, null));
+    final partyWidget = _voucherPartyLink(record);
+    if (record.partyName.trim().isNotEmpty || partyWidget != null) {
+      items.add((
+        'Party',
+        TransactionDetailScreen._fallback(record.partyName),
+        partyWidget,
+      ));
     }
     items.add(('Amount', TransactionDetailScreen._currency(record.amount), null));
     if (financialYearName.trim().isNotEmpty) {
@@ -474,6 +505,31 @@ class _VoucherDetailBody extends StatelessWidget {
     }
     items.add(('Narration', TransactionDetailScreen._fallback(record.narration), null));
     return items;
+  }
+
+  Widget? _voucherPartyLink(TransactionRecord record) {
+    final rawParty = record.rawPayload['party'];
+    if (rawParty is! Map<String, dynamic>) {
+      return null;
+    }
+    final partyId = int.tryParse(rawParty['id']?.toString() ?? '');
+    final partyName = (rawParty['name'] ?? record.partyName).toString().trim();
+    if (partyId == null || partyName.isEmpty) {
+      return null;
+    }
+    return InkWell(
+      onTap: () => Get.to(() => PartyHistoryScreen(partyId: partyId)),
+      child: Text(
+        partyName,
+        style: Get.theme.textTheme.titleMedium?.copyWith(
+          fontWeight: FontWeight.w600,
+          fontSize: 14,
+          color: Get.theme.colorScheme.primary,
+          decoration: TextDecoration.underline,
+          decorationColor: Get.theme.colorScheme.primary,
+        ),
+      ),
+    );
   }
 }
 
@@ -793,6 +849,54 @@ class _HeroCard extends StatelessWidget {
   }
 }
 
+class _InvoiceCounterpartyCard extends StatelessWidget {
+  const _InvoiceCounterpartyCard({required this.record});
+
+  final TransactionRecord record;
+
+  @override
+  Widget build(BuildContext context) {
+    final payload = record.rawPayload;
+    final party = payload['party'];
+    final partyAddress = party is Map<String, dynamic>
+        ? (party['address'] ?? '').toString().trim()
+        : '';
+    final partyCity = party is Map<String, dynamic>
+        ? (party['city'] ?? '').toString().trim()
+        : '';
+    final partyState = party is Map<String, dynamic>
+        ? (party['state'] ?? '').toString().trim()
+        : '';
+    final gst = party is Map<String, dynamic>
+        ? (party['gstin'] ?? party['gst_number'] ?? '').toString().trim()
+        : '';
+
+    final counterpartyTitle = record.kind == TransactionRecordKind.purchaseInvoice
+        ? 'Supplier'
+        : 'Bill To';
+
+    return _SectionCard(
+      title: counterpartyTitle,
+      children: <Widget>[
+        _InfoTile(
+          label: counterpartyTitle,
+          value: TransactionDetailScreen._fallback(record.partyName),
+        ),
+        if (partyAddress.isNotEmpty)
+          _InfoTile(label: 'Address', value: partyAddress, maxLines: 4),
+        if (partyCity.isNotEmpty || partyState.isNotEmpty)
+          _InfoTile(
+            label: 'City / State',
+            value: [partyCity, partyState]
+                .where((item) => item.trim().isNotEmpty)
+                .join(', '),
+          ),
+        if (gst.isNotEmpty) _InfoTile(label: 'GSTIN', value: gst),
+      ],
+    );
+  }
+}
+
 class _SectionCard extends StatelessWidget {
   const _SectionCard({
     required this.title,
@@ -1041,7 +1145,7 @@ class _InvoiceLinesTable extends StatelessWidget {
           Align(
             alignment: Alignment.centerRight,
             child: Text(
-              'Rs ${unitPrice.toStringAsFixed(2)}',
+              '₹${unitPrice.toStringAsFixed(2)}',
               style: theme.textTheme.bodyMedium?.copyWith(
                 fontWeight: FontWeight.w600,
               ),
@@ -1052,7 +1156,7 @@ class _InvoiceLinesTable extends StatelessWidget {
           Align(
             alignment: Alignment.centerRight,
             child: Text(
-              'Rs ${amount.toStringAsFixed(2)}',
+              '₹${amount.toStringAsFixed(2)}',
               style: theme.textTheme.bodyMedium?.copyWith(
                 fontWeight: FontWeight.w600,
               ),
@@ -1063,7 +1167,7 @@ class _InvoiceLinesTable extends StatelessWidget {
           Align(
             alignment: Alignment.centerRight,
             child: Text(
-              'Rs ${tax.toStringAsFixed(2)}',
+              '₹${tax.toStringAsFixed(2)}',
               style: theme.textTheme.bodyMedium?.copyWith(
                 fontWeight: FontWeight.w600,
               ),
@@ -1074,7 +1178,7 @@ class _InvoiceLinesTable extends StatelessWidget {
           Align(
             alignment: Alignment.centerRight,
             child: Text(
-              'Rs ${total.toStringAsFixed(2)}',
+              '₹${total.toStringAsFixed(2)}',
               style: theme.textTheme.bodyMedium?.copyWith(
                 fontWeight: FontWeight.w700,
               ),

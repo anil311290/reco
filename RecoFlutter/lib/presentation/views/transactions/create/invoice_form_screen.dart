@@ -7,6 +7,7 @@ import '../../../controllers/transactions/create/base_invoice_form_controller.da
 import '../../../controllers/transactions/create/transaction_form_models.dart';
 import '../../masters/forms/item_form_sheet.dart';
 import '../../masters/forms/party_form_sheet.dart';
+import '../../masters/forms/account_form_sheet.dart';
 import '../../../widgets/common/custom_text_field.dart';
 import 'widgets/transaction_form_components.dart';
 
@@ -94,35 +95,48 @@ class InvoiceFormScreen<T extends BaseInvoiceFormController> extends GetView<T> 
                                 ? 'Due date required'
                                 : null,
                           ),
-                          _InlineQuickAddAction(
-                            label: 'Supplier',
-                            actionLabel: 'Quick Add',
-                            onTap: () => _openQuickAddParty(
-                              context,
-                              controller,
-                            ),
+                          _InlineQuickActions(
+                            label: 'Supplier / Ledger',
+                            primaryActionLabel: 'Quick Add Cash / Bank Ledger',
+                            onPrimaryTap: () =>
+                                _openQuickAddLedger(context, controller),
+                            secondaryActionLabel: 'Quick Add Party',
+                            onSecondaryTap: () =>
+                                _openQuickAddParty(context, controller),
                           ),
-                          CustomDropdown<PartyEntity>(
-                            label: 'Supplier',
-                            value: controller.selectedParty.value,
-                            items: controller.parties,
-                            itemLabelBuilder: (item) {
-                              final code = item.partyCode.trim();
-                              if (code.isEmpty) {
-                                return item.name;
-                              }
-                              return '${item.name} ($code)';
-                            },
+                          CustomDropdown<InvoicePartyOption>(
+                            label: 'Supplier / Ledger',
+                            value: controller.selectedPartyOption.value,
+                            items: controller.invoicePartyOptions,
+                            itemLabelBuilder: (item) => item.label,
                             onChanged: (value) {
-                              controller.selectedParty.value = value;
+                              controller.selectedPartyOption.value = value;
                               controller.update();
                             },
                             requiredField: true,
                             isLoading:
-                                controller.lookupController.isPartiesLoading.value,
-                            enabled: !controller
-                                .lookupController.isPartiesLoading.value,
-                            hint: 'Select Supplier',
+                                controller.lookupController.isPartiesLoading.value ||
+                                controller.lookupController
+                                    .isCashBankAccountsLoading
+                                    .value,
+                            enabled:
+                                !(controller.lookupController.isPartiesLoading.value ||
+                                    controller.lookupController
+                                        .isCashBankAccountsLoading
+                                        .value),
+                            hint: 'Select Supplier or Ledger Account',
+                          ),
+                          const SizedBox(height: 2),
+                          Align(
+                            alignment: Alignment.centerLeft,
+                            child: Text(
+                              'Choose an existing supplier party or select a ledger account for direct posting.',
+                              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                color: Theme.of(context)
+                                    .colorScheme
+                                    .onSurfaceVariant,
+                              ),
+                            ),
                           ),
                           CustomTextField(
                             label: 'Payment/Delivery Terms',
@@ -141,26 +155,36 @@ class InvoiceFormScreen<T extends BaseInvoiceFormController> extends GetView<T> 
                           controller: controller.invoiceNumberController,
                           readOnly: true,
                         ),
-                        CustomDropdown<PartyEntity>(
-                          label: controller.isPurchaseInvoice
-                              ? 'Supplier'
-                              : 'Customer',
-                          value: controller.selectedParty.value,
-                          items: controller.parties,
-                          itemLabelBuilder: (item) {
-                            final code = item.partyCode.trim();
-                            if (code.isEmpty) {
-                              return item.name;
-                            }
-                            return '${item.name} ($code)';
-                          },
+                        _InlineQuickActions(
+                          label: 'Customer',
+                          primaryActionLabel: 'Quick Add Cash / Bank Ledger',
+                          onPrimaryTap: () =>
+                              _openQuickAddLedger(context, controller),
+                          secondaryActionLabel: 'Quick Add Party',
+                          onSecondaryTap: () =>
+                              _openQuickAddParty(context, controller),
+                        ),
+                        CustomDropdown<InvoicePartyOption>(
+                          label: 'Customer',
+                          value: controller.selectedPartyOption.value,
+                          items: controller.invoicePartyOptions,
+                          itemLabelBuilder: (item) => item.label,
                           onChanged: (value) {
-                            controller.selectedParty.value = value;
+                            controller.selectedPartyOption.value = value;
                             controller.update();
                           },
                           requiredField: true,
-                          isLoading: controller.lookupController.isPartiesLoading.value,
-                          enabled: !controller.lookupController.isPartiesLoading.value,
+                          isLoading:
+                              controller.lookupController.isPartiesLoading.value ||
+                              controller.lookupController
+                                  .isCashBankAccountsLoading
+                                  .value,
+                          enabled:
+                              !(controller.lookupController.isPartiesLoading.value ||
+                                  controller.lookupController
+                                      .isCashBankAccountsLoading
+                                      .value),
+                          hint: 'Select Customer',
                         ),
                         if (controller.isPurchaseInvoice)
                           CustomTextField(
@@ -273,27 +297,26 @@ class _ItemLinesSection<T extends BaseInvoiceFormController> extends GetView<T> 
   @override
   Widget build(BuildContext context) {
     return TransactionFormSectionCard(
-      title: controller.usesUnifiedSalesRows ? 'Sales Lines' : 'Line Items',
+      title: 'Line Items',
       action: Row(
         mainAxisSize: MainAxisSize.min,
         children: <Widget>[
-          if (controller.isPurchaseInvoice)
-            OutlinedButton.icon(
-              onPressed: () => _openQuickAddItem(context, controller),
-              icon: const Icon(Icons.bolt_rounded, size: 16),
-              label: const Text('Quick Add Item'),
-              style: OutlinedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                side: BorderSide(
-                  color: Theme.of(context).colorScheme.primary,
-                ),
-                foregroundColor: Theme.of(context).colorScheme.primary,
-                textStyle: Theme.of(context).textTheme.labelMedium?.copyWith(
-                  fontWeight: FontWeight.w700,
-                ),
+          OutlinedButton.icon(
+            onPressed: () => _openQuickAddItem(context, controller),
+            icon: const Icon(Icons.bolt_rounded, size: 16),
+            label: const Text('Quick Add Item'),
+            style: OutlinedButton.styleFrom(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+              side: BorderSide(
+                color: Theme.of(context).colorScheme.primary,
+              ),
+              foregroundColor: Theme.of(context).colorScheme.primary,
+              textStyle: Theme.of(context).textTheme.labelMedium?.copyWith(
+                fontWeight: FontWeight.w700,
               ),
             ),
-          if (controller.isPurchaseInvoice) const SizedBox(width: 8),
+          ),
+          const SizedBox(width: 8),
           FilledButton.tonalIcon(
             onPressed: controller.addItemRow,
             icon: const Icon(Icons.add_circle_outline_rounded, size: 16),
@@ -375,23 +398,20 @@ class _ItemRowCard<T extends BaseInvoiceFormController> extends GetView<T> {
           CustomTextField(
             label: 'Description',
             controller: row.descriptionController,
-            hintText: row.isServiceSelection
-                ? 'Service description'
-                : 'Item description',
-            readOnly: row.isServiceSelection,
+            hintText: 'Description',
+            readOnly: true,
           ),
-          if (!row.isServiceSelection)
-            CustomTextField(
-              label: 'Quantity',
-              controller: row.quantityController,
-              keyboardType: const TextInputType.numberWithOptions(decimal: true),
-              inputFormatters: <TextInputFormatter>[
-                FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d{0,3}')),
-              ],
-              onChanged: (_) => controller.update(),
-            ),
           CustomTextField(
-            label: row.isServiceSelection ? 'Amount' : 'Unit Price',
+            label: 'Quantity',
+            controller: row.quantityController,
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            inputFormatters: <TextInputFormatter>[
+              FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d{0,3}')),
+            ],
+            onChanged: (_) => controller.update(),
+          ),
+          CustomTextField(
+            label: 'Unit Price',
             controller: row.unitPriceController,
             keyboardType: const TextInputType.numberWithOptions(decimal: true),
             inputFormatters: <TextInputFormatter>[
@@ -399,16 +419,15 @@ class _ItemRowCard<T extends BaseInvoiceFormController> extends GetView<T> {
             ],
             onChanged: (_) => controller.update(),
           ),
-          if (!row.isServiceSelection)
-            CustomTextField(
-              label: 'Discount %',
-              controller: row.discountController,
-              keyboardType: const TextInputType.numberWithOptions(decimal: true),
-              inputFormatters: <TextInputFormatter>[
-                FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d{0,2}')),
-              ],
-              onChanged: (_) => controller.update(),
-            ),
+          CustomTextField(
+            label: 'Discount %',
+            controller: row.discountController,
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            inputFormatters: <TextInputFormatter>[
+              FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d{0,2}')),
+            ],
+            onChanged: (_) => controller.update(),
+          ),
           ValueListenableBuilder<TaxRateEntity?>(
             valueListenable: row.taxRate,
             builder: (context, value, _) {
@@ -552,16 +571,20 @@ class _ServiceRowCard<T extends BaseInvoiceFormController> extends GetView<T> {
   }
 }
 
-class _InlineQuickAddAction extends StatelessWidget {
-  const _InlineQuickAddAction({
+class _InlineQuickActions extends StatelessWidget {
+  const _InlineQuickActions({
     required this.label,
-    required this.actionLabel,
-    required this.onTap,
+    required this.primaryActionLabel,
+    required this.onPrimaryTap,
+    this.secondaryActionLabel,
+    this.onSecondaryTap,
   });
 
   final String label;
-  final String actionLabel;
-  final VoidCallback onTap;
+  final String primaryActionLabel;
+  final VoidCallback onPrimaryTap;
+  final String? secondaryActionLabel;
+  final VoidCallback? onSecondaryTap;
 
   @override
   Widget build(BuildContext context) {
@@ -577,18 +600,45 @@ class _InlineQuickAddAction extends StatelessWidget {
             ),
           ),
           const Spacer(),
-          InkWell(
-            onTap: onTap,
-            borderRadius: BorderRadius.circular(999),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-              child: Text(
-                actionLabel,
-                style: theme.textTheme.labelLarge?.copyWith(
-                  color: theme.colorScheme.primary,
-                  fontWeight: FontWeight.w700,
+          Flexible(
+            child: Wrap(
+              spacing: 10,
+              alignment: WrapAlignment.end,
+              children: <Widget>[
+                InkWell(
+                  onTap: onPrimaryTap,
+                  borderRadius: BorderRadius.circular(999),
+                  child: Padding(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                    child: Text(
+                      primaryActionLabel,
+                      style: theme.textTheme.labelLarge?.copyWith(
+                        color: theme.colorScheme.primary,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
                 ),
-              ),
+                if (secondaryActionLabel != null && onSecondaryTap != null)
+                  InkWell(
+                    onTap: onSecondaryTap,
+                    borderRadius: BorderRadius.circular(999),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 4,
+                        vertical: 2,
+                      ),
+                      child: Text(
+                        secondaryActionLabel!,
+                        style: theme.textTheme.labelLarge?.copyWith(
+                          color: theme.colorScheme.primary,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
             ),
           ),
         ],
@@ -606,6 +656,22 @@ Future<void> _openQuickAddParty(
       initialType: controller.isPurchaseInvoice ? 'creditor' : 'debtor',
     ),
   );
+  if (result == null) {
+    return;
+  }
+  await controller.lookupController.loadInvoiceLookups(
+    partyType: controller.partyType,
+    serviceAccountType: controller.serviceAccountType,
+    includeItems: controller.supportsItems,
+  );
+  controller.update();
+}
+
+Future<void> _openQuickAddLedger(
+  BuildContext context,
+  BaseInvoiceFormController controller,
+) async {
+  final result = await Get.to(() => const AccountFormSheet());
   if (result == null) {
     return;
   }

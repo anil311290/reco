@@ -5,6 +5,9 @@ import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:get/get.dart';
 
 import '../../../core/config/api_endpoints.dart';
+import '../../../core/utils/app_action_loader.dart';
+import '../../../core/utils/app_snackbar.dart';
+import '../../../data/repositories/transactions/transactions_repository.dart';
 import '../../../data/models/transactions/transaction_entities.dart';
 import '../../controllers/reports/ledger_report_controller.dart';
 import '../../controllers/reports/report_lookup_controller.dart';
@@ -66,7 +69,7 @@ class _LedgerReportScreenState extends State<LedgerReportScreen> {
           children: <Widget>[
             ReportFilterPanel(
               title: 'Filters',
-              subtitle: 'Select ledger and period to inspect running balances.',
+              subtitle: 'Select one ledger to view opening balance, voucher-wise movement, and closing balance (Tally ledger style).',
               icon: FontAwesomeIcons.sliders,
               iconColor: const Color(0xFF475569),
               child: Column(
@@ -145,7 +148,7 @@ class _LedgerReportScreenState extends State<LedgerReportScreen> {
                     ),
                   ),
                   child: Text(
-                    'Choose a ledger and date range to view voucher-wise movement and running balance.',
+                    'Choose an account and date window to view the ledger.',
                     style: Theme.of(context).textTheme.bodyMedium,
                   ),
                 ),
@@ -170,9 +173,10 @@ class _LedgerReportScreenState extends State<LedgerReportScreen> {
                         value: controller.formatCurrency(
                           (report['opening_balance'] as Map?)?['balance'],
                         ),
-                        note: ((report['opening_balance'] as Map?)?['type'] ?? '-')
-                            .toString()
-                            .toUpperCase(),
+                        note: _drCr(
+                          ((report['opening_balance'] as Map?)?['type'] ?? '')
+                              .toString(),
+                        ),
                         color: const Color(0xFF2563EB),
                         icon: FontAwesomeIcons.circlePlay,
                       ),
@@ -190,9 +194,10 @@ class _LedgerReportScreenState extends State<LedgerReportScreen> {
                         value: controller.formatCurrency(
                           (report['opening_balance'] as Map?)?['balance'],
                         ),
-                        note: ((report['opening_balance'] as Map?)?['type'] ?? '-')
-                            .toString()
-                            .toUpperCase(),
+                        note: _drCr(
+                          ((report['opening_balance'] as Map?)?['type'] ?? '')
+                              .toString(),
+                        ),
                         color: const Color(0xFF2563EB),
                         icon: FontAwesomeIcons.circlePlay,
                       ),
@@ -204,9 +209,10 @@ class _LedgerReportScreenState extends State<LedgerReportScreen> {
                       value: controller.formatCurrency(
                         (report['closing_balance'] as Map?)?['balance'],
                       ),
-                      note: ((report['closing_balance'] as Map?)?['type'] ?? '-')
-                          .toString()
-                          .toUpperCase(),
+                      note: _drCr(
+                        ((report['closing_balance'] as Map?)?['type'] ?? '')
+                            .toString(),
+                      ),
                       color: const Color(0xFF16A34A),
                       icon: FontAwesomeIcons.circleStop,
                     ),
@@ -314,11 +320,7 @@ class _LedgerReportScreenState extends State<LedgerReportScreen> {
                   (voucher['voucher_number'] ?? '-').toString(),
                   onTap: voucher.isEmpty
                       ? null
-                      : () => Get.to(
-                            () => TransactionDetailScreen(
-                              record: _buildVoucherRecord(entry, voucher, party),
-                            ),
-                          ),
+                      : () => _openVoucherDetail(entry, voucher, party),
                 ),
               ),
             ),
@@ -361,11 +363,7 @@ class _LedgerReportScreenState extends State<LedgerReportScreen> {
                       icon: Icons.remove_red_eye_outlined,
                       tooltip: 'View Voucher',
                       color: Theme.of(context).colorScheme.primary,
-                      onTap: () => Get.to(
-                        () => TransactionDetailScreen(
-                          record: _buildVoucherRecord(entry, voucher, party),
-                        ),
-                      ),
+                      onTap: () => _openVoucherDetail(entry, voucher, party),
                     ),
                     const SizedBox(width: 8),
                   ],
@@ -444,6 +442,51 @@ class _LedgerReportScreenState extends State<LedgerReportScreen> {
   }
 
   int? _asInt(dynamic value) => int.tryParse(value?.toString() ?? '');
+
+  String _drCr(String type) {
+    switch (type.toLowerCase()) {
+      case 'debit':
+      case 'dr':
+        return 'DR';
+      case 'credit':
+      case 'cr':
+        return 'CR';
+      default:
+        return '-';
+    }
+  }
+
+  Future<void> _openVoucherDetail(
+    Map<String, dynamic> entry,
+    Map<String, dynamic> voucher,
+    Map<String, dynamic> party,
+  ) async {
+    final summaryRecord = _buildVoucherRecord(entry, voucher, party);
+    final voucherId = _asInt(voucher['id']);
+    if (voucherId == null) {
+      Get.to(() => TransactionDetailScreen(record: summaryRecord));
+      return;
+    }
+
+    try {
+      final response = await AppActionLoader.run(
+        () => Get.find<TransactionsRepository>().fetchRecordDetail(
+          endpoint: ApiEndpoints.voucherDetail(voucherId),
+        ),
+        message: 'Loading voucher details...',
+      );
+      final detail = response['data'];
+      final record = detail is Map<String, dynamic>
+          ? TransactionRecord.fromVoucher(detail)
+          : summaryRecord;
+      Get.to(() => TransactionDetailScreen(record: record));
+    } catch (_) {
+      AppSnackbar.warning(
+        'Full voucher details could not be loaded. Showing available data.',
+      );
+      Get.to(() => TransactionDetailScreen(record: summaryRecord));
+    }
+  }
 
   TransactionRecord _buildVoucherRecord(
     Map<String, dynamic> entry,

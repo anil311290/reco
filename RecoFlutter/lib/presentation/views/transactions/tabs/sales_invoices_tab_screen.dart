@@ -30,12 +30,12 @@ class SalesInvoicesTabScreen extends GetView<SalesInvoicesController> {
       rowBuilder: (context, item, index) => DataRow(
         cells: <DataCell>[
           masterTextCell(item.number.isEmpty ? '-' : item.number),
-          masterTextCell(item.date.length >= 10 ? item.date.substring(0, 10) : item.date),
+          masterTextCell(_formatDate(item.date)),
           masterTextCell(item.partyName.isEmpty ? '-' : item.partyName),
-          masterTextCell('Rs ${item.amount.toStringAsFixed(2)}'),
-          masterTextCell('Rs ${item.amountPaid.toStringAsFixed(2)}'),
-          masterTextCell('Rs ${item.balanceDue.toStringAsFixed(2)}'),
-          masterTextCell(item.dueDate.length >= 10 ? item.dueDate.substring(0, 10) : item.dueDate),
+          masterTextCell('₹${item.amount.toStringAsFixed(2)}'),
+          masterTextCell('₹${item.amountPaid.toStringAsFixed(2)}'),
+          masterTextCell('₹${item.balanceDue.toStringAsFixed(2)}'),
+          masterTextCell(_formatDate(item.dueDate)),
           DataCell(Center(child: TransactionStatusChip(status: item.status))),
           DataCell(
             Center(
@@ -51,13 +51,23 @@ class SalesInvoicesTabScreen extends GetView<SalesInvoicesController> {
                       await Get.to(
                         () => TransactionDetailScreen(
                           record: detailRecord,
-                          onEdit: item.status != 'paid'
+                          onEdit: item.status != 'paid' && item.status != 'cancelled'
                               ? () => openInvoiceEditor(item)
                               : null,
                           onRecordPayment:
-                              item.balanceDue > 0 && item.status != 'paid'
+                              item.balanceDue > 0 &&
+                              item.status != 'paid' &&
+                              item.status != 'cancelled'
                               ? () async {
                                   final updated = await recordInvoicePayment(item);
+                                  if (updated) {
+                                    Get.back<void>();
+                                  }
+                                }
+                              : null,
+                          onCancel: item.status != 'cancelled'
+                              ? () async {
+                                  final updated = await cancelInvoice(item);
                                   if (updated) {
                                     Get.back<void>();
                                   }
@@ -95,7 +105,7 @@ class SalesInvoicesTabScreen extends GetView<SalesInvoicesController> {
                     value: 'view',
                     child: Text('View'),
                   ),
-                  if (item.status != 'paid')
+                  if (item.status != 'paid' && item.status != 'cancelled')
                     const PopupMenuItem<String>(
                       value: 'edit',
                       child: Text('Edit'),
@@ -116,5 +126,34 @@ class SalesInvoicesTabScreen extends GetView<SalesInvoicesController> {
         ],
       ),
     );
+  }
+
+  String _formatDate(String value) {
+    if (value.length < 10) {
+      return value;
+    }
+    final date = value.substring(0, 10).split('-');
+    if (date.length != 3) {
+      return value.substring(0, 10);
+    }
+    const months = <String>[
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
+    ];
+    final monthIndex = int.tryParse(date[1]) ?? 1;
+    final month = monthIndex >= 1 && monthIndex <= 12
+        ? months[monthIndex - 1]
+        : date[1];
+    return '${date[2]} $month ${date[0]}';
   }
 }

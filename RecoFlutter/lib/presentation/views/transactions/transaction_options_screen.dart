@@ -40,7 +40,7 @@ class TransactionOptionsScreen extends GetView<TransactionOptionsController> {
           final item = controller.items[index];
           return TransactionOptionCard(
             item: item,
-            onTap: () => _openForm(item.tag),
+            onTap: () => openTransactionForm(item.tag),
           );
         },
       ),
@@ -57,123 +57,124 @@ class TransactionOptionsScreen extends GetView<TransactionOptionsController> {
     );
   }
 
-  void _openForm(String tag) {
-    switch (tag) {
-      case 'payment':
-        Get.to(
-          () => const PaymentVoucherScreen(),
-          binding: BindingsBuilder(
-            () {
-              final lookup = Get.put(
-                TransactionFormLookupController(
-                  Get.find<PartiesRepository>(),
-                  Get.find<AccountsRepository>(),
-                  Get.find<ItemsRepository>(),
-                  Get.find<TaxRatesRepository>(),
-                ),
-              );
-              Get.put(
-                PaymentVoucherFormController(
-                  Get.find<TransactionsRepository>(),
-                  lookup,
-                ),
-              );
-            },
-          ),
-        );
-        break;
-      case 'receipt':
-        Get.to(
-          () => const ReceiptVoucherScreen(),
-          binding: BindingsBuilder(
-            () {
-              final lookup = Get.put(
-                TransactionFormLookupController(
-                  Get.find<PartiesRepository>(),
-                  Get.find<AccountsRepository>(),
-                  Get.find<ItemsRepository>(),
-                  Get.find<TaxRatesRepository>(),
-                ),
-              );
-              Get.put(
-                ReceiptVoucherFormController(
-                  Get.find<TransactionsRepository>(),
-                  lookup,
-                ),
-              );
-            },
-          ),
-        );
-        break;
-      case 'adjustment':
-        Get.to(
-          () => const AdjustmentVoucherScreen(),
-          binding: BindingsBuilder(
-            () {
-              final lookup = Get.put(
-                TransactionFormLookupController(
-                  Get.find<PartiesRepository>(),
-                  Get.find<AccountsRepository>(),
-                  Get.find<ItemsRepository>(),
-                  Get.find<TaxRatesRepository>(),
-                ),
-              );
-              Get.put(
-                AdjustmentVoucherFormController(
-                  Get.find<TransactionsRepository>(),
-                  lookup,
-                ),
-              );
-            },
-          ),
-        );
-        break;
-      case 'sales':
-        Get.to(
-          () => const SalesInvoiceScreen(),
-          binding: BindingsBuilder(
-            () {
-              final lookup = Get.put(
-                TransactionFormLookupController(
-                  Get.find<PartiesRepository>(),
-                  Get.find<AccountsRepository>(),
-                  Get.find<ItemsRepository>(),
-                  Get.find<TaxRatesRepository>(),
-                ),
-              );
-              Get.put(
-                SalesInvoiceFormController(
-                  Get.find<TransactionsRepository>(),
-                  lookup,
-                ),
-              );
-            },
-          ),
-        );
-        break;
-      case 'purchase':
-        Get.to(
-          () => const PurchaseInvoiceScreen(),
-          binding: BindingsBuilder(
-            () {
-              final lookup = Get.put(
-                TransactionFormLookupController(
-                  Get.find<PartiesRepository>(),
-                  Get.find<AccountsRepository>(),
-                  Get.find<ItemsRepository>(),
-                  Get.find<TaxRatesRepository>(),
-                ),
-              );
-              Get.put(
-                PurchaseInvoiceFormController(
-                  Get.find<TransactionsRepository>(),
-                  lookup,
-                ),
-              );
-            },
-          ),
-        );
-        break;
-    }
+}
+
+void openTransactionForm(String tag) {
+  switch (tag) {
+    case 'payment':
+      Get.to(
+        () => const PaymentVoucherScreen(),
+        binding: BindingsBuilder(
+          () {
+            final lookup = Get.put(
+              TransactionFormLookupController(
+                Get.find<PartiesRepository>(),
+                Get.find<AccountsRepository>(),
+                Get.find<ItemsRepository>(),
+                Get.find<TaxRatesRepository>(),
+              ),
+            );
+            Get.put(
+              PaymentVoucherFormController(
+                Get.find<TransactionsRepository>(),
+                lookup,
+              ),
+            );
+          },
+        ),
+      );
+      break;
+    case 'receipt':
+      Get.to(
+        () => const ReceiptVoucherScreen(),
+        binding: BindingsBuilder(
+          () {
+            final lookup = Get.put(
+              TransactionFormLookupController(
+                Get.find<PartiesRepository>(),
+                Get.find<AccountsRepository>(),
+                Get.find<ItemsRepository>(),
+                Get.find<TaxRatesRepository>(),
+              ),
+            );
+            Get.put(
+              ReceiptVoucherFormController(
+                Get.find<TransactionsRepository>(),
+                lookup,
+              ),
+            );
+          },
+        ),
+      );
+      break;
+    case 'adjustment':
+      Get.to(
+        () => const AdjustmentVoucherScreen(),
+        binding: BindingsBuilder(
+          () {
+            final lookup = Get.put(
+              TransactionFormLookupController(
+                Get.find<PartiesRepository>(),
+                Get.find<AccountsRepository>(),
+                Get.find<ItemsRepository>(),
+                Get.find<TaxRatesRepository>(),
+              ),
+            );
+            Get.put(
+              AdjustmentVoucherFormController(
+                Get.find<TransactionsRepository>(),
+                lookup,
+              ),
+            );
+          },
+        ),
+      );
+      break;
+    case 'sales':
+      Get.to(
+        () => const SalesInvoiceScreen(),
+        binding: BindingsBuilder(
+          () {
+            final lookup = Get.put(
+              TransactionFormLookupController(
+                Get.find<PartiesRepository>(),
+                Get.find<AccountsRepository>(),
+                Get.find<ItemsRepository>(),
+                Get.find<TaxRatesRepository>(),
+              ),
+            );
+            Get.put(
+              SalesInvoiceFormController(
+                Get.find<TransactionsRepository>(),
+                lookup,
+              ),
+            );
+          },
+        ),
+      );
+      break;
+    case 'purchase':
+      Get.to(
+        () => const PurchaseInvoiceScreen(),
+        binding: BindingsBuilder(
+          () {
+            final lookup = Get.put(
+              TransactionFormLookupController(
+                Get.find<PartiesRepository>(),
+                Get.find<AccountsRepository>(),
+                Get.find<ItemsRepository>(),
+                Get.find<TaxRatesRepository>(),
+              ),
+            );
+            Get.put(
+              PurchaseInvoiceFormController(
+                Get.find<TransactionsRepository>(),
+                lookup,
+              ),
+            );
+          },
+        ),
+      );
+      break;
   }
 }

@@ -23,7 +23,7 @@ class CreditorsOutstandingReportScreen
     return Scaffold(
       appBar: AppBar(
         title: const ReportPageTitle(
-          title: 'Payables',
+          title: 'Payables Outstanding',
           icon: FontAwesomeIcons.wallet,
           color: _primaryColor,
         ),
@@ -47,7 +47,7 @@ class CreditorsOutstandingReportScreen
           children: <Widget>[
             ReportFilterPanel(
               title: 'Export',
-              subtitle: 'Download or share the payables snapshot.',
+              subtitle: 'Creditors with credit balances on their linked ledgers (Accounts Payable).',
               icon: FontAwesomeIcons.fileExport,
               iconColor: _primaryColor,
               child: ReportActionBar(
@@ -82,7 +82,7 @@ class CreditorsOutstandingReportScreen
                     child: ReportStatCard(
                       label: 'Total Outstanding',
                       value: controller.formatCurrency(report['total']),
-                      note: 'Open payables',
+                      note: 'Open payables across all creditors.',
                       color: _primaryColor,
                       icon: FontAwesomeIcons.moneyBills,
                     ),
@@ -92,7 +92,7 @@ class CreditorsOutstandingReportScreen
                     child: ReportStatCard(
                       label: 'Creditors Count',
                       value: '${rows.length}',
-                      note: 'Suppliers with balance',
+                      note: 'Suppliers with outstanding balances.',
                       color: _secondaryColor,
                       icon: FontAwesomeIcons.users,
                     ),

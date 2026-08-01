@@ -358,6 +358,52 @@ Future<bool> recordInvoicePayment(TransactionRecord record) async {
   return true;
 }
 
+Future<bool> cancelInvoice(TransactionRecord record) async {
+  if (record.id == null ||
+      (record.kind != TransactionRecordKind.salesInvoice &&
+          record.kind != TransactionRecordKind.purchaseInvoice)) {
+    AppSnackbar.error('Cancel is not available for this invoice.');
+    return false;
+  }
+
+  if (!Get.find<TransactionsRepository>().networkMonitorService.isOnline.value) {
+    AppSnackbar.error('Internet is required to cancel this invoice.');
+    return false;
+  }
+
+  final confirmed = await AppAlertDialog.confirm(
+    title: 'Cancel Invoice?',
+    message: record.kind == TransactionRecordKind.salesInvoice
+        ? 'Linked receipts and sales posting will be cancelled, ledgers reversed, and stock restored.'
+        : 'Linked payments and purchase posting will be cancelled, ledgers reversed, and stock adjusted.',
+    confirmText: 'Yes, cancel it',
+    cancelText: 'No',
+    isDestructive: true,
+  );
+
+  if (confirmed != true) {
+    return false;
+  }
+
+  final repository = Get.find<TransactionsRepository>();
+  final endpoint = record.kind == TransactionRecordKind.salesInvoice
+      ? '${ApiEndpoints.salesInvoices}/${record.id}/cancel'
+      : '${ApiEndpoints.purchaseInvoices}/${record.id}/cancel';
+
+  await AppActionLoader.run(
+    () async {
+      await repository.apiClient.post<Map<String, dynamic>>(
+        endpoint,
+        data: const <String, dynamic>{},
+      );
+    },
+    message: 'Cancelling invoice...',
+  );
+
+  AppSnackbar.success('Invoice cancelled successfully.');
+  return true;
+}
+
 Future<Map<String, dynamic>?> _resolveInvoicePayload(TransactionRecord record) async {
   if (record.id == null) {
     return record.rawPayload;

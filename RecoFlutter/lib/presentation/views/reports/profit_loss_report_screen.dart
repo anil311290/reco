@@ -18,7 +18,7 @@ class ProfitLossReportScreen extends GetView<ProfitLossReportController> {
     return Scaffold(
       appBar: AppBar(
         title: const ReportPageTitle(
-          title: 'Profit & Loss',
+          title: 'Profit & Loss Statement',
           icon: FontAwesomeIcons.chartLine,
           color: Color(0xFF16A34A),
         ),
@@ -35,7 +35,7 @@ class ProfitLossReportScreen extends GetView<ProfitLossReportController> {
           children: <Widget>[
             ReportFilterPanel(
               title: 'Filters',
-              subtitle: 'Choose financial year to review profitability.',
+              subtitle: 'Track income, expenses, and final profitability with a cleaner statement layout built for fast management review.',
               icon: FontAwesomeIcons.sliders,
               iconColor: const Color(0xFF16A34A),
               child: Column(
@@ -94,7 +94,7 @@ class ProfitLossReportScreen extends GetView<ProfitLossReportController> {
                           value: controller.formatCurrency(
                             income is Map<String, dynamic> ? income['total'] : 0,
                           ),
-                          note: 'Revenue recorded',
+                          note: 'Revenue and income recorded in the selected financial year.',
                           color: const Color(0xFF16A34A),
                           icon: FontAwesomeIcons.sackDollar,
                         ),
@@ -106,7 +106,7 @@ class ProfitLossReportScreen extends GetView<ProfitLossReportController> {
                           value: controller.formatCurrency(
                             expense is Map<String, dynamic> ? expense['total'] : 0,
                           ),
-                          note: 'Expense heads in period',
+                          note: 'All expense heads included in this period.',
                           color: const Color(0xFFEF4444),
                           icon: FontAwesomeIcons.moneyBillTransfer,
                         ),
@@ -120,7 +120,9 @@ class ProfitLossReportScreen extends GetView<ProfitLossReportController> {
                         child: ReportStatCard(
                           label: 'Net Result',
                           value: '${(report['is_profit'] == true) ? '+' : '-'}${controller.formatCurrency((report['net_profit'] as num?)?.abs() ?? 0)}',
-                          note: (report['is_profit'] == true) ? 'Profit' : 'Loss',
+                          note: (report['is_profit'] == true)
+                              ? 'Profit recorded for this period.'
+                              : 'Loss recorded for this period.',
                           color: (report['is_profit'] == true)
                               ? const Color(0xFF2563EB)
                               : const Color(0xFFF59E0B),
@@ -178,7 +180,11 @@ class ProfitLossReportScreen extends GetView<ProfitLossReportController> {
         ),
       ),
       child: accounts.isEmpty
-          ? Text('No $title recorded')
+          ? Text(
+              title == 'Income'
+                  ? 'No income recorded'
+                  : 'No expenses recorded',
+            )
           : Container(
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(16),

@@ -155,7 +155,9 @@ class AccountsController extends GetxController with MasterExportMixin {
           'Code': item.accountCode,
           'Name': item.accountName,
           'Type': item.accountType,
-          'Mode': item.transactionMode.isEmpty ? '-' : item.transactionMode,
+          'Is Cash/Bank/OD': item.accountType == 'asset'
+              ? (item.isCashBankOd ? 'Yes' : 'No')
+              : '-',
           'Opening Balance': item.openingBalance.toStringAsFixed(2),
           'Balance Type': item.balanceType,
           'Status': item.isActive ? 'Active' : 'Inactive',

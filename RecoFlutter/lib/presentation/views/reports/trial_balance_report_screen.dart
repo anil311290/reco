@@ -38,7 +38,7 @@ class TrialBalanceReportScreen extends GetView<TrialBalanceReportController> {
           children: <Widget>[
             ReportFilterPanel(
               title: 'Filters',
-              subtitle: 'Pick financial year to compare debit and credit totals.',
+              subtitle: 'Basis for Balance Sheet and Profit & Loss - closing debit/credit balances for each ledger.',
               icon: FontAwesomeIcons.sliders,
               iconColor: const Color(0xFFD97706),
               child: Column(
@@ -93,9 +93,9 @@ class TrialBalanceReportScreen extends GetView<TrialBalanceReportController> {
                     children: <Widget>[
                       Expanded(
                         child: ReportStatCard(
-                          label: 'Total Debit',
+                          label: 'Closing Debit',
                           value: controller.formatCurrency(report['total_debit']),
-                          note: 'Debit side total',
+                          note: 'Must equal closing credit when books tally.',
                           color: const Color(0xFF2563EB),
                           icon: FontAwesomeIcons.arrowTrendUp,
                         ),
@@ -103,9 +103,9 @@ class TrialBalanceReportScreen extends GetView<TrialBalanceReportController> {
                       const SizedBox(width: 10),
                       Expanded(
                         child: ReportStatCard(
-                          label: 'Total Credit',
+                          label: 'Closing Credit',
                           value: controller.formatCurrency(report['total_credit']),
-                          note: 'Credit side total',
+                          note: 'Closing balances across all ledgers.',
                           color: const Color(0xFFF59E0B),
                           icon: FontAwesomeIcons.arrowTrendDown,
                         ),
@@ -121,7 +121,7 @@ class TrialBalanceReportScreen extends GetView<TrialBalanceReportController> {
                           value: (report['is_balanced'] == true) ? 'Balanced' : 'Mismatch',
                           note: (report['is_balanced'] == true)
                               ? 'Trial balance is closed cleanly.'
-                              : 'Difference exists',
+                              : 'Difference: ${controller.formatCurrency(((report['total_debit'] ?? 0) as num).toDouble() - ((report['total_credit'] ?? 0) as num).toDouble()).replaceFirst('-', '')}',
                           color: (report['is_balanced'] == true)
                               ? const Color(0xFF16A34A)
                               : const Color(0xFFEF4444),
@@ -243,10 +243,10 @@ class TrialBalanceReportScreen extends GetView<TrialBalanceReportController> {
         minWidth: 860,
         columns: <DataColumn2>[
           masterColumn(context, 'Code'),
-          masterColumn(context, 'Account Name', size: ColumnSize.L),
+          masterColumn(context, 'Particulars', size: ColumnSize.L),
           masterColumn(context, 'Type'),
-          masterColumn(context, 'Debit'),
-          masterColumn(context, 'Credit'),
+          masterColumn(context, 'Debit (₹)'),
+          masterColumn(context, 'Credit (₹)'),
         ],
         rows: tableRows,
       ),

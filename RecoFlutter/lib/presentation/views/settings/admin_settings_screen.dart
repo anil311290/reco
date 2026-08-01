@@ -48,7 +48,7 @@ class AdminSettingsScreen extends GetView<AdminSettingsController> {
             Tab(text: 'Company'),
             Tab(text: 'Theme'),
             Tab(text: 'Accounting'),
-            Tab(text: 'Financial Year'),
+            Tab(text: 'Financial Years'),
             Tab(text: 'Subscription'),
           ],
         ),
@@ -118,7 +118,7 @@ class _CompanyTab extends StatelessWidget {
               ),
               const SizedBox(height: 4),
               Text(
-                'Update company profile, contact details and financial year setup.',
+                'Update your company profile used across invoices and reports.',
                 style: theme.textTheme.bodySmall?.copyWith(
                   color: theme.colorScheme.onSurfaceVariant,
                 ),
@@ -260,7 +260,7 @@ class _CompanyTab extends StatelessWidget {
               ),
               const SizedBox(height: 4),
               Text(
-                'Same as web settings. Use MM-DD format for year start and end.',
+                'Same dates are used for company defaults and report filters. Use MM-DD format for year start and end.',
                 style: theme.textTheme.bodySmall?.copyWith(
                   color: theme.colorScheme.onSurfaceVariant,
                 ),

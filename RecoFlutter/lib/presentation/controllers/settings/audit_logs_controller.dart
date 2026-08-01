@@ -4,9 +4,15 @@ import 'package:get/get.dart';
 import '../../../data/repositories/settings/audit_logs_repository.dart';
 
 class AuditLogsController extends GetxController {
-  AuditLogsController(this._repository);
+  AuditLogsController(
+    this._repository, {
+    this.initialModule,
+    this.initialRecordId,
+  });
 
   final AuditLogsRepository _repository;
+  final String? initialModule;
+  final String? initialRecordId;
 
   final isLoading = false.obs;
   final isRefreshing = false.obs;
@@ -20,6 +26,7 @@ class AuditLogsController extends GetxController {
 
   final selectedAction = ''.obs;
   final selectedModule = ''.obs;
+  final selectedRecordId = ''.obs;
   final selectedUserId = ''.obs;
   final currentPage = 1.obs;
   final lastPage = 1.obs;
@@ -32,6 +39,8 @@ class AuditLogsController extends GetxController {
   @override
   void onInit() {
     super.onInit();
+    selectedModule.value = initialModule ?? '';
+    selectedRecordId.value = initialRecordId ?? '';
     loadLogs();
   }
 
@@ -60,6 +69,7 @@ class AuditLogsController extends GetxController {
             : searchController.text.trim(),
         action: selectedAction.value.isEmpty ? null : selectedAction.value,
         module: selectedModule.value.isEmpty ? null : selectedModule.value,
+        recordId: selectedRecordId.value.isEmpty ? null : selectedRecordId.value,
         userId: selectedUserId.value.isEmpty ? null : selectedUserId.value,
         page: currentPage.value,
       );
@@ -142,6 +152,7 @@ class AuditLogsController extends GetxController {
   void clearFilters() {
     selectedAction.value = '';
     selectedModule.value = '';
+    selectedRecordId.value = '';
     selectedUserId.value = '';
     searchController.clear();
   }

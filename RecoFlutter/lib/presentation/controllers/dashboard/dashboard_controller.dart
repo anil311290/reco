@@ -180,7 +180,7 @@ class DashboardController extends GetxController {
       }
     }
 
-    return '${isNegative ? '-' : ''}Rs ${buffer.toString()}.$decimal';
+    return '${isNegative ? '-' : ''}₹${buffer.toString()}.$decimal';
   }
 
   String formatDate(String value) {

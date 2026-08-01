@@ -33,9 +33,6 @@ class LedgerReportController extends BaseReportController {
     if (lookup.ledgerAccounts.isEmpty) {
       await lookup.loadLedgerAccounts();
     }
-    if (accountId.value == null && lookup.ledgerAccounts.isNotEmpty) {
-      accountId.value = _asInt(lookup.ledgerAccounts.first['id']);
-    }
     if (accountId.value != null) {
       await loadReport();
     }
@@ -60,6 +57,4 @@ class LedgerReportController extends BaseReportController {
     toDateController.dispose();
     super.onClose();
   }
-
-  int? _asInt(dynamic value) => int.tryParse(value?.toString() ?? '');
 }
