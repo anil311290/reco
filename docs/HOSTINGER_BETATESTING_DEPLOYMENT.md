@@ -1,14 +1,29 @@
-# Hostinger Betatesting Deployment
+# Hostinger UAT And Production Deployment
 
 This project can be deployed to Hostinger shared hosting without exposing the full Laravel application inside `public_html`.
 
+There are two branch-specific deployment targets:
+
+- `uat` branch -> `https://betatesting.sahrudaya.online`
+- `main` branch -> `https://reco.sahrudaya.online`
+
 ## Target paths
 
+### UAT
+
+- Branch: `uat`
 - App code path: `/home/u787932101/domains/sahrudaya.online/reco_betatesting_app`
 - Web root path: `/home/u787932101/domains/sahrudaya.online/public_html/betatesting`
-- Site URL: `https://sahrudaya.online/betatesting`
+- Site URL: `https://betatesting.sahrudaya.online`
 
-The web root stays inside `public_html/betatesting`, but the full Laravel app is stored outside that folder.
+### Production
+
+- Branch: `main`
+- App code path: `/home/u787932101/domains/sahrudaya.online/reco_app`
+- Web root path: `/home/u787932101/domains/reco.sahrudaya.online/public_html`
+- Site URL: `https://reco.sahrudaya.online`
+
+Each web root stays public-facing, while the full Laravel app is stored outside or alongside that folder in a separate app path.
 
 ## GitHub repository
 
@@ -32,11 +47,16 @@ Add these under `reco_web_dev > Settings > Secrets and variables > Actions`:
 
 Repository Variables:
 
-- `HOSTINGER_HOST` = `217.21.87.106`
-- `HOSTINGER_PORT` = `65002`
-- `HOSTINGER_USER` = `u787932101`
-- `HOSTINGER_APP_PATH` = `/home/u787932101/domains/sahrudaya.online/reco_betatesting_app`
-- `HOSTINGER_PUBLIC_PATH` = `/home/u787932101/domains/sahrudaya.online/public_html/betatesting`
+- `UAT_HOSTINGER_HOST` = `217.21.87.106`
+- `UAT_HOSTINGER_PORT` = `65002`
+- `UAT_HOSTINGER_USER` = `u787932101`
+- `UAT_HOSTINGER_APP_PATH` = `/home/u787932101/domains/sahrudaya.online/reco_betatesting_app`
+- `UAT_HOSTINGER_PUBLIC_PATH` = `/home/u787932101/domains/sahrudaya.online/public_html/betatesting`
+- `PROD_HOSTINGER_HOST` = `217.21.87.106`
+- `PROD_HOSTINGER_PORT` = `65002`
+- `PROD_HOSTINGER_USER` = `u787932101`
+- `PROD_HOSTINGER_APP_PATH` = `/home/u787932101/domains/sahrudaya.online/reco_app`
+- `PROD_HOSTINGER_PUBLIC_PATH` = `/home/u787932101/domains/reco.sahrudaya.online/public_html`
 
 Repository Secret:
 
@@ -50,11 +70,13 @@ Connect to the server:
 ssh -p 65002 u787932101@217.21.87.106
 ```
 
-Create the app directory:
+Create the app directories:
 
 ```bash
 mkdir -p /home/u787932101/domains/sahrudaya.online/reco_betatesting_app
 mkdir -p /home/u787932101/domains/sahrudaya.online/public_html/betatesting
+mkdir -p /home/u787932101/domains/sahrudaya.online/reco_app
+mkdir -p /home/u787932101/domains/reco.sahrudaya.online/public_html
 ```
 
 After the first GitHub deployment, SSH again and configure Laravel:
@@ -67,12 +89,14 @@ cp .env.example .env
 php artisan key:generate
 ```
 
-Update `.env` for production:
+Update `.env` for the target environment:
 
 - `APP_ENV=production`
 - `APP_DEBUG=false`
-- `APP_URL=https://sahrudaya.online/betatesting`
-- `ASSET_URL=https://sahrudaya.online/betatesting`
+- UAT: `APP_URL=https://betatesting.sahrudaya.online`
+- UAT: `ASSET_URL=https://betatesting.sahrudaya.online`
+- Production: `APP_URL=https://reco.sahrudaya.online`
+- Production: `ASSET_URL=https://reco.sahrudaya.online`
 - Production database credentials
 - Mail credentials
 - Queue/cache/session drivers as needed
@@ -120,30 +144,32 @@ cat ~/.ssh/reco_web_dev_hostinger
 
 ## Deployment workflow
 
-Workflow file:
+Workflow files:
 
 - `.github/workflows/deploy-hostinger-betatesting.yml`
+- `.github/workflows/deploy-hostinger-production.yml`
 
-What it does on every push to `main`:
+What they do:
 
-1. Installs Composer dependencies.
-2. Installs Node dependencies.
-3. Builds Vite assets.
-4. Uploads a release archive to Hostinger.
-5. Extracts the app into the app directory.
-6. Copies Laravel `public` contents into `public_html/betatesting`.
-7. Rewrites `index.php` to point to the real Laravel app path.
-8. Recreates the `storage` symlink.
-9. Runs `php artisan migrate --force` and caches config/routes/views.
+1. `uat` branch deploys to `betatesting.sahrudaya.online`.
+2. `main` branch deploys to `reco.sahrudaya.online`.
+3. Each workflow installs Composer and Node dependencies.
+4. Each workflow builds Vite assets.
+5. Each workflow uploads a release archive to Hostinger.
+6. Each workflow extracts the app into its app directory.
+7. Each workflow copies Laravel `public` contents into the target web root.
+8. Each workflow rewrites `index.php` to point to the real Laravel app path.
+9. Each workflow recreates the `storage` symlink.
+10. Each workflow runs `php artisan migrate --force` and caches config/routes/views.
 
 ## First deployment checklist
 
 1. Push the repo to `reco_web_dev`.
-2. Add the GitHub Variables and the `HOSTINGER_SSH_KEY` secret.
+2. Add the UAT and production GitHub Variables and the `HOSTINGER_SSH_KEY` secret.
 3. Ensure the SSH key works.
-4. Trigger the GitHub Actions workflow.
+4. Push to `uat` for UAT or `main` for production, or trigger the matching workflow manually.
 5. Create and verify `.env` on the server.
-6. Visit `https://sahrudaya.online/betatesting`.
+6. Visit the target domain.
 
 ## Notes
 
