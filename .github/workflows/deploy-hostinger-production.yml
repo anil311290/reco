@@ -1,13 +1,13 @@
-name: Deploy UAT To Hostinger
+name: Deploy Production To Hostinger
 
 on:
   push:
     branches:
-      - uat
+      - main
   workflow_dispatch:
 
 concurrency:
-  group: hostinger-uat-deploy
+  group: hostinger-production-deploy
   cancel-in-progress: true
 
 jobs:
@@ -58,12 +58,12 @@ jobs:
       - name: Check deployment secrets
         id: check-secrets
         env:
-          HOSTINGER_HOST: ${{ vars.UAT_HOSTINGER_HOST }}
-          HOSTINGER_USER: ${{ vars.UAT_HOSTINGER_USER }}
+          HOSTINGER_HOST: ${{ vars.PROD_HOSTINGER_HOST }}
+          HOSTINGER_USER: ${{ vars.PROD_HOSTINGER_USER }}
           HOSTINGER_SSH_KEY: ${{ secrets.HOSTINGER_SSH_KEY }}
-          HOSTINGER_PORT: ${{ vars.UAT_HOSTINGER_PORT }}
-          HOSTINGER_APP_PATH: ${{ vars.UAT_HOSTINGER_APP_PATH }}
-          HOSTINGER_PUBLIC_PATH: ${{ vars.UAT_HOSTINGER_PUBLIC_PATH }}
+          HOSTINGER_PORT: ${{ vars.PROD_HOSTINGER_PORT }}
+          HOSTINGER_APP_PATH: ${{ vars.PROD_HOSTINGER_APP_PATH }}
+          HOSTINGER_PUBLIC_PATH: ${{ vars.PROD_HOSTINGER_PUBLIC_PATH }}
         run: |
           missing=0
           for secret in HOSTINGER_HOST HOSTINGER_USER HOSTINGER_SSH_KEY HOSTINGER_PORT HOSTINGER_APP_PATH HOSTINGER_PUBLIC_PATH; do
@@ -84,44 +84,44 @@ jobs:
         if: steps.check-secrets.outputs.can_deploy == 'true'
         uses: appleboy/ssh-action@v1.2.0
         with:
-          host: ${{ vars.UAT_HOSTINGER_HOST }}
-          username: ${{ vars.UAT_HOSTINGER_USER }}
+          host: ${{ vars.PROD_HOSTINGER_HOST }}
+          username: ${{ vars.PROD_HOSTINGER_USER }}
           key: ${{ secrets.HOSTINGER_SSH_KEY }}
-          port: ${{ vars.UAT_HOSTINGER_PORT }}
+          port: ${{ vars.PROD_HOSTINGER_PORT }}
           script: |
-            mkdir -p "${{ vars.UAT_HOSTINGER_APP_PATH }}"
-            mkdir -p "${{ vars.UAT_HOSTINGER_PUBLIC_PATH }}"
-            mkdir -p "${{ vars.UAT_HOSTINGER_APP_PATH }}/storage/framework/cache"
-            mkdir -p "${{ vars.UAT_HOSTINGER_APP_PATH }}/storage/framework/sessions"
-            mkdir -p "${{ vars.UAT_HOSTINGER_APP_PATH }}/storage/framework/views"
-            mkdir -p "${{ vars.UAT_HOSTINGER_APP_PATH }}/storage/logs"
-            mkdir -p "${{ vars.UAT_HOSTINGER_APP_PATH }}/bootstrap/cache"
+            mkdir -p "${{ vars.PROD_HOSTINGER_APP_PATH }}"
+            mkdir -p "${{ vars.PROD_HOSTINGER_PUBLIC_PATH }}"
+            mkdir -p "${{ vars.PROD_HOSTINGER_APP_PATH }}/storage/framework/cache"
+            mkdir -p "${{ vars.PROD_HOSTINGER_APP_PATH }}/storage/framework/sessions"
+            mkdir -p "${{ vars.PROD_HOSTINGER_APP_PATH }}/storage/framework/views"
+            mkdir -p "${{ vars.PROD_HOSTINGER_APP_PATH }}/storage/logs"
+            mkdir -p "${{ vars.PROD_HOSTINGER_APP_PATH }}/bootstrap/cache"
 
       - name: Upload release archive
         if: steps.check-secrets.outputs.can_deploy == 'true'
         uses: appleboy/scp-action@v0.1.7
         with:
-          host: ${{ vars.UAT_HOSTINGER_HOST }}
-          username: ${{ vars.UAT_HOSTINGER_USER }}
+          host: ${{ vars.PROD_HOSTINGER_HOST }}
+          username: ${{ vars.PROD_HOSTINGER_USER }}
           key: ${{ secrets.HOSTINGER_SSH_KEY }}
-          port: ${{ vars.UAT_HOSTINGER_PORT }}
+          port: ${{ vars.PROD_HOSTINGER_PORT }}
           source: ".deploy/release.tar.gz"
-          target: ${{ vars.UAT_HOSTINGER_APP_PATH }}
+          target: ${{ vars.PROD_HOSTINGER_APP_PATH }}
           strip_components: 1
 
       - name: Deploy release
         if: steps.check-secrets.outputs.can_deploy == 'true'
         uses: appleboy/ssh-action@v1.2.0
         with:
-          host: ${{ vars.UAT_HOSTINGER_HOST }}
-          username: ${{ vars.UAT_HOSTINGER_USER }}
+          host: ${{ vars.PROD_HOSTINGER_HOST }}
+          username: ${{ vars.PROD_HOSTINGER_USER }}
           key: ${{ secrets.HOSTINGER_SSH_KEY }}
-          port: ${{ vars.UAT_HOSTINGER_PORT }}
+          port: ${{ vars.PROD_HOSTINGER_PORT }}
           script: |
             set -e
 
-            APP_PATH="${{ vars.UAT_HOSTINGER_APP_PATH }}"
-            PUBLIC_PATH="${{ vars.UAT_HOSTINGER_PUBLIC_PATH }}"
+            APP_PATH="${{ vars.PROD_HOSTINGER_APP_PATH }}"
+            PUBLIC_PATH="${{ vars.PROD_HOSTINGER_PUBLIC_PATH }}"
 
             cd "$APP_PATH"
             tar -xzf release.tar.gz
@@ -146,15 +146,15 @@ jobs:
             define('LARAVEL_START', microtime(true));
 
             if (file_exists(
-              \$maintenance = '${{ vars.UAT_HOSTINGER_APP_PATH }}/storage/framework/maintenance.php'
+              \$maintenance = '${{ vars.PROD_HOSTINGER_APP_PATH }}/storage/framework/maintenance.php'
             )) {
                 require \$maintenance;
             }
 
-            require '${{ vars.UAT_HOSTINGER_APP_PATH }}/vendor/autoload.php';
+            require '${{ vars.PROD_HOSTINGER_APP_PATH }}/vendor/autoload.php';
 
             /** @var Application \$app */
-            \$app = require_once '${{ vars.UAT_HOSTINGER_APP_PATH }}/bootstrap/app.php';
+            \$app = require_once '${{ vars.PROD_HOSTINGER_APP_PATH }}/bootstrap/app.php';
 
             \$app->handleRequest(Request::capture());
             PHP
