@@ -82,13 +82,13 @@
                 </div>
                 <div class="card-body p-4">
                     <div class="small">
-                        <p class="mb-2"><strong>Submitted:</strong> {{ $contact->created_at->format('d M Y, h:i A') }}</p>
+                        <p class="mb-2"><strong>Submitted:</strong> {{ $contact->created_at->format('d-M-Y h:i A') }}</p>
                         <p class="mb-2"><strong>IP:</strong> {{ $contact->created_by_ip ?? '-' }}</p>
                         @if($contact->read_at)
-                        <p class="mb-2"><strong>Read At:</strong> {{ $contact->read_at->format('d M Y, h:i A') }}</p>
+                        <p class="mb-2"><strong>Read At:</strong> {{ $contact->read_at->format('d-M-Y h:i A') }}</p>
                         @endif
                         @if($contact->replied_at)
-                        <p class="mb-0"><strong>Replied:</strong> {{ $contact->replied_at->format('d M Y, h:i A') }}</p>
+                        <p class="mb-0"><strong>Replied:</strong> {{ $contact->replied_at->format('d-M-Y h:i A') }}</p>
                         @endif
                     </div>
                 </div>

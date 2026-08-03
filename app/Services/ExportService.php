@@ -28,9 +28,14 @@ class ExportService
     /**
      * Export Profit & Loss to PDF
      */
-    public function exportProfitLossPdf(int $companyId, int $financialYearId): string
+    public function exportProfitLossPdf(
+        int $companyId,
+        int $financialYearId,
+        ?string $dateFrom = null,
+        ?string $dateTo = null
+    ): string
     {
-        $report = $this->reportService->getProfitLoss($companyId, $financialYearId);
+        $report = $this->reportService->getProfitLoss($companyId, $financialYearId, $dateFrom, $dateTo);
 
         $pdf = Pdf::loadView('exports.profit-loss', compact('report'));
 
@@ -40,9 +45,14 @@ class ExportService
     /**
      * Export Balance Sheet to PDF
      */
-    public function exportBalanceSheetPdf(int $companyId, int $financialYearId): string
+    public function exportBalanceSheetPdf(
+        int $companyId,
+        int $financialYearId,
+        ?string $dateFrom = null,
+        ?string $dateTo = null
+    ): string
     {
-        $report = $this->reportService->getBalanceSheet($companyId, $financialYearId);
+        $report = $this->reportService->getBalanceSheet($companyId, $financialYearId, $dateFrom, $dateTo);
 
         $pdf = Pdf::loadView('exports.balance-sheet', compact('report'));
 
@@ -52,9 +62,14 @@ class ExportService
     /**
      * Export Trial Balance to PDF
      */
-    public function exportTrialBalancePdf(int $companyId, int $financialYearId): string
+    public function exportTrialBalancePdf(
+        int $companyId,
+        int $financialYearId,
+        ?string $dateFrom = null,
+        ?string $dateTo = null
+    ): string
     {
-        $report = $this->ledgerService->getTrialBalance($companyId, $financialYearId);
+        $report = $this->reportService->getTrialBalance($companyId, $financialYearId, $dateFrom, $dateTo);
 
         $pdf = Pdf::loadView('exports.trial-balance', compact('report'));
 
@@ -118,9 +133,14 @@ class ExportService
     /**
      * Export Debtors Outstanding to PDF
      */
-    public function exportDebtorsOutstandingPdf(int $companyId): string
+    public function exportDebtorsOutstandingPdf(
+        int $companyId,
+        ?int $financialYearId = null,
+        ?string $dateFrom = null,
+        ?string $dateTo = null
+    ): string
     {
-        $report = $this->reportService->getDebtorsOutstanding($companyId);
+        $report = $this->reportService->getDebtorsOutstanding($companyId, $financialYearId, $dateFrom, $dateTo);
 
         $pdf = Pdf::loadView('exports.debtors-outstanding', compact('report'));
 
@@ -130,9 +150,14 @@ class ExportService
     /**
      * Export Creditors Outstanding to PDF
      */
-    public function exportCreditorsOutstandingPdf(int $companyId): string
+    public function exportCreditorsOutstandingPdf(
+        int $companyId,
+        ?int $financialYearId = null,
+        ?string $dateFrom = null,
+        ?string $dateTo = null
+    ): string
     {
-        $report = $this->reportService->getCreditorsOutstanding($companyId);
+        $report = $this->reportService->getCreditorsOutstanding($companyId, $financialYearId, $dateFrom, $dateTo);
 
         $pdf = Pdf::loadView('exports.creditors-outstanding', compact('report'));
 
@@ -142,12 +167,25 @@ class ExportService
     /**
      * Export Day Book to PDF
      */
-    public function exportDayBookPdf(int $companyId, string $date, ?int $financialYearId = null): string
+    public function exportDayBookPdf(
+        int $companyId,
+        string $date,
+        ?int $financialYearId = null,
+        ?string $dateTo = null
+    ): string
     {
         $financialYearId = $financialYearId ?? \App\Models\FinancialYear::getCurrent($companyId)?->id;
-        $report = $this->reportService->getDayBook($companyId, $date, $financialYearId);
+        $dateFrom = $date;
+        $dateTo = $dateTo ?: $dateFrom;
 
-        $pdf = Pdf::loadView('exports.day-book', compact('report', 'date'));
+        $report = $this->reportService->getDayBookRange(
+            $companyId,
+            $dateFrom,
+            $dateTo,
+            $financialYearId
+        );
+
+        $pdf = Pdf::loadView('exports.day-book', compact('report', 'dateFrom', 'dateTo'));
 
         return $pdf->output();
     }
@@ -219,7 +257,12 @@ class ExportService
                 break;
 
             case 'debtors':
-                $data = collect($this->reportService->getDebtorsOutstanding($companyId)['debtors'])
+                $data = collect($this->reportService->getDebtorsOutstanding(
+                    $companyId,
+                    isset($filters['financial_year_id']) ? (int) $filters['financial_year_id'] : null,
+                    $filters['date_from'] ?? null,
+                    $filters['date_to'] ?? null
+                )['debtors'])
                     ->map(function ($item) {
                         return [
                             'party' => $item['party']->name ?? '-',
@@ -235,7 +278,12 @@ class ExportService
                 break;
 
             case 'creditors':
-                $data = collect($this->reportService->getCreditorsOutstanding($companyId)['creditors'])
+                $data = collect($this->reportService->getCreditorsOutstanding(
+                    $companyId,
+                    isset($filters['financial_year_id']) ? (int) $filters['financial_year_id'] : null,
+                    $filters['date_from'] ?? null,
+                    $filters['date_to'] ?? null
+                )['creditors'])
                     ->map(function ($item) {
                         return [
                             'party' => $item['party']->name ?? '-',
@@ -255,7 +303,12 @@ class ExportService
                 break;
 
             case 'profit-loss':
-                $profitLoss = $this->reportService->getProfitLoss($companyId, $filters['financial_year_id'] ?? FinancialYear::getCurrent($companyId)?->id);
+                $profitLoss = $this->reportService->getProfitLoss(
+                    $companyId,
+                    (int) ($filters['financial_year_id'] ?? FinancialYear::getCurrent($companyId)?->id),
+                    $filters['date_from'] ?? null,
+                    $filters['date_to'] ?? null
+                );
                 $data = [
                     ['section' => 'Income', 'amount' => $profitLoss['income']['total']],
                     ['section' => 'Expense', 'amount' => $profitLoss['expense']['total']],
@@ -264,7 +317,12 @@ class ExportService
                 break;
 
             case 'balance-sheet':
-                $balanceSheet = $this->reportService->getBalanceSheet($companyId, $filters['financial_year_id'] ?? FinancialYear::getCurrent($companyId)?->id);
+                $balanceSheet = $this->reportService->getBalanceSheet(
+                    $companyId,
+                    (int) ($filters['financial_year_id'] ?? FinancialYear::getCurrent($companyId)?->id),
+                    $filters['date_from'] ?? null,
+                    $filters['date_to'] ?? null
+                );
                 $data = [
                     ['section' => 'Total Assets', 'amount' => $balanceSheet['assets']['total']],
                     ['section' => 'Total Liabilities', 'amount' => $balanceSheet['liabilities']['total']],
@@ -275,7 +333,12 @@ class ExportService
                 break;
 
             case 'trial-balance':
-                $trialBalance = $this->ledgerService->getTrialBalance($companyId, $filters['financial_year_id'] ?? FinancialYear::getCurrent($companyId)?->id);
+                $trialBalance = $this->reportService->getTrialBalance(
+                    $companyId,
+                    (int) ($filters['financial_year_id'] ?? FinancialYear::getCurrent($companyId)?->id),
+                    $filters['date_from'] ?? null,
+                    $filters['date_to'] ?? null
+                );
                 $data = array_map(function ($row) {
                     return [
                         'account_code' => $row['account']->account_code,
@@ -314,9 +377,12 @@ class ExportService
                 $fyId = isset($filters['financial_year_id'])
                     ? (int) $filters['financial_year_id']
                     : \App\Models\FinancialYear::getCurrent($companyId)?->id;
-                $dayBook = $this->reportService->getDayBook(
+                $from = $filters['date_from'] ?? ($filters['date'] ?? date('Y-m-d'));
+                $to = $filters['date_to'] ?? $from;
+                $dayBook = $this->reportService->getDayBookRange(
                     $companyId,
-                    $filters['date'] ?? date('Y-m-d'),
+                    $from,
+                    $to,
                     $fyId
                 );
                 $data = collect($dayBook['rows'])->map(function ($row) {
@@ -363,7 +429,12 @@ class ExportService
                 break;
 
             case 'profit-loss':
-                $profitLoss = $this->reportService->getProfitLoss($companyId, $filters['financial_year_id'] ?? FinancialYear::getCurrent($companyId)?->id);
+                $profitLoss = $this->reportService->getProfitLoss(
+                    $companyId,
+                    (int) ($filters['financial_year_id'] ?? FinancialYear::getCurrent($companyId)?->id),
+                    $filters['date_from'] ?? null,
+                    $filters['date_to'] ?? null
+                );
                 $data = [
                     ['section' => 'Income', 'amount' => $profitLoss['income']['total']],
                     ['section' => 'Expense', 'amount' => $profitLoss['expense']['total']],
@@ -372,7 +443,12 @@ class ExportService
                 break;
 
             case 'balance-sheet':
-                $balanceSheet = $this->reportService->getBalanceSheet($companyId, $filters['financial_year_id'] ?? FinancialYear::getCurrent($companyId)?->id);
+                $balanceSheet = $this->reportService->getBalanceSheet(
+                    $companyId,
+                    (int) ($filters['financial_year_id'] ?? FinancialYear::getCurrent($companyId)?->id),
+                    $filters['date_from'] ?? null,
+                    $filters['date_to'] ?? null
+                );
                 $data = [
                     ['section' => 'Total Assets', 'amount' => $balanceSheet['assets']['total']],
                     ['section' => 'Total Liabilities', 'amount' => $balanceSheet['liabilities']['total']],
@@ -398,7 +474,12 @@ class ExportService
                 break;
 
             case 'debtors':
-                $data = collect($this->reportService->getDebtorsOutstanding($companyId)['debtors'])
+                $data = collect($this->reportService->getDebtorsOutstanding(
+                    $companyId,
+                    isset($filters['financial_year_id']) ? (int) $filters['financial_year_id'] : null,
+                    $filters['date_from'] ?? null,
+                    $filters['date_to'] ?? null
+                )['debtors'])
                     ->map(function ($item) {
                         return [
                             'party' => $item['party']->name ?? '-',
@@ -414,7 +495,12 @@ class ExportService
                 break;
 
             case 'creditors':
-                $data = collect($this->reportService->getCreditorsOutstanding($companyId)['creditors'])
+                $data = collect($this->reportService->getCreditorsOutstanding(
+                    $companyId,
+                    isset($filters['financial_year_id']) ? (int) $filters['financial_year_id'] : null,
+                    $filters['date_from'] ?? null,
+                    $filters['date_to'] ?? null
+                )['creditors'])
                     ->map(function ($item) {
                         return [
                             'party' => $item['party']->name ?? '-',
@@ -430,7 +516,12 @@ class ExportService
                 break;
 
             case 'trial-balance':
-                $trialBalance = $this->ledgerService->getTrialBalance($companyId, $filters['financial_year_id'] ?? FinancialYear::getCurrent($companyId)?->id);
+                $trialBalance = $this->reportService->getTrialBalance(
+                    $companyId,
+                    (int) ($filters['financial_year_id'] ?? FinancialYear::getCurrent($companyId)?->id),
+                    $filters['date_from'] ?? null,
+                    $filters['date_to'] ?? null
+                );
                 $data = array_map(function ($row) {
                     return [
                         'account_code' => $row['account']->account_code,
@@ -469,9 +560,12 @@ class ExportService
                 $fyId = isset($filters['financial_year_id'])
                     ? (int) $filters['financial_year_id']
                     : \App\Models\FinancialYear::getCurrent($companyId)?->id;
-                $dayBook = $this->reportService->getDayBook(
+                $from = $filters['date_from'] ?? ($filters['date'] ?? date('Y-m-d'));
+                $to = $filters['date_to'] ?? $from;
+                $dayBook = $this->reportService->getDayBookRange(
                     $companyId,
-                    $filters['date'] ?? date('Y-m-d'),
+                    $from,
+                    $to,
                     $fyId
                 );
                 $data = collect($dayBook['rows'])->map(function ($row) {
@@ -604,7 +698,7 @@ class ExportService
                     : '-',
                 'Opening Balance' => $account->opening_balance,
                 'Balance Type' => ucfirst($account->balance_type ?? 'debit'),
-                'Opening Date' => optional($account->opening_date)->format('d-m-Y') ?? '-',
+                'Opening Date' => optional($account->opening_date)->format('d-M-Y') ?? '-',
                 'Status' => $account->is_active ? 'Active' : 'Inactive',
                 'Remarks' => $account->remarks ?: '-',
             ])->values()->all(),

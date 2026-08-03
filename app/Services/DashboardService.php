@@ -115,7 +115,7 @@ class DashboardService
             return 'All time';
         }
 
-        return Carbon::parse($periodStart)->format('d M Y') . ' - ' . Carbon::parse($periodEnd)->format('d M Y');
+        return Carbon::parse($periodStart)->format('d-M-Y') . ' - ' . Carbon::parse($periodEnd)->format('d-M-Y');
     }
 
     /**

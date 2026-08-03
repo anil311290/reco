@@ -192,11 +192,11 @@
                         </div>
                         <div class="meta-row">
                             <span class="meta-label">Date</span>
-                            {{ $invoice->invoice_date?->format('d M Y') ?? '-' }}
+                            {{ $invoice->invoice_date?->format('d-M-Y') ?? '-' }}
                         </div>
                         <div class="meta-row">
                             <span class="meta-label">Due Date</span>
-                            {{ $invoice->due_date?->format('d M Y') ?? '-' }}
+                            {{ $invoice->due_date?->format('d-M-Y') ?? '-' }}
                         </div>
                         @if($invoice->reference_number)
                         <div class="meta-row">
@@ -296,7 +296,7 @@
         @endif
 
         <div class="footer">
-            Generated on {{ now()->format('d M Y, h:i A') }}
+            Generated on {{ now()->format('d-M-Y h:i A') }}
         </div>
     </div>
 </body>

@@ -37,7 +37,7 @@
                     @forelse($payments as $payment)
                     <tr>
                         <td>{{ ($payments->firstItem() ?? 1) + $loop->index }}</td>
-                        <td>{{ $payment->created_at?->format('d M Y H:i') }}</td>
+                        <td>{{ $payment->created_at?->format('d-M-Y H:i') }}</td>
                         <td><strong>₹{{ number_format($payment->amount, 2) }}</strong></td>
                         <td>{{ ucfirst($payment->payment_method ?? 'Online') }}</td>
                         <td><code>{{ $payment->razorpay_payment_id ?? '-' }}</code></td>

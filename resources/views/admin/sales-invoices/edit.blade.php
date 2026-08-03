@@ -49,22 +49,20 @@
                             <input type="date" class="form-control" name="due_date" value="{{ $invoice->due_date->format('Y-m-d') }}" required>
                         </div>
                         <div class="col-md-6">
-                            <div class="d-flex justify-content-between align-items-center mb-1">
-                                <label class="form-label mb-0">Customer <span class="text-danger">*</span></label>
-                                <div class="d-flex gap-2">
-                                    @permission('accounts.create')
-                                    <button type="button" class="btn btn-link btn-sm p-0 quick-add-ledger-btn" data-account-quick-add-target="#party_id">Quick Add Cash / Bank Ledger</button>
-                                    @endpermission
-                                    @permission('parties.create')
-                                    <button type="button" class="btn btn-link btn-sm p-0 quick-add-party-btn" data-party-quick-add-target="#party_id" data-party-quick-add-type="debtor">Quick Add Party</button>
-                                    @endpermission
-                                </div>
-                            </div>
-                            <select class="form-select" name="party_id" id="party_id" data-quick-add-value-mode="token" required>
+                            <label class="form-label mb-1">Customer <span class="text-danger">*</span></label>
+                            <select class="form-select" name="party_id" id="party_id" data-quick-add-value-mode="token" data-quick-add-in-select="1" data-quick-add-party-type="debtor" data-quick-add-target="#party_id" required>
                                 <option value="">Select Customer</option>
+                                <optgroup label="Quick Actions">
+                                <option value="__quick_add_party">+ Quick Add Party</option>
+                                <option value="__quick_add_ledger">+ Quick Add Cash / Bank Ledger</option>
+                                </optgroup>
+                                @if(!empty($partyOptions['parties']))
+                                <optgroup label="Customers (Parties)">
                                 @foreach(($partyOptions['parties'] ?? []) as $option)
                                 <option value="{{ $option['value'] }}" {{ ('party:' . $invoice->party_id) === $option['value'] ? 'selected' : '' }}>{{ $option['label'] }}</option>
                                 @endforeach
+                                </optgroup>
+                                @endif
                                 @if(!empty($partyOptions['cash_bank_od_accounts']))
                                 <optgroup label="Ledger Accounts (Cash/Bank/OD)">
                                     @foreach($partyOptions['cash_bank_od_accounts'] as $option)

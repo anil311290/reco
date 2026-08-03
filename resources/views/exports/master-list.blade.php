@@ -50,7 +50,7 @@
 </head>
 <body>
     <h1>{{ $title }}</h1>
-    <div class="meta">Generated on {{ now()->format('d-m-Y H:i:s') }}</div>
+    <div class="meta">Generated on {{ now()->format('d-M-Y H:i:s') }}</div>
 
     <table>
         <thead>

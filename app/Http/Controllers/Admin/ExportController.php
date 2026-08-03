@@ -25,12 +25,14 @@ class ExportController extends Controller
     {
         $companyId = $this->getCompanyId($request);
         $financialYearId = $request->input('financial_year_id') ?? FinancialYear::getCurrent($companyId)?->id;
+        $dateFrom = $request->input('date_from');
+        $dateTo = $request->input('date_to');
 
         if (!$financialYearId) {
             return back()->with('error', 'No active financial year found');
         }
 
-        $pdf = $this->exportService->exportProfitLossPdf($companyId, $financialYearId);
+        $pdf = $this->exportService->exportProfitLossPdf($companyId, (int) $financialYearId, $dateFrom, $dateTo);
 
         return response($pdf)
             ->header('Content-Type', 'application/pdf')
@@ -44,12 +46,14 @@ class ExportController extends Controller
     {
         $companyId = $this->getCompanyId($request);
         $financialYearId = $request->input('financial_year_id') ?? FinancialYear::getCurrent($companyId)?->id;
+        $dateFrom = $request->input('date_from');
+        $dateTo = $request->input('date_to');
 
         if (!$financialYearId) {
             return back()->with('error', 'No active financial year found');
         }
 
-        $pdf = $this->exportService->exportBalanceSheetPdf($companyId, $financialYearId);
+        $pdf = $this->exportService->exportBalanceSheetPdf($companyId, (int) $financialYearId, $dateFrom, $dateTo);
 
         return response($pdf)
             ->header('Content-Type', 'application/pdf')
@@ -63,12 +67,14 @@ class ExportController extends Controller
     {
         $companyId = $this->getCompanyId($request);
         $financialYearId = $request->input('financial_year_id') ?? FinancialYear::getCurrent($companyId)?->id;
+        $dateFrom = $request->input('date_from');
+        $dateTo = $request->input('date_to');
 
         if (!$financialYearId) {
             return back()->with('error', 'No active financial year found');
         }
 
-        $pdf = $this->exportService->exportTrialBalancePdf($companyId, $financialYearId);
+        $pdf = $this->exportService->exportTrialBalancePdf($companyId, (int) $financialYearId, $dateFrom, $dateTo);
 
         return response($pdf)
             ->header('Content-Type', 'application/pdf')
@@ -135,7 +141,12 @@ class ExportController extends Controller
     {
         $companyId = $this->getCompanyId($request);
 
-        $pdf = $this->exportService->exportDebtorsOutstandingPdf($companyId);
+        $pdf = $this->exportService->exportDebtorsOutstandingPdf(
+            $companyId,
+            $request->filled('financial_year_id') ? (int) $request->input('financial_year_id') : null,
+            $request->input('date_from'),
+            $request->input('date_to')
+        );
 
         return response($pdf)
             ->header('Content-Type', 'application/pdf')
@@ -149,7 +160,12 @@ class ExportController extends Controller
     {
         $companyId = $this->getCompanyId($request);
 
-        $pdf = $this->exportService->exportCreditorsOutstandingPdf($companyId);
+        $pdf = $this->exportService->exportCreditorsOutstandingPdf(
+            $companyId,
+            $request->filled('financial_year_id') ? (int) $request->input('financial_year_id') : null,
+            $request->input('date_from'),
+            $request->input('date_to')
+        );
 
         return response($pdf)
             ->header('Content-Type', 'application/pdf')
@@ -162,17 +178,23 @@ class ExportController extends Controller
     public function dayBookPdf(Request $request): Response
     {
         $companyId = $this->getCompanyId($request);
-        $date = $request->input('date', date('Y-m-d'));
+        $dateFrom = $request->input('date_from', $request->input('date', date('Y-m-d')));
+        $dateTo = $request->input('date_to', $dateFrom);
 
         $pdf = $this->exportService->exportDayBookPdf(
             $companyId,
-            $date,
-            $request->filled('financial_year_id') ? (int) $request->input('financial_year_id') : null
+            $dateFrom,
+            $request->filled('financial_year_id') ? (int) $request->input('financial_year_id') : null,
+            $dateTo
         );
+
+        $suffix = $dateFrom === $dateTo
+            ? $dateFrom
+            : ($dateFrom . '-to-' . $dateTo);
 
         return response($pdf)
             ->header('Content-Type', 'application/pdf')
-            ->header('Content-Disposition', 'attachment; filename="day-book-' . $date . '.pdf"');
+            ->header('Content-Disposition', 'attachment; filename="day-book-' . $suffix . '.pdf"');
     }
 
     /**

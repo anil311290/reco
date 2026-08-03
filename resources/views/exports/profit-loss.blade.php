@@ -5,40 +5,44 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Profit and Loss Report</title>
     <style>
+        @page { margin: 10px 12px; }
         body {
             font-family: DejaVu Sans, sans-serif;
             color: #333;
             margin: 0;
             padding: 0;
-            font-size: 12px;
+            font-size: 11px;
         }
-        .container { padding: 20px; }
-        .header { text-align: center; margin-bottom: 20px; }
-        .header h1 { margin: 0; font-size: 22px; }
+        .container { padding: 0; }
+        .header { text-align: center; margin-bottom: 12px; }
+        .header h1 { margin: 0; font-size: 20px; }
+        .header p { margin: 4px 0 0; color: #6b7280; }
         .summary, .table {
             width: 100%;
             border-collapse: collapse;
-            margin-top: 16px;
+            margin-top: 10px;
         }
         .summary td, .summary th, .table td, .table th {
-            border: 1px solid #ddd;
-            padding: 8px;
+            border: 1px solid #d6dbe6;
+            padding: 6px 7px;
         }
         .summary th, .table th {
-            background: #f7f7f7;
+            background: #f3f6fc;
             text-align: left;
+            font-weight: 700;
         }
         .text-right { text-align: right; }
         .positive { color: #155724; }
         .negative { color: #721c24; }
-        .section { margin-top: 16px; }
+        .section { margin-top: 12px; }
+        .section h3 { margin: 0 0 4px; font-size: 14px; }
     </style>
 </head>
 <body>
 <div class="container">
     <div class="header">
         <h1>Profit and Loss Statement</h1>
-        <p>Generated on {{ now()->format('d-m-Y H:i:s') }}</p>
+        <p>Generated on {{ now()->format('d-M-Y H:i:s') }}</p>
     </div>
 
     <table class="summary">

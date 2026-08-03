@@ -46,8 +46,8 @@
                     <div class="col-md-6 text-md-end">
                         <h6 class="text-muted">Invoice Details</h6>
                         <p class="mb-0"><strong>Invoice #:</strong> {{ $invoice->invoice_number }}</p>
-                        <p class="mb-0"><strong>Date:</strong> {{ $invoice->invoice_date?->format('d M Y') }}</p>
-                        <p class="mb-0"><strong>Due Date:</strong> {{ $invoice->due_date?->format('d M Y') }}</p>
+                        <p class="mb-0"><strong>Date:</strong> {{ $invoice->invoice_date?->format('d-M-Y') }}</p>
+                        <p class="mb-0"><strong>Due Date:</strong> {{ $invoice->due_date?->format('d-M-Y') }}</p>
                         @if($invoice->reference_number)
                         <p class="mb-0"><strong>Ref:</strong> {{ $invoice->reference_number }}</p>
                         @endif
@@ -129,8 +129,8 @@
                 @endif
 
                 <hr>
-                <p class="mb-1"><strong>Created:</strong> {{ $invoice->created_at?->format('d M Y H:i') }}</p>
-                <p class="mb-1"><strong>Updated:</strong> {{ $invoice->updated_at?->format('d M Y H:i') }}</p>
+                <p class="mb-1"><strong>Created:</strong> {{ $invoice->created_at?->format('d-M-Y H:i') }}</p>
+                <p class="mb-1"><strong>Updated:</strong> {{ $invoice->updated_at?->format('d-M-Y H:i') }}</p>
                 @if($invoice->financialYear)
                 <p class="mb-0"><strong>Financial Year:</strong> {{ $invoice->financialYear->name }}</p>
                 @endif

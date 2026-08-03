@@ -19,7 +19,7 @@ class PeriodLockService
 
         if (!$financialYear) {
             throw new \RuntimeException(
-                'No financial year covers ' . $transactionDate->format('d M Y') . '. Create or open an FY first.'
+                'No financial year covers ' . $transactionDate->format('d-M-Y') . '. Create or open an FY first.'
             );
         }
 
@@ -34,8 +34,8 @@ class PeriodLockService
 
         if ($transactionDate->lt($start) || $transactionDate->gt($end)) {
             throw new \RuntimeException(
-                'Date ' . $transactionDate->format('d M Y') . ' is outside financial year "'
-                . $financialYear->name . '" (' . $start->format('d M Y') . ' – ' . $end->format('d M Y') . ').'
+                'Date ' . $transactionDate->format('d-M-Y') . ' is outside financial year "'
+                . $financialYear->name . '" (' . $start->format('d-M-Y') . ' – ' . $end->format('d-M-Y') . ').'
             );
         }
 

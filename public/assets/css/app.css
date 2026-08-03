@@ -492,10 +492,21 @@ header.header {
     border-bottom: 1px solid var(--lp-border);
     display: flex; align-items: center;
     position: sticky; top: 0;
-    z-index: 1020;
+    z-index: 2000;
+    overflow: visible;
 }
 header.header .header-title { font-size: 16px; font-weight: 600; color: var(--lp-heading); margin: 0; }
 header.header .header-actions { display: flex; align-items: center; gap: 2px; }
+header.header .header-actions,
+header.header .header-actions .dropdown,
+header.header .header-actions .dropdown-menu {
+    overflow: visible;
+}
+
+header.header .header-actions .dropdown {
+    position: relative;
+    z-index: 2001;
+}
 header.header .header-actions > .btn-link {
     color: var(--lp-text-muted);
     font-size: 18px; padding: 7px;
@@ -511,6 +522,7 @@ header.header .header-actions .dropdown-menu {
     border-radius: var(--lp-r-lg);
     padding: 6px;
     margin-top: 8px !important;
+    z-index: 2002;
 }
 header.header .header-actions .dropdown-item {
     padding: 9px 14px;

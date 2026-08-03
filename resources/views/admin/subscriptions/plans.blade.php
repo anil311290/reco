@@ -33,7 +33,7 @@
         <div>
             <strong>Current Plan:</strong> {{ $currentSubscription->plan->name ?? 'N/A' }} |
             <strong>Status:</strong> {{ ucfirst($currentSubscription->status) }} |
-            <strong>Valid Until:</strong> {{ $currentSubscription->current_period_end?->format('d M Y') ?? 'N/A' }}
+            <strong>Valid Until:</strong> {{ $currentSubscription->current_period_end?->format('d-M-Y') ?? 'N/A' }}
         </div>
         @if($currentSubscription->isOnTrial())
         <span class="badge bg-warning">Trial</span>

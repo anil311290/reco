@@ -2,6 +2,10 @@
 
 @section('title', 'Create Account')
 
+@php
+    $openingDateDefault = auth()->user()->company->currentFinancialYear?->start_date?->format('Y-m-d') ?? date('Y-m-d');
+@endphp
+
 @section('content')
 <div class="account-shell">
     <div class="account-hero p-4 p-lg-5 mb-4">
@@ -71,7 +75,7 @@
                         </div>
 
                         <div class="row g-2 mb-3 align-items-end account-opening-fields">
-                            <div class="col-md-4">
+                            <div class="col-md-6">
                                 <label for="opening_balance" class="form-label fw-semibold mb-1">Opening Balance</label>
                                 <div class="input-group">
                                     <span class="input-group-text">₹</span>
@@ -79,18 +83,16 @@
                                 </div>
                             </div>
 
-                            <div class="col-md-4">
+                            <div class="col-md-6">
                                 <label for="balance_type" class="form-label fw-semibold mb-1">Balance Type</label>
                                 <select class="form-select" id="balance_type" name="balance_type">
                                     <option value="debit" {{ old('balance_type') === 'debit' ? 'selected' : '' }}>Debit</option>
                                     <option value="credit" {{ old('balance_type') === 'credit' ? 'selected' : '' }}>Credit</option>
                                 </select>
                             </div>
-
-                            <div class="col-md-4">
-                                <label for="opening_date" class="form-label fw-semibold mb-1">Opening Date</label>
-                                <input type="date" class="form-control" id="opening_date" name="opening_date" value="{{ old('opening_date', date('Y-m-d')) }}">
-                            </div>
+                        </div>
+                        <div class="form-text mb-4">
+                            <i class="bi bi-calendar-event me-1"></i>Opening date is auto-set to the current financial year start date: <strong>{{ $openingDateDefault }}</strong>.
                         </div>
 
                         <div class="mb-4">
@@ -143,7 +145,7 @@
                     <ul class="list-unstyled mb-0 small text-muted">
                         <li class="mb-2"><i class="bi bi-check2-circle text-success me-2"></i>Use clear account names like Cash, HDFC Bank, Sales Revenue.</li>
                         <li class="mb-2"><i class="bi bi-check2-circle text-success me-2"></i>Select Asset only for real balances you track.</li>
-                        <li class="mb-2"><i class="bi bi-check2-circle text-success me-2"></i>Keep opening balance and balance type accurate for reports.</li>
+                        <li class="mb-2"><i class="bi bi-check2-circle text-success me-2"></i>Opening date is auto-set to current financial year start date.</li>
                     </ul>
                 </div>
             </div>
@@ -200,7 +202,7 @@ $(document).ready(function() {
 
         const amount = parseFloat($('#opening_balance').val()) || 0;
         const balanceType = $('#balance_type option:selected').text();
-        const openingDate = $('#opening_date').val() || '-';
+        const openingDate = '{{ $openingDateDefault }}';
         const formattedAmount = amount.toLocaleString('en-IN', {
             minimumFractionDigits: 2,
             maximumFractionDigits: 2

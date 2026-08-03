@@ -5,29 +5,31 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Ledger Report</title>
     <style>
+        @page { margin: 10px 12px; }
         body {
             font-family: DejaVu Sans, sans-serif;
             color: #333;
             margin: 0;
             padding: 0;
-            font-size: 12px;
+            font-size: 11px;
         }
-        .container { padding: 20px; }
-        .header { margin-bottom: 14px; }
-        .header h1 { margin: 0; font-size: 22px; }
-        .meta { margin-top: 6px; color: #555; }
+        .container { padding: 0; }
+        .header { margin-bottom: 10px; }
+        .header h1 { margin: 0; font-size: 20px; }
+        .meta { margin-top: 6px; color: #4b5563; line-height: 1.45; }
         .table {
             width: 100%;
             border-collapse: collapse;
-            margin-top: 16px;
+            margin-top: 8px;
         }
         .table th, .table td {
-            border: 1px solid #ddd;
-            padding: 8px;
+            border: 1px solid #d6dbe6;
+            padding: 6px;
         }
         .table th {
-            background: #f7f7f7;
+            background: #f3f6fc;
             text-align: left;
+            font-weight: 700;
         }
         .text-right { text-align: right; }
     </style>

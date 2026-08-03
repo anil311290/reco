@@ -44,8 +44,12 @@
                         </div>
                         <div class="col-md-4">
                             <label class="form-label mb-1">Supplier / Ledger <span class="text-danger">*</span></label>
-                            <select class="form-select" name="party_id" id="party_id" data-quick-add-value-mode="token" required>
+                            <select class="form-select" name="party_id" id="party_id" data-quick-add-value-mode="token" data-quick-add-in-select="1" data-quick-add-party-type="creditor" data-quick-add-target="#party_id" required>
                                 <option value="">Select Supplier or Ledger Account</option>
+                                <optgroup label="Quick Actions">
+                                <option value="__quick_add_party">+ Quick Add Party</option>
+                                <option value="__quick_add_ledger">+ Quick Add Cash / Bank Ledger</option>
+                                </optgroup>
                                 @if(!empty($supplierPartyOptions))
                                 <optgroup label="Suppliers (Parties)">
                                     @foreach($supplierPartyOptions as $option)
@@ -61,14 +65,6 @@
                                 </optgroup>
                                 @endif
                             </select>
-                            <div class="d-flex align-items-center gap-3 mt-1 small">
-                                @permission('accounts.create')
-                                <button type="button" class="btn btn-link btn-sm p-0 text-nowrap quick-add-ledger-btn" data-account-quick-add-target="#party_id">Quick Add Cash / Bank Ledger</button>
-                                @endpermission
-                                @permission('parties.create')
-                                <button type="button" class="btn btn-link btn-sm p-0 text-nowrap quick-add-party-btn" data-party-quick-add-target="#party_id" data-party-quick-add-type="creditor">Quick Add Party</button>
-                                @endpermission
-                            </div>
                             <small class="text-muted d-block mt-1">Choose an existing supplier party or select a ledger account for direct posting.</small>
                         </div>
                         <div class="col-md-4">

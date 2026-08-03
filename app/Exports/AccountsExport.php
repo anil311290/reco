@@ -29,7 +29,7 @@ class AccountsExport implements FromCollection, WithHeadings, WithColumnFormatti
                     : '-',
                 $account->opening_balance,
                 ucfirst($account->balance_type ?? 'debit'),
-                $account->opening_date?->format('d-m-Y') ?? '',
+                $account->opening_date?->format('d-M-Y') ?? '',
                 $account->is_active ? 'Active' : 'Inactive',
                 $account->remarks ?? '',
             ];

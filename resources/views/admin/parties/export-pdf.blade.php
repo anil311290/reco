@@ -70,7 +70,7 @@
     <div class="meta">
         {{ $party->name }} ({{ $party->party_code }})
         &middot; {{ ucfirst($party->type) }}
-        &middot; Generated on {{ now()->timezone('Asia/Kolkata')->format('d M Y, h:i A') }}
+        &middot; Generated on {{ now()->timezone('Asia/Kolkata')->format('d-M-Y h:i A') }}
     </div>
 
     <table class="summary">
