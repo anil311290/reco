@@ -159,6 +159,7 @@ Route::prefix('v1')->middleware('auth:sanctum')->group(function () {
     Route::get('/financial-years/current', [FinancialYearApiController::class, 'current']);
     Route::patch('/financial-years/{id}/set-current', [FinancialYearApiController::class, 'setAsCurrent']);
     Route::patch('/financial-years/{id}/close', [FinancialYearApiController::class, 'close']);
+    Route::patch('/financial-years/{id}/restore', [FinancialYearApiController::class, 'restore']);
     Route::delete('/financial-years/{id}', [FinancialYearApiController::class, 'destroy']);
 
     // Legacy settings financial year routes (read-only aliases)

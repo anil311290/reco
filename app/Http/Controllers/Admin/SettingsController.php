@@ -39,6 +39,52 @@ class SettingsController extends Controller
     }
 
     /**
+     * Display logged-in user profile page.
+     */
+    public function profile()
+    {
+        $user = Auth::user();
+
+        return view('admin.settings.profile', compact('user'));
+    }
+
+    /**
+     * Update logged-in user profile details.
+     */
+    public function updateProfile(Request $request)
+    {
+        $user = Auth::user();
+
+        $validated = $request->validate([
+            'name' => ['required', 'string', 'max:255'],
+            'phone' => ['nullable', 'string', 'max:20'],
+        ]);
+
+        $user->fill($validated);
+        $user->save();
+
+        return back()->with('success', 'Profile updated successfully.');
+    }
+
+    /**
+     * Change logged-in user password.
+     */
+    public function changePassword(Request $request)
+    {
+        $user = Auth::user();
+
+        $validated = $request->validateWithBag('passwordUpdate', [
+            'current_password' => ['required', 'string', 'current_password'],
+            'new_password' => ['required', 'string', 'min:8', 'confirmed', 'different:current_password'],
+        ]);
+
+        $user->password = $validated['new_password'];
+        $user->save();
+
+        return back()->with('success', 'Password changed successfully.');
+    }
+
+    /**
      * Update company settings
      */
     public function updateCompany(Request $request): JsonResponse

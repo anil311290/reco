@@ -5,49 +5,56 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Balance Sheet Report</title>
     <style>
+        @page { margin: 10px 12px; }
         body {
             font-family: DejaVu Sans, sans-serif;
             color: #333;
             margin: 0;
             padding: 0;
+            font-size: 11px;
         }
         .container {
-            padding: 20px;
+            padding: 0;
         }
         .header {
             text-align: center;
-            margin-bottom: 30px;
+            margin-bottom: 12px;
         }
         .header h1 {
             margin: 0;
-            font-size: 22px;
+            font-size: 20px;
+        }
+        .header p {
+            margin: 4px 0 0;
+            color: #6b7280;
         }
         .summary,
         .summary th,
         .summary td {
-            border: 1px solid #ddd;
-            padding: 12px 10px;
+            border: 1px solid #d6dbe6;
+            padding: 7px 8px;
         }
         .summary {
             width: 100%;
             border-collapse: collapse;
-            margin-bottom: 20px;
+            margin-bottom: 12px;
         }
         .summary th {
-            background: #f7f7f7;
+            background: #f3f6fc;
             text-align: left;
         }
         .section-title {
-            margin: 20px 0 10px;
-            font-size: 18px;
+            margin: 14px 0 6px;
+            font-size: 14px;
             color: #222;
+            font-weight: 700;
         }
         .text-right {
             text-align: right;
         }
         .total-row {
             font-weight: bold;
-            background: #f3f3f3;
+            background: #eef2f8;
         }
     </style>
 </head>

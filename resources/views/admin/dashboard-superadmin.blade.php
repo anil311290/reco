@@ -68,7 +68,7 @@
                                     <div class="text-muted small">{{ optional($company->users->first())->email ?? $company->email ?? 'No owner email' }}</div>
                                 </div>
                                 <div class="text-end small text-muted">
-                                    <div>{{ optional($company->created_at)->format('d M Y') }}</div>
+                                    <div>{{ optional($company->created_at)->format('d-M-Y') }}</div>
                                     <div>{{ $company->is_active ? 'Active' : 'Pending / Inactive' }}</div>
                                 </div>
                             </div>
@@ -98,7 +98,7 @@
                                 </div>
                                 <div class="text-end">
                                     <div class="fw-semibold">₹{{ number_format($payment->amount, 2) }}</div>
-                                    <div class="text-muted small">{{ optional($payment->paid_at ?? $payment->created_at)->format('d M Y') }}</div>
+                                    <div class="text-muted small">{{ optional($payment->paid_at ?? $payment->created_at)->format('d-M-Y') }}</div>
                                 </div>
                             </div>
                         </div>
@@ -122,7 +122,7 @@
                         <a href="{{ route('admin.companies.show', $subscription->company_id) }}" class="text-decoration-none border rounded-3 p-3 bg-light-subtle platform-expiry-item">
                             <div class="fw-semibold text-dark">{{ $subscription->company->name ?? 'Unknown Company' }}</div>
                             <div class="text-muted small">{{ $subscription->plan->name ?? 'Plan' }} · {{ ucfirst($subscription->status) }}</div>
-                            <div class="small text-danger mt-1">Ends {{ optional($subscription->current_period_end)->format('d M Y') }}</div>
+                            <div class="small text-danger mt-1">Ends {{ optional($subscription->current_period_end)->format('d-M-Y') }}</div>
                         </a>
                         @empty
                         <div class="text-center text-muted py-4">No subscriptions nearing expiry.</div>

@@ -111,19 +111,28 @@ class PartyService
             $data['opening_balance_type'] = isset($data['type']) && $data['type'] === 'creditor' ? 'credit' : 'debit';
         }
 
-        // Set opening date if not provided
-        if (empty($data['opening_date'])) {
-            $data['opening_date'] = now();
-        }
-
         if (!array_key_exists('address', $data)) {
             $data['address'] = '';
         }
 
         // Get current financial year if not provided
+        $financialYear = null;
         if (empty($data['financial_year_id'])) {
             $financialYear = FinancialYear::getCurrent($data['company_id']);
             $data['financial_year_id'] = $financialYear?->id;
+        } else {
+            $financialYear = FinancialYear::query()
+                ->where('company_id', $data['company_id'])
+                ->whereKey((int) $data['financial_year_id'])
+                ->first();
+        }
+
+        // Opening date defaults to current FY start date.
+        if (empty($data['opening_date'])) {
+            $data['opening_date'] = $this->resolveOpeningDate(
+                (int) $data['company_id'],
+                $financialYear
+            );
         }
 
         try {
@@ -170,16 +179,15 @@ class PartyService
                 : 'debit';
         }
 
-        if (empty($data['opening_date'])) {
-            $data['opening_date'] = now();
-        }
-
         if (!array_key_exists('address', $data)) {
             $data['address'] = '';
         }
 
         $financialYear = FinancialYear::getCurrent($party->company_id);
         $data['financial_year_id'] = $financialYear?->id;
+        if (empty($data['opening_date'])) {
+            $data['opening_date'] = $this->resolveOpeningDate($party->company_id, $financialYear);
+        }
         $data['company_id'] = $party->company_id;
         $data['deleted_by'] = null;
         $data['deleted_by_id'] = null;
@@ -596,5 +604,13 @@ class PartyService
                     ->orWhereNotIn('voucher_id', $openingVoucherIds))
             )
             ->exists();
+    }
+
+    protected function resolveOpeningDate(int $companyId, ?FinancialYear $financialYear = null): string
+    {
+        $financialYear ??= FinancialYear::getCurrent($companyId);
+
+        return $financialYear?->start_date?->format('Y-m-d')
+            ?? now()->toDateString();
     }
 }

@@ -141,6 +141,11 @@ Route::prefix('admin')->name('admin.')->group(function () {
                 ->name('settings.theme-css');
         });
 
+        // User Profile
+        Route::get('profile', [SettingsController::class, 'profile'])->name('profile');
+        Route::put('profile', [SettingsController::class, 'updateProfile'])->name('profile.update');
+        Route::put('profile/password', [SettingsController::class, 'changePassword'])->name('profile.password');
+
         /*
         |--------------------------------------------------------------------------
         | Financial Years Routes
@@ -155,6 +160,9 @@ Route::prefix('admin')->name('admin.')->group(function () {
                 ->name('financial-years.set-current');
             Route::patch('financial-years/{id}/close', [FinancialYearController::class, 'close'])
                 ->name('financial-years.close')
+                ->middleware(CheckPermission::class . ':financial-years.close');
+            Route::patch('financial-years/{id}/restore', [FinancialYearController::class, 'restore'])
+                ->name('financial-years.restore')
                 ->middleware(CheckPermission::class . ':financial-years.close');
             Route::delete('financial-years/{id}', [FinancialYearController::class, 'destroy'])
                 ->name('financial-years.destroy');

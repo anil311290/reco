@@ -43,8 +43,8 @@
                     <tr>
                         <td>{{ ($invoices->firstItem() ?? 1) + $loop->index }}</td>
                         <td>{{ $invoice->invoice_number }}</td>
-                        <td>{{ $invoice->invoice_date?->format('d M Y') }}</td>
-                        <td>{{ $invoice->due_date?->format('d M Y') }}</td>
+                        <td>{{ $invoice->invoice_date?->format('d-M-Y') }}</td>
+                        <td>{{ $invoice->due_date?->format('d-M-Y') }}</td>
                         <td>₹{{ number_format($invoice->subtotal, 2) }}</td>
                         <td>₹{{ number_format($invoice->tax_amount, 2) }}</td>
                         <td><strong>₹{{ number_format($invoice->total, 2) }}</strong></td>
@@ -54,7 +54,7 @@
                             @endphp
                             <span class="badge bg-{{ $colors[$invoice->status] ?? 'secondary' }}">{{ ucfirst($invoice->status) }}</span>
                         </td>
-                        <td>{{ $invoice->paid_at?->format('d M Y H:i') ?? '-' }}</td>
+                        <td>{{ $invoice->paid_at?->format('d-M-Y H:i') ?? '-' }}</td>
                     </tr>
                     @empty
                     <tr>

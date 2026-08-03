@@ -5,33 +5,36 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Trial Balance Report</title>
     <style>
+        @page { margin: 10px 10px; }
         body {
             font-family: DejaVu Sans, sans-serif;
             color: #333;
             margin: 0;
             padding: 0;
-            font-size: 11px;
+            font-size: 10px;
         }
-        .container { padding: 20px; }
-        .header { text-align: center; margin-bottom: 20px; }
-        .header h1 { margin: 0; font-size: 20px; }
+        .container { padding: 0; }
+        .header { text-align: center; margin-bottom: 10px; }
+        .header h1 { margin: 0; font-size: 18px; }
+        .header p { margin: 4px 0 0; color: #6b7280; }
         .table {
             width: 100%;
             border-collapse: collapse;
-            margin-top: 16px;
+            margin-top: 8px;
         }
         .table th, .table td {
-            border: 1px solid #ddd;
-            padding: 6px;
+            border: 1px solid #d6dbe6;
+            padding: 5px 4px;
         }
         .table th {
-            background: #f7f7f7;
+            background: #f3f6fc;
             text-align: left;
+            font-weight: 700;
         }
         .text-right { text-align: right; }
         tfoot td {
             font-weight: bold;
-            background: #f3f3f3;
+            background: #eef2f8;
         }
     </style>
 </head>
@@ -39,7 +42,7 @@
 <div class="container">
     <div class="header">
         <h1>Trial Balance</h1>
-        <p>Opening · Transactions · Closing — Generated on {{ now()->format('d-m-Y H:i:s') }}</p>
+        <p>Opening · Transactions · Closing — Generated on {{ now()->format('d-M-Y H:i:s') }}</p>
     </div>
 
     <table class="table">

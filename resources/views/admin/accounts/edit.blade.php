@@ -78,7 +78,7 @@
                         </div>
 
                         <div class="row g-2 mb-3 align-items-end account-opening-fields">
-                            <div class="col-md-4">
+                            <div class="col-md-6">
                                 <label for="opening_balance" class="form-label fw-semibold mb-1">Opening Balance</label>
                                 <div class="input-group">
                                     <span class="input-group-text">₹</span>
@@ -87,17 +87,12 @@
                                 <div class="form-text">Cannot be edited after create.</div>
                             </div>
 
-                            <div class="col-md-4">
+                            <div class="col-md-6">
                                 <label for="balance_type" class="form-label fw-semibold mb-1">Balance Type</label>
                                 <select class="form-select" id="balance_type" disabled>
                                     <option value="debit" {{ ($account->balance_type ?? 'debit') === 'debit' ? 'selected' : '' }}>Debit</option>
                                     <option value="credit" {{ ($account->balance_type ?? 'debit') === 'credit' ? 'selected' : '' }}>Credit</option>
                                 </select>
-                            </div>
-
-                            <div class="col-md-4">
-                                <label for="opening_date" class="form-label fw-semibold mb-1">Opening Date</label>
-                                <input type="date" class="form-control" id="opening_date" value="{{ $account->opening_date?->format('Y-m-d') }}" readonly>
                             </div>
                         </div>
 
@@ -162,7 +157,7 @@
                 <div class="card-body">
                     <h6 class="fw-bold mb-3">Quick Notes</h6>
                     <ul class="list-unstyled mb-0 small text-muted">
-                        <li class="mb-2"><i class="bi bi-check2-circle text-success me-2"></i>Keep opening balance aligned with opening date.</li>
+                        <li class="mb-2"><i class="bi bi-check2-circle text-success me-2"></i>Opening date follows the financial year start date automatically.</li>
                         <li class="mb-2"><i class="bi bi-check2-circle text-success me-2"></i>Turn on Is Cash/Bank/OD for ledgers you want in Paid From / Received In dropdowns.</li>
                         <li class="mb-2"><i class="bi bi-check2-circle text-success me-2"></i>Turn it off for general asset ledgers.</li>
                     </ul>

@@ -37,15 +37,23 @@
                     @endforeach
                 </select>
             </div>
+            <div class="col-lg-2 col-md-6">
+                <label class="form-label">From Date</label>
+                <input type="date" name="date_from" class="form-control" value="{{ $dateFrom ?? '' }}">
+            </div>
+            <div class="col-lg-2 col-md-6">
+                <label class="form-label">To Date</label>
+                <input type="date" name="date_to" class="form-control" value="{{ $dateTo ?? '' }}">
+            </div>
             <div class="col-lg-auto col-md-12 report-filter-actions">
                 <button type="submit" class="btn btn-primary">
                     <i class="bi bi-funnel me-1"></i>Filter
                 </button>
                 @if(!empty($financialYearId))
-                    <a href="{{ route('admin.export.excel', ['type' => 'trial-balance', 'financial_year_id' => $financialYearId]) }}" class="btn btn-outline-success report-btn-export">
+                    <a href="{{ route('admin.export.excel', ['type' => 'trial-balance', 'financial_year_id' => $financialYearId, 'date_from' => $dateFrom, 'date_to' => $dateTo]) }}" class="btn btn-outline-success report-btn-export">
                         <i class="bi bi-file-earmark-spreadsheet"></i>Excel
                     </a>
-                    <a href="{{ route('admin.export.trial-balance.pdf', ['financial_year_id' => $financialYearId]) }}" class="btn btn-outline-danger report-btn-export">
+                    <a href="{{ route('admin.export.trial-balance.pdf', ['financial_year_id' => $financialYearId, 'date_from' => $dateFrom, 'date_to' => $dateTo]) }}" class="btn btn-outline-danger report-btn-export">
                         <i class="bi bi-file-earmark-pdf"></i>PDF
                     </a>
                 @endif
@@ -85,12 +93,26 @@
         <div class="report-panel">
             <div class="report-panel-header">
                 <h6 class="report-panel-title"><i class="bi bi-list-check text-primary"></i>Account Balances</h6>
+                <span class="report-pill report-pill--info">@istDate($dateFrom) to @istDate($dateTo)</span>
                 <span class="report-pill {{ $report['is_balanced'] ? 'report-pill--success' : 'report-pill--danger' }}">
                     <i class="bi {{ $report['is_balanced'] ? 'bi-check-circle' : 'bi-exclamation-circle' }}"></i>
                     {{ $report['is_balanced'] ? 'Balanced' : 'Review Difference' }}
                 </span>
             </div>
             <div class="report-panel-body report-panel-body--flush">
+                <div class="report-table-tools">
+                    <form method="GET" action="{{ route('admin.reports.trial-balance') }}" class="report-rows-form">
+                        <input type="hidden" name="financial_year_id" value="{{ $financialYearId ?? '' }}">
+                        <input type="hidden" name="date_from" value="{{ $dateFrom ?? '' }}">
+                        <input type="hidden" name="date_to" value="{{ $dateTo ?? '' }}">
+                        <label for="trial-balance-per-page" class="report-rows-label">Rows Per Page</label>
+                        <select id="trial-balance-per-page" name="per_page" class="form-select form-select-sm report-rows-select" onchange="this.form.submit()">
+                            @foreach([10, 25, 30, 50, 100] as $size)
+                                <option value="{{ $size }}" {{ (int) request('per_page', 10) === $size ? 'selected' : '' }}>{{ $size }}</option>
+                            @endforeach
+                        </select>
+                    </form>
+                </div>
                 <div class="table-responsive">
                     <table class="table report-table table-hover mb-0">
                         <thead>
@@ -104,7 +126,7 @@
                             </tr>
                         </thead>
                         <tbody>
-                            @forelse($report['accounts'] as $item)
+                            @forelse($accounts as $item)
                             <tr>
                                 <td class="fw-semibold">{{ $item['account']->account_code }}</td>
                                 <td>
@@ -141,6 +163,11 @@
                         </tfoot>
                     </table>
                 </div>
+                @if($accounts->hasPages())
+                    <div class="report-pagination">
+                        {{ $accounts->onEachSide(1)->links('pagination::bootstrap-5') }}
+                    </div>
+                @endif
             </div>
         </div>
     @endif

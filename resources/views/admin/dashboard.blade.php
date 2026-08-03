@@ -3,6 +3,7 @@
 @section('title', 'Dashboard')
 
 @section('content')
+<div class="dashboard-modern">
 <!-- Page Header -->
 <div class="position-relative mb-4">
     <div class="d-flex align-items-center justify-content-between">
@@ -115,8 +116,8 @@
 
 <!-- Stats Cards Row 2 -->
 <div class="row g-3 mb-4">
-    <div class="col-xl-3 col-md-6">
-        <div class="card h-100" style="border-left: 3px solid var(--warning);">
+    <div class="col-xl-3 col-md-6 d-flex align-items-start">
+        <div class="card summary-card-compact w-100" style="border-left: 3px solid var(--warning);">
             <div class="card-body">
                 <div class="d-flex align-items-center">
                     <div class="flex-grow-1">
@@ -132,8 +133,8 @@
         </div>
     </div>
 
-    <div class="col-xl-3 col-md-6">
-        <div class="card h-100" style="border-left: 3px solid var(--danger);">
+    <div class="col-xl-3 col-md-6 d-flex align-items-start">
+        <div class="card summary-card-compact w-100" style="border-left: 3px solid var(--danger);">
             <div class="card-body">
                 <div class="d-flex align-items-center">
                     <div class="flex-grow-1">
@@ -158,38 +159,50 @@
                 </h5>
             </div>
             <div class="card-body">
-                <div class="row g-2">
-                    <div class="col-4">
+                <div class="row g-2 quick-actions-grid">
+                    <div class="col-lg-3 col-sm-6">
                         <a href="{{ route('admin.vouchers.create', 'payment') }}" class="quick-action">
                             <i class="bi bi-arrow-up-circle" style="color: var(--warning);"></i>
                             <span>Payment</span>
                         </a>
                     </div>
-                    <div class="col-4">
+                    <div class="col-lg-3 col-sm-6">
                         <a href="{{ route('admin.vouchers.create', 'receipt') }}" class="quick-action">
                             <i class="bi bi-arrow-down-circle" style="color: var(--info);"></i>
                             <span>Receipt</span>
                         </a>
                     </div>
-                    <div class="col-4">
+                    <div class="col-lg-3 col-sm-6">
                         <a href="{{ route('admin.vouchers.create', 'journal') }}" class="quick-action">
                             <i class="bi bi-journal-bookmark" style="color: var(--primary);"></i>
                             <span>Adjustment</span>
                         </a>
                     </div>
-                    <div class="col-4">
+                    <div class="col-lg-3 col-sm-6">
                         <a href="{{ route('admin.sales-invoices.create') }}" class="quick-action">
                             <i class="bi bi-file-earmark-plus" style="color: var(--success);"></i>
                             <span>Sale Invoice</span>
                         </a>
                     </div>
-                    <div class="col-4">
+                    <div class="col-lg-3 col-sm-6">
+                        <a href="{{ route('admin.purchase-invoices.create') }}" class="quick-action">
+                            <i class="bi bi-cart-plus" style="color: var(--danger);"></i>
+                            <span>Purchase Invoice</span>
+                        </a>
+                    </div>
+                    <div class="col-lg-3 col-sm-6">
                         <a href="{{ route('admin.parties.create') }}" class="quick-action">
                             <i class="bi bi-person-plus" style="color: var(--primary);"></i>
                             <span>Add Party</span>
                         </a>
                     </div>
-                    <div class="col-4">
+                    <div class="col-lg-3 col-sm-6">
+                        <a href="{{ route('admin.accounts.create') }}" class="quick-action">
+                            <i class="bi bi-bank2" style="color: var(--info);"></i>
+                            <span>Add Ledger</span>
+                        </a>
+                    </div>
+                    <div class="col-lg-3 col-sm-6">
                         <a href="{{ route('admin.reports.index') }}" class="quick-action">
                             <i class="bi bi-file-earmark-bar-graph" style="color: var(--secondary);"></i>
                             <span>Reports</span>
@@ -240,7 +253,7 @@
                                     <div class="text-muted small">{{ $transaction['party']['name'] ?? 'No party' }} · {{ ucfirst($transaction['voucher_type']) }}</div>
                                 </div>
                                 <div class="text-end small text-muted">
-                                    <div>{{ \Illuminate\Support\Carbon::parse($transaction['voucher_date'])->format('d M Y') }}</div>
+                                    <div>{{ \Illuminate\Support\Carbon::parse($transaction['voucher_date'])->format('d-M-Y') }}</div>
                                     <div>₹{{ number_format($transaction['total_debit'] ?? 0, 2) }}</div>
                                 </div>
                             </div>
@@ -289,15 +302,55 @@
         </div>
     </div>
 </div>
+</div>
 @endsection
 
 @push('styles')
 <style>
+    .dashboard-modern {
+        display: grid;
+        gap: 1.1rem;
+    }
+
+    .dashboard-modern .card {
+        border: 1px solid color-mix(in srgb, var(--border) 85%, #d7dfef 15%);
+        border-radius: 18px;
+        box-shadow: 0 10px 28px rgba(15, 23, 42, 0.06);
+        overflow: hidden;
+        transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+    }
+
+    .dashboard-modern .card:hover {
+        transform: translateY(-3px);
+        border-color: color-mix(in srgb, var(--primary) 34%, var(--border) 66%);
+        box-shadow: 0 18px 36px rgba(15, 23, 42, 0.1);
+    }
+
+    .dashboard-modern .card-header {
+        background: linear-gradient(180deg, #fbfcff 0%, #f7faff 100%);
+        border-bottom: 1px solid color-mix(in srgb, var(--border-light) 82%, #dbe3f1 18%);
+        padding: 0.95rem 1.2rem;
+    }
+
+    .dashboard-modern .card-body {
+        padding: 1.15rem 1.2rem;
+    }
+
+    .dashboard-modern #dashboardRange {
+        min-width: 220px;
+        height: 42px;
+        border-radius: 12px;
+        border-color: color-mix(in srgb, var(--border) 84%, #ccd7ea 16%);
+        font-size: 0.86rem;
+        font-weight: 600;
+    }
+
     .stats-card {
         border: 1px solid var(--border) !important;
         position: relative;
         overflow: hidden;
         transition: all 0.2s ease;
+        background: linear-gradient(145deg, #ffffff 0%, #fbfdff 62%, #f4f8ff 100%);
     }
     
     .stats-card::before {
@@ -318,18 +371,8 @@
         border-radius: var(--radius-md);
         display: flex; align-items: center; justify-content: center;
         font-size: 22px; flex-shrink: 0;
-    }
-    
-    .card {
-        border: 1px solid var(--border);
-        border-radius: var(--radius-lg);
-        box-shadow: var(--shadow-sm);
-    }
-    
-    .card-header {
-        background: transparent;
-        border-bottom: 1px solid var(--border-light);
-        padding: 16px 20px;
+        border: 1px solid rgba(255, 255, 255, 0.38);
+        box-shadow: 0 7px 18px rgba(15, 23, 42, 0.08);
     }
     
     .card-title {
@@ -342,6 +385,63 @@
         padding: 4px 12px;
     }
 
+    .dashboard-modern .quick-action {
+        min-height: 92px;
+        border-radius: 14px;
+        padding: 0.72rem 0.6rem;
+        border-color: color-mix(in srgb, var(--border) 86%, #dce5f5 14%);
+        background: linear-gradient(180deg, #ffffff 0%, #f9fbff 100%);
+        transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+    }
+
+    .dashboard-modern .quick-action:hover {
+        transform: translateY(-3px);
+        border-color: color-mix(in srgb, var(--primary) 38%, var(--border) 62%);
+        box-shadow: 0 14px 30px rgba(15, 23, 42, 0.09);
+    }
+
+    .dashboard-modern .quick-action i {
+        font-size: 1.4rem;
+        margin-bottom: 0.35rem;
+    }
+
+    .dashboard-modern .quick-action span {
+        font-size: 0.8rem;
+        font-weight: 700;
+        letter-spacing: 0.01em;
+    }
+
+    .dashboard-modern .quick-actions-grid {
+        --bs-gutter-y: 0.6rem;
+    }
+
+    .dashboard-modern .quick-actions-grid .col-lg-3 {
+        display: flex;
+    }
+
+    .dashboard-modern .quick-actions-grid .quick-action {
+        width: 100%;
+    }
+
+    .dashboard-modern .summary-card-compact {
+        height: auto;
+        min-height: 0;
+    }
+
+    .dashboard-modern .summary-card-compact .card-body {
+        padding-bottom: 1rem;
+    }
+
+    @media (max-width: 767.98px) {
+        .dashboard-modern .quick-action {
+            min-height: 88px;
+        }
+
+        .dashboard-modern #dashboardRange {
+            min-width: 176px;
+        }
+    }
+
     body.dark-mode .list-group-item {
         background-color: rgba(255, 255, 255, 0.04) !important;
         border-color: rgba(148, 163, 184, 0.24) !important;
@@ -352,6 +452,32 @@
     body.dark-mode .list-group-item .text-muted,
     body.dark-mode .list-group-item .small {
         color: rgba(226, 232, 240, 0.92) !important;
+    }
+
+    body.dark-mode .dashboard-modern .card {
+        background: #151b2c;
+        border-color: rgba(148, 163, 184, 0.14);
+        box-shadow: 0 16px 34px rgba(2, 6, 23, 0.38);
+    }
+
+    body.dark-mode .dashboard-modern .card-header {
+        background: rgba(255, 255, 255, 0.03);
+        border-bottom-color: rgba(148, 163, 184, 0.12);
+    }
+
+    body.dark-mode .stats-card {
+        background: linear-gradient(145deg, #161d30 0%, #10192b 100%);
+    }
+
+    body.dark-mode .dashboard-modern .quick-action {
+        background: linear-gradient(180deg, #141c2f 0%, #0f1729 100%);
+        border-color: rgba(148, 163, 184, 0.2);
+    }
+
+    body.dark-mode .dashboard-modern #dashboardRange {
+        background: #111827;
+        color: #e2e8f0;
+        border-color: rgba(148, 163, 184, 0.24);
     }
 </style>
 @endpush

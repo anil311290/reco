@@ -636,7 +636,7 @@
                                         </div>
                                     </div>
                                     <hr class="dropdown-divider">
-                                    <a class="dropdown-item" href="#">
+                                    <a class="dropdown-item" href="{{ route('admin.profile') }}">
                                         <i class="bi bi-person"></i>
                                         <span>My Profile</span>
                                     </a>
@@ -644,7 +644,7 @@
                                         <i class="bi bi-gear"></i>
                                         <span>{{ $isSuperAdmin ? 'Platform Settings' : 'Settings' }}</span>
                                     </a>
-                                    <a class="dropdown-item" href="#">
+                                    <a class="dropdown-item" href="{{ route('admin.profile') }}#change-password">
                                         <i class="bi bi-key"></i>
                                         <span>Change Password</span>
                                     </a>
@@ -807,8 +807,9 @@
                             <input type="text" class="form-control" name="account_name" required placeholder="e.g., Cash Counter, HDFC Bank, OD Account">
                         </div>
                         <div class="mb-3">
-                            <label class="form-label">Opening Date</label>
-                            <input type="date" class="form-control" name="opening_date" value="{{ date('Y-m-d') }}">
+                            <div class="form-text">
+                                <i class="bi bi-calendar-event me-1"></i>Opening date is auto-set to current financial year start date.
+                            </div>
                         </div>
                         <div class="row g-3 mb-3">
                             <div class="col-md-6">
@@ -948,6 +949,61 @@
 
                 return value;
             }
+
+            function getQuickAddTargetSelector($select) {
+                const configured = ($select.data('quick-add-target') || '').toString().trim();
+                if (configured) {
+                    return configured;
+                }
+
+                const selectId = ($select.attr('id') || '').toString().trim();
+                return selectId ? `#${selectId}` : '';
+            }
+
+            $(document).on('change', 'select[data-quick-add-in-select="1"]', function() {
+                const $select = $(this);
+                const value = ($select.val() || '').toString();
+
+                if (value !== '__quick_add_party' && value !== '__quick_add_ledger') {
+                    return;
+                }
+
+                const targetSelector = getQuickAddTargetSelector($select);
+                applySelectValue($select, '');
+
+                if (value === '__quick_add_party') {
+                    if (!$partyForm.length) {
+                        toastr.warning('Quick Add Party is not available for your role.');
+                        return;
+                    }
+
+                    const partyType = ($select.data('quick-add-party-type') || 'debtor').toString();
+                    const $proxyButton = $('<button>', {
+                        type: 'button',
+                        class: 'd-none quick-add-party-btn',
+                        'data-party-quick-add-target': targetSelector,
+                        'data-party-quick-add-type': partyType
+                    }).appendTo('body');
+
+                    $proxyButton.trigger('click');
+                    $proxyButton.remove();
+                    return;
+                }
+
+                if (!$accountForm.length) {
+                    toastr.warning('Quick Add Cash / Bank Ledger is not available for your role.');
+                    return;
+                }
+
+                const $proxyButton = $('<button>', {
+                    type: 'button',
+                    class: 'd-none quick-add-ledger-btn',
+                    'data-account-quick-add-target': targetSelector
+                }).appendTo('body');
+
+                $proxyButton.trigger('click');
+                $proxyButton.remove();
+            });
 
             const $partyModal = $('#partyQuickAddModal');
             const partyModalEl = $partyModal.get(0);
@@ -1118,7 +1174,6 @@
                     $accountForm[0].reset();
                     clearValidationErrors('#accountQuickAddForm');
                     $accountForm.find('[name="account_target"]').val(accountTargetSelector);
-                    $accountForm.find('[name="opening_date"]').val('{{ date('Y-m-d') }}');
                     $accountForm.find('[name="opening_balance"]').val('0');
                     $accountForm.find('[name="balance_type"]').val('debit');
                     $accountForm.find('[name="duplicate_action"]').val('');

@@ -134,14 +134,13 @@ use OpenApi\Annotations as OA;
  *     path="/profile",
  *     tags={"Authentication"},
  *     summary="Update user profile",
- *     description="Update current user profile information",
+ *     description="Update current user profile information. Email is read-only and cannot be changed from this endpoint.",
  *     operationId="updateProfile",
  *     security={{"bearerAuth":{}}},
  *     @OA\RequestBody(
  *         description="Profile data to update",
  *         @OA\JsonContent(
  *             @OA\Property(property="name", type="string", example="John Doe Updated"),
- *             @OA\Property(property="email", type="string", format="email", example="john.updated@example.com"),
  *             @OA\Property(property="phone", type="string", example="+91 9876543211")
  *         )
  *     ),
@@ -170,17 +169,19 @@ use OpenApi\Annotations as OA;
  *     path="/change-password",
  *     tags={"Authentication"},
  *     summary="Change password",
- *     description="Change current user password",
+ *     description="Change current user password. Use new_password/new_password_confirmation (legacy password/password_confirmation is also accepted).",
  *     operationId="changePassword",
  *     security={{"bearerAuth":{}}},
  *     @OA\RequestBody(
  *         required=true,
  *         description="Password data",
  *         @OA\JsonContent(
- *             required={"current_password", "password", "password_confirmation"},
+ *             required={"current_password", "new_password", "new_password_confirmation"},
  *             @OA\Property(property="current_password", type="string", format="password", example="old12345678", description="Current password"),
- *             @OA\Property(property="password", type="string", format="password", minLength=8, example="new12345678", description="New password"),
- *             @OA\Property(property="password_confirmation", type="string", format="password", example="new12345678", description="Confirm new password")
+ *             @OA\Property(property="new_password", type="string", format="password", minLength=8, example="new12345678", description="New password"),
+ *             @OA\Property(property="new_password_confirmation", type="string", format="password", example="new12345678", description="Confirm new password"),
+ *             @OA\Property(property="password", type="string", format="password", minLength=8, example="new12345678", description="Legacy alias of new_password", nullable=true),
+ *             @OA\Property(property="password_confirmation", type="string", format="password", example="new12345678", description="Legacy alias of new_password_confirmation", nullable=true)
  *         )
  *     ),
  *     @OA\Response(

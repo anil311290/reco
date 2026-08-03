@@ -49,7 +49,7 @@
 </head>
 <body>
     <h1>Account Master Report</h1>
-    <p>Generated on: {{ now()->format('d-m-Y H:i:s') }}</p>
+    <p>Generated on: {{ now()->format('d-M-Y H:i:s') }}</p>
 
     <table>
         <thead>
@@ -74,7 +74,7 @@
                 <td class="center">{{ $account->account_type === 'asset' ? ($account->is_cash_bank_od ? 'Yes' : 'No') : '-' }}</td>
                 <td class="currency">₹ {{ number_format($account->opening_balance, 2) }}</td>
                 <td class="center">{{ ucfirst($account->balance_type ?? 'Debit') }}</td>
-                <td class="center">{{ $account->opening_date?->format('d-m-Y') ?? '-' }}</td>
+                <td class="center">{{ $account->opening_date?->format('d-M-Y') ?? '-' }}</td>
                 <td class="center">{{ $account->is_active ? 'Active' : 'Inactive' }}</td>
                 <td>{{ $account->remarks ?? '-' }}</td>
             </tr>

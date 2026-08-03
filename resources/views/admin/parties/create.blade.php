@@ -2,6 +2,10 @@
 
 @section('title', 'Create Party')
 
+@php
+    $openingDateDefault = auth()->user()->company->currentFinancialYear?->start_date?->format('Y-m-d') ?? date('Y-m-d');
+@endphp
+
 @section('content')
 <div class="party-shell">
     <div class="account-hero p-4 p-lg-5 mb-4">
@@ -135,7 +139,7 @@
                             </div>
                             <div class="party-opening-panel">
                                 <div class="row g-3 align-items-end">
-                                    <div class="col-md-4">
+                                    <div class="col-md-6">
                                         <label for="opening_balance" class="form-label fw-semibold">Amount</label>
                                         <div class="input-group">
                                             <span class="input-group-text">₹</span>
@@ -143,20 +147,15 @@
                                                 value="{{ old('opening_balance', '0.00') }}" step="0.01" min="0">
                                         </div>
                                     </div>
-                                    <div class="col-md-4">
+                                    <div class="col-md-6">
                                         <label for="opening_balance_type" class="form-label fw-semibold">Balance Type</label>
                                         <select class="form-select" id="opening_balance_type" name="opening_balance_type">
                                             <option value="debit" {{ old('opening_balance_type', 'debit') === 'debit' ? 'selected' : '' }}>Debit (DR)</option>
                                             <option value="credit" {{ old('opening_balance_type') === 'credit' ? 'selected' : '' }}>Credit (CR)</option>
                                         </select>
                                     </div>
-                                    <div class="col-md-4">
-                                        <label for="opening_date" class="form-label fw-semibold">Opening Date</label>
-                                        <input type="date" class="form-control" id="opening_date" name="opening_date"
-                                            value="{{ old('opening_date', date('Y-m-d')) }}">
-                                    </div>
                                 </div>
-                                <div class="form-text mt-2"><i class="bi bi-lock me-1"></i>Opening balance cannot be changed after creation.</div>
+                                <div class="form-text mt-2"><i class="bi bi-lock me-1"></i>Opening balance cannot be changed after creation. Opening date is auto-set to current financial year start date: <strong>{{ $openingDateDefault }}</strong>.</div>
                             </div>
                         </section>
 
@@ -268,7 +267,7 @@ $(document).ready(function() {
 
         const amount = parseFloat($('#opening_balance').val()) || 0;
         const balanceType = $('#opening_balance_type option:selected').text();
-        const openingDate = $('#opening_date').val() || '-';
+        const openingDate = '{{ $openingDateDefault }}';
         const formattedAmount = amount.toLocaleString('en-IN', {
             minimumFractionDigits: 2,
             maximumFractionDigits: 2

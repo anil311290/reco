@@ -144,15 +144,24 @@ class AccountService
                             : 'credit';
                     }
 
-                    // Set opening date if not provided
-                    if (empty($data['opening_date'])) {
-                        $data['opening_date'] = now();
-                    }
-
                     // Get current financial year if not provided
+                    $financialYear = null;
                     if (empty($data['financial_year_id'])) {
                         $financialYear = FinancialYear::getCurrent($data['company_id']);
                         $data['financial_year_id'] = $financialYear?->id;
+                    } else {
+                        $financialYear = FinancialYear::query()
+                            ->where('company_id', $data['company_id'])
+                            ->whereKey((int) $data['financial_year_id'])
+                            ->first();
+                    }
+
+                    // Opening date defaults to current FY start date.
+                    if (empty($data['opening_date'])) {
+                        $data['opening_date'] = $this->resolveOpeningDate(
+                            (int) $data['company_id'],
+                            $financialYear
+                        );
                     }
 
                     $account = Account::create($data);
@@ -201,12 +210,12 @@ class AccountService
             ) ? 'debit' : 'credit';
         }
 
-        if (empty($data['opening_date'])) {
-            $data['opening_date'] = now();
-        }
-
         $data['company_id'] = $account->company_id;
-        $data['financial_year_id'] = FinancialYear::getCurrent($account->company_id)?->id;
+        $financialYear = FinancialYear::getCurrent($account->company_id);
+        $data['financial_year_id'] = $financialYear?->id;
+        if (empty($data['opening_date'])) {
+            $data['opening_date'] = $this->resolveOpeningDate($account->company_id, $financialYear);
+        }
         $data['entry_source'] = 'manual';
         $data['is_system'] = false;
         $data['deleted_by'] = null;
@@ -234,6 +243,14 @@ class AccountService
         return $sqlState === '23000'
             && $driverCode === 1062
             && str_contains($message, 'accounts_company_account_code_unique');
+    }
+
+    protected function resolveOpeningDate(int $companyId, ?FinancialYear $financialYear = null): string
+    {
+        $financialYear ??= FinancialYear::getCurrent($companyId);
+
+        return $financialYear?->start_date?->format('Y-m-d')
+            ?? now()->toDateString();
     }
 
     /**

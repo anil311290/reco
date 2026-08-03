@@ -9,9 +9,9 @@ class DateHelper
 {
     public const TZ = 'Asia/Kolkata';
 
-    public const DATE_FORMAT = 'd M Y';
+    public const DATE_FORMAT = 'd-M-Y';
 
-    public const DATETIME_FORMAT = 'd M Y, h:i A';
+    public const DATETIME_FORMAT = 'd-M-Y h:i A';
 
     /**
      * Calendar date for display (invoice date, due date, opening date, etc.).

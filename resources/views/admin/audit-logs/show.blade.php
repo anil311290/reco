@@ -48,7 +48,7 @@
                     <div class="col-md-4">
                         <div class="border rounded p-3 h-100">
                             <small class="text-uppercase text-muted">Date</small>
-                            <h6 class="mt-2">{{ $log->created_at->format('d M Y H:i:s') }}</h6>
+                            <h6 class="mt-2">{{ $log->created_at->format('d-M-Y H:i:s') }}</h6>
                         </div>
                     </div>
                     <div class="col-md-4">

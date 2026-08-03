@@ -92,6 +92,7 @@
                 <div class="report-panel h-100">
                     <div class="report-panel-header">
                         <h6 class="report-panel-title"><i class="bi bi-arrow-down-circle text-success"></i>Receipts</h6>
+                        <span class="report-pill report-pill--info">@istDate($dateFrom) to @istDate($dateTo)</span>
                         <span class="report-pill report-pill--success">₹{{ number_format($report['receipts_side_total'], 2) }}</span>
                     </div>
                     <div class="report-panel-body report-panel-body--flush">
@@ -135,6 +136,7 @@
                 <div class="report-panel h-100">
                     <div class="report-panel-header">
                         <h6 class="report-panel-title"><i class="bi bi-arrow-up-circle text-danger"></i>Payments</h6>
+                        <span class="report-pill report-pill--info">@istDate($dateFrom) to @istDate($dateTo)</span>
                         <span class="report-pill report-pill--danger">₹{{ number_format($report['payments_side_total'], 2) }}</span>
                     </div>
                     <div class="report-panel-body report-panel-body--flush">
@@ -176,6 +178,7 @@
         <div class="report-panel">
             <div class="report-panel-header">
                 <h6 class="report-panel-title"><i class="bi bi-wallet2 text-primary"></i>Cash / Bank Ledgers</h6>
+                <span class="report-pill report-pill--info">@istDate($dateFrom) to @istDate($dateTo)</span>
                 <span class="report-pill {{ $report['is_balanced'] ? 'report-pill--success' : 'report-pill--danger' }}">
                     <i class="bi {{ $report['is_balanced'] ? 'bi-check-circle' : 'bi-exclamation-circle' }}"></i>
                     {{ $report['is_balanced'] ? 'Balanced' : 'Not balanced' }}

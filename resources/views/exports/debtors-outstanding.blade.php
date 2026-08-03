@@ -4,14 +4,16 @@
     <meta charset="UTF-8">
     <title>Receivables Outstanding</title>
     <style>
-        body { font-family: DejaVu Sans, sans-serif; color: #333; font-size: 12px; }
-        .container { padding: 20px; }
-        .header { text-align: center; margin-bottom: 20px; }
+        @page { margin: 10px 12px; }
+        body { font-family: DejaVu Sans, sans-serif; color: #333; font-size: 11px; margin: 0; }
+        .container { padding: 0; }
+        .header { text-align: center; margin-bottom: 10px; }
+        .header h1 { margin: 0; font-size: 20px; }
         .table { width: 100%; border-collapse: collapse; }
-        .table th, .table td { border: 1px solid #ddd; padding: 8px; }
-        .table th { background: #f7f7f7; text-align: left; }
+        .table th, .table td { border: 1px solid #d6dbe6; padding: 6px; }
+        .table th { background: #f3f6fc; text-align: left; font-weight: 700; }
         .text-right { text-align: right; }
-        tfoot td { font-weight: bold; background: #f3f3f3; }
+        tfoot td { font-weight: bold; background: #eef2f8; }
     </style>
 </head>
 <body>

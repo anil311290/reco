@@ -54,7 +54,7 @@
                     <div class="col-md-6">
                         <div class="p-3 bg-light rounded">
                             <small class="text-muted">Current Period</small>
-                            <h5 class="mb-0">{{ $subscription->current_period_start?->format('d M Y') }} - {{ $subscription->current_period_end?->format('d M Y') }}</h5>
+                            <h5 class="mb-0">{{ $subscription->current_period_start?->format('d-M-Y') }} - {{ $subscription->current_period_end?->format('d-M-Y') }}</h5>
                         </div>
                     </div>
                     <div class="col-md-6">
@@ -70,10 +70,10 @@
                             </small>
                             <h5 class="mb-0">
                                 {{ $subscription->isOnTrial() 
-                                    ? $subscription->trial_end_date?->format('d M Y') 
+                                    ? $subscription->trial_end_date?->format('d-M-Y') 
                                     : ($subscription->billing_cycle === 'lifetime' 
                                         ? 'One-time purchase' 
-                                        : $subscription->current_period_end?->format('d M Y')) }}
+                                        : $subscription->current_period_end?->format('d-M-Y')) }}
                             </h5>
                         </div>
                     </div>
