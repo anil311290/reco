@@ -31,7 +31,7 @@
                         </div>
                         <div>
                             <div class="text-uppercase fw-semibold mb-1">Registered On</div>
-                            <div class="text-dark">{{ optional($company->created_at)->format('d M Y, h:i A') ?: '-' }}</div>
+                            <div class="text-dark">{{ optional($company->created_at)->format('d-M-Y h:i A') ?: '-' }}</div>
                         </div>
                         <div>
                             <div class="text-uppercase fw-semibold mb-1">City</div>

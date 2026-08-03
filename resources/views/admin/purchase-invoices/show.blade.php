@@ -46,8 +46,8 @@
                         @if($invoice->supplier_invoice_number)
                         <p class="mb-0"><strong>Supplier Ref:</strong> {{ $invoice->supplier_invoice_number }}</p>
                         @endif
-                        <p class="mb-0"><strong>Date:</strong> {{ $invoice->invoice_date?->format('d M Y') }}</p>
-                        <p class="mb-0"><strong>Due Date:</strong> {{ $invoice->due_date?->format('d M Y') }}</p>
+                        <p class="mb-0"><strong>Date:</strong> {{ $invoice->invoice_date?->format('d-M-Y') }}</p>
+                        <p class="mb-0"><strong>Due Date:</strong> {{ $invoice->due_date?->format('d-M-Y') }}</p>
                     </div>
                 </div>
 
@@ -121,8 +121,8 @@
                 @endif
 
                 <hr>
-                <p class="mb-1"><strong>Created:</strong> {{ $invoice->created_at?->format('d M Y H:i') }}</p>
-                <p class="mb-0"><strong>Updated:</strong> {{ $invoice->updated_at?->format('d M Y H:i') }}</p>
+                <p class="mb-1"><strong>Created:</strong> {{ $invoice->created_at?->format('d-M-Y H:i') }}</p>
+                <p class="mb-0"><strong>Updated:</strong> {{ $invoice->updated_at?->format('d-M-Y H:i') }}</p>
             </div>
         </div>
     </div>

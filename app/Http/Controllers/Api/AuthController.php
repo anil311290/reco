@@ -110,12 +110,11 @@ class AuthController extends Controller
     {
         $request->validate([
             'name' => 'sometimes|string|max:255',
-            'email' => 'sometimes|email|unique:users,email,' . $request->user()->id,
             'phone' => 'sometimes|string|max:20',
         ]);
 
         $user = $this->authService->updateProfile($request->user(), $request->only([
-            'name', 'email', 'phone',
+            'name', 'phone',
         ]));
 
         return ResponseHelper::success(
@@ -130,14 +129,17 @@ class AuthController extends Controller
     public function changePassword(Request $request): JsonResponse
     {
         $request->validate([
-            'current_password' => 'required|string',
-            'password' => 'required|string|min:8|confirmed',
+            'current_password' => 'required|string|current_password',
+            'new_password' => 'required_without:password|string|min:8|confirmed|different:current_password',
+            'password' => 'required_without:new_password|string|min:8|confirmed|different:current_password',
         ]);
+
+        $newPassword = $request->input('new_password', $request->input('password'));
 
         $this->authService->changePassword(
             $request->user(),
             $request->current_password,
-            $request->password
+            $newPassword
         );
 
         return ResponseHelper::success(null, 'Password changed successfully');

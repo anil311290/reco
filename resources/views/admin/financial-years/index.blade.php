@@ -108,9 +108,9 @@ $(document).ready(function() {
                 }
 
                 response.data.forEach(function(fy, index) {
-                    const statusBadge = fy.is_closed 
-                        ? '<span class="badge bg-secondary">Closed</span>'
-                        : '<span class="badge bg-success">Open</span>';
+                    const statusBadge = fy.is_closed
+                        ? '<span class="badge bg-secondary">Disabled</span>'
+                        : '<span class="badge bg-success">Enabled</span>';
                     
                     const currentBadge = fy.is_current 
                         ? '<span class="badge bg-primary">Current</span>'
@@ -124,13 +124,20 @@ $(document).ready(function() {
                             </button>
                         `;
                     }
-                    if (!fy.is_closed) {
-                        actions += `
-                            <button class="btn btn-sm btn-outline-warning close-btn" data-id="${fy.id}" title="Close Year">
-                                <i class="bi bi-lock"></i>
-                            </button>
-                        `;
-                    }
+                    const toggleTitle = fy.is_current
+                        ? 'Disabling this year will switch current year to another enabled year'
+                        : (fy.is_closed ? 'Enable year' : 'Disable year');
+                    actions += `
+                        <div class="form-check form-switch d-inline-flex align-items-center ms-1" title="${toggleTitle}">
+                            <input
+                                class="form-check-input status-toggle"
+                                type="checkbox"
+                                role="switch"
+                                data-id="${fy.id}"
+                                ${fy.is_closed ? '' : 'checked'}
+                            >
+                        </div>
+                    `;
                     if (!fy.is_current) {
                         actions += `
                             <button class="btn btn-sm btn-outline-danger delete-btn" data-id="${fy.id}" title="Delete">
@@ -199,38 +206,49 @@ $(document).ready(function() {
             });
         });
 
-        // Close year
-        $('.close-btn').on('click', function() {
-            const id = $(this).data('id');
-            
+        // Enable/disable status toggle
+        $('.status-toggle').on('change', function() {
+            const input = $(this);
+            const id = input.data('id');
+            const isEnabled = input.prop('checked');
+            const newClosedValue = isEnabled ? 0 : 1;
+
             Swal.fire({
-                title: 'Close Financial Year?',
-                text: 'This action cannot be undone. You won\'t be able to create new entries for this year.',
-                icon: 'warning',
+                title: isEnabled ? 'Enable Financial Year?' : 'Disable Financial Year?',
+                text: isEnabled
+                    ? 'This financial year will become available again for use.'
+                    : 'This financial year will be disabled for new entries.',
+                icon: isEnabled ? 'question' : 'warning',
                 showCancelButton: true,
-                confirmButtonColor: '#f59e0b',
-                confirmButtonText: 'Yes, close it'
+                confirmButtonColor: isEnabled ? '#16a34a' : '#f59e0b',
+                confirmButtonText: isEnabled ? 'Yes, enable it' : 'Yes, disable it'
             }).then((result) => {
-                if (result.isConfirmed) {
-                    $.ajax({
-                        url: `/admin/financial-years/${id}/close`,
-                        method: 'PATCH',
-                        headers: {
-                            'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
-                        },
-                        success: function(response) {
-                            if (response.success) {
-                                toastr.success(response.message);
-                                loadFinancialYears();
-                            } else {
-                                toastr.error(response.message);
-                            }
-                        },
-                        error: function(xhr) {
-                            toastr.error(xhr.responseJSON?.message || 'An error occurred');
-                        }
-                    });
+                if (!result.isConfirmed) {
+                    input.prop('checked', !isEnabled);
+                    return;
                 }
+
+                $.ajax({
+                    url: `/admin/financial-years/${id}/close`,
+                    method: 'PATCH',
+                    data: { status: newClosedValue },
+                    headers: {
+                        'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
+                    },
+                    success: function(response) {
+                        if (response.success) {
+                            toastr.success(response.message);
+                            loadFinancialYears();
+                        } else {
+                            input.prop('checked', !isEnabled);
+                            toastr.error(response.message);
+                        }
+                    },
+                    error: function(xhr) {
+                        input.prop('checked', !isEnabled);
+                        toastr.error(xhr.responseJSON?.message || 'An error occurred');
+                    }
+                });
             });
         });
 

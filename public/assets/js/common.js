@@ -175,13 +175,23 @@ function initAjaxForms() {
 }
 
 /**
- * Turn every `select[data-searchable="true"]` inside the scope into a
- * searchable Select2 control. Safe to call again for dynamically added rows.
+ * Turn dropdowns into searchable Select2 controls.
+ *
+ * Default behavior:
+ * - All `select.form-select` elements become searchable.
+ * - `select[data-searchable="true"]` is also supported.
+ * - Set `data-searchable="false"` to keep a native select.
+ *
+ * Safe to call again for dynamically added rows.
  */
 function initSearchableSelects(scope) {
     const $scope = scope ? $(scope) : $(document);
-    const $targets = $scope.find('select[data-searchable="true"]')
-        .add($scope.filter('select[data-searchable="true"]'));
+    const selector = 'select.form-select, select[data-searchable="true"]';
+    const $targets = $scope.find(selector)
+        .add($scope.filter(selector))
+        .filter(function() {
+            return String($(this).attr('data-searchable')).toLowerCase() !== 'false';
+        });
 
     $targets.each(function() {
         const $select = $(this);

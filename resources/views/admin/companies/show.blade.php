@@ -46,7 +46,7 @@
                         <div><span class="fw-semibold text-dark d-block">Owner Email</span>{{ $owner->email ?? 'N/A' }}</div>
                         <div><span class="fw-semibold text-dark d-block">Current Plan</span>{{ $company->activeSubscription?->plan?->name ?? 'No active plan' }}</div>
                         <div><span class="fw-semibold text-dark d-block">Subscription Status</span>{{ ucfirst($company->activeSubscription?->status ?? 'inactive') }}</div>
-                        <div><span class="fw-semibold text-dark d-block">Ends On</span>{{ optional($company->activeSubscription?->current_period_end)->format('d M Y') ?: '-' }}</div>
+                        <div><span class="fw-semibold text-dark d-block">Ends On</span>{{ optional($company->activeSubscription?->current_period_end)->format('d-M-Y') ?: '-' }}</div>
                         <div><span class="fw-semibold text-dark d-block">Theme</span>{{ $company->theme?->name ?? 'Default Theme' }}</div>
                     </div>
                 </div>
@@ -99,7 +99,7 @@
                                     <div class="fw-semibold">₹{{ number_format($payment->amount, 2) }}</div>
                                     <div class="text-muted small">{{ ucfirst($payment->status) }} · {{ ucfirst($payment->payment_method ?? 'online') }}</div>
                                 </div>
-                                <div class="text-muted small">{{ optional($payment->paid_at ?? $payment->created_at)->format('d M Y') }}</div>
+                                <div class="text-muted small">{{ optional($payment->paid_at ?? $payment->created_at)->format('d-M-Y') }}</div>
                             </div>
                         </div>
                         @empty
@@ -137,7 +137,7 @@
                         @forelse($recentLogins as $login)
                         <div class="list-group-item border-0 px-0 py-3">
                             <div class="fw-semibold">{{ $login->user->name ?? 'Unknown User' }}</div>
-                            <div class="text-muted small">{{ ucfirst($login->status) }} · {{ optional($login->created_at)->format('d M Y h:i A') }}</div>
+                            <div class="text-muted small">{{ ucfirst($login->status) }} · {{ optional($login->created_at)->format('d-M-Y h:i A') }}</div>
                         </div>
                         @empty
                         <div class="text-center text-muted py-4">No login history available.</div>
@@ -154,7 +154,7 @@
                         @forelse($recentDevices as $device)
                         <div class="list-group-item border-0 px-0 py-3">
                             <div class="fw-semibold">{{ $device->device_name ?: $device->device_type }}</div>
-                            <div class="text-muted small">{{ $device->user->name ?? 'Unknown User' }} · {{ optional($device->last_active_at)->format('d M Y h:i A') ?: 'Never active' }}</div>
+                            <div class="text-muted small">{{ $device->user->name ?? 'Unknown User' }} · {{ optional($device->last_active_at)->format('d-M-Y h:i A') ?: 'Never active' }}</div>
                         </div>
                         @empty
                         <div class="text-center text-muted py-4">No device activity available.</div>

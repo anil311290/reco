@@ -121,7 +121,7 @@
                             </div>
                             <div class="party-opening-panel party-opening-panel-locked">
                                 <div class="row g-3">
-                                    <div class="col-md-4">
+                                    <div class="col-md-6">
                                         <label for="opening_balance" class="form-label fw-semibold">Amount</label>
                                         <div class="input-group">
                                             <span class="input-group-text">₹</span>
@@ -129,17 +129,12 @@
                                                 value="{{ old('opening_balance', $party->opening_balance) }}" readonly>
                                         </div>
                                     </div>
-                                    <div class="col-md-4">
+                                    <div class="col-md-6">
                                         <label for="opening_balance_type" class="form-label fw-semibold">Balance Type</label>
                                         <select class="form-select" id="opening_balance_type" disabled>
                                             <option value="debit" {{ old('opening_balance_type', $party->opening_balance_type ?? 'debit') === 'debit' ? 'selected' : '' }}>Debit (DR)</option>
                                             <option value="credit" {{ old('opening_balance_type', $party->opening_balance_type) === 'credit' ? 'selected' : '' }}>Credit (CR)</option>
                                         </select>
-                                    </div>
-                                    <div class="col-md-4">
-                                        <label for="opening_date" class="form-label fw-semibold">Opening Date</label>
-                                        <input type="date" class="form-control" id="opening_date"
-                                            value="{{ old('opening_date', $party->opening_date?->format('Y-m-d')) }}" readonly>
                                     </div>
                                 </div>
                                 <div class="form-text mt-2"><i class="bi bi-lock me-1"></i>Opening balance cannot be edited after creation.</div>

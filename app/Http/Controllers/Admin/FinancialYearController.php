@@ -8,6 +8,7 @@ use App\Helpers\ResponseHelper;
 use App\Services\FinancialYearService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class FinancialYearController extends Controller
 {
@@ -99,21 +100,49 @@ class FinancialYearController extends Controller
     }
 
     /**
-     * Close financial year
+     * Toggle financial year enabled/disabled status.
      */
-    public function close(int $id): JsonResponse
+    public function close(Request $request, int $id): JsonResponse
     {
         try {
             $financialYear = FinancialYear::where('company_id', auth()->user()->company_id)
                 ->findOrFail($id);
 
-            if ($financialYear->is_closed) {
-                return ResponseHelper::error('Financial year is already closed');
+            $requestedStatus = $request->has('status')
+                ? (bool) $request->boolean('status')
+                : !$financialYear->is_closed;
+
+            if ($requestedStatus) {
+                // status=true means disabled/closed
+                if ($financialYear->is_current) {
+                    $replacementYear = FinancialYear::where('company_id', auth()->user()->company_id)
+                        ->where('id', '!=', $financialYear->id)
+                        ->where('is_closed', false)
+                        ->orderBy('start_date', 'desc')
+                        ->first();
+
+                    if (!$replacementYear) {
+                        return ResponseHelper::error('Create or enable another financial year before disabling the current year');
+                    }
+
+                    $this->financialYearService->setAsCurrent($replacementYear);
+                }
+
+                $financialYear->update([
+                    'is_closed' => true,
+                    'is_current' => false,
+                    'closed_at' => now(),
+                ]);
+
+                return ResponseHelper::success(null, 'Financial year disabled successfully');
             }
 
-            $financialYear->close();
+            $financialYear->update([
+                'is_closed' => false,
+                'closed_at' => null,
+            ]);
 
-            return ResponseHelper::success(null, 'Financial year closed successfully');
+            return ResponseHelper::success(null, 'Financial year enabled successfully');
         } catch (\Exception $e) {
             return ResponseHelper::error($e->getMessage());
         }
@@ -125,11 +154,27 @@ class FinancialYearController extends Controller
     public function destroy(int $id): JsonResponse
     {
         try {
-            $financialYear = FinancialYear::where('company_id', auth()->user()->company_id)
+            $companyId = auth()->user()->company_id;
+
+            $financialYear = FinancialYear::where('company_id', $companyId)
                 ->findOrFail($id);
 
             if ($financialYear->is_current) {
                 return ResponseHelper::error('Cannot delete the current financial year');
+            }
+
+            $usageCounts = $this->financialYearUsageCounts((int) $companyId, (int) $financialYear->id);
+            $usageTotal = array_sum($usageCounts);
+
+            if ($usageTotal > 0) {
+                return ResponseHelper::error(
+                    'Cannot delete this financial year because it is used in existing records. Disable it instead.',
+                    400,
+                    [
+                        'usage' => $usageCounts,
+                        'total_records' => $usageTotal,
+                    ]
+                );
             }
 
             $financialYear->delete();
@@ -138,5 +183,62 @@ class FinancialYearController extends Controller
         } catch (\Exception $e) {
             return ResponseHelper::error($e->getMessage());
         }
+    }
+
+    /**
+     * Restore soft-deleted financial year.
+     */
+    public function restore(int $id): JsonResponse
+    {
+        try {
+            $financialYear = FinancialYear::onlyTrashed()
+                ->where('company_id', auth()->user()->company_id)
+                ->findOrFail($id);
+
+            $financialYear->restore();
+
+            return ResponseHelper::success($financialYear->fresh(), 'Financial year restored successfully');
+        } catch (\Exception $e) {
+            return ResponseHelper::error($e->getMessage());
+        }
+    }
+
+    /**
+     * Count records that depend on this financial year.
+     *
+     * @return array<string,int>
+     */
+    protected function financialYearUsageCounts(int $companyId, int $financialYearId): array
+    {
+        return [
+            'accounts' => DB::table('accounts')
+                ->where('company_id', $companyId)
+                ->where('financial_year_id', $financialYearId)
+                ->count(),
+            'parties' => DB::table('parties')
+                ->where('company_id', $companyId)
+                ->where('financial_year_id', $financialYearId)
+                ->count(),
+            'vouchers' => DB::table('vouchers')
+                ->where('company_id', $companyId)
+                ->where('financial_year_id', $financialYearId)
+                ->count(),
+            'ledgers' => DB::table('ledgers')
+                ->where('company_id', $companyId)
+                ->where('financial_year_id', $financialYearId)
+                ->count(),
+            'sales_invoices' => DB::table('sales_invoices')
+                ->where('company_id', $companyId)
+                ->where('financial_year_id', $financialYearId)
+                ->count(),
+            'purchase_invoices' => DB::table('purchase_invoices')
+                ->where('company_id', $companyId)
+                ->where('financial_year_id', $financialYearId)
+                ->count(),
+            'ledger_party_histories' => DB::table('ledger_party_histories')
+                ->where('company_id', $companyId)
+                ->where('financial_year_id', $financialYearId)
+                ->count(),
+        ];
     }
 }

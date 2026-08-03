@@ -4,17 +4,19 @@
     <meta charset="utf-8">
     <title>Receipt &amp; Payment</title>
     <style>
+        @page { margin: 10px 12px; }
         body {
             font-family: DejaVu Sans, sans-serif;
-            font-size: 12px;
+            font-size: 11px;
             color: #1f2937;
+            margin: 0;
         }
         .header {
-            margin-bottom: 16px;
+            margin-bottom: 10px;
         }
         .header h1 {
-            margin: 0 0 6px;
-            font-size: 20px;
+            margin: 0 0 4px;
+            font-size: 18px;
         }
         .meta {
             margin: 2px 0;
@@ -25,18 +27,18 @@
             border-collapse: collapse;
         }
         th, td {
-            border: 1px solid #d1d5db;
-            padding: 8px;
+            border: 1px solid #d6dbe6;
+            padding: 6px;
             text-align: left;
         }
         th {
-            background: #f3f4f6;
+            background: #f3f6fc;
         }
         .text-right {
             text-align: right;
         }
         .total-row td {
-            background: #e5e7eb;
+            background: #eef2f8;
             font-weight: 700;
         }
         .muted {

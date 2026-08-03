@@ -23,7 +23,12 @@ class ReportService
     /**
      * Get Profit & Loss report
      */
-    public function getProfitLoss(int $companyId, int $financialYearId): array
+    public function getProfitLoss(
+        int $companyId,
+        int $financialYearId,
+        ?string $dateFrom = null,
+        ?string $dateTo = null
+    ): array
     {
         $incomeAccounts = Account::where('company_id', $companyId)
             ->where('account_type', 'income')
@@ -34,8 +39,15 @@ class ReportService
         $incomeDetails = [];
 
         foreach ($incomeAccounts as $account) {
-            $balance = $this->ledgerService->getAccountBalance($account->id, $companyId, $financialYearId);
-            $amount = $balance['type'] === 'credit' ? $balance['balance'] : -$balance['balance'];
+            $ledger = $this->ledgerService->getAccountLedger(
+                (int) $account->id,
+                $companyId,
+                $financialYearId,
+                $dateFrom,
+                $dateTo
+            );
+
+            $amount = round((float) $ledger['total_credit'] - (float) $ledger['total_debit'], 2);
 
             if (abs($amount) >= 0.01) {
                 $incomeDetails[] = [
@@ -55,8 +67,15 @@ class ReportService
         $expenseDetails = [];
 
         foreach ($expenseAccounts as $account) {
-            $balance = $this->ledgerService->getAccountBalance($account->id, $companyId, $financialYearId);
-            $amount = $balance['type'] === 'debit' ? $balance['balance'] : -$balance['balance'];
+            $ledger = $this->ledgerService->getAccountLedger(
+                (int) $account->id,
+                $companyId,
+                $financialYearId,
+                $dateFrom,
+                $dateTo
+            );
+
+            $amount = round((float) $ledger['total_debit'] - (float) $ledger['total_credit'], 2);
 
             if (abs($amount) >= 0.01) {
                 $expenseDetails[] = [
@@ -80,19 +99,33 @@ class ReportService
             ],
             'net_profit' => $netProfit,
             'is_profit' => $netProfit >= 0,
+            'date_from' => $dateFrom,
+            'date_to' => $dateTo,
         ];
     }
 
     /**
      * Get Balance Sheet report
      */
-    public function getBalanceSheet(int $companyId, int $financialYearId): array
+    public function getBalanceSheet(
+        int $companyId,
+        int $financialYearId,
+        ?string $dateFrom = null,
+        ?string $dateTo = null
+    ): array
     {
         $assetDetails = [];
         $totalAssets = 0;
         foreach ($this->activeAccountsByType($companyId, 'asset') as $account) {
-            $balance = $this->ledgerService->getAccountBalance($account->id, $companyId, $financialYearId);
-            $amount = $balance['type'] === 'debit' ? $balance['balance'] : -$balance['balance'];
+            $ledger = $this->ledgerService->getAccountLedger(
+                (int) $account->id,
+                $companyId,
+                $financialYearId,
+                $dateFrom,
+                $dateTo
+            );
+            $closing = $ledger['closing_balance'];
+            $amount = $closing['type'] === 'debit' ? $closing['balance'] : -$closing['balance'];
             if (abs($amount) >= 0.01) {
                 $assetDetails[] = ['account' => $account, 'amount' => $amount];
                 $totalAssets += $amount;
@@ -102,8 +135,15 @@ class ReportService
         $liabilityDetails = [];
         $totalLiabilities = 0;
         foreach ($this->activeAccountsByType($companyId, 'liability') as $account) {
-            $balance = $this->ledgerService->getAccountBalance($account->id, $companyId, $financialYearId);
-            $amount = $balance['type'] === 'credit' ? $balance['balance'] : -$balance['balance'];
+            $ledger = $this->ledgerService->getAccountLedger(
+                (int) $account->id,
+                $companyId,
+                $financialYearId,
+                $dateFrom,
+                $dateTo
+            );
+            $closing = $ledger['closing_balance'];
+            $amount = $closing['type'] === 'credit' ? $closing['balance'] : -$closing['balance'];
             if (abs($amount) >= 0.01) {
                 $liabilityDetails[] = ['account' => $account, 'amount' => $amount];
                 $totalLiabilities += $amount;
@@ -113,15 +153,22 @@ class ReportService
         $equityDetails = [];
         $totalEquity = 0;
         foreach ($this->activeAccountsByType($companyId, 'equity') as $account) {
-            $balance = $this->ledgerService->getAccountBalance($account->id, $companyId, $financialYearId);
-            $amount = $balance['type'] === 'credit' ? $balance['balance'] : -$balance['balance'];
+            $ledger = $this->ledgerService->getAccountLedger(
+                (int) $account->id,
+                $companyId,
+                $financialYearId,
+                $dateFrom,
+                $dateTo
+            );
+            $closing = $ledger['closing_balance'];
+            $amount = $closing['type'] === 'credit' ? $closing['balance'] : -$closing['balance'];
             if (abs($amount) >= 0.01) {
                 $equityDetails[] = ['account' => $account, 'amount' => $amount];
                 $totalEquity += $amount;
             }
         }
 
-        $profitLoss = $this->getProfitLoss($companyId, $financialYearId);
+        $profitLoss = $this->getProfitLoss($companyId, $financialYearId, $dateFrom, $dateTo);
         $totalEquity += $profitLoss['net_profit'];
 
         return [
@@ -140,6 +187,105 @@ class ReportService
             ],
             'total_liabilities_equity' => $totalLiabilities + $totalEquity,
             'is_balanced' => abs($totalAssets - ($totalLiabilities + $totalEquity)) < 0.01,
+            'date_from' => $dateFrom,
+            'date_to' => $dateTo,
+        ];
+    }
+
+    /**
+     * Trial Balance for selected date range in a financial year.
+     */
+    public function getTrialBalance(
+        int $companyId,
+        int $financialYearId,
+        ?string $dateFrom = null,
+        ?string $dateTo = null
+    ): array {
+        $accounts = Account::where('company_id', $companyId)
+            ->orderBy('account_code')
+            ->get();
+
+        $trialBalance = [];
+        $totalDebit = 0.0;
+        $totalCredit = 0.0;
+        $totalOpeningDebit = 0.0;
+        $totalOpeningCredit = 0.0;
+        $totalTransactionDebit = 0.0;
+        $totalTransactionCredit = 0.0;
+
+        foreach ($accounts as $account) {
+            $ledger = $this->ledgerService->getAccountLedger(
+                (int) $account->id,
+                $companyId,
+                $financialYearId,
+                $dateFrom,
+                $dateTo
+            );
+
+            $opening = $ledger['opening_balance'];
+            $closing = $ledger['closing_balance'];
+
+            $openingBalance = round((float) ($opening['balance'] ?? 0), 2);
+            $closingBalance = round((float) ($closing['balance'] ?? 0), 2);
+            $openingType = (string) ($opening['type'] ?? 'debit');
+            $closingType = (string) ($closing['type'] ?? 'debit');
+
+            $transactionDebit = round((float) ($ledger['total_debit'] ?? 0), 2);
+            $transactionCredit = round((float) ($ledger['total_credit'] ?? 0), 2);
+
+            $openingDebit = $openingType === 'debit' ? $openingBalance : 0.0;
+            $openingCredit = $openingType === 'credit' ? $openingBalance : 0.0;
+            $closingDebit = $closingType === 'debit' ? $closingBalance : 0.0;
+            $closingCredit = $closingType === 'credit' ? $closingBalance : 0.0;
+
+            $hasMovement = $openingDebit > 0.001
+                || $openingCredit > 0.001
+                || $transactionDebit > 0.001
+                || $transactionCredit > 0.001
+                || $closingDebit > 0.001
+                || $closingCredit > 0.001;
+
+            if (!$hasMovement) {
+                continue;
+            }
+
+            $destination = in_array($account->account_type, ['income', 'expense'], true) ? 'PL' : 'BS';
+
+            $trialBalance[] = [
+                'account' => $account,
+                'type' => $account->account_type,
+                'destination' => $destination,
+                'opening_debit' => $openingDebit,
+                'opening_credit' => $openingCredit,
+                'opening_balance' => $openingBalance,
+                'opening_type' => $openingType,
+                'transaction_debit' => $transactionDebit,
+                'transaction_credit' => $transactionCredit,
+                'closing_debit' => $closingDebit,
+                'closing_credit' => $closingCredit,
+                'debit' => $closingDebit,
+                'credit' => $closingCredit,
+            ];
+
+            $totalOpeningDebit += $openingDebit;
+            $totalOpeningCredit += $openingCredit;
+            $totalTransactionDebit += $transactionDebit;
+            $totalTransactionCredit += $transactionCredit;
+            $totalDebit += $closingDebit;
+            $totalCredit += $closingCredit;
+        }
+
+        return [
+            'accounts' => $trialBalance,
+            'total_opening_debit' => round($totalOpeningDebit, 2),
+            'total_opening_credit' => round($totalOpeningCredit, 2),
+            'total_transaction_debit' => round($totalTransactionDebit, 2),
+            'total_transaction_credit' => round($totalTransactionCredit, 2),
+            'total_debit' => round($totalDebit, 2),
+            'total_credit' => round($totalCredit, 2),
+            'is_balanced' => abs($totalDebit - $totalCredit) < 0.01,
+            'date_from' => $dateFrom,
+            'date_to' => $dateTo,
         ];
     }
 
@@ -194,6 +340,7 @@ class ReportService
                     'serial' => $serial,
                     'voucher' => $voucher,
                     'voucher_id' => $voucher->id,
+                    'voucher_date' => $voucher->voucher_date,
                     'voucher_number' => $voucher->voucher_number,
                     'voucher_type' => $voucher->voucher_type,
                     'account_id' => $line->account_id,
@@ -211,6 +358,93 @@ class ReportService
 
         return [
             'date' => $date,
+            'date_from' => $date,
+            'date_to' => $date,
+            'vouchers' => $vouchers,
+            'rows' => $rows,
+            'total_debit' => round($totalDebit, 2),
+            'total_credit' => round($totalCredit, 2),
+        ];
+    }
+
+    /**
+     * Day Book for date range.
+     */
+    public function getDayBookRange(
+        int $companyId,
+        string $dateFrom,
+        string $dateTo,
+        ?int $financialYearId = null
+    ): array {
+        if ($dateFrom === $dateTo) {
+            return $this->getDayBook($companyId, $dateFrom, $financialYearId);
+        }
+
+        $query = Voucher::where('company_id', $companyId)
+            ->whereBetween('voucher_date', [$dateFrom, $dateTo])
+            ->where('status', 'posted')
+            ->with([
+                'party',
+                'lines.account',
+                'lines.party',
+                'salesInvoice',
+                'purchaseInvoice',
+            ])
+            ->orderBy('voucher_date')
+            ->orderBy('created_at')
+            ->orderBy('id');
+
+        if ($financialYearId) {
+            $query->where('financial_year_id', $financialYearId);
+        }
+
+        $vouchers = $query->get();
+
+        $rows = [];
+        $totalDebit = 0;
+        $totalCredit = 0;
+        $serial = 0;
+
+        foreach ($vouchers as $voucher) {
+            $lines = $voucher->lines
+                ->sortBy([
+                    ['sort_order', 'asc'],
+                    fn ($line) => ((float) $line->debit > 0 ? 0 : 1),
+                    ['id', 'asc'],
+                ])
+                ->values();
+
+            foreach ($lines as $line) {
+                $debit = (float) $line->debit;
+                $credit = (float) $line->credit;
+                $totalDebit += $debit;
+                $totalCredit += $credit;
+                $serial++;
+
+                $rows[] = [
+                    'serial' => $serial,
+                    'voucher' => $voucher,
+                    'voucher_id' => $voucher->id,
+                    'voucher_date' => $voucher->voucher_date,
+                    'voucher_number' => $voucher->voucher_number,
+                    'voucher_type' => $voucher->voucher_type,
+                    'account_id' => $line->account_id,
+                    'account_name' => $line->account?->account_name ?? '-',
+                    'party_id' => $line->party_id ?: $voucher->party_id,
+                    'party_name' => $line->party?->name ?? $voucher->party?->name,
+                    'sales_invoice_id' => $voucher->sales_invoice_id,
+                    'purchase_invoice_id' => $voucher->purchase_invoice_id,
+                    'narration' => $line->description ?: $voucher->narration,
+                    'debit' => $debit,
+                    'credit' => $credit,
+                ];
+            }
+        }
+
+        return [
+            'date' => $dateFrom,
+            'date_from' => $dateFrom,
+            'date_to' => $dateTo,
             'vouchers' => $vouchers,
             'rows' => $rows,
             'total_debit' => round($totalDebit, 2),
@@ -475,9 +709,14 @@ class ReportService
     /**
      * Receivables outstanding from party-linked account balances.
      */
-    public function getDebtorsOutstanding(int $companyId): array
+    public function getDebtorsOutstanding(
+        int $companyId,
+        ?int $financialYearId = null,
+        ?string $dateFrom = null,
+        ?string $dateTo = null
+    ): array
     {
-        $financialYearId = FinancialYear::getCurrent($companyId)?->id;
+        $financialYearId = $financialYearId ?: FinancialYear::getCurrent($companyId)?->id;
 
         $debtors = Party::where('company_id', $companyId)
             ->where('type', 'debtor')
@@ -495,7 +734,9 @@ class ReportService
             $ledger = $this->ledgerService->getPartyLedger(
                 (int) $debtor->id,
                 $companyId,
-                $financialYearId
+                $financialYearId,
+                $dateFrom,
+                $dateTo
             );
 
             // Receivable = net debit balance tagged to this party in AR
@@ -518,15 +759,23 @@ class ReportService
         return [
             'debtors' => $outstanding,
             'total' => $totalOutstanding,
+            'date_from' => $dateFrom,
+            'date_to' => $dateTo,
+            'financial_year_id' => $financialYearId,
         ];
     }
 
     /**
      * Payables outstanding from party-linked account balances.
      */
-    public function getCreditorsOutstanding(int $companyId): array
+    public function getCreditorsOutstanding(
+        int $companyId,
+        ?int $financialYearId = null,
+        ?string $dateFrom = null,
+        ?string $dateTo = null
+    ): array
     {
-        $financialYearId = FinancialYear::getCurrent($companyId)?->id;
+        $financialYearId = $financialYearId ?: FinancialYear::getCurrent($companyId)?->id;
 
         $creditors = Party::where('company_id', $companyId)
             ->where('type', 'creditor')
@@ -544,7 +793,9 @@ class ReportService
             $ledger = $this->ledgerService->getPartyLedger(
                 (int) $creditor->id,
                 $companyId,
-                $financialYearId
+                $financialYearId,
+                $dateFrom,
+                $dateTo
             );
 
             // Payable = net credit balance tagged to this party in AP
@@ -567,6 +818,9 @@ class ReportService
         return [
             'creditors' => $outstanding,
             'total' => $totalOutstanding,
+            'date_from' => $dateFrom,
+            'date_to' => $dateTo,
+            'financial_year_id' => $financialYearId,
         ];
     }
 

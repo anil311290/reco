@@ -35,15 +35,23 @@
                     @endforeach
                 </select>
             </div>
+            <div class="col-lg-2 col-md-6">
+                <label class="form-label">From Date</label>
+                <input type="date" name="date_from" class="form-control" value="{{ $dateFrom ?? '' }}">
+            </div>
+            <div class="col-lg-2 col-md-6">
+                <label class="form-label">To Date</label>
+                <input type="date" name="date_to" class="form-control" value="{{ $dateTo ?? '' }}">
+            </div>
             <div class="col-lg-auto col-md-12 report-filter-actions">
                 <button type="submit" class="btn btn-primary">
                     <i class="bi bi-funnel me-1"></i>Filter
                 </button>
                 @if(!empty($financialYearId))
-                    <a href="{{ route('admin.export.excel', ['type' => 'balance-sheet', 'financial_year_id' => $financialYearId]) }}" class="btn btn-outline-success report-btn-export">
+                    <a href="{{ route('admin.export.excel', ['type' => 'balance-sheet', 'financial_year_id' => $financialYearId, 'date_from' => $dateFrom, 'date_to' => $dateTo]) }}" class="btn btn-outline-success report-btn-export">
                         <i class="bi bi-file-earmark-spreadsheet"></i>Excel
                     </a>
-                    <a href="{{ route('admin.export.balance-sheet.pdf', ['financial_year_id' => $financialYearId]) }}" class="btn btn-outline-danger report-btn-export">
+                    <a href="{{ route('admin.export.balance-sheet.pdf', ['financial_year_id' => $financialYearId, 'date_from' => $dateFrom, 'date_to' => $dateTo]) }}" class="btn btn-outline-danger report-btn-export">
                         <i class="bi bi-file-earmark-pdf"></i>PDF
                     </a>
                 @endif
@@ -88,6 +96,7 @@
             <div class="report-panel h-100">
                 <div class="report-panel-header">
                     <h6 class="report-panel-title"><i class="bi bi-box-seam text-primary"></i>Assets</h6>
+                    <span class="report-pill report-pill--info">@istDate($dateFrom) to @istDate($dateTo)</span>
                     <span class="report-pill report-pill--info">Total ₹{{ number_format($report['assets']['total'], 2) }}</span>
                 </div>
                 <div class="report-panel-body report-panel-body--flush">
@@ -122,6 +131,7 @@
                 <div class="report-panel">
                     <div class="report-panel-header">
                         <h6 class="report-panel-title"><i class="bi bi-shield-exclamation text-danger"></i>Liabilities</h6>
+                        <span class="report-pill report-pill--info">@istDate($dateFrom) to @istDate($dateTo)</span>
                         <span class="report-pill report-pill--danger">Total ₹{{ number_format($report['liabilities']['total'], 2) }}</span>
                     </div>
                     <div class="report-panel-body report-panel-body--flush">
@@ -153,6 +163,7 @@
                 <div class="report-panel">
                     <div class="report-panel-header">
                         <h6 class="report-panel-title"><i class="bi bi-stars text-success"></i>Equity</h6>
+                        <span class="report-pill report-pill--info">@istDate($dateFrom) to @istDate($dateTo)</span>
                         <span class="report-pill report-pill--success">Total ₹{{ number_format($report['equity']['total'], 2) }}</span>
                     </div>
                     <div class="report-panel-body report-panel-body--flush">

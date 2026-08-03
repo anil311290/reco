@@ -69,7 +69,7 @@
     <h1>Stock &amp; Transaction History</h1>
     <div class="meta">
         {{ $item->name }} ({{ $item->item_code }})
-        &middot; Generated on {{ now()->timezone('Asia/Kolkata')->format('d M Y, h:i A') }}
+        &middot; Generated on {{ now()->timezone('Asia/Kolkata')->format('d-M-Y h:i A') }}
     </div>
 
     <table class="summary">
