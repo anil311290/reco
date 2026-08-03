@@ -116,8 +116,8 @@ class DatabaseSeeder extends Seeder
             LocationSeeder::class,
             FinancialYearSeeder::class,
             AccountSeeder::class,
-            TaxRateSeeder::class,
-            PartySeeder::class,
+            // TaxRateSeeder::class,
+            // PartySeeder::class,
         ]);
 
         $roleAssignments = [

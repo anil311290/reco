@@ -36,7 +36,7 @@ class AccountSeeder extends Seeder
         $accounts = [
             [
                 'account_code' => Account::CODE_SUSPENSE,
-                'account_name' => 'Opening Balance Difference',
+                'account_name' => 'Opening Balance',
                 'account_type' => 'asset',
                 'balance_type' => 'debit',
                 'opening_balance' => 0,
