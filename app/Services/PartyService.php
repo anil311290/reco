@@ -313,8 +313,8 @@ class PartyService
     {
         $partyOptions = Party::query()
             ->where('company_id', $companyId)
-            ->where('type', $type)
             ->where('is_active', true)
+            ->orderByRaw("CASE WHEN type = ? THEN 0 ELSE 1 END", [$type])
             ->orderBy('name')
             ->get()
             ->map(function (Party $party) {
@@ -322,6 +322,7 @@ class PartyService
                     'value' => 'party:' . $party->id,
                     'label' => "{$party->name} ({$party->party_code})",
                     'kind' => 'party',
+                    'type' => $party->type,
                 ];
             })
             ->values()
@@ -365,7 +366,6 @@ class PartyService
             $partyId = (int) substr($selection, 6);
             $party = Party::query()
                 ->where('company_id', $companyId)
-                ->where('type', $type)
                 ->where('is_active', true)
                 ->find($partyId);
 
@@ -472,7 +472,7 @@ class PartyService
             $accountId = (int) ($party->account_id ?: 0);
             if ($accountId <= 0) {
                 $accountId = (int) $this->resolveControlAccount([
-                    'type' => $type,
+                    'type' => $party->type,
                     'company_id' => $companyId,
                     'financial_year_id' => FinancialYear::getCurrent($companyId)?->id,
                     'created_by' => request()->user()?->id,
@@ -505,9 +505,9 @@ class PartyService
 
         $mappedParty = Party::query()
             ->where('company_id', $companyId)
-            ->where('type', $type)
             ->where('is_active', true)
             ->where('account_id', $account->id)
+            ->orderByRaw("CASE WHEN type = ? THEN 0 ELSE 1 END", [$type])
             ->orderByDesc('id')
             ->first();
 

@@ -5,6 +5,8 @@
 @section('content')
 @php
     $allLines = $invoice->lines->sortBy('sort_order')->values();
+    $customerPartyOptions = collect($partyOptions['parties'] ?? [])->where('type', 'debtor')->values();
+    $supplierPartyOptions = collect($partyOptions['parties'] ?? [])->where('type', 'creditor')->values();
     $legacyServiceAccounts = $allLines
         ->filter(fn ($line) => ($line->line_type ?? '') === 'service' && empty($line->item_id) && !empty($line->account_id))
         ->mapWithKeys(function ($line) {
@@ -56,9 +58,16 @@
                                 <option value="__quick_add_party">+ Quick Add Party</option>
                                 <option value="__quick_add_ledger">+ Quick Add Cash / Bank Ledger</option>
                                 </optgroup>
-                                @if(!empty($partyOptions['parties']))
+                                @if($customerPartyOptions->isNotEmpty())
                                 <optgroup label="Customers (Parties)">
-                                @foreach(($partyOptions['parties'] ?? []) as $option)
+                                @foreach($customerPartyOptions as $option)
+                                <option value="{{ $option['value'] }}" {{ ('party:' . $invoice->party_id) === $option['value'] ? 'selected' : '' }}>{{ $option['label'] }}</option>
+                                @endforeach
+                                </optgroup>
+                                @endif
+                                @if($supplierPartyOptions->isNotEmpty())
+                                <optgroup label="Suppliers (Parties)">
+                                @foreach($supplierPartyOptions as $option)
                                 <option value="{{ $option['value'] }}" {{ ('party:' . $invoice->party_id) === $option['value'] ? 'selected' : '' }}>{{ $option['label'] }}</option>
                                 @endforeach
                                 </optgroup>

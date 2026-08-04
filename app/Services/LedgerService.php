@@ -102,7 +102,8 @@ class LedgerService
         float $debit,
         float $credit,
         ?int $createdBy = null,
-        ?string $createdByIp = null
+        ?string $createdByIp = null,
+        int $isOpeningBalance = 0
     ): Ledger {
         // Calculate running balance within the financial year when provided.
         $lastEntry = $this->ledgerRepository->getLastEntry($companyId, $accountId, $financialYearId);
@@ -119,7 +120,7 @@ class LedgerService
             }
         } else {
             // First ledger row starts at zero. Opening amounts are posted explicitly
-            // via Adjustment vouchers (account ↔ Opening Balance Difference).
+            // via Adjustment vouchers (account ↔ Opening Balance).
             $previousBalance = 0.0;
         }
 
@@ -147,6 +148,7 @@ class LedgerService
             'transaction_date' => $transactionDate,
             'reference_type' => $referenceType,
             'reference_id' => $referenceId,
+            'is_opening_balance' => $isOpeningBalance,
             'description' => $description,
             'debit' => $debit,
             'credit' => $credit,
@@ -190,7 +192,7 @@ class LedgerService
 
     /**
      * Create balanced opening for a party via Adjustment voucher
-     * (party ledger ↔ Opening Balance Difference).
+    * (party ledger ↔ Opening Balance).
      */
     public function createOpeningBalanceEntries(Party $party): void
     {
@@ -247,7 +249,7 @@ class LedgerService
 
     /**
      * Create balanced opening for a ledger via Adjustment voucher
-     * (account ↔ Opening Balance Difference) so Day Book / TB stay Dr = Cr.
+    * (account ↔ Opening Balance) so Day Book / TB stay Dr = Cr.
      */
     public function createAccountOpeningBalanceEntries(Account $account): void
     {
@@ -345,7 +347,7 @@ class LedgerService
             'description' => $narration,
         ];
 
-        app(VoucherService::class)->create([
+        $voucher = app(VoucherService::class)->create([
             'company_id' => $companyId,
             'financial_year_id' => $financialYearId,
             'voucher_type' => 'adjustment',
@@ -357,6 +359,10 @@ class LedgerService
             'created_by_ip' => $createdByIp,
             'updated_by_ip' => $createdByIp,
             'lines' => [$primaryLine, $offsetLine],
+        ]);
+
+        Ledger::where('voucher_id', $voucher->id)->update([
+            'is_opening_balance' => true,
         ]);
     }
 
@@ -375,7 +381,7 @@ class LedgerService
 
         $defaults = [
             Account::CODE_SUSPENSE => [
-                'account_name' => 'Opening Balance Difference',
+                'account_name' => 'Opening Balance',
                 'account_type' => 'asset',
                 'balance_type' => 'debit',
                 'remarks' => 'System suspense ledger used for balancing opening entries.',
@@ -437,6 +443,7 @@ class LedgerService
             'account_name' => $meta['account_name'],
             'account_type' => $meta['account_type'],
             'entry_source' => 'system',
+            'is_cash_bank_od' => false,
             'opening_balance' => 0,
             'balance_type' => $meta['balance_type'],
             'remarks' => $meta['remarks'],

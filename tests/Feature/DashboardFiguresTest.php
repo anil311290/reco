@@ -173,7 +173,7 @@ class DashboardFiguresTest extends TestCase
             [Account::CODE_PURCHASE_TAX, 'Input Tax Credit', 'asset', 'debit', null],
             [Account::CODE_AR, 'Accounts Receivable', 'asset', 'debit', null],
             [Account::CODE_AP, 'Accounts Payable', 'liability', 'credit', null],
-            [Account::CODE_SUSPENSE, 'Opening Balance Difference', 'asset', 'debit', null],
+            [Account::CODE_SUSPENSE, 'Opening Balance', 'asset', 'debit', null],
         ];
 
         foreach ($accounts as [$code, $name, $type, $balanceType, $mode]) {

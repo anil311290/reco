@@ -47,7 +47,7 @@
                             </div>
                             <div class="col-md-4">
                                 <label for="account_type" class="form-label fw-semibold">Account Type <span class="text-danger">*</span></label>
-                                <select class="form-select form-select-lg" id="account_type" name="account_type" required>
+                                <select class="form-select" id="account_type" name="account_type" required>
                                     <option value="">Select Type</option>
                                     <option value="asset" {{ old('account_type') === 'asset' || ($accountType ?? null) === 'asset' ? 'selected' : '' }}>Asset</option>
                                     <option value="liability" {{ old('account_type') === 'liability' || ($accountType ?? null) === 'liability' ? 'selected' : '' }}>Liability</option>

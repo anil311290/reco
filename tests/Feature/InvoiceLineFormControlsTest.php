@@ -148,15 +148,43 @@ class InvoiceLineFormControlsTest extends TestCase
 
     private function debtor(): Party
     {
-        return Party::where('company_id', $this->user->company_id)
-            ->where('type', 'debtor')
-            ->firstOrFail();
+        return Party::firstOrCreate(
+            [
+                'company_id' => $this->user->company_id,
+                'type' => 'debtor',
+                'name' => 'Test Debtor',
+            ],
+            [
+                'uuid' => (string) Str::uuid(),
+                'party_code' => 'DBT-TEST',
+                'mobile' => '9999999999',
+                'address' => 'Test Address',
+                'opening_balance' => 0,
+                'opening_balance_type' => 'debit',
+                'opening_date' => '2026-04-01',
+                'is_active' => true,
+            ]
+        );
     }
 
     private function creditor(): Party
     {
-        return Party::where('company_id', $this->user->company_id)
-            ->where('type', 'creditor')
-            ->firstOrFail();
+        return Party::firstOrCreate(
+            [
+                'company_id' => $this->user->company_id,
+                'type' => 'creditor',
+                'name' => 'Test Creditor',
+            ],
+            [
+                'uuid' => (string) Str::uuid(),
+                'party_code' => 'CDT-TEST',
+                'mobile' => '8888888888',
+                'address' => 'Test Address',
+                'opening_balance' => 0,
+                'opening_balance_type' => 'credit',
+                'opening_date' => '2026-04-01',
+                'is_active' => true,
+            ]
+        );
     }
 }

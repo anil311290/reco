@@ -118,7 +118,7 @@ class CompanyScopedCodesApiTest extends TestCase
         foreach ([
             [Account::CODE_AR, 'Accounts Receivable', 'asset'],
             [Account::CODE_AP, 'Accounts Payable', 'liability'],
-            [Account::CODE_SUSPENSE, 'Opening Balance Difference', 'asset'],
+            [Account::CODE_SUSPENSE, 'Opening Balance', 'asset'],
         ] as [$code, $name, $type]) {
             Account::factory()->create([
                 'company_id' => $company->id,

@@ -48,6 +48,22 @@ class OpeningBalanceAndFyCarryForwardTest extends TestCase
             ->where('voucher_id', $openingVoucher->id)
             ->exists());
 
+        $this->assertTrue(Ledger::where('voucher_id', $openingVoucher->id)->where('is_opening_balance', true)->exists());
+
+        $normalVoucher = app(VoucherService::class)->create([
+            'company_id' => $company->id,
+            'financial_year_id' => $fy->id,
+            'voucher_type' => 'journal',
+            'voucher_date' => '2026-07-15',
+            'narration' => 'Normal journal',
+            'lines' => [
+                ['account_id' => $account->id, 'debit' => 10, 'credit' => 0],
+                ['account_id' => $account->id, 'debit' => 0, 'credit' => 10],
+            ],
+        ]);
+
+        $this->assertTrue(Ledger::where('voucher_id', $normalVoucher->id)->where('is_opening_balance', false)->exists());
+
         $trial = app(LedgerService::class)->getTrialBalance($company->id, $fy->id);
         $this->assertTrue($trial['is_balanced']);
         $this->assertEqualsWithDelta(
@@ -118,6 +134,7 @@ class OpeningBalanceAndFyCarryForwardTest extends TestCase
             ->first();
 
         $this->assertNotNull($opening);
+        $this->assertTrue(Ledger::where('voucher_id', $opening->id)->where('is_opening_balance', true)->exists());
         $this->assertTrue($fy2->fresh()->is_current);
 
         $cashBal = app(LedgerService::class)->getAccountBalance($cash->id, $company->id, $fy2->id);

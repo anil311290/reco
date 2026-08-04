@@ -7,7 +7,7 @@ return new class extends Migration
 {
     /**
      * Account code scheme:
-     *   1000         → Opening Balance Difference (suspense, system)
+    *   1000         → Opening Balance (suspense, system)
      *   1001–1249    → Assets  (user)
      *   1250         → Accounts Receivable (reserved, system)
      *   1251–1499    → Liabilities (user)
@@ -150,7 +150,7 @@ return new class extends Migration
             $systemAccounts = [
                 [
                     'account_code' => '1000',
-                    'account_name' => 'Opening Balance Difference',
+                    'account_name' => 'Opening Balance',
                     'account_type' => 'asset',
                     'remarks'      => 'System suspense account. Appears in Balance Sheet only when opening balances do not balance.',
                 ],

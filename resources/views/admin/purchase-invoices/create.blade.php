@@ -16,7 +16,8 @@
 
 <form id="invoiceForm">
     @php
-        $supplierPartyOptions = $partyOptions['parties'] ?? [];
+        $supplierPartyOptions = collect($partyOptions['parties'] ?? [])->where('type', 'creditor')->values();
+        $customerPartyOptions = collect($partyOptions['parties'] ?? [])->where('type', 'debtor')->values();
         $supplierLedgerOptions = $partyOptions['cash_bank_od_accounts'] ?? [];
     @endphp
     <div id="builtPayload"></div>
@@ -53,6 +54,13 @@
                                 @if(!empty($supplierPartyOptions))
                                 <optgroup label="Suppliers (Parties)">
                                     @foreach($supplierPartyOptions as $option)
+                                    <option value="{{ $option['value'] }}">{{ $option['label'] }}</option>
+                                    @endforeach
+                                </optgroup>
+                                @endif
+                                @if($customerPartyOptions->isNotEmpty())
+                                <optgroup label="Customers (Parties)">
+                                    @foreach($customerPartyOptions as $option)
                                     <option value="{{ $option['value'] }}">{{ $option['label'] }}</option>
                                     @endforeach
                                 </optgroup>

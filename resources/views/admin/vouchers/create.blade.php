@@ -47,8 +47,11 @@
                         {{ $type === 'receipt' ? 'Received In' : 'Paid From' }}
                         <span class="text-danger">*</span>
                     </label>
-                    <select class="form-select" id="cash_bank_account_id" name="cash_bank_account_id" required>
+                    <select class="form-select" id="cash_bank_account_id" name="cash_bank_account_id" data-quick-add-in-select="1" data-quick-add-target="#cash_bank_account_id" required>
                         <option value="">Select Cash / Bank / OD</option>
+                        <optgroup label="Quick Actions">
+                            <option value="__quick_add_ledger">+ Quick Add Cash / Bank Ledger</option>
+                        </optgroup>
                     </select>
                     @if($type === 'payment')
                     <small id="cashBankBalanceHint" class="text-muted d-block mt-1"></small>
@@ -71,8 +74,12 @@
                     <div class="payment-receipt-row row g-2 mb-2" data-index="0">
                         <div class="col-md-8">
                             <label class="form-label">Particulars <span class="text-danger">*</span></label>
-                            <select class="form-select pr-particular" name="payment_rows[0][account_id]" required>
+                            <select class="form-select pr-particular" id="payment_particular_0" name="payment_rows[0][account_id]" data-quick-add-value-mode="token" data-quick-add-in-select="1" data-quick-add-party-type="{{ $type === 'payment' ? 'creditor' : 'debtor' }}" data-quick-add-target="#payment_particular_0" required>
                                 <option value="">Select Particulars</option>
+                                <optgroup label="Quick Actions">
+                                    <option value="__quick_add_party">+ Quick Add Party</option>
+                                    <option value="__quick_add_ledger">+ Quick Add Cash / Bank Ledger</option>
+                                </optgroup>
                                 @foreach(collect($particularsOptions ?? [])->groupBy('group') as $group => $options)
                                     <optgroup label="{{ $group }}">
                                     @foreach($options as $option)
@@ -114,8 +121,12 @@
                     <div class="adjustment-row row g-2 mb-2" data-index="0">
                         <div class="col-md-5">
                             <label class="form-label">Particulars (Party / Ledger) <span class="text-danger">*</span></label>
-                            <select class="form-select adjustment-particular" name="adjustment_rows[0][account_id]" required>
+                            <select class="form-select adjustment-particular" id="adjustment_particular_0" name="adjustment_rows[0][account_id]" data-quick-add-value-mode="token" data-quick-add-in-select="1" data-quick-add-party-type="debtor" data-quick-add-target="#adjustment_particular_0" required>
                                 <option value="">Select Party / Ledger</option>
+                                <optgroup label="Quick Actions">
+                                    <option value="__quick_add_party">+ Quick Add Party</option>
+                                    <option value="__quick_add_ledger">+ Quick Add Cash / Bank Ledger</option>
+                                </optgroup>
                                 @foreach(collect($accounts)->groupBy(fn ($option) => $option['group'] ?? 'Ledger Accounts') as $group => $options)
                                     <optgroup label="{{ $group }}">
                                     @foreach($options as $account)
@@ -146,8 +157,12 @@
                     <div class="adjustment-row row g-2 mb-2" data-index="1">
                         <div class="col-md-5">
                             <label class="form-label">Particulars (Party / Ledger) <span class="text-danger">*</span></label>
-                            <select class="form-select adjustment-particular" name="adjustment_rows[1][account_id]" required>
+                            <select class="form-select adjustment-particular" id="adjustment_particular_1" name="adjustment_rows[1][account_id]" data-quick-add-value-mode="token" data-quick-add-in-select="1" data-quick-add-party-type="debtor" data-quick-add-target="#adjustment_particular_1" required>
                                 <option value="">Select Party / Ledger</option>
+                                <optgroup label="Quick Actions">
+                                    <option value="__quick_add_party">+ Quick Add Party</option>
+                                    <option value="__quick_add_ledger">+ Quick Add Cash / Bank Ledger</option>
+                                </optgroup>
                                 @foreach(collect($accounts)->groupBy(fn ($option) => $option['group'] ?? 'Ledger Accounts') as $group => $options)
                                     <optgroup label="{{ $group }}">
                                     @foreach($options as $account)
@@ -189,8 +204,11 @@
                     <div class="voucher-line row mb-3" data-index="0">
                         <div class="col-md-4">
                             <label class="form-label">Account <span class="text-danger">*</span></label>
-                            <select class="form-select line-account" name="lines[0][account_id]" required>
+                            <select class="form-select line-account" id="voucher_line_account_0" name="lines[0][account_id]" data-quick-add-in-select="1" data-quick-add-target="#voucher_line_account_0" required>
                                 <option value="">Select Account</option>
+                                <optgroup label="Quick Actions">
+                                    <option value="__quick_add_ledger">+ Quick Add Cash / Bank Ledger</option>
+                                </optgroup>
                                 @foreach($accounts as $account)
                                     <option value="{{ $account['id'] }}">{{ $account['text'] }}</option>
                                 @endforeach
@@ -428,7 +446,12 @@ $(document).ready(function() {
             return $(`
                 <div class="payment-receipt-row row g-2 mb-2" data-index="${index}">
                     <div class="col-md-8">
-                        <select class="form-select pr-particular" name="payment_rows[${index}][account_id]" required>
+                        <select class="form-select pr-particular" id="payment_particular_${index}" name="payment_rows[${index}][account_id]" data-quick-add-value-mode="token" data-quick-add-in-select="1" data-quick-add-party-type="${voucherType === 'payment' ? 'creditor' : 'debtor'}" data-quick-add-target="#payment_particular_${index}" required>
+                            <option value="">Select Particulars</option>
+                            <optgroup label="Quick Actions">
+                                <option value="__quick_add_party">+ Quick Add Party</option>
+                                <option value="__quick_add_ledger">+ Quick Add Cash / Bank Ledger</option>
+                            </optgroup>
                             ${particularsOptionsHtml()}
                         </select>
                         <small class="text-muted d-block mt-1 pr-balance-hint"></small>
@@ -500,6 +523,7 @@ $(document).ready(function() {
         $('#addPaymentReceiptRow').on('click', function() {
             const row = buildPaymentReceiptRow(paymentReceiptRowIndex);
             $('#paymentReceiptRows').append(row);
+            initSearchableSelects(row);
             paymentReceiptRowIndex++;
             updatePaymentReceiptRemoveButtons();
             refreshParticularsAvailability();
@@ -562,7 +586,12 @@ $(document).ready(function() {
             return $(`
                 <div class="adjustment-row row g-2 mb-2" data-index="${index}">
                     <div class="col-md-5">
-                        <select class="form-select adjustment-particular" name="adjustment_rows[${index}][account_id]" required>
+                        <select class="form-select adjustment-particular" id="adjustment_particular_${index}" name="adjustment_rows[${index}][account_id]" data-quick-add-value-mode="token" data-quick-add-in-select="1" data-quick-add-party-type="debtor" data-quick-add-target="#adjustment_particular_${index}" required>
+                            <option value="">Select Party / Ledger</option>
+                            <optgroup label="Quick Actions">
+                                <option value="__quick_add_party">+ Quick Add Party</option>
+                                <option value="__quick_add_ledger">+ Quick Add Cash / Bank Ledger</option>
+                            </optgroup>
                             ${accountOptionsHtml(selectedAccountId)}
                         </select>
                     </div>
@@ -588,6 +617,7 @@ $(document).ready(function() {
         $('#addAdjustmentRow').on('click', function() {
             const row = buildAdjustmentRow(adjustmentRowIndex);
             $('#adjustmentRows').append(row);
+            initSearchableSelects(row);
             adjustmentRowIndex++;
             updateAdjustmentRemoveButtons();
         });
@@ -610,8 +640,11 @@ $(document).ready(function() {
             const newLine = `
                 <div class="voucher-line row mb-3" data-index="${lineIndex}">
                     <div class="col-md-4">
-                        <select class="form-select line-account" name="lines[${lineIndex}][account_id]" required>
+                        <select class="form-select line-account" id="voucher_line_account_${lineIndex}" name="lines[${lineIndex}][account_id]" data-quick-add-in-select="1" data-quick-add-target="#voucher_line_account_${lineIndex}" required>
                             <option value="">Select Account</option>
+                            <optgroup label="Quick Actions">
+                                <option value="__quick_add_ledger">+ Quick Add Cash / Bank Ledger</option>
+                            </optgroup>
                             @foreach($accounts as $account)
                                 <option value="{{ $account['id'] }}">{{ $account['text'] }}</option>
                             @endforeach
@@ -634,6 +667,7 @@ $(document).ready(function() {
             `;
 
             $('#voucherLines').append(newLine);
+            initSearchableSelects($('#voucherLines .voucher-line').last());
             lineIndex++;
             updateRemoveButtons();
         });
@@ -661,7 +695,7 @@ $(document).ready(function() {
     }
 
     ajaxFormSubmit('voucherForm', '{{ route("admin.vouchers.store") }}', 'POST', '{{ route("admin.vouchers.type", $type) }}');
-
+    initSearchableSelects($('#voucherForm'));
     calculateTotals();
 });
 </script>
