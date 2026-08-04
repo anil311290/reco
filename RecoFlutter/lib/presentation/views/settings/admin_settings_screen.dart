@@ -46,7 +46,6 @@ class AdminSettingsScreen extends GetView<AdminSettingsController> {
           dividerColor: theme.dividerColor.withValues(alpha: .5),
           tabs: const <Tab>[
             Tab(text: 'Company'),
-            Tab(text: 'Theme'),
             Tab(text: 'Accounting'),
             Tab(text: 'Financial Years'),
             Tab(text: 'Subscription'),
@@ -60,7 +59,6 @@ class AdminSettingsScreen extends GetView<AdminSettingsController> {
                 controller: controller.tabController,
                 children: <Widget>[
                   _CompanyTab(controller: controller),
-                  _ThemeTab(controller: controller),
                   _AccountingTab(controller: controller),
                   _FinancialYearTab(controller: controller),
                   _SubscriptionTab(),
@@ -69,7 +67,7 @@ class AdminSettingsScreen extends GetView<AdminSettingsController> {
       ),
       floatingActionButton: AnimatedBuilder(
         animation: controller.tabController,
-        builder: (context, _) => controller.tabController.index == 3
+        builder: (context, _) => controller.tabController.index == 2
             ? FloatingActionButton.extended(
                 onPressed: () => Get.to(() => const FinancialYearFormSheet()),
                 icon: const Icon(Icons.add_rounded),
@@ -124,41 +122,41 @@ class _CompanyTab extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 16),
-              CustomTextField(
-                label: 'Company Name',
-                controller: controller.companyNameController,
-                requiredField: true,
-              ),
               _TwoColumnRow(
                 left: CustomTextField(
+                  label: 'Company Name',
+                  controller: controller.companyNameController,
+                  requiredField: true,
+                ),
+                right: CustomTextField(
                   label: 'Email',
                   controller: controller.companyEmailController,
                   keyboardType: TextInputType.emailAddress,
                 ),
-                right: CustomTextField(
+              ),
+              _TwoColumnRow(
+                left: CustomTextField(
                   label: 'Phone',
                   controller: controller.companyPhoneController,
                   keyboardType: TextInputType.phone,
                 ),
-              ),
-              _TwoColumnRow(
-                left: CustomTextField(
+                right: CustomTextField(
                   label: 'GST Number',
                   controller: controller.companyGstController,
                 ),
-                right: CustomTextField(
+              ),
+              _TwoColumnRow(
+                left: CustomTextField(
                   label: 'PAN Number',
                   controller: controller.companyPanController,
                 ),
-              ),
-              ValueListenableBuilder<TextEditingValue>(
-                valueListenable: controller.companyCurrencyController,
-                builder: (context, value, _) {
-                  final selected = currencies.contains(value.text)
-                      ? value.text
-                      : null;
-                  return _TwoColumnRow(
-                    left: CustomDropdown<String>(
+                right: ValueListenableBuilder<TextEditingValue>(
+                  valueListenable: controller.companyCurrencyController,
+                  builder: (context, value, _) {
+                    final selected = currencies.contains(value.text)
+                        ? value.text
+                        : null;
+                    return CustomDropdown<String>(
                       label: 'Currency',
                       value: selected,
                       items: currencies,
@@ -175,36 +173,9 @@ class _CompanyTab extends StatelessWidget {
                           controller.companyCurrencyController.text = next;
                         }
                       },
-                    ),
-                    right: ValueListenableBuilder<TextEditingValue>(
-                      valueListenable: controller.companyTimezoneController,
-                      builder: (context, timezoneValue, _) {
-                        final selectedTimezone =
-                            timezones.contains(timezoneValue.text)
-                            ? timezoneValue.text
-                            : null;
-                        return CustomDropdown<String>(
-                          label: 'Timezone',
-                          value: selectedTimezone,
-                          items: timezones,
-                          requiredField: true,
-                          itemLabelBuilder: (item) => switch (item) {
-                            'Asia/Kolkata' => 'Asia/Kolkata (IST)',
-                            'America/New_York' =>
-                              'America/New_York (EST)',
-                            'Europe/London' => 'Europe/London (GMT)',
-                            _ => item,
-                          },
-                          onChanged: (next) {
-                            if (next != null) {
-                              controller.companyTimezoneController.text = next;
-                            }
-                          },
-                        );
-                      },
-                    ),
-                  );
-                },
+                    );
+                  },
+                ),
               ),
               CustomTextField(
                 label: 'Address',
@@ -228,64 +199,64 @@ class _CompanyTab extends StatelessWidget {
                   controller: controller.companyPostalCodeController,
                 ),
               ),
-              _TwoColumnRow(
-                left: CustomTextField(
-                  label: 'Country',
-                  controller: controller.companyCountryController,
-                  requiredField: true,
-                ),
-                right: const SizedBox.shrink(),
-              ),
-            ],
-          ),
-        ),
-        Container(
-          margin: const EdgeInsets.only(bottom: 16),
-          padding: const EdgeInsets.all(18),
-          decoration: BoxDecoration(
-            color: theme.cardColor,
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(
-              color: theme.dividerColor.withValues(alpha: .45),
-            ),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: <Widget>[
-              Text(
-                'Financial Year Defaults',
-                style: theme.textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                'Same dates are used for company defaults and report filters. Use MM-DD format for year start and end.',
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: theme.colorScheme.onSurfaceVariant,
-                ),
-              ),
               const SizedBox(height: 16),
-              _TwoColumnRow(
-                left: CustomTextField(
-                  label: 'FY Start',
-                  controller: controller.financialYearStartController,
-                  requiredField: true,
-                  hintText: 'MM-DD',
-                ),
-                right: CustomTextField(
-                  label: 'FY End',
-                  controller: controller.financialYearEndController,
-                  requiredField: true,
-                  hintText: 'MM-DD',
-                ),
+              ValueListenableBuilder<TextEditingValue>(
+                valueListenable: controller.companyTimezoneController,
+                builder: (context, timezoneValue, _) {
+                  final selectedTimezone =
+                      timezones.contains(timezoneValue.text)
+                      ? timezoneValue.text
+                      : null;
+                  return _FourColumnRow(
+                    first: CustomTextField(
+                      label: 'Country',
+                      controller: controller.companyCountryController,
+                      requiredField: true,
+                    ),
+                    second: CustomDropdown<String>(
+                      label: 'Timezone',
+                      value: selectedTimezone,
+                      items: timezones,
+                      requiredField: true,
+                      itemLabelBuilder: (item) => switch (item) {
+                        'Asia/Kolkata' => 'Asia/Kolkata (IST)',
+                        'America/New_York' => 'America/New_York (EST)',
+                        'Europe/London' => 'Europe/London (GMT)',
+                        _ => item,
+                      },
+                      onChanged: (next) {
+                        if (next != null) {
+                          controller.companyTimezoneController.text = next;
+                        }
+                      },
+                    ),
+                    third: CustomTextField(
+                      label: 'FY Start',
+                      controller: controller.financialYearStartController,
+                      requiredField: true,
+                      hintText: 'MM-DD',
+                    ),
+                    fourth: CustomTextField(
+                      label: 'FY End',
+                      controller: controller.financialYearEndController,
+                      requiredField: true,
+                      hintText: 'MM-DD',
+                    ),
+                  );
+                },
               ),
               const SizedBox(height: 6),
-              Obx(
-                () => CommonButton(
-                  text: 'Save Company Settings',
-                  isLoading: controller.isSavingCompany.value,
-                  onPressed: controller.saveCompany,
+              Align(
+                alignment: Alignment.centerRight,
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 240),
+                  child: Obx(
+                    () => CommonButton(
+                      text: 'Save Company Settings',
+                      isLoading: controller.isSavingCompany.value,
+                      onPressed: controller.saveCompany,
+                    ),
+                  ),
                 ),
               ),
             ],
@@ -363,6 +334,47 @@ class _ThreeColumnRow extends StatelessWidget {
   }
 }
 
+class _FourColumnRow extends StatelessWidget {
+  const _FourColumnRow({
+    required this.first,
+    required this.second,
+    required this.third,
+    required this.fourth,
+  });
+
+  final Widget first;
+  final Widget second;
+  final Widget third;
+  final Widget fourth;
+
+  @override
+  Widget build(BuildContext context) {
+    final width = MediaQuery.sizeOf(context).width;
+    if (width < 900) {
+      return Column(
+        children: <Widget>[
+          first,
+          second,
+          third,
+          fourth,
+        ],
+      );
+    }
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: <Widget>[
+        Expanded(flex: 3, child: first),
+        const SizedBox(width: 12),
+        Expanded(flex: 3, child: second),
+        const SizedBox(width: 12),
+        Expanded(flex: 2, child: third),
+        const SizedBox(width: 12),
+        Expanded(flex: 2, child: fourth),
+      ],
+    );
+  }
+}
+
 class _AccountingTab extends StatelessWidget {
   const _AccountingTab({required this.controller});
   final AdminSettingsController controller;
@@ -424,239 +436,6 @@ class _AccountingTab extends StatelessWidget {
       items: items,
       itemLabelBuilder: (item) => item.label,
       onChanged: onChanged,
-    );
-  }
-}
-
-class _ThemeTab extends StatelessWidget {
-  const _ThemeTab({required this.controller});
-
-  final AdminSettingsController controller;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Obx(
-      () => ListView(
-        padding: const EdgeInsets.all(16),
-        children: <Widget>[
-          Container(
-            margin: const EdgeInsets.only(bottom: 16),
-            padding: const EdgeInsets.all(18),
-            decoration: BoxDecoration(
-              color: theme.cardColor,
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(
-                color: theme.dividerColor.withValues(alpha: .45),
-              ),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: <Widget>[
-                Text(
-                  'Theme Customization',
-                  style: theme.textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  'Same flow as web settings. Update colors and save them permanently.',
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: theme.colorScheme.onSurfaceVariant,
-                  ),
-                ),
-                const SizedBox(height: 16),
-                _TwoColumnRow(
-                  left: CustomTextField(
-                    label: 'Primary Color',
-                    controller: controller.primaryColorController,
-                    hintText: '#1f6feb',
-                  ),
-                  right: CustomTextField(
-                    label: 'Secondary Color',
-                    controller: controller.secondaryColorController,
-                    hintText: '#6b7280',
-                  ),
-                ),
-                _TwoColumnRow(
-                  left: CustomTextField(
-                    label: 'Sidebar Color',
-                    controller: controller.sidebarColorController,
-                    hintText: '#ffffff',
-                  ),
-                  right: CustomTextField(
-                    label: 'Header Color',
-                    controller: controller.headerColorController,
-                    hintText: '#ffffff',
-                  ),
-                ),
-                SwitchListTile(
-                  contentPadding: EdgeInsets.zero,
-                  value: controller.themeDarkMode.value,
-                  onChanged: (value) => controller.themeDarkMode.value = value,
-                  title: Text(
-                    'Dark Mode',
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  subtitle: const Text('Save theme preference for your company'),
-                ),
-                const SizedBox(height: 8),
-                _ThemePreviewCard(controller: controller),
-                const SizedBox(height: 16),
-                CommonButton(
-                  text: 'Save Theme Settings',
-                  isLoading: controller.isSavingTheme.value,
-                  onPressed: controller.saveTheme,
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _ThemePreviewCard extends StatelessWidget {
-  const _ThemePreviewCard({required this.controller});
-
-  final AdminSettingsController controller;
-
-  Color _parseColor(String value, Color fallback) {
-    final hex = value.trim().replaceFirst('#', '');
-    if (hex.length != 6) {
-      return fallback;
-    }
-    final parsed = int.tryParse(hex, radix: 16);
-    if (parsed == null) {
-      return fallback;
-    }
-    return Color(0xFF000000 | parsed);
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final primary = _parseColor(
-      controller.primaryColorController.text,
-      theme.colorScheme.primary,
-    );
-    final secondary = _parseColor(
-      controller.secondaryColorController.text,
-      theme.colorScheme.secondary,
-    );
-    final sidebar = _parseColor(
-      controller.sidebarColorController.text,
-      theme.colorScheme.surfaceContainerLowest,
-    );
-    final header = _parseColor(
-      controller.headerColorController.text,
-      theme.colorScheme.surface,
-    );
-
-    return Container(
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(
-          color: theme.dividerColor.withValues(alpha: .45),
-        ),
-      ),
-      child: Column(
-        children: <Widget>[
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-            decoration: BoxDecoration(
-              color: header,
-              borderRadius: const BorderRadius.vertical(
-                top: Radius.circular(18),
-              ),
-            ),
-            child: Text(
-              'Live Preview',
-              style: theme.textTheme.bodyMedium?.copyWith(
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-          ),
-          SizedBox(
-            height: 154,
-            child: Row(
-              children: <Widget>[
-                Container(
-                  width: 92,
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: sidebar,
-                    borderRadius: const BorderRadius.only(
-                      bottomLeft: Radius.circular(18),
-                    ),
-                  ),
-                  child: Column(
-                    children: <Widget>[
-                      Container(
-                        height: 10,
-                        decoration: BoxDecoration(
-                          color: primary,
-                          borderRadius: BorderRadius.circular(999),
-                        ),
-                      ),
-                      const SizedBox(height: 10),
-                      Container(
-                        height: 10,
-                        decoration: BoxDecoration(
-                          color: secondary.withValues(alpha: .65),
-                          borderRadius: BorderRadius.circular(999),
-                        ),
-                      ),
-                      const SizedBox(height: 10),
-                      Container(
-                        height: 10,
-                        decoration: BoxDecoration(
-                          color: secondary.withValues(alpha: .35),
-                          borderRadius: BorderRadius.circular(999),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                Expanded(
-                  child: Padding(
-                    padding: const EdgeInsets.all(14),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: <Widget>[
-                        Container(
-                          height: 52,
-                          decoration: BoxDecoration(
-                            color: theme.colorScheme.surfaceContainerLowest,
-                            borderRadius: BorderRadius.circular(14),
-                            border: Border.all(
-                              color: theme.dividerColor.withValues(alpha: .35),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 10),
-                        Container(
-                          width: 110,
-                          height: 34,
-                          decoration: BoxDecoration(
-                            color: primary,
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
     );
   }
 }
@@ -959,6 +738,38 @@ class _FinancialYearTabState extends State<_FinancialYearTab> {
                         ),
                       ],
                       const SizedBox(height: 10),
+                      Row(
+                        children: <Widget>[
+                          Expanded(
+                            child: Text(
+                              isClosed ? 'Disabled' : 'Enabled',
+                              style: theme.textTheme.bodyMedium?.copyWith(
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ),
+                          Switch.adaptive(
+                            value: !isClosed,
+                            onChanged: (value) async {
+                              final confirmed = await _confirmAction(
+                                value
+                                    ? 'Enable Financial Year'
+                                    : 'Disable Financial Year',
+                                value
+                                    ? 'This financial year will become available again for use.'
+                                    : 'This financial year will be disabled for new entries.',
+                              );
+                              if (confirmed == true) {
+                                await _fyController.toggleFinancialYearStatus(
+                                  fy,
+                                  isEnabled: value,
+                                );
+                              }
+                            },
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 10),
                       // ── Action Buttons ──
                       Row(
                         mainAxisAlignment: MainAxisAlignment.end,
@@ -990,22 +801,6 @@ class _FinancialYearTabState extends State<_FinancialYearTab> {
                                 onTap: () => Get.to(
                                   () => FinancialYearFormSheet(entity: fy),
                                 ),
-                              ),
-                              const SizedBox(width: 6),
-                              _FyActionButton(
-                                icon: Icons.lock_outline_rounded,
-                                label: 'Close',
-                                color: Colors.orange,
-                                onTap: () async {
-                                  final confirmed = await _confirmAction(
-                                    'Close Financial Year',
-                                    'Are you sure you want to close "${fy.name}"? '
-                                    'This action cannot be undone.',
-                                  );
-                                  if (confirmed == true) {
-                                    _fyController.closeFinancialYear(fy);
-                                  }
-                                },
                               ),
                             ],
                             if (!isCurrent) ...[

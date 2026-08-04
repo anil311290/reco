@@ -2,6 +2,7 @@ import 'package:data_table_2/data_table_2.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
+import '../../../../core/utils/app_date_formatter.dart';
 import '../../../../data/models/transactions/transaction_entities.dart';
 import '../../masters/history/party_history_screen.dart';
 import '../../masters/widgets/masters_ui_components.dart';
@@ -288,25 +289,7 @@ class TransactionDetailScreen extends StatelessWidget {
   static String _fallback(String value) => value.trim().isEmpty ? '-' : value.trim();
 
   static String _shortDate(String value) {
-    final parsed = DateTime.tryParse(value);
-    if (parsed == null) {
-      return value.length >= 10 ? value.substring(0, 10) : value;
-    }
-    const months = <int, String>{
-      1: 'Jan',
-      2: 'Feb',
-      3: 'Mar',
-      4: 'Apr',
-      5: 'May',
-      6: 'Jun',
-      7: 'Jul',
-      8: 'Aug',
-      9: 'Sep',
-      10: 'Oct',
-      11: 'Nov',
-      12: 'Dec',
-    };
-    return '${parsed.day.toString().padLeft(2, '0')} ${months[parsed.month]} ${parsed.year}';
+    return AppDateFormatter.formatDisplay(value);
   }
 
   static List<Map<String, dynamic>> _extractInvoiceLines(TransactionRecord record) {
@@ -606,8 +589,8 @@ class _VoucherLinesTableCard extends StatelessWidget {
             minWidth: 760,
             columns: <DataColumn2>[
               masterColumn(context, 'Particulars', size: ColumnSize.L),
-              masterColumn(context, 'Debit (₹)', size: ColumnSize.M),
-              masterColumn(context, 'Credit (₹)', size: ColumnSize.M),
+              masterColumn(context, 'Dr (₹)', size: ColumnSize.M),
+              masterColumn(context, 'Cr (₹)', size: ColumnSize.M),
             ],
             rows: tableRows,
           ),

@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 
+import '../../../../core/utils/app_date_formatter.dart';
+
 class AuditStatCard extends StatelessWidget {
   const AuditStatCard({
     required this.label,
@@ -378,32 +380,7 @@ String _formatDate(dynamic value) {
   if (raw == null || raw.isEmpty) {
     return '-';
   }
-  final parsed = DateTime.tryParse(raw);
-  if (parsed == null) {
-    return raw;
-  }
-  final local = parsed.toLocal();
-  final day = local.day.toString().padLeft(2, '0');
-  final month = <String>[
-    'Jan',
-    'Feb',
-    'Mar',
-    'Apr',
-    'May',
-    'Jun',
-    'Jul',
-    'Aug',
-    'Sep',
-    'Oct',
-    'Nov',
-    'Dec',
-  ][local.month - 1];
-  final year = local.year.toString();
-  final hour24 = local.hour;
-  final hour12 = hour24 == 0 ? 12 : (hour24 > 12 ? hour24 - 12 : hour24);
-  final minute = local.minute.toString().padLeft(2, '0');
-  final meridiem = hour24 >= 12 ? 'PM' : 'AM';
-  return '$day $month $year, ${hour12.toString().padLeft(2, '0')}:$minute $meridiem';
+  return AppDateFormatter.formatDateTime(raw, fallback: raw);
 }
 
 IconData _actionIcon(String action) {

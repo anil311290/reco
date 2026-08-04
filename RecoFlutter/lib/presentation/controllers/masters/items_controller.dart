@@ -39,10 +39,17 @@ class ItemsController extends GetxController with MasterExportMixin {
   final searchController = TextEditingController();
   final searchQuery = ''.obs;
   final isLoading = false.obs;
+  final isLoadingMore = false.obs;
   final items = <ItemEntity>[].obs;
   final selectedType = 'All'.obs;
   final selectedCategory = 'All'.obs;
   final selectedStatus = 'All'.obs;
+  final currentPage = 1.obs;
+  final lastPage = 1.obs;
+  final total = 0.obs;
+  final scrollController = ScrollController();
+
+  static const int pageSize = 20;
 
   @override
   void onInit() {
@@ -50,75 +57,158 @@ class ItemsController extends GetxController with MasterExportMixin {
     searchController.addListener(() {
       searchQuery.value = searchController.text.trim().toLowerCase();
     });
+    scrollController.addListener(_handleScroll);
     refreshData();
   }
 
   @override
   void onClose() {
+    scrollController.removeListener(_handleScroll);
+    scrollController.dispose();
     searchController.dispose();
     super.onClose();
   }
 
-  List<ItemEntity> get filteredItems {
-    final query = searchQuery.value;
-    return items.where((item) {
-      final matchesQuery =
-          query.isEmpty ||
-          item.name.toLowerCase().contains(query) ||
-          item.itemCode.toLowerCase().contains(query) ||
-          item.barcode.toLowerCase().contains(query) ||
-          item.hsnSacCode.toLowerCase().contains(query) ||
-          item.categoryName.toLowerCase().contains(query);
-      final matchesType =
-          selectedType.value == 'All' || item.type == selectedType.value;
-      final matchesCategory =
-          selectedCategory.value == 'All' ||
-          item.categoryName == selectedCategory.value;
-      final matchesStatus =
-          selectedStatus.value == 'All' ||
-          (selectedStatus.value == 'Active' && item.isActive) ||
-          (selectedStatus.value == 'Inactive' && !item.isActive);
-      return matchesQuery &&
-          matchesType &&
-          matchesCategory &&
-          matchesStatus;
-    }).toList();
+  List<ItemEntity> get filteredItems => items;
+
+  void _handleScroll() {
+    if (!scrollController.hasClients || isLoadingMore.value || !hasMore) {
+      return;
+    }
+    if (scrollController.position.pixels >=
+        scrollController.position.maxScrollExtent - 160) {
+      loadMore();
+    }
   }
 
-  void applyFilters({
+  Future<void> onSearchChanged() => refreshData();
+
+  bool get hasMore => currentPage.value < lastPage.value;
+
+  Future<void> applyFilters({
     required String type,
     required String category,
     required String status,
-  }) {
+  }) async {
     selectedType.value = type;
     selectedCategory.value = category;
     selectedStatus.value = status;
+    await refreshData();
   }
 
-  void clearFilters() {
+  Future<void> clearFilters() async {
     selectedType.value = 'All';
     selectedCategory.value = 'All';
     selectedStatus.value = 'All';
+    await refreshData();
   }
 
   Future<void> refreshData({bool forceRemote = false}) async {
     isLoading.value = true;
     try {
+      currentPage.value = 1;
       final results = await Future.wait<dynamic>(<Future<dynamic>>[
-        forceRemote ? _repository.refreshItems() : _repository.getItems(),
+        forceRemote
+            ? _repository.refreshPaginatedItems(
+                queryParameters: _queryParameters,
+                page: 1,
+                perPage: pageSize,
+              )
+            : _repository.getPaginatedItems(
+                queryParameters: _queryParameters,
+                page: 1,
+                perPage: pageSize,
+              ),
         _itemCategoriesRepository.getDropdownOptions(),
         _taxRatesRepository.getDropdownOptions(),
         _accountsRepository.getAccountsByType('income'),
         _accountsRepository.getAccountsByType('expense'),
       ]);
-      items.assignAll(results[0] as List<ItemEntity>);
+      _applyPage(results[0], reset: true);
       _lookupController.categories.assignAll(results[1] as List<LookupOption>);
       _lookupController.taxes.assignAll(results[2] as List<LookupOption>);
       _lookupController.incomeAccounts.assignAll(results[3] as List<LookupOption>);
       _lookupController.expenseAccounts.assignAll(results[4] as List<LookupOption>);
+      if (!forceRemote && await _networkMonitorService.hasInternetNow()) {
+        final remoteResult = await _repository.refreshPaginatedItems(
+          queryParameters: _queryParameters,
+          page: 1,
+          perPage: pageSize,
+        );
+        _applyPage(remoteResult, reset: true);
+      }
     } finally {
       isLoading.value = false;
     }
+  }
+
+  Future<void> loadMore() async {
+    if (isLoading.value || isLoadingMore.value || !hasMore) return;
+    isLoadingMore.value = true;
+    final nextPage = currentPage.value + 1;
+    try {
+      final result = await (await _networkMonitorService.hasInternetNow()
+          ? _repository.refreshPaginatedItems(
+              queryParameters: _queryParameters,
+              page: nextPage,
+              perPage: pageSize,
+            )
+          : _repository.getPaginatedItems(
+              queryParameters: _queryParameters,
+              page: nextPage,
+              perPage: pageSize,
+            ));
+      _applyPage(result, reset: false);
+    } finally {
+      isLoadingMore.value = false;
+    }
+  }
+
+  void _applyPage(dynamic result, {required bool reset}) {
+    currentPage.value = result.currentPage;
+    lastPage.value = result.lastPage;
+    total.value = result.total;
+    if (reset) {
+      items.assignAll(
+        _mergeItems(
+          List<ItemEntity>.from(result.items),
+          base: const <ItemEntity>[],
+        ),
+      );
+    } else {
+      items.assignAll(
+        _mergeItems(
+          List<ItemEntity>.from(result.items),
+          base: items,
+        ),
+      );
+    }
+  }
+
+  List<ItemEntity> _mergeItems(
+    List<ItemEntity> incoming, {
+    required List<ItemEntity> base,
+  }) {
+    final merged = <String, ItemEntity>{};
+    for (final item in base) {
+      merged[_itemKey(item)] = item;
+    }
+    for (final item in incoming) {
+      merged[_itemKey(item)] = item;
+    }
+    return merged.values.toList();
+  }
+
+  String _itemKey(ItemEntity item) {
+    final id = item.id?.toString();
+    if (id != null && id.isNotEmpty) {
+      return 'id:$id';
+    }
+    final localId = item.localId?.trim();
+    if (localId != null && localId.isNotEmpty) {
+      return 'local:$localId';
+    }
+    return 'code:${item.itemCode}:${item.name}:${item.type}';
   }
 
   Future<void> save(ItemEntity entity) async {
@@ -200,4 +290,6 @@ class ItemsController extends GetxController with MasterExportMixin {
     );
     return match?.id;
   }
+
+  Map<String, dynamic> get _queryParameters => _exportQueryParameters;
 }

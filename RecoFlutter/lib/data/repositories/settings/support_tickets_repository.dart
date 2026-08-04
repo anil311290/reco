@@ -4,6 +4,7 @@ import 'package:uuid/uuid.dart';
 
 import '../../../core/config/api_endpoints.dart';
 import '../../../core/config/sync_constants.dart';
+import '../../models/common/paginated_result.dart';
 import '../base/offline_first_repository.dart';
 
 class SupportTicketsRepository extends OfflineFirstRepository {
@@ -37,6 +38,15 @@ class SupportTicketsRepository extends OfflineFirstRepository {
     return local;
   }
 
+  Future<PaginatedResult<Map<String, dynamic>>> getPaginatedTickets({
+    String? status,
+    int page = 1,
+    int perPage = 20,
+  }) async {
+    final local = await _getLocalTickets(status: status);
+    return _slicePage(local, page: page, perPage: perPage);
+  }
+
   Future<List<Map<String, dynamic>>> refreshTickets({
     String? status,
     int perPage = 50,
@@ -52,6 +62,41 @@ class SupportTicketsRepository extends OfflineFirstRepository {
     final records = _extractList(response.data?['data']);
     await mergeRemoteRecords(module: _module, records: records);
     return records;
+  }
+
+  Future<PaginatedResult<Map<String, dynamic>>> refreshPaginatedTickets({
+    String? status,
+    int page = 1,
+    int perPage = 20,
+  }) async {
+    final response = await apiClient.get<Map<String, dynamic>>(
+      ApiEndpoints.supportTickets,
+      queryParameters: <String, dynamic>{
+        if (status != null && status.isNotEmpty) 'status': status,
+        'page': page,
+        'per_page': perPage,
+      },
+    );
+
+    final data = response.data?['data'];
+    final records = _extractList(data);
+    await mergeRemoteRecords(module: _module, records: records);
+
+    if (data is Map<String, dynamic> && data['data'] is List) {
+      return PaginatedResult<Map<String, dynamic>>(
+        items: records,
+        currentPage: int.tryParse(data['current_page']?.toString() ?? '$page') ?? page,
+        lastPage: int.tryParse(data['last_page']?.toString() ?? '$page') ?? page,
+        perPage: int.tryParse(data['per_page']?.toString() ?? '$perPage') ?? perPage,
+        total: int.tryParse(data['total']?.toString() ?? '${records.length}') ?? records.length,
+      );
+    }
+
+    return getPaginatedTickets(
+      status: status,
+      page: page,
+      perPage: perPage,
+    );
   }
 
   Future<Map<String, dynamic>?> getTicketDetail({
@@ -262,6 +307,43 @@ class SupportTicketsRepository extends OfflineFirstRepository {
     return payloads
         .where((item) => item['status']?.toString() == status)
         .toList();
+  }
+
+  PaginatedResult<Map<String, dynamic>> _slicePage(
+    List<Map<String, dynamic>> items, {
+    required int page,
+    required int perPage,
+  }) {
+    if (items.isEmpty) {
+      return PaginatedResult<Map<String, dynamic>>(
+        items: const <Map<String, dynamic>>[],
+        currentPage: 1,
+        lastPage: 1,
+        perPage: perPage,
+        total: 0,
+      );
+    }
+    final safePage = page < 1 ? 1 : page;
+    final start = (safePage - 1) * perPage;
+    if (start >= items.length) {
+      final lastPage = ((items.length + perPage - 1) ~/ perPage).clamp(1, 999999);
+      return PaginatedResult<Map<String, dynamic>>(
+        items: const <Map<String, dynamic>>[],
+        currentPage: safePage,
+        lastPage: lastPage,
+        perPage: perPage,
+        total: items.length,
+      );
+    }
+    final end = (start + perPage) > items.length ? items.length : start + perPage;
+    final lastPage = ((items.length + perPage - 1) ~/ perPage).clamp(1, 999999);
+    return PaginatedResult<Map<String, dynamic>>(
+      items: items.sublist(start, end),
+      currentPage: safePage,
+      lastPage: lastPage,
+      perPage: perPage,
+      total: items.length,
+    );
   }
 
   Future<Map<String, dynamic>?> _findLocalTicket({

@@ -7,6 +7,7 @@ import '../../../../data/models/masters/master_entities.dart';
 import '../../../controllers/masters/categories_controller.dart';
 import '../../../controllers/masters/items_controller.dart';
 import '../../../controllers/masters/masters_lookup_controller.dart';
+import '../../../widgets/common/app_help_dialog.dart';
 import '../../../widgets/common/common_button.dart';
 import '../../../widgets/common/custom_text_field.dart';
 
@@ -108,8 +109,8 @@ class _ItemFormSheetState extends State<ItemFormSheet> {
           _isEditMode
               ? (_isServiceType ? 'Edit Service' : 'Edit Item')
               : (_isServiceType ? 'Create Service' : 'Create Item'),
-          style: theme.textTheme.titleMedium?.copyWith(
-            fontWeight: FontWeight.w700,
+          style: theme.textTheme.titleLarge?.copyWith(
+            fontWeight: FontWeight.w800,
           ),
         ),
       ),
@@ -119,47 +120,64 @@ class _ItemFormSheetState extends State<ItemFormSheet> {
           child: ListView(
             padding: const EdgeInsets.all(16),
             children: <Widget>[
-              if (_isEditMode || _isServiceType)
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 12),
-                  child: Row(
-                    children: <Widget>[
-                      if (_isEditMode)
-                        Expanded(
-                          child: Text(
-                            _isServiceType ? 'Edit Service' : 'Edit Item',
-                            style: theme.textTheme.titleMedium?.copyWith(
-                              fontWeight: FontWeight.w700,
+              Padding(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: <Widget>[
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: <Widget>[
+                          Text(
+                            _isEditMode
+                                ? (_isServiceType ? 'Edit Service' : 'Edit Item')
+                                : (_isServiceType ? 'Create Service' : 'Create Item'),
+                            style: theme.textTheme.titleLarge?.copyWith(
+                              fontWeight: FontWeight.w800,
                             ),
                           ),
-                        )
-                      else
-                        const Spacer(),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 10,
-                          vertical: 4,
-                        ),
-                        decoration: BoxDecoration(
-                          color: (_isServiceType
-                                  ? const Color(0xFF0EA5E9)
-                                  : scheme.primary)
-                              .withValues(alpha: .10),
-                          borderRadius: BorderRadius.circular(999),
-                        ),
-                        child: Text(
-                          _isServiceType ? 'Service' : 'Goods',
-                          style: theme.textTheme.labelSmall?.copyWith(
-                            color: _isServiceType
-                                ? const Color(0xFF0EA5E9)
-                                : scheme.primary,
-                            fontWeight: FontWeight.w700,
+                          const SizedBox(height: 4),
+                          Text(
+                            _isEditMode
+                                ? 'Update item details, pricing, tax, and status information.'
+                                : (_isServiceType
+                                      ? 'Add service details, tax setup, and default pricing.'
+                                      : 'Add item details, stock setup, pricing, and tax information.'),
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: scheme.onSurfaceVariant,
+                              height: 1.35,
+                            ),
                           ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 4,
+                      ),
+                      decoration: BoxDecoration(
+                        color: (_isServiceType
+                                ? const Color(0xFF0EA5E9)
+                                : scheme.primary)
+                            .withValues(alpha: .10),
+                        borderRadius: BorderRadius.circular(999),
+                      ),
+                      child: Text(
+                        _isServiceType ? 'Service' : 'Goods',
+                        style: theme.textTheme.labelSmall?.copyWith(
+                          color: _isServiceType
+                              ? const Color(0xFF0EA5E9)
+                              : scheme.primary,
+                          fontWeight: FontWeight.w700,
                         ),
                       ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
+              ),
               CustomTextField(
                 controller: _codeController,
                 label: 'Item Code',
@@ -215,14 +233,15 @@ class _ItemFormSheetState extends State<ItemFormSheet> {
                   onChanged: (value) => setState(() => taxRateId = value),
                 ),
               ),
-              CustomDropdown<String>(
-                label: 'Unit',
-                hint: 'Select Unit',
-                items: _unitOptions.map((item) => item.value).toList(),
-                value: _unit,
-                itemLabelBuilder: (value) => _unitLabel(value),
-                onChanged: (value) => setState(() => _unit = value ?? _unit),
-              ),
+              if (!_isServiceType)
+                CustomDropdown<String>(
+                  label: 'Unit',
+                  hint: 'Select Unit',
+                  items: _unitOptions.map((item) => item.value).toList(),
+                  value: _unit,
+                  itemLabelBuilder: (value) => _unitLabel(value),
+                  onChanged: (value) => setState(() => _unit = value ?? _unit),
+                ),
               if (!_isServiceType)
                 CustomTextField(
                   controller: _purchaseController,
@@ -271,17 +290,23 @@ class _ItemFormSheetState extends State<ItemFormSheet> {
                 const SizedBox(height: 4),
                 Align(
                   alignment: Alignment.centerLeft,
-                  child: Text(
-                    'Optional default rate for sales invoice; amount can still be changed per bill.',
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: theme.colorScheme.onSurfaceVariant,
-                      fontSize: 11.5,
-                    ),
+                  child: AppHelpDialogButton(
+                    title: 'Service Pricing Help',
+                    tooltip: 'Default rate help',
+                    label: 'Default rate help',
+                    sections: const <AppHelpDialogSection>[
+                      AppHelpDialogSection(
+                        title: 'Default rate',
+                        message:
+                            'Default rate is optional for service items. The amount can still be changed later in the sales invoice.',
+                      ),
+                    ],
                   ),
                 ),
                 if (_isEditMode) ...<Widget>[
                   const SizedBox(height: 10),
-                  _InlineInfo(
+                  const _InlineInfo(
+                    title: 'Service behavior',
                     text:
                         'Stock does not apply to service items. They are non-stockable and post to Service Revenue via income account.',
                   ),
@@ -306,35 +331,12 @@ class _ItemFormSheetState extends State<ItemFormSheet> {
                 bottomPadding: 0,
               ),
               const SizedBox(height: 16),
-              Row(
-                children: <Widget>[
-                  Expanded(
-                    child: OutlinedButton(
-                      onPressed: () => Navigator.of(context).pop(),
-                      style: OutlinedButton.styleFrom(
-                        side: BorderSide(
-                          color: theme.colorScheme.secondary,
-                        ),
-                        foregroundColor: theme.colorScheme.secondary,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                      ),
-                      child: const Text('Cancel'),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    flex: 2,
-                    child: CommonButton(
-                      text: _isEditMode
-                          ? (_isServiceType ? 'Update Service' : 'Update Item')
-                          : (_isServiceType ? 'Save Service' : 'Save Item'),
-                      isLoading: isSaving,
-                      onPressed: _submit,
-                    ),
-                  ),
-                ],
+              CommonButton(
+                text: _isEditMode
+                    ? (_isServiceType ? 'Update Service' : 'Update Item')
+                    : (_isServiceType ? 'Save Service' : 'Save Item'),
+                isLoading: isSaving,
+                onPressed: _submit,
               ),
             ],
           ),
@@ -585,33 +587,29 @@ class _QuickAddCategoryAction extends StatelessWidget {
 }
 
 class _InlineInfo extends StatelessWidget {
-  const _InlineInfo({required this.text});
+  const _InlineInfo({
+    required this.title,
+    required this.text,
+  });
 
+  final String title;
   final String text;
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: <Widget>[
-        Icon(
-          Icons.info_outline_rounded,
-          size: 15,
-          color: theme.colorScheme.primary,
-        ),
-        const SizedBox(width: 6),
-        Expanded(
-          child: Text(
-            text,
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: theme.colorScheme.onSurfaceVariant,
-              fontWeight: FontWeight.w500,
-              height: 1.35,
-            ),
+    return Align(
+      alignment: Alignment.centerLeft,
+      child: AppHelpDialogButton(
+        title: title,
+        tooltip: title,
+        label: title,
+        sections: <AppHelpDialogSection>[
+          AppHelpDialogSection(
+            title: title,
+            message: text,
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 }

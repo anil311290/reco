@@ -4,6 +4,7 @@ import 'package:get/get.dart';
 import '../../../core/services/network_monitor_service.dart';
 import '../../../core/services/sync_service.dart';
 import '../../../core/utils/app_snackbar.dart';
+import '../../../core/utils/app_date_formatter.dart';
 import '../../../data/models/transactions/transaction_entities.dart';
 import '../../../data/repositories/transactions/transactions_repository.dart';
 
@@ -21,11 +22,18 @@ abstract class BaseTransactionsTabController extends GetxController {
   final searchController = TextEditingController();
   final searchQuery = ''.obs;
   final isLoading = false.obs;
+  final isLoadingMore = false.obs;
   final records = <TransactionRecord>[].obs;
   final selectedStatus = 'All'.obs;
   final selectedPartyId = 0.obs;
   final selectedFromDate = ''.obs;
   final selectedToDate = ''.obs;
+  final currentPage = 1.obs;
+  final lastPage = 1.obs;
+  final total = 0.obs;
+  final scrollController = ScrollController();
+
+  static const int pageSize = 20;
 
   String get module;
   String get endpoint;
@@ -39,6 +47,7 @@ abstract class BaseTransactionsTabController extends GetxController {
 
   bool get isOnline => networkMonitorService.isOnline.value;
   bool get isSyncing => syncService.isSyncing.value;
+  bool get hasMore => currentPage.value < lastPage.value;
 
   @override
   void onInit() {
@@ -46,76 +55,148 @@ abstract class BaseTransactionsTabController extends GetxController {
     searchController.addListener(() {
       searchQuery.value = searchController.text.trim().toLowerCase();
     });
+    scrollController.addListener(_handleScroll);
     refreshData();
   }
 
   @override
   void onClose() {
+    scrollController.removeListener(_handleScroll);
+    scrollController.dispose();
     searchController.dispose();
     super.onClose();
   }
 
-  List<TransactionRecord> get filteredItems {
-    final query = searchQuery.value;
-    return records.where((item) {
-      final matchesQuery =
-          query.isEmpty ||
-          item.number.toLowerCase().contains(query) ||
-          item.partyName.toLowerCase().contains(query) ||
-          item.narration.toLowerCase().contains(query) ||
-          item.supplierReference.toLowerCase().contains(query);
-      final matchesStatus =
-          selectedStatus.value == 'All' ||
-          item.status.toLowerCase() == selectedStatus.value.toLowerCase();
-      final matchesParty =
-          !supportsPartyFilter ||
-          selectedPartyId.value == 0 ||
-          item.partyId == selectedPartyId.value;
-      final matchesFrom =
-          selectedFromDate.value.isEmpty ||
-          item.date.compareTo(selectedFromDate.value) >= 0;
-      final matchesTo =
-          selectedToDate.value.isEmpty ||
-          item.date.compareTo(selectedToDate.value) <= 0;
-      return matchesQuery &&
-          matchesStatus &&
-          matchesParty &&
-          matchesFrom &&
-          matchesTo;
-    }).toList();
+  List<TransactionRecord> get filteredItems => records;
+
+  void _handleScroll() {
+    if (!scrollController.hasClients || isLoadingMore.value || !hasMore) {
+      return;
+    }
+    final position = scrollController.position;
+    if (position.pixels >= position.maxScrollExtent - 160) {
+      loadMore();
+    }
+  }
+
+  Future<void> onSearchChanged() async {
+    await refreshData();
   }
 
   Future<void> refreshData({bool forceRemote = false}) async {
     isLoading.value = true;
+    currentPage.value = 1;
     try {
       if (forceRemote) {
-        final remoteItems = await repository.refreshCollection(
+        final remoteItems = await repository.refreshPaginatedCollection(
           module: module,
           endpoint: endpoint,
           queryParameters: queryParameters,
+          page: 1,
+          perPage: pageSize,
         );
-        records.assignAll(remoteItems.map(mapRecord).toList());
+        _applyPage(remoteItems, reset: true);
         return;
       }
 
-      final localItems = await repository.getCollection(
+      final localItems = await repository.getPaginatedCollection(
         module: module,
         endpoint: endpoint,
         queryParameters: queryParameters,
+        page: 1,
+        perPage: pageSize,
       );
-      records.assignAll(localItems.map(mapRecord).toList());
+      _applyPage(localItems, reset: true);
 
       if (await networkMonitorService.hasInternetNow()) {
-        final remoteItems = await repository.refreshCollection(
+        final remoteItems = await repository.refreshPaginatedCollection(
           module: module,
           endpoint: endpoint,
           queryParameters: queryParameters,
+          page: 1,
+          perPage: pageSize,
         );
-        records.assignAll(remoteItems.map(mapRecord).toList());
+        _applyPage(remoteItems, reset: true);
       }
     } finally {
       isLoading.value = false;
     }
+  }
+
+  Future<void> loadMore() async {
+    if (isLoading.value || isLoadingMore.value || !hasMore) {
+      return;
+    }
+    isLoadingMore.value = true;
+    final nextPage = currentPage.value + 1;
+    try {
+      final pageResult = await (await networkMonitorService.hasInternetNow()
+          ? repository.refreshPaginatedCollection(
+              module: module,
+              endpoint: endpoint,
+              queryParameters: queryParameters,
+              page: nextPage,
+              perPage: pageSize,
+            )
+          : repository.getPaginatedCollection(
+              module: module,
+              endpoint: endpoint,
+              queryParameters: queryParameters,
+              page: nextPage,
+              perPage: pageSize,
+            ));
+      _applyPage(pageResult, reset: false);
+    } finally {
+      isLoadingMore.value = false;
+    }
+  }
+
+  void _applyPage(
+    dynamic pageResult, {
+    required bool reset,
+  }) {
+    final mapped = <TransactionRecord>[];
+    for (final item in pageResult.items) {
+      try {
+        mapped.add(mapRecord(Map<String, dynamic>.from(item as Map)));
+      } catch (_) {
+        // Skip malformed records so one bad payload does not blank the whole tab.
+      }
+    }
+    currentPage.value = pageResult.currentPage;
+    lastPage.value = pageResult.lastPage;
+    total.value = pageResult.total;
+    if (reset) {
+      records.assignAll(_mergeRecords(mapped, base: const <TransactionRecord>[]));
+    } else {
+      records.assignAll(_mergeRecords(mapped, base: records));
+    }
+  }
+
+  List<TransactionRecord> _mergeRecords(
+    List<TransactionRecord> incoming, {
+    required List<TransactionRecord> base,
+  }) {
+    final merged = <String, TransactionRecord>{};
+    for (final item in base) {
+      merged[_recordKey(item)] = item;
+    }
+    for (final item in incoming) {
+      merged[_recordKey(item)] = item;
+    }
+    return merged.values.toList();
+  }
+
+  String _recordKey(TransactionRecord item) {
+    final id = item.id?.toString();
+    if (id != null && id.isNotEmpty) {
+      return 'id:$id';
+    }
+    final localId = item.localId?.trim();
+    if (localId != null && localId.isNotEmpty) {
+      return 'local:$localId';
+    }
+    return '${item.kind.name}:${item.number}:${item.date}:${item.amount}:${item.status}';
   }
 
   TransactionRecord mapRecord(Map<String, dynamic> record) {
@@ -131,7 +212,6 @@ abstract class BaseTransactionsTabController extends GetxController {
 
   Map<String, dynamic> get queryParameters {
     final params = <String, dynamic>{
-      'per_page': 50,
       ...extraQueryParameters,
     };
     if (searchQuery.value.isNotEmpty) {
@@ -144,10 +224,10 @@ abstract class BaseTransactionsTabController extends GetxController {
       params['party_id'] = selectedPartyId.value;
     }
     if (selectedFromDate.value.isNotEmpty) {
-      params['date_from'] = selectedFromDate.value;
+      params['date_from'] = AppDateFormatter.toApiDate(selectedFromDate.value);
     }
     if (selectedToDate.value.isNotEmpty) {
-      params['date_to'] = selectedToDate.value;
+      params['date_to'] = AppDateFormatter.toApiDate(selectedToDate.value);
     }
     return params;
   }

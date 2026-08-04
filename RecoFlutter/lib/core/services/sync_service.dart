@@ -22,6 +22,7 @@ class SyncService extends GetxService {
 
   final RxBool isSyncing = false.obs;
   StreamSubscription<bool>? _networkSubscription;
+  Future<void>? _activeSync;
 
   Future<SyncService> init() async {
     _networkSubscription = _networkMonitorService.statusStream.listen((online) {
@@ -38,10 +39,24 @@ class SyncService extends GetxService {
   }
 
   Future<void> syncPendingMutations({bool showSuccessMessage = true}) async {
-    if (isSyncing.value) {
+    final runningSync = _activeSync;
+    if (runningSync != null) {
+      await runningSync;
       return;
     }
 
+    final syncFuture = _runSync(showSuccessMessage: showSuccessMessage);
+    _activeSync = syncFuture;
+    try {
+      await syncFuture;
+    } finally {
+      if (identical(_activeSync, syncFuture)) {
+        _activeSync = null;
+      }
+    }
+  }
+
+  Future<void> _runSync({required bool showSuccessMessage}) async {
     if (!await _networkMonitorService.hasInternetNow()) {
       return;
     }

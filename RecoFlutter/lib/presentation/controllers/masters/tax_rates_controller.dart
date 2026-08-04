@@ -25,10 +25,17 @@ class TaxRatesController extends GetxController with MasterExportMixin {
   final searchController = TextEditingController();
   final searchQuery = ''.obs;
   final isLoading = false.obs;
+  final isLoadingMore = false.obs;
   final items = <TaxRateEntity>[].obs;
   final selectedCategory = 'All'.obs;
   final selectedType = 'All'.obs;
   final selectedStatus = 'All'.obs;
+  final currentPage = 1.obs;
+  final lastPage = 1.obs;
+  final total = 0.obs;
+  final scrollController = ScrollController();
+
+  static const int pageSize = 20;
 
   @override
   void onInit() {
@@ -36,62 +43,147 @@ class TaxRatesController extends GetxController with MasterExportMixin {
     searchController.addListener(() {
       searchQuery.value = searchController.text.trim().toLowerCase();
     });
+    scrollController.addListener(_handleScroll);
     refreshData();
   }
 
   @override
   void onClose() {
+    scrollController.removeListener(_handleScroll);
+    scrollController.dispose();
     searchController.dispose();
     super.onClose();
   }
 
-  List<TaxRateEntity> get filteredItems {
-    final query = searchQuery.value;
-    return items.where((item) {
-      final matchesQuery =
-          query.isEmpty ||
-          item.taxName.toLowerCase().contains(query) ||
-          item.taxCode.toLowerCase().contains(query) ||
-          item.taxCategory.toLowerCase().contains(query);
-      final matchesCategory =
-          selectedCategory.value == 'All' ||
-          item.taxCategory == selectedCategory.value;
-      final matchesType =
-          selectedType.value == 'All' || item.taxType == selectedType.value;
-      final itemStatus = item.isActive ? 'Active' : 'Inactive';
-      final matchesStatus =
-          selectedStatus.value == 'All' || itemStatus == selectedStatus.value;
-      return matchesQuery && matchesCategory && matchesType && matchesStatus;
-    }).toList();
+  List<TaxRateEntity> get filteredItems => items;
+
+  bool get hasMore => currentPage.value < lastPage.value;
+
+  void _handleScroll() {
+    if (!scrollController.hasClients || isLoadingMore.value || !hasMore) {
+      return;
+    }
+    if (scrollController.position.pixels >=
+        scrollController.position.maxScrollExtent - 160) {
+      loadMore();
+    }
   }
 
-  void applyFilters({
+  Future<void> onSearchChanged() => refreshData();
+
+  Future<void> applyFilters({
     required String category,
     required String type,
     required String status,
-  }) {
+  }) async {
     selectedCategory.value = category;
     selectedType.value = type;
     selectedStatus.value = status;
+    await refreshData();
   }
 
-  void clearFilters() {
+  Future<void> clearFilters() async {
     selectedCategory.value = 'All';
     selectedType.value = 'All';
     selectedStatus.value = 'All';
+    await refreshData();
   }
 
   Future<void> refreshData({bool forceRemote = false}) async {
     isLoading.value = true;
+    currentPage.value = 1;
     try {
-      items.assignAll(
-        forceRemote
-            ? await _repository.refreshTaxRates()
-            : await _repository.getTaxRates(),
-      );
+      final localResult = forceRemote
+          ? null
+          : await _repository.getPaginatedTaxRates(
+              queryParameters: _queryParameters,
+              page: 1,
+              perPage: pageSize,
+            );
+      if (localResult != null) {
+        _applyPage(localResult, reset: true);
+      }
+
+      if (forceRemote || await _networkMonitorService.hasInternetNow()) {
+        final remoteResult = await _repository.refreshPaginatedTaxRates(
+          queryParameters: _queryParameters,
+          page: 1,
+          perPage: pageSize,
+        );
+        _applyPage(remoteResult, reset: true);
+      }
     } finally {
       isLoading.value = false;
     }
+  }
+
+  Future<void> loadMore() async {
+    if (isLoading.value || isLoadingMore.value || !hasMore) return;
+    isLoadingMore.value = true;
+    final nextPage = currentPage.value + 1;
+    try {
+      final result = await (await _networkMonitorService.hasInternetNow()
+          ? _repository.refreshPaginatedTaxRates(
+              queryParameters: _queryParameters,
+              page: nextPage,
+              perPage: pageSize,
+            )
+          : _repository.getPaginatedTaxRates(
+              queryParameters: _queryParameters,
+              page: nextPage,
+              perPage: pageSize,
+            ));
+      _applyPage(result, reset: false);
+    } finally {
+      isLoadingMore.value = false;
+    }
+  }
+
+  void _applyPage(dynamic result, {required bool reset}) {
+    currentPage.value = result.currentPage;
+    lastPage.value = result.lastPage;
+    total.value = result.total;
+    if (reset) {
+      items.assignAll(
+        _mergeTaxRates(
+          List<TaxRateEntity>.from(result.items),
+          base: const <TaxRateEntity>[],
+        ),
+      );
+    } else {
+      items.assignAll(
+        _mergeTaxRates(
+          List<TaxRateEntity>.from(result.items),
+          base: items,
+        ),
+      );
+    }
+  }
+
+  List<TaxRateEntity> _mergeTaxRates(
+    List<TaxRateEntity> incoming, {
+    required List<TaxRateEntity> base,
+  }) {
+    final merged = <String, TaxRateEntity>{};
+    for (final item in base) {
+      merged[_taxRateKey(item)] = item;
+    }
+    for (final item in incoming) {
+      merged[_taxRateKey(item)] = item;
+    }
+    return merged.values.toList();
+  }
+
+  String _taxRateKey(TaxRateEntity item) {
+    final id = item.id?.toString();
+    if (id != null && id.isNotEmpty) {
+      return 'id:$id';
+    }
+    final localId = item.localId?.trim();
+    if (localId != null && localId.isNotEmpty) {
+      return 'local:$localId';
+    }
+    return 'code:${item.taxCode}:${item.taxName}';
   }
 
   Future<void> save(TaxRateEntity entity) async {
@@ -162,4 +254,6 @@ class TaxRatesController extends GetxController with MasterExportMixin {
         if (selectedStatus.value != 'All')
           'status': selectedStatus.value.toLowerCase(),
       };
+
+  Map<String, dynamic> get _queryParameters => _exportQueryParameters;
 }

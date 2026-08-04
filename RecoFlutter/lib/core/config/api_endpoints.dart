@@ -51,6 +51,7 @@ class ApiEndpoints {
   static const String adjustments = '/adjustments';
 
   static const String ledgers = '/ledgers';
+  static String ledgerEntries(Object id) => '/ledgers/$id/entries';
   static String ledgerHistory(Object id) => '/ledgers/$id/history';
   static const String reportsDayBook = '/reports/day-book';
   static const String reportsLedger = '/reports/ledger';

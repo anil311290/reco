@@ -4,6 +4,7 @@ import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:get/get.dart';
 
 import '../../../core/config/api_endpoints.dart';
+import '../../../core/utils/app_date_formatter.dart';
 import '../../controllers/reports/report_lookup_controller.dart';
 import '../../controllers/reports/trial_balance_report_controller.dart';
 import '../../widgets/common/custom_text_field.dart';
@@ -54,8 +55,16 @@ class TrialBalanceReportScreen extends GetView<TrialBalanceReportController> {
                       );
                       return (item['name'] ?? 'FY').toString();
                     },
-                    onChanged: (value) => controller.financialYearId.value = value,
+                    onChanged: (value) => controller.applyFinancialYear(value, lookup),
                   ),
+
+                  ReportDateRangeRow(
+                    fromController: controller.fromDateController,
+                    toController: controller.toDateController,
+                    onFromTap: () => _pickDate(context, controller.fromDateController),
+                    onToTap: () => _pickDate(context, controller.toDateController),
+                  ),
+                  const SizedBox(height: 12),
                   ReportActionBar(
                     children: <Widget>[
                       ReportPrimaryButton(
@@ -93,7 +102,7 @@ class TrialBalanceReportScreen extends GetView<TrialBalanceReportController> {
                     children: <Widget>[
                       Expanded(
                         child: ReportStatCard(
-                          label: 'Closing Debit',
+                          label: 'Closing Dr',
                           value: controller.formatCurrency(report['total_debit']),
                           note: 'Must equal closing credit when books tally.',
                           color: const Color(0xFF2563EB),
@@ -103,7 +112,7 @@ class TrialBalanceReportScreen extends GetView<TrialBalanceReportController> {
                       const SizedBox(width: 10),
                       Expanded(
                         child: ReportStatCard(
-                          label: 'Closing Credit',
+                          label: 'Closing Cr',
                           value: controller.formatCurrency(report['total_credit']),
                           note: 'Closing balances across all ledgers.',
                           color: const Color(0xFFF59E0B),
@@ -142,12 +151,42 @@ class TrialBalanceReportScreen extends GetView<TrialBalanceReportController> {
               icon: FontAwesomeIcons.tableList,
               iconColor: const Color(0xFFD97706),
               trailing: report is Map<String, dynamic>
-                  ? Text(
-                      'Dr ${controller.formatCurrency(report['total_debit'])} | Cr ${controller.formatCurrency(report['total_credit'])}',
-                      style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                        color: const Color(0xFFD97706),
-                        fontWeight: FontWeight.w700,
-                      ),
+                  ? Column(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: <Widget>[
+                        Text(
+                          _dateRangeLabel(),
+                          style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                            color: const Color(0xFF64748B),
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 4,
+                          ),
+                          decoration: BoxDecoration(
+                            color: (report['is_balanced'] == true
+                                    ? const Color(0xFF16A34A)
+                                    : const Color(0xFFEF4444))
+                                .withValues(alpha: .10),
+                            borderRadius: BorderRadius.circular(999),
+                          ),
+                          child: Text(
+                            (report['is_balanced'] == true)
+                                ? 'Balanced'
+                                : 'Review Difference',
+                            style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                              color: report['is_balanced'] == true
+                                  ? const Color(0xFF16A34A)
+                                  : const Color(0xFFEF4444),
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ),
+                      ],
                     )
                   : null,
               child: accounts.isEmpty
@@ -245,13 +284,33 @@ class TrialBalanceReportScreen extends GetView<TrialBalanceReportController> {
           masterColumn(context, 'Code'),
           masterColumn(context, 'Particulars', size: ColumnSize.L),
           masterColumn(context, 'Type'),
-          masterColumn(context, 'Debit (₹)'),
-          masterColumn(context, 'Credit (₹)'),
+          masterColumn(context, 'Dr (₹)'),
+          masterColumn(context, 'Cr (₹)'),
         ],
         rows: tableRows,
       ),
     );
   }
 
+  Future<void> _pickDate(
+    BuildContext context,
+    TextEditingController target,
+  ) async {
+    final initial = AppDateFormatter.parse(target.text) ?? DateTime.now();
+    final selected = await showDatePicker(
+      context: context,
+      initialDate: initial,
+      firstDate: DateTime(2000),
+      lastDate: DateTime(2100),
+    );
+    if (selected != null) {
+      target.text = AppDateFormatter.formatDisplay(selected);
+    }
+  }
+
   int? _asInt(dynamic value) => int.tryParse(value?.toString() ?? '');
+
+  String _dateRangeLabel() {
+    return '${controller.formatDate(controller.fromDateController.text)} to ${controller.formatDate(controller.toDateController.text)}';
+  }
 }

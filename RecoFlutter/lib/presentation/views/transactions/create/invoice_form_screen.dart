@@ -14,6 +14,83 @@ import 'widgets/transaction_form_components.dart';
 class InvoiceFormScreen<T extends BaseInvoiceFormController> extends GetView<T> {
   const InvoiceFormScreen({super.key});
 
+  String _partyOptionSearchText(InvoicePartyOption item) {
+    if (item.isParty) {
+      final type = (item.party?.type ?? '').toLowerCase();
+      final typeLabel = type == 'creditor'
+          ? 'Supplier Party'
+          : type == 'debtor'
+              ? 'Customer Party'
+              : 'Party';
+      return '${item.label} $typeLabel';
+    }
+    return '${item.label} Ledger Account Cash Bank OD';
+  }
+
+  Widget _buildPartyOptionMenuItem(
+    BuildContext context,
+    List<InvoicePartyOption> items,
+    InvoicePartyOption item,
+  ) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    final index = items.indexOf(item);
+    final previous = index > 0 ? items[index - 1] : null;
+    final isParty = item.isParty;
+    final type = (item.party?.type ?? '').toLowerCase();
+
+    String? sectionTitle;
+    if (item.isAccount && (previous == null || previous.isParty)) {
+      sectionTitle = 'Ledger Accounts (Cash/Bank/OD)';
+    } else if (isParty &&
+        type == 'debtor' &&
+        (previous == null ||
+            !previous.isParty ||
+            (previous.party?.type.toLowerCase() != 'debtor'))) {
+      sectionTitle = 'Customers (Parties)';
+    } else if (isParty &&
+        type == 'creditor' &&
+        (previous == null ||
+            !previous.isParty ||
+            (previous.party?.type.toLowerCase() != 'creditor'))) {
+      sectionTitle = 'Suppliers (Parties)';
+    }
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: <Widget>[
+          if (sectionTitle != null) ...<Widget>[
+            Text(
+              sectionTitle,
+              style: theme.textTheme.labelMedium?.copyWith(
+                color: scheme.onSurfaceVariant,
+                fontWeight: FontWeight.w800,
+                letterSpacing: .4,
+              ),
+            ),
+            const SizedBox(height: 8),
+          ],
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            physics: const BouncingScrollPhysics(),
+            child: Text(
+              item.label,
+              maxLines: 1,
+              softWrap: false,
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: scheme.onSurface,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -109,6 +186,13 @@ class InvoiceFormScreen<T extends BaseInvoiceFormController> extends GetView<T> 
                             value: controller.selectedPartyOption.value,
                             items: controller.invoicePartyOptions,
                             itemLabelBuilder: (item) => item.label,
+                            searchTextBuilder: _partyOptionSearchText,
+                            menuItemBuilder: (context, item) =>
+                                _buildPartyOptionMenuItem(
+                                  context,
+                                  controller.invoicePartyOptions,
+                                  item,
+                                ),
                             onChanged: (value) {
                               controller.selectedPartyOption.value = value;
                               controller.update();
@@ -138,6 +222,7 @@ class InvoiceFormScreen<T extends BaseInvoiceFormController> extends GetView<T> 
                               ),
                             ),
                           ),
+                          SizedBox(height: 8,),
                           CustomTextField(
                             label: 'Payment/Delivery Terms',
                             controller: controller.paymentTermsController,
@@ -169,6 +254,13 @@ class InvoiceFormScreen<T extends BaseInvoiceFormController> extends GetView<T> 
                           value: controller.selectedPartyOption.value,
                           items: controller.invoicePartyOptions,
                           itemLabelBuilder: (item) => item.label,
+                          searchTextBuilder: _partyOptionSearchText,
+                          menuItemBuilder: (context, item) =>
+                              _buildPartyOptionMenuItem(
+                                context,
+                                controller.invoicePartyOptions,
+                                item,
+                              ),
                           onChanged: (value) {
                             controller.selectedPartyOption.value = value;
                             controller.update();
@@ -186,6 +278,7 @@ class InvoiceFormScreen<T extends BaseInvoiceFormController> extends GetView<T> 
                                       .value),
                           hint: 'Select Customer',
                         ),
+                          const SizedBox(height: 5),
                         if (controller.isPurchaseInvoice)
                           CustomTextField(
                             label: 'Supplier Invoice #',
@@ -362,37 +455,81 @@ class _ItemRowCard<T extends BaseInvoiceFormController> extends GetView<T> {
                 ? row.catalogOption
                 : row.item,
             builder: (context, value, _) {
-              if (controller.usesUnifiedSalesRows) {
-                return CustomDropdown<InvoiceCatalogOption>(
-                  label: 'Item / Service',
-                  value: row.catalogOption.value,
-                  items: controller.salesCatalogOptions,
-                  itemLabelBuilder: (item) => item.label,
-                  onChanged: (item) => controller.onSalesCatalogChanged(row, item),
-                  hint: 'Select item or service',
-                  requiredField: true,
-                  isLoading: controller.lookupController.isItemsLoading.value ||
-                      controller.lookupController.isServiceAccountsLoading.value,
-                  enabled: !(controller.lookupController.isItemsLoading.value ||
-                      controller.lookupController.isServiceAccountsLoading.value),
-                );
-              }
+              return Obx(() {
+                if (controller.usesUnifiedSalesRows) {
+                  final isCatalogLoading =
+                      controller.lookupController.isItemsLoading.value ||
+                      controller.lookupController.isServiceAccountsLoading.value;
+                  return Column(
+                    children: <Widget>[
+                      CustomDropdown<InvoiceCatalogOption>(
+                        label: 'Item / Service',
+                        value: row.catalogOption.value,
+                        items: controller.salesCatalogOptions,
+                        itemLabelBuilder: (item) => item.label,
+                        onChanged: (item) =>
+                            controller.onSalesCatalogChanged(row, item),
+                        hint: 'Select item or service',
+                        requiredField: true,
+                        isLoading: isCatalogLoading,
+                        enabled: !isCatalogLoading,
+                      ),
+                      if (isCatalogLoading)
+                        Align(
+                          alignment: Alignment.centerLeft,
+                          child: Padding(
+                            padding: const EdgeInsets.only(bottom: 8),
+                            child: Text(
+                              'Loading item and service list...',
+                              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                color: Theme.of(context)
+                                    .colorScheme
+                                    .onSurfaceVariant,
+                              ),
+                            ),
+                          ),
+                        ),
+                    ],
+                  );
+                }
 
-              return CustomDropdown<ItemEntity>(
-                label: 'Item',
-                value: row.item.value,
-                items: controller.isPurchaseInvoice
-                    ? controller.items
-                          .where((item) => item.type != 'service')
-                          .toList()
-                    : controller.items,
-                itemLabelBuilder: (item) => item.name,
-                onChanged: (item) => controller.onItemChanged(row, item),
-                hint: 'Select Item',
-                requiredField: true,
-                isLoading: controller.lookupController.isItemsLoading.value,
-                enabled: !controller.lookupController.isItemsLoading.value,
-              );
+                final isItemsLoading =
+                    controller.lookupController.isItemsLoading.value;
+                return Column(
+                  children: <Widget>[
+                    CustomDropdown<ItemEntity>(
+                      label: 'Item',
+                      value: row.item.value,
+                      items: controller.isPurchaseInvoice
+                          ? controller.items
+                                .where((item) => item.type != 'service')
+                                .toList()
+                          : controller.items,
+                      itemLabelBuilder: (item) => item.name,
+                      onChanged: (item) => controller.onItemChanged(row, item),
+                      hint: 'Select Item',
+                      requiredField: true,
+                      isLoading: isItemsLoading,
+                      enabled: !isItemsLoading,
+                    ),
+                    if (isItemsLoading)
+                      Align(
+                        alignment: Alignment.centerLeft,
+                        child: Padding(
+                          padding: const EdgeInsets.only(bottom: 8),
+                          child: Text(
+                            'Loading item list...',
+                            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                              color: Theme.of(context)
+                                  .colorScheme
+                                  .onSurfaceVariant,
+                            ),
+                          ),
+                        ),
+                      ),
+                  ],
+                );
+              });
             },
           ),
           CustomTextField(
@@ -506,17 +643,40 @@ class _ServiceRowCard<T extends BaseInvoiceFormController> extends GetView<T> {
           ValueListenableBuilder<LookupOption?>(
             valueListenable: row.account,
             builder: (context, value, _) {
-              return CustomDropdown<LookupOption>(
-                label: 'Service Account',
-                value: value,
-                items: controller.serviceAccounts,
-                itemLabelBuilder: (item) => item.label,
-                onChanged: (account) =>
-                    controller.onServiceAccountChanged(row, account),
-                requiredField: true,
-                isLoading: controller.lookupController.isServiceAccountsLoading.value,
-                enabled: !controller.lookupController.isServiceAccountsLoading.value,
-              );
+              return Obx(() {
+                final isServiceAccountsLoading =
+                    controller.lookupController.isServiceAccountsLoading.value;
+                return Column(
+                  children: <Widget>[
+                    CustomDropdown<LookupOption>(
+                      label: 'Service Account',
+                      value: value,
+                      items: controller.serviceAccounts,
+                      itemLabelBuilder: (item) => item.label,
+                      onChanged: (account) =>
+                          controller.onServiceAccountChanged(row, account),
+                      requiredField: true,
+                      isLoading: isServiceAccountsLoading,
+                      enabled: !isServiceAccountsLoading,
+                    ),
+                    if (isServiceAccountsLoading)
+                      Align(
+                        alignment: Alignment.centerLeft,
+                        child: Padding(
+                          padding: const EdgeInsets.only(bottom: 8),
+                          child: Text(
+                            'Loading service account list...',
+                            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                              color: Theme.of(context)
+                                  .colorScheme
+                                  .onSurfaceVariant,
+                            ),
+                          ),
+                        ),
+                      ),
+                  ],
+                );
+              });
             },
           ),
           CustomTextField(
@@ -590,8 +750,9 @@ class _InlineQuickActions extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return Padding(
-      padding: const EdgeInsets.only(bottom: 6),
-      child: Row(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
           Text(
             '$label *',
@@ -599,49 +760,59 @@ class _InlineQuickActions extends StatelessWidget {
               fontWeight: FontWeight.w700,
             ),
           ),
-          const Spacer(),
-          Flexible(
-            child: Wrap(
-              spacing: 10,
-              alignment: WrapAlignment.end,
+          const SizedBox(height: 4),
+          Align(
+            alignment: Alignment.centerRight,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
               children: <Widget>[
-                InkWell(
+                _QuickActionLink(
+                  label: primaryActionLabel,
                   onTap: onPrimaryTap,
-                  borderRadius: BorderRadius.circular(999),
-                  child: Padding(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-                    child: Text(
-                      primaryActionLabel,
-                      style: theme.textTheme.labelLarge?.copyWith(
-                        color: theme.colorScheme.primary,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  ),
                 ),
-                if (secondaryActionLabel != null && onSecondaryTap != null)
-                  InkWell(
-                    onTap: onSecondaryTap,
-                    borderRadius: BorderRadius.circular(999),
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 4,
-                        vertical: 2,
-                      ),
-                      child: Text(
-                        secondaryActionLabel!,
-                        style: theme.textTheme.labelLarge?.copyWith(
-                          color: theme.colorScheme.primary,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                    ),
+                if (secondaryActionLabel != null && onSecondaryTap != null) ...<Widget>[
+                  const SizedBox(height: 2),
+                  _QuickActionLink(
+                    label: secondaryActionLabel!,
+                    onTap: onSecondaryTap!,
                   ),
+                ],
               ],
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _QuickActionLink extends StatelessWidget {
+  const _QuickActionLink({
+    required this.label,
+    required this.onTap,
+  });
+
+  final String label;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(6),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 1),
+        child: Text(
+          label,
+          textAlign: TextAlign.right,
+          style: theme.textTheme.labelMedium?.copyWith(
+            color: theme.colorScheme.primary,
+            fontWeight: FontWeight.w700,
+            decoration: TextDecoration.underline,
+            decorationColor: theme.colorScheme.primary,
+          ),
+        ),
       ),
     );
   }

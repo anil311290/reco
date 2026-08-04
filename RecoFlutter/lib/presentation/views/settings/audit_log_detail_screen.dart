@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
+import '../../../core/utils/app_date_formatter.dart';
 import '../../controllers/settings/audit_log_detail_controller.dart';
 import 'widgets/audit_log_ui_components.dart';
 
@@ -217,10 +218,5 @@ class _AuditMetaCard extends StatelessWidget {
 }
 
 String _formatDateTime(dynamic value) {
-  final raw = (value ?? '').toString().trim();
-  if (raw.isEmpty) {
-    return '-';
-  }
-  final normalized = raw.replaceFirst('T', ' ');
-  return normalized.length > 19 ? normalized.substring(0, 19) : normalized;
+  return AppDateFormatter.formatDateTime(value, fallback: '-');
 }

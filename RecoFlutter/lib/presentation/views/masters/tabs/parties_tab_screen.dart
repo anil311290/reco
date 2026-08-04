@@ -5,11 +5,14 @@ import 'package:get/get.dart';
 
 import '../../../../core/utils/app_alert_dialog.dart';
 import '../../../../data/models/masters/master_entities.dart';
+import '../../../../data/repositories/settings/audit_logs_repository.dart';
 import '../../../controllers/masters/parties_controller.dart';
+import '../../../controllers/settings/audit_logs_controller.dart';
 import '../../../widgets/common/custom_text_field.dart';
 import '../forms/party_form_sheet.dart';
 import '../history/party_history_screen.dart';
 import '../widgets/masters_ui_components.dart';
+import '../../settings/audit_logs_screen.dart';
 
 class PartiesTabScreen extends GetView<PartiesController> {
   const PartiesTabScreen({super.key});
@@ -23,19 +26,26 @@ class PartiesTabScreen extends GetView<PartiesController> {
             CompactSearchFilterBar(
               hint: 'Search by name, code, or mobile...',
               controller: controller.searchController,
+              onChanged: (_) => controller.onSearchChanged(),
               onFilterTap: () => _openFilters(context),
               filterTooltip: 'Party filters',
               onExcelTap: controller.exportExcel,
               onPdfTap: controller.exportPdf,
             ),
-
             const SizedBox(height: 12),
             Expanded(
-              child: MastersTableShell(
-                isLoading: controller.isLoading.value,
-                emptyText: 'No parties found',
-                minWidth: 980,
-                columns: <DataColumn2>[
+              child: PaginatedTablePane(
+                hasMore: controller.hasMore,
+                isLoadingMore: controller.isLoadingMore.value,
+                loadedCount: controller.parties.length,
+                totalCount: controller.total.value,
+                onLoadMore: controller.loadMore,
+                child: MastersTableShell(
+                  isLoading: controller.isLoading.value,
+                  emptyText: 'No parties found',
+                  minWidth: 1080,
+                  dataRowHeight: 80,
+                  columns: <DataColumn2>[
                   masterColumn(
                     context,
                     '#',
@@ -44,13 +54,14 @@ class PartiesTabScreen extends GetView<PartiesController> {
                   ),
                   masterColumn(context, 'Code', size: ColumnSize.M),
                   masterColumn(context, 'Name', size: ColumnSize.L),
-                  masterColumn(context, 'Type', size: ColumnSize.S),
+                  masterColumn(context, 'Type', size: ColumnSize.M),
+                  masterColumn(context, 'Linked Ledger', size: ColumnSize.L),
                   masterColumn(context, 'Mobile', size: ColumnSize.M),
                   masterColumn(context, 'Opening Balance', size: ColumnSize.M),
                   masterColumn(context, 'Status', fixedWidth: 120),
-                  masterColumn(context, 'Actions', fixedWidth: 170),
+                  masterColumn(context, 'Actions', fixedWidth: 208),
                 ],
-                rows: List<DataRow>.generate(controller.filteredItems.length, (
+                  rows: List<DataRow>.generate(controller.filteredItems.length, (
                   index,
                 ) {
                   final item = controller.filteredItems[index];
@@ -59,11 +70,11 @@ class PartiesTabScreen extends GetView<PartiesController> {
                       masterTextCell('${index + 1}'),
                       masterTextCell(item.partyCode),
                       DataCell(
-                        Align(
-                          alignment: Alignment.centerLeft,
+                        Center(
                           child: item.id == null
                               ? Text(
                                   item.name,
+                                  textAlign: TextAlign.center,
                                   style: Theme.of(context).textTheme.bodyMedium
                                       ?.copyWith(
                                         fontWeight: FontWeight.w600,
@@ -79,6 +90,7 @@ class PartiesTabScreen extends GetView<PartiesController> {
                                     child: Text(
                                       item.name,
                                       maxLines: 2,
+                                      textAlign: TextAlign.center,
                                       overflow: TextOverflow.ellipsis,
                                       style: Theme.of(context)
                                           .textTheme
@@ -106,6 +118,61 @@ class PartiesTabScreen extends GetView<PartiesController> {
                           ),
                         ),
                       ),
+                      DataCell(
+                        Align(
+                          alignment: Alignment.centerLeft,
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 6),
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: <Widget>[
+                                Text(
+                                  item.linkedLedgerDisplay,
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: Theme.of(context).textTheme.bodyMedium
+                                      ?.copyWith(
+                                        fontWeight: FontWeight.w600,
+                                        fontSize: 13,
+                                      ),
+                                ),
+                                const SizedBox(height: 4),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 8,
+                                    vertical: 1,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: Theme.of(context)
+                                        .colorScheme
+                                        .surfaceContainerHighest,
+                                    borderRadius: BorderRadius.circular(999),
+                                    border: Border.all(
+                                      color: Theme.of(context)
+                                          .dividerColor
+                                          .withValues(alpha: .6),
+                                    ),
+                                  ),
+                                  child: Text(
+                                    'Control Ledger',
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .labelSmall
+                                        ?.copyWith(
+                                          fontWeight: FontWeight.w700,
+                                          fontSize: 10.5,
+                                          color: Theme.of(context)
+                                              .colorScheme
+                                              .onSurfaceVariant,
+                                        ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
                       masterTextCell(item.mobile.isEmpty ? '-' : item.mobile),
                       masterTextCell(
                         '₹${item.openingBalance.toStringAsFixed(2)}',
@@ -128,9 +195,9 @@ class PartiesTabScreen extends GetView<PartiesController> {
                             mainAxisSize: MainAxisSize.min,
                             children: <Widget>[
                               MasterActionButton(
-                                icon: Icons.receipt_long_outlined,
-                                tooltip: 'History',
-                                color: const Color(0xFF2563EB),
+                                icon: Icons.remove_red_eye_outlined,
+                                tooltip: 'View',
+                                color: const Color(0xFF64748B),
                                 onTap: item.id == null
                                     ? null
                                     : () => _openDetails(item),
@@ -141,6 +208,15 @@ class PartiesTabScreen extends GetView<PartiesController> {
                                 tooltip: 'Edit',
                                 color: Theme.of(context).colorScheme.primary,
                                 onTap: () => _openForm(context, entity: item),
+                              ),
+                              const SizedBox(width: 8),
+                              MasterActionButton(
+                                icon: Icons.history_rounded,
+                                tooltip: 'Audit Logs',
+                                color: const Color(0xFF38BDF8),
+                                onTap: item.id == null
+                                    ? null
+                                    : () => _openAuditLogs(item),
                               ),
                               const SizedBox(width: 8),
                               MasterActionButton(
@@ -155,7 +231,8 @@ class PartiesTabScreen extends GetView<PartiesController> {
                       ),
                     ],
                   );
-                }),
+                  }),
+                ),
               ),
             ),
           ],
@@ -178,6 +255,22 @@ class PartiesTabScreen extends GetView<PartiesController> {
         partyId: item.id!,
         seedParty: item,
       ),
+    );
+  }
+
+  Future<void> _openAuditLogs(PartyEntity item) async {
+    if (item.id == null) return;
+    await Get.to(
+      () => const AuditLogsScreen(),
+      binding: BindingsBuilder(() {
+        Get.put(
+          AuditLogsController(
+            Get.find<AuditLogsRepository>(),
+            initialModule: 'parties',
+            initialRecordId: item.id!.toString(),
+          ),
+        );
+      }),
     );
   }
 
@@ -213,7 +306,7 @@ class _PartyBadge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
         color: color,
         borderRadius: BorderRadius.circular(999),
@@ -223,6 +316,7 @@ class _PartyBadge extends StatelessWidget {
         style: Theme.of(context).textTheme.labelMedium?.copyWith(
               color: Colors.white,
               fontWeight: FontWeight.w700,
+              fontSize: 11,
             ),
       ),
     );
@@ -289,8 +383,11 @@ class _PartyFilterSheet extends StatelessWidget {
                       Expanded(
                         child: OutlinedButton(
                           onPressed: () {
-                            controller.clearFilters();
-                            Navigator.of(context).pop();
+                            controller.clearFilters().then((_) {
+                              if (context.mounted) {
+                                Navigator.of(context).pop();
+                              }
+                            });
                           },
                           style: OutlinedButton.styleFrom(
                             minimumSize: const Size.fromHeight(48),
@@ -308,8 +405,11 @@ class _PartyFilterSheet extends StatelessWidget {
                             controller.applyFilters(
                               type: selectedType,
                               status: selectedStatus,
-                            );
-                            Navigator.of(context).pop();
+                            ).then((_) {
+                              if (context.mounted) {
+                                Navigator.of(context).pop();
+                              }
+                            });
                           },
                           style: FilledButton.styleFrom(
                             minimumSize: const Size.fromHeight(48),

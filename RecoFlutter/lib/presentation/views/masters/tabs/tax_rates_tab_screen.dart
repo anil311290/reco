@@ -22,6 +22,7 @@ class TaxRatesTabScreen extends GetView<TaxRatesController> {
             CompactSearchFilterBar(
               controller: controller.searchController,
               hint: 'Search tax list...',
+              onChanged: (_) => controller.onSearchChanged(),
               filterTooltip: 'Tax filters',
               onFilterTap: () => _openFilters(context),
               onExcelTap: controller.exportExcel,
@@ -29,11 +30,17 @@ class TaxRatesTabScreen extends GetView<TaxRatesController> {
             ),
             const SizedBox(height: 12),
             Expanded(
-              child: MastersTableShell(
-                isLoading: controller.isLoading.value,
-                emptyText: 'No taxes found',
-                minWidth: 960,
-                columns: <DataColumn2>[
+              child: PaginatedTablePane(
+                hasMore: controller.hasMore,
+                isLoadingMore: controller.isLoadingMore.value,
+                loadedCount: controller.items.length,
+                totalCount: controller.total.value,
+                onLoadMore: controller.loadMore,
+                child: MastersTableShell(
+                  isLoading: controller.isLoading.value,
+                  emptyText: 'No taxes found',
+                  minWidth: 960,
+                  columns: <DataColumn2>[
                   masterColumn(context, '#', fixedWidth: 52),
                   masterColumn(context, 'Tax Code', size: ColumnSize.M),
                   masterColumn(context, 'Tax Name', size: ColumnSize.L),
@@ -42,8 +49,8 @@ class TaxRatesTabScreen extends GetView<TaxRatesController> {
                   masterColumn(context, 'Rate (%)', size: ColumnSize.S),
                   masterColumn(context, 'Status', fixedWidth: 120),
                   masterColumn(context, 'Actions', fixedWidth: 120),
-                ],
-                rows: List<DataRow>.generate(controller.filteredItems.length, (
+                  ],
+                  rows: List<DataRow>.generate(controller.filteredItems.length, (
                   index,
                 ) {
                   final item = controller.filteredItems[index];
@@ -98,7 +105,8 @@ class TaxRatesTabScreen extends GetView<TaxRatesController> {
                       ),
                     ],
                   );
-                }),
+                  }),
+                ),
               ),
             ),
           ],
@@ -211,8 +219,11 @@ class _MasterFilterSheet extends StatelessWidget {
                       Expanded(
                         child: OutlinedButton(
                           onPressed: () {
-                            controller.clearFilters();
-                            Navigator.of(context).pop();
+                            controller.clearFilters().then((_) {
+                              if (context.mounted) {
+                                Navigator.of(context).pop();
+                              }
+                            });
                           },
                           child: const Text('Clear'),
                         ),
@@ -225,8 +236,11 @@ class _MasterFilterSheet extends StatelessWidget {
                               category: selectedCategory,
                               type: selectedType,
                               status: selectedStatus,
-                            );
-                            Navigator.of(context).pop();
+                            ).then((_) {
+                              if (context.mounted) {
+                                Navigator.of(context).pop();
+                              }
+                            });
                           },
                           child: const Text('Apply'),
                         ),

@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import '../../../core/config/api_endpoints.dart';
+import '../../models/common/paginated_result.dart';
 import '../../models/masters/master_entities.dart';
 import '../base/offline_first_repository.dart';
 
@@ -35,6 +36,18 @@ class ItemCategoriesRepository extends OfflineFirstRepository {
     return entities;
   }
 
+  Future<PaginatedResult<ItemCategoryEntity>> getPaginatedCategories({
+    Map<String, dynamic>? queryParameters,
+    int page = 1,
+    int perPage = 20,
+  }) async {
+    final local = await getLocalModuleRecords(_module);
+    final entities = local.map(ItemCategoryEntity.fromRecord).toList()
+      ..sort(_sortCategories);
+    final filtered = _applyFilters(entities, queryParameters);
+    return _slicePage(filtered, page: page, perPage: perPage);
+  }
+
   Future<List<ItemCategoryEntity>> refreshCategories({
     Map<String, dynamic>? queryParameters,
   }) async {
@@ -46,6 +59,42 @@ class ItemCategoriesRepository extends OfflineFirstRepository {
     await mergeRemoteRecords(module: _module, records: records);
     return records.map(ItemCategoryEntity.fromRecord).toList()
       ..sort(_sortCategories);
+  }
+
+  Future<PaginatedResult<ItemCategoryEntity>> refreshPaginatedCategories({
+    Map<String, dynamic>? queryParameters,
+    int page = 1,
+    int perPage = 20,
+  }) async {
+    final response = await apiClient.get<Map<String, dynamic>>(
+      ApiEndpoints.itemCategories,
+      queryParameters: <String, dynamic>{
+        ...?queryParameters,
+        'page': page,
+        'per_page': perPage,
+      },
+    );
+    final data = response.data?['data'];
+    final records = _extractList(data);
+    await mergeRemoteRecords(module: _module, records: records);
+
+    if (data is Map<String, dynamic> && data['data'] is List) {
+      final items = records.map(ItemCategoryEntity.fromRecord).toList()
+        ..sort(_sortCategories);
+      return PaginatedResult<ItemCategoryEntity>(
+        items: items,
+        currentPage: int.tryParse(data['current_page']?.toString() ?? '$page') ?? page,
+        lastPage: int.tryParse(data['last_page']?.toString() ?? '$page') ?? page,
+        perPage: int.tryParse(data['per_page']?.toString() ?? '$perPage') ?? perPage,
+        total: int.tryParse(data['total']?.toString() ?? '${items.length}') ?? items.length,
+      );
+    }
+
+    return getPaginatedCategories(
+      queryParameters: queryParameters,
+      page: page,
+      perPage: perPage,
+    );
   }
 
   Future<String> create(ItemCategoryEntity entity) {
@@ -168,6 +217,62 @@ class ItemCategoriesRepository extends OfflineFirstRepository {
           .toList();
     }
     return <Map<String, dynamic>>[];
+  }
+
+  List<ItemCategoryEntity> _applyFilters(
+    List<ItemCategoryEntity> items,
+    Map<String, dynamic>? queryParameters,
+  ) {
+    final query = (queryParameters?['search'] ?? '').toString().trim().toLowerCase();
+    final isActive = queryParameters != null && queryParameters.containsKey('is_active')
+        ? (queryParameters['is_active'].toString() == '1' ||
+            queryParameters['is_active'].toString().toLowerCase() == 'true')
+        : null;
+
+    return items.where((item) {
+      final matchesQuery = query.isEmpty ||
+          item.name.toLowerCase().contains(query) ||
+          item.description.toLowerCase().contains(query);
+      final matchesStatus = isActive == null || item.isActive == isActive;
+      return matchesQuery && matchesStatus;
+    }).toList();
+  }
+
+  PaginatedResult<ItemCategoryEntity> _slicePage(
+    List<ItemCategoryEntity> items, {
+    required int page,
+    required int perPage,
+  }) {
+    if (items.isEmpty) {
+      return PaginatedResult<ItemCategoryEntity>(
+        items: const <ItemCategoryEntity>[],
+        currentPage: 1,
+        lastPage: 1,
+        perPage: perPage,
+        total: 0,
+      );
+    }
+    final safePage = page < 1 ? 1 : page;
+    final start = (safePage - 1) * perPage;
+    if (start >= items.length) {
+      final lastPage = ((items.length + perPage - 1) ~/ perPage).clamp(1, 999999);
+      return PaginatedResult<ItemCategoryEntity>(
+        items: const <ItemCategoryEntity>[],
+        currentPage: safePage,
+        lastPage: lastPage,
+        perPage: perPage,
+        total: items.length,
+      );
+    }
+    final end = (start + perPage) > items.length ? items.length : start + perPage;
+    final lastPage = ((items.length + perPage - 1) ~/ perPage).clamp(1, 999999);
+    return PaginatedResult<ItemCategoryEntity>(
+      items: items.sublist(start, end),
+      currentPage: safePage,
+      lastPage: lastPage,
+      perPage: perPage,
+      total: items.length,
+    );
   }
 
   int _sortCategories(ItemCategoryEntity a, ItemCategoryEntity b) {

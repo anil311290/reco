@@ -2,6 +2,7 @@ import 'package:data_table_2/data_table_2.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
+import '../../../../core/utils/app_date_formatter.dart';
 import '../../../../data/models/transactions/transaction_entities.dart';
 import '../../../../presentation/widgets/common/custom_text_field.dart';
 import '../../../controllers/transactions/all_vouchers_controller.dart';
@@ -32,23 +33,30 @@ class TransactionTabContent<T extends BaseTransactionsTabController>
             CompactSearchFilterBar(
               hint: controller.searchHint,
               controller: controller.searchController,
-              onChanged: (_) => controller.refreshData(),
+              onChanged: (_) => controller.onSearchChanged(),
               onFilterTap: () => _openFilters(context),
               filterTooltip: 'Transaction filters',
             ),
             const SizedBox(height: 12),
             Expanded(
-              child: MastersTableShell(
-                isLoading: controller.isLoading.value,
-                emptyText: emptyText,
-                minWidth: 980,
-                columns: columnsBuilder(context),
-                rows: List<DataRow>.generate(
-                  controller.filteredItems.length,
-                  (index) => rowBuilder(
-                    context,
-                    controller.filteredItems[index],
-                    index,
+              child: PaginatedTablePane(
+                hasMore: controller.hasMore,
+                isLoadingMore: controller.isLoadingMore.value,
+                loadedCount: controller.records.length,
+                totalCount: controller.total.value,
+                onLoadMore: controller.loadMore,
+                child: MastersTableShell(
+                  isLoading: controller.isLoading.value,
+                  emptyText: emptyText,
+                  minWidth: 980,
+                  columns: columnsBuilder(context),
+                  rows: List<DataRow>.generate(
+                    controller.filteredItems.length,
+                    (index) => rowBuilder(
+                      context,
+                      controller.filteredItems[index],
+                      index,
+                    ),
                   ),
                 ),
               ),
@@ -162,7 +170,7 @@ class _TransactionFilterSheet<T extends BaseTransactionsTabController>
                     label: 'From Date',
                     controller: fromDateController,
                     readOnly: true,
-                    hintText: 'YYYY-MM-DD',
+                    hintText: 'DD-MMM-YYYY',
                     suffixIcon: Icons.calendar_today_outlined,
                     onTap: () async {
                       final selected = await showDatePicker(
@@ -172,7 +180,8 @@ class _TransactionFilterSheet<T extends BaseTransactionsTabController>
                         lastDate: DateTime(2100),
                       );
                       if (selected != null) {
-                        fromDateController.text = _formatDate(selected);
+                        fromDateController.text =
+                            AppDateFormatter.formatDisplay(selected);
                       }
                     },
                   ),
@@ -180,7 +189,7 @@ class _TransactionFilterSheet<T extends BaseTransactionsTabController>
                     label: 'To Date',
                     controller: toDateController,
                     readOnly: true,
-                    hintText: 'YYYY-MM-DD',
+                    hintText: 'DD-MMM-YYYY',
                     suffixIcon: Icons.calendar_today_outlined,
                     onTap: () async {
                       final selected = await showDatePicker(
@@ -190,7 +199,8 @@ class _TransactionFilterSheet<T extends BaseTransactionsTabController>
                         lastDate: DateTime(2100),
                       );
                       if (selected != null) {
-                        toDateController.text = _formatDate(selected);
+                        toDateController.text =
+                            AppDateFormatter.formatDisplay(selected);
                       }
                     },
                   ),
@@ -249,10 +259,6 @@ class _TransactionFilterSheet<T extends BaseTransactionsTabController>
         );
       },
     );
-  }
-
-  String _formatDate(DateTime value) {
-    return '${value.year.toString().padLeft(4, '0')}-${value.month.toString().padLeft(2, '0')}-${value.day.toString().padLeft(2, '0')}';
   }
 
   String _titleCase(String value) {

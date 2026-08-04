@@ -25,12 +25,20 @@ class PartiesController extends GetxController with MasterExportMixin {
   final searchController = TextEditingController();
   final searchQuery = ''.obs;
   final isLoading = false.obs;
+  final isLoadingMore = false.obs;
   final parties = <PartyEntity>[].obs;
   final selectedType = 'All'.obs;
   final selectedStatus = 'All'.obs;
+  final currentPage = 1.obs;
+  final lastPage = 1.obs;
+  final total = 0.obs;
+  final scrollController = ScrollController();
+
+  static const int pageSize = 20;
 
   bool get isOnline => _networkMonitorService.isOnline.value;
   bool get isSyncing => _syncService.isSyncing.value;
+  bool get hasMore => currentPage.value < lastPage.value;
 
   @override
   void onInit() {
@@ -38,57 +46,142 @@ class PartiesController extends GetxController with MasterExportMixin {
     searchController.addListener(() {
       searchQuery.value = searchController.text.trim().toLowerCase();
     });
+    scrollController.addListener(_handleScroll);
     refreshData();
   }
 
   @override
   void onClose() {
+    scrollController.removeListener(_handleScroll);
+    scrollController.dispose();
     searchController.dispose();
     super.onClose();
   }
 
-  List<PartyEntity> get filteredItems {
-    final query = searchQuery.value;
-    return parties.where((item) {
-      final matchesQuery =
-          query.isEmpty ||
-          item.name.toLowerCase().contains(query) ||
-          item.partyCode.toLowerCase().contains(query) ||
-          item.mobile.toLowerCase().contains(query);
-      final matchesType =
-          selectedType.value == 'All' || item.type == selectedType.value;
-      final matchesStatus =
-          selectedStatus.value == 'All' ||
-          (selectedStatus.value == 'Active' && item.isActive) ||
-          (selectedStatus.value == 'Inactive' && !item.isActive);
-      return matchesQuery && matchesType && matchesStatus;
-    }).toList();
+  List<PartyEntity> get filteredItems => parties;
+
+  void _handleScroll() {
+    if (!scrollController.hasClients || isLoadingMore.value || !hasMore) {
+      return;
+    }
+    if (scrollController.position.pixels >=
+        scrollController.position.maxScrollExtent - 160) {
+      loadMore();
+    }
   }
 
-  void applyFilters({
+  Future<void> onSearchChanged() => refreshData();
+
+  Future<void> applyFilters({
     required String type,
     required String status,
-  }) {
+  }) async {
     selectedType.value = type;
     selectedStatus.value = status;
+    await refreshData();
   }
 
-  void clearFilters() {
+  Future<void> clearFilters() async {
     selectedType.value = 'All';
     selectedStatus.value = 'All';
+    await refreshData();
   }
 
   Future<void> refreshData({bool forceRemote = false}) async {
     isLoading.value = true;
+    currentPage.value = 1;
     try {
-      parties.assignAll(
-        forceRemote
-            ? await _repository.refreshParties()
-            : await _repository.getParties(),
-      );
+      final localResult = forceRemote
+          ? null
+          : await _repository.getPaginatedParties(
+              queryParameters: _queryParameters,
+              page: 1,
+              perPage: pageSize,
+            );
+      if (localResult != null) {
+        _applyPage(localResult, reset: true);
+      }
+
+      if (forceRemote || await _networkMonitorService.hasInternetNow()) {
+        final remoteResult = await _repository.refreshPaginatedParties(
+          queryParameters: _queryParameters,
+          page: 1,
+          perPage: pageSize,
+        );
+        _applyPage(remoteResult, reset: true);
+      }
     } finally {
       isLoading.value = false;
     }
+  }
+
+  Future<void> loadMore() async {
+    if (isLoading.value || isLoadingMore.value || !hasMore) return;
+    isLoadingMore.value = true;
+    final nextPage = currentPage.value + 1;
+    try {
+      final result = await (await _networkMonitorService.hasInternetNow()
+          ? _repository.refreshPaginatedParties(
+              queryParameters: _queryParameters,
+              page: nextPage,
+              perPage: pageSize,
+            )
+          : _repository.getPaginatedParties(
+              queryParameters: _queryParameters,
+              page: nextPage,
+              perPage: pageSize,
+            ));
+      _applyPage(result, reset: false);
+    } finally {
+      isLoadingMore.value = false;
+    }
+  }
+
+  void _applyPage(dynamic result, {required bool reset}) {
+    currentPage.value = result.currentPage;
+    lastPage.value = result.lastPage;
+    total.value = result.total;
+    if (reset) {
+      parties.assignAll(
+        _mergeParties(
+          List<PartyEntity>.from(result.items),
+          base: const <PartyEntity>[],
+        ),
+      );
+    } else {
+      parties.assignAll(
+        _mergeParties(
+          List<PartyEntity>.from(result.items),
+          base: parties,
+        ),
+      );
+    }
+  }
+
+  List<PartyEntity> _mergeParties(
+    List<PartyEntity> incoming, {
+    required List<PartyEntity> base,
+  }) {
+    final merged = <String, PartyEntity>{};
+    for (final item in base) {
+      merged[_partyKey(item)] = item;
+    }
+    for (final item in incoming) {
+      merged[_partyKey(item)] = item;
+    }
+    return merged.values.toList();
+  }
+
+  String _partyKey(PartyEntity item) {
+    final id = item.id?.toString();
+    if (id != null && id.isNotEmpty) {
+      return 'id:$id';
+    }
+    final localId = item.localId?.trim();
+    if (localId != null && localId.isNotEmpty) {
+      return 'local:$localId';
+    }
+    return 'code:${item.partyCode}:${item.name}';
   }
 
   Future<void> save(PartyEntity entity) async {
@@ -172,4 +265,6 @@ class PartiesController extends GetxController with MasterExportMixin {
         if (selectedStatus.value != 'All')
           'is_active': selectedStatus.value == 'Active' ? 1 : 0,
       };
+
+  Map<String, dynamic> get _queryParameters => _exportQueryParameters;
 }

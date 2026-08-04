@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:get/get.dart';
 
+import '../../../core/utils/app_date_formatter.dart';
 import '../../../data/repositories/accounts/accounts_repository.dart';
 import '../../../data/repositories/reports/reports_repository.dart';
 
@@ -16,6 +17,7 @@ class ReportLookupController extends GetxController {
 
   final financialYears = <Map<String, dynamic>>[].obs;
   final currentFinancialYearId = RxnInt();
+  final currentFinancialYear = <String, dynamic>{}.obs;
   final ledgerAccounts = <Map<String, dynamic>>[].obs;
 
   @override
@@ -34,6 +36,7 @@ class ReportLookupController extends GetxController {
   Future<void> loadFinancialYears() async {
     financialYears.assignAll(await _reportsRepository.getFinancialYears());
     final current = await _reportsRepository.getCurrentFinancialYear();
+    currentFinancialYear.assignAll(current ?? <String, dynamic>{});
     currentFinancialYearId.value = _asInt(current?['id']);
   }
 
@@ -53,5 +56,29 @@ class ReportLookupController extends GetxController {
       return value;
     }
     return int.tryParse(value?.toString() ?? '');
+  }
+
+  Map<String, dynamic>? findFinancialYearById(int? id) {
+    if (id == null) {
+      return null;
+    }
+    for (final item in financialYears) {
+      if (_asInt(item['id']) == id) {
+        return item;
+      }
+    }
+    return null;
+  }
+
+  String formatFinancialYearStart(int? id) {
+    final item = findFinancialYearById(id) ??
+        (currentFinancialYear.isEmpty ? null : currentFinancialYear);
+    return AppDateFormatter.formatDisplay(item?['start_date']);
+  }
+
+  String formatFinancialYearEnd(int? id) {
+    final item = findFinancialYearById(id) ??
+        (currentFinancialYear.isEmpty ? null : currentFinancialYear);
+    return AppDateFormatter.formatDisplay(item?['end_date']);
   }
 }

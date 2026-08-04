@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import '../../../core/config/api_endpoints.dart';
+import '../../models/common/paginated_result.dart';
 import '../../models/masters/master_entities.dart';
 import '../base/offline_first_repository.dart';
 
@@ -33,6 +34,18 @@ class TaxRatesRepository extends OfflineFirstRepository {
     return entities;
   }
 
+  Future<PaginatedResult<TaxRateEntity>> getPaginatedTaxRates({
+    Map<String, dynamic>? queryParameters,
+    int page = 1,
+    int perPage = 20,
+  }) async {
+    final local = await getLocalModuleRecords(_module);
+    final entities = local.map(TaxRateEntity.fromRecord).toList()
+      ..sort(_sortTaxRates);
+    final filtered = _applyFilters(entities, queryParameters);
+    return _slicePage(filtered, page: page, perPage: perPage);
+  }
+
   Future<List<TaxRateEntity>> refreshTaxRates() async {
     final response = await apiClient.get<Map<String, dynamic>>(
       ApiEndpoints.taxRates,
@@ -41,6 +54,42 @@ class TaxRatesRepository extends OfflineFirstRepository {
     await mergeRemoteRecords(module: _module, records: records);
     return records.map(TaxRateEntity.fromRecord).toList()
       ..sort(_sortTaxRates);
+  }
+
+  Future<PaginatedResult<TaxRateEntity>> refreshPaginatedTaxRates({
+    Map<String, dynamic>? queryParameters,
+    int page = 1,
+    int perPage = 20,
+  }) async {
+    final response = await apiClient.get<Map<String, dynamic>>(
+      ApiEndpoints.taxRates,
+      queryParameters: <String, dynamic>{
+        ...?queryParameters,
+        'page': page,
+        'per_page': perPage,
+      },
+    );
+    final data = response.data?['data'];
+    final records = _extractList(data);
+    await mergeRemoteRecords(module: _module, records: records);
+
+    if (data is Map<String, dynamic> && data['data'] is List) {
+      final items = records.map(TaxRateEntity.fromRecord).toList()
+        ..sort(_sortTaxRates);
+      return PaginatedResult<TaxRateEntity>(
+        items: items,
+        currentPage: int.tryParse(data['current_page']?.toString() ?? '$page') ?? page,
+        lastPage: int.tryParse(data['last_page']?.toString() ?? '$page') ?? page,
+        perPage: int.tryParse(data['per_page']?.toString() ?? '$perPage') ?? perPage,
+        total: int.tryParse(data['total']?.toString() ?? '${items.length}') ?? items.length,
+      );
+    }
+
+    return getPaginatedTaxRates(
+      queryParameters: queryParameters,
+      page: page,
+      perPage: perPage,
+    );
   }
 
   Future<String> create(TaxRateEntity entity) {
@@ -126,6 +175,64 @@ class TaxRatesRepository extends OfflineFirstRepository {
           .toList();
     }
     return <Map<String, dynamic>>[];
+  }
+
+  List<TaxRateEntity> _applyFilters(
+    List<TaxRateEntity> items,
+    Map<String, dynamic>? queryParameters,
+  ) {
+    final query = (queryParameters?['search'] ?? '').toString().trim().toLowerCase();
+    final category = (queryParameters?['tax_category'] ?? '').toString().trim().toLowerCase();
+    final type = (queryParameters?['tax_type'] ?? '').toString().trim().toLowerCase();
+    final status = (queryParameters?['status'] ?? '').toString().trim().toLowerCase();
+
+    return items.where((item) {
+      final matchesQuery = query.isEmpty ||
+          item.taxName.toLowerCase().contains(query) ||
+          item.taxCode.toLowerCase().contains(query) ||
+          item.taxCategory.toLowerCase().contains(query);
+      final matchesCategory = category.isEmpty || item.taxCategory.toLowerCase() == category;
+      final matchesType = type.isEmpty || item.taxType.toLowerCase() == type;
+      final matchesStatus = status.isEmpty || item.status.toLowerCase() == status;
+      return matchesQuery && matchesCategory && matchesType && matchesStatus;
+    }).toList();
+  }
+
+  PaginatedResult<TaxRateEntity> _slicePage(
+    List<TaxRateEntity> items, {
+    required int page,
+    required int perPage,
+  }) {
+    if (items.isEmpty) {
+      return PaginatedResult<TaxRateEntity>(
+        items: const <TaxRateEntity>[],
+        currentPage: 1,
+        lastPage: 1,
+        perPage: perPage,
+        total: 0,
+      );
+    }
+    final safePage = page < 1 ? 1 : page;
+    final start = (safePage - 1) * perPage;
+    if (start >= items.length) {
+      final lastPage = ((items.length + perPage - 1) ~/ perPage).clamp(1, 999999);
+      return PaginatedResult<TaxRateEntity>(
+        items: const <TaxRateEntity>[],
+        currentPage: safePage,
+        lastPage: lastPage,
+        perPage: perPage,
+        total: items.length,
+      );
+    }
+    final end = (start + perPage) > items.length ? items.length : start + perPage;
+    final lastPage = ((items.length + perPage - 1) ~/ perPage).clamp(1, 999999);
+    return PaginatedResult<TaxRateEntity>(
+      items: items.sublist(start, end),
+      currentPage: safePage,
+      lastPage: lastPage,
+      perPage: perPage,
+      total: items.length,
+    );
   }
 
   int _sortTaxRates(TaxRateEntity a, TaxRateEntity b) {

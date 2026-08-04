@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import '../../../core/config/api_endpoints.dart';
+import '../../models/common/paginated_result.dart';
 import '../../models/masters/master_entities.dart';
 import '../base/offline_first_repository.dart';
 
@@ -34,6 +35,17 @@ class PartiesRepository extends OfflineFirstRepository {
     return entities;
   }
 
+  Future<PaginatedResult<PartyEntity>> getPaginatedParties({
+    Map<String, dynamic>? queryParameters,
+    int page = 1,
+    int perPage = 20,
+  }) async {
+    final local = await getLocalModuleRecords(_module);
+    final entities = local.map(PartyEntity.fromRecord).toList()..sort(_sortParties);
+    final filtered = _applyFilters(entities, queryParameters);
+    return _slicePage(filtered, page: page, perPage: perPage);
+  }
+
   Future<List<PartyEntity>> refreshParties({
     Map<String, dynamic>? queryParameters,
   }) async {
@@ -44,6 +56,41 @@ class PartiesRepository extends OfflineFirstRepository {
     final records = _extractList(response.data?['data']);
     await mergeRemoteRecords(module: _module, records: records);
     return records.map(PartyEntity.fromRecord).toList()..sort(_sortParties);
+  }
+
+  Future<PaginatedResult<PartyEntity>> refreshPaginatedParties({
+    Map<String, dynamic>? queryParameters,
+    int page = 1,
+    int perPage = 20,
+  }) async {
+    final response = await apiClient.get<Map<String, dynamic>>(
+      ApiEndpoints.parties,
+      queryParameters: <String, dynamic>{
+        ...?queryParameters,
+        'page': page,
+        'per_page': perPage,
+      },
+    );
+    final data = response.data?['data'];
+    final records = _extractList(data);
+    await mergeRemoteRecords(module: _module, records: records);
+
+    if (data is Map<String, dynamic> && data['data'] is List) {
+      final items = records.map(PartyEntity.fromRecord).toList()..sort(_sortParties);
+      return PaginatedResult<PartyEntity>(
+        items: items,
+        currentPage: int.tryParse(data['current_page']?.toString() ?? '$page') ?? page,
+        lastPage: int.tryParse(data['last_page']?.toString() ?? '$page') ?? page,
+        perPage: int.tryParse(data['per_page']?.toString() ?? '$perPage') ?? perPage,
+        total: int.tryParse(data['total']?.toString() ?? '${items.length}') ?? items.length,
+      );
+    }
+
+    return getPaginatedParties(
+      queryParameters: queryParameters,
+      page: page,
+      perPage: perPage,
+    );
   }
 
   Future<Map<String, dynamic>> getPartyHistory(
@@ -177,6 +224,65 @@ class PartiesRepository extends OfflineFirstRepository {
           .toList();
     }
     return <Map<String, dynamic>>[];
+  }
+
+  List<PartyEntity> _applyFilters(
+    List<PartyEntity> items,
+    Map<String, dynamic>? queryParameters,
+  ) {
+    final query = (queryParameters?['search'] ?? '').toString().trim().toLowerCase();
+    final type = (queryParameters?['type'] ?? '').toString().trim().toLowerCase();
+    final isActive = queryParameters != null && queryParameters.containsKey('is_active')
+        ? (queryParameters['is_active'].toString() == '1' ||
+            queryParameters['is_active'].toString().toLowerCase() == 'true')
+        : null;
+
+    return items.where((item) {
+      final matchesQuery = query.isEmpty ||
+          item.name.toLowerCase().contains(query) ||
+          item.partyCode.toLowerCase().contains(query) ||
+          item.mobile.toLowerCase().contains(query);
+      final matchesType = type.isEmpty || item.type.toLowerCase() == type;
+      final matchesStatus = isActive == null || item.isActive == isActive;
+      return matchesQuery && matchesType && matchesStatus;
+    }).toList();
+  }
+
+  PaginatedResult<PartyEntity> _slicePage(
+    List<PartyEntity> items, {
+    required int page,
+    required int perPage,
+  }) {
+    if (items.isEmpty) {
+      return PaginatedResult<PartyEntity>(
+        items: const <PartyEntity>[],
+        currentPage: 1,
+        lastPage: 1,
+        perPage: perPage,
+        total: 0,
+      );
+    }
+    final safePage = page < 1 ? 1 : page;
+    final start = (safePage - 1) * perPage;
+    if (start >= items.length) {
+      final lastPage = ((items.length + perPage - 1) ~/ perPage).clamp(1, 999999);
+      return PaginatedResult<PartyEntity>(
+        items: const <PartyEntity>[],
+        currentPage: safePage,
+        lastPage: lastPage,
+        perPage: perPage,
+        total: items.length,
+      );
+    }
+    final end = (start + perPage) > items.length ? items.length : start + perPage;
+    final lastPage = ((items.length + perPage - 1) ~/ perPage).clamp(1, 999999);
+    return PaginatedResult<PartyEntity>(
+      items: items.sublist(start, end),
+      currentPage: safePage,
+      lastPage: lastPage,
+      perPage: perPage,
+      total: items.length,
+    );
   }
 
   int _sortParties(PartyEntity a, PartyEntity b) {

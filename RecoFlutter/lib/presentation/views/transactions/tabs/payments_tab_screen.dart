@@ -2,6 +2,7 @@ import 'package:data_table_2/data_table_2.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
+import '../../../../core/utils/app_date_formatter.dart';
 import '../../../../data/models/transactions/transaction_entities.dart';
 import '../../../controllers/transactions/payments_controller.dart';
 import '../../masters/widgets/masters_ui_components.dart';
@@ -21,6 +22,7 @@ class PaymentsTabScreen extends GetView<PaymentsController> {
         masterColumn(context, '#', fixedWidth: 52, size: ColumnSize.S),
         masterColumn(context, 'Voucher Number', size: ColumnSize.L),
         masterColumn(context, 'Date', size: ColumnSize.M),
+        masterColumn(context, 'Type', fixedWidth: 110),
         masterColumn(context, 'Party', size: ColumnSize.L),
         masterColumn(context, 'Amount', size: ColumnSize.M),
         masterColumn(context, 'Status', fixedWidth: 120),
@@ -44,6 +46,11 @@ class PaymentsTabScreen extends GetView<PaymentsController> {
         masterTextCell('${index + 1}'),
         masterTextCell(item.number.isEmpty ? '-' : item.number),
         masterTextCell(_formatDate(item.date)),
+        const DataCell(
+          Center(
+            child: VoucherTypeChip(type: 'payment'),
+          ),
+        ),
         masterTextCell(item.partyName.isEmpty ? '-' : item.partyName),
         masterTextCell(_currency(item.amount)),
         DataCell(Center(child: TransactionStatusChip(status: item.status))),
@@ -132,31 +139,6 @@ class PaymentsTabScreen extends GetView<PaymentsController> {
   String _currency(double value) => '₹${value.toStringAsFixed(2)}';
 
   String _formatDate(String value) {
-    if (value.length < 10) {
-      return value;
-    }
-    final date = value.substring(0, 10).split('-');
-    if (date.length != 3) {
-      return value.substring(0, 10);
-    }
-    const months = <String>[
-      'Jan',
-      'Feb',
-      'Mar',
-      'Apr',
-      'May',
-      'Jun',
-      'Jul',
-      'Aug',
-      'Sep',
-      'Oct',
-      'Nov',
-      'Dec',
-    ];
-    final monthIndex = int.tryParse(date[1]) ?? 1;
-    final month = monthIndex >= 1 && monthIndex <= 12
-        ? months[monthIndex - 1]
-        : date[1];
-    return '${date[2]} $month ${date[0]}';
+    return AppDateFormatter.formatDisplay(value);
   }
 }

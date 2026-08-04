@@ -3,6 +3,7 @@ import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:get/get.dart';
 
 import '../../../core/config/api_endpoints.dart';
+import '../../../core/utils/app_date_formatter.dart';
 import '../../controllers/reports/profit_loss_report_controller.dart';
 import '../../controllers/reports/report_lookup_controller.dart';
 import '../../widgets/common/custom_text_field.dart';
@@ -51,8 +52,16 @@ class ProfitLossReportScreen extends GetView<ProfitLossReportController> {
                       );
                       return (item['name'] ?? 'FY').toString();
                     },
-                    onChanged: (value) => controller.financialYearId.value = value,
+                    onChanged: (value) => controller.applyFinancialYear(value, lookup),
                   ),
+
+                  ReportDateRangeRow(
+                    fromController: controller.fromDateController,
+                    toController: controller.toDateController,
+                    onFromTap: () => _pickDate(context, controller.fromDateController),
+                    onToTap: () => _pickDate(context, controller.toDateController),
+                  ),
+                  const SizedBox(height: 12),
                   ReportActionBar(
                     children: <Widget>[
                       ReportPrimaryButton(
@@ -172,12 +181,27 @@ class ProfitLossReportScreen extends GetView<ProfitLossReportController> {
           ? FontAwesomeIcons.coins
           : FontAwesomeIcons.fileInvoiceDollar,
       iconColor: color,
-      trailing: Text(
-        controller.formatCurrency(section is Map<String, dynamic> ? section['total'] : 0),
-        style: Theme.of(context).textTheme.labelLarge?.copyWith(
-          color: color,
-          fontWeight: FontWeight.w700,
-        ),
+      trailing: Column(
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: <Widget>[
+          Text(
+            _dateRangeLabel(),
+            style: Theme.of(context).textTheme.labelMedium?.copyWith(
+              color: const Color(0xFF64748B),
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            controller.formatCurrency(
+              section is Map<String, dynamic> ? section['total'] : 0,
+            ),
+            style: Theme.of(context).textTheme.labelLarge?.copyWith(
+              color: color,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ],
       ),
       child: accounts.isEmpty
           ? Text(
@@ -272,5 +296,25 @@ class ProfitLossReportScreen extends GetView<ProfitLossReportController> {
     );
   }
 
+  Future<void> _pickDate(
+    BuildContext context,
+    TextEditingController target,
+  ) async {
+    final initial = AppDateFormatter.parse(target.text) ?? DateTime.now();
+    final selected = await showDatePicker(
+      context: context,
+      initialDate: initial,
+      firstDate: DateTime(2000),
+      lastDate: DateTime(2100),
+    );
+    if (selected != null) {
+      target.text = AppDateFormatter.formatDisplay(selected);
+    }
+  }
+
   int? _asInt(dynamic value) => int.tryParse(value?.toString() ?? '');
+
+  String _dateRangeLabel() {
+    return '${controller.formatDate(controller.fromDateController.text)} to ${controller.formatDate(controller.toDateController.text)}';
+  }
 }

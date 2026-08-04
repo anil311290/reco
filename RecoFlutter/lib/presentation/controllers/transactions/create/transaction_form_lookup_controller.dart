@@ -101,7 +101,9 @@ class TransactionFormLookupController extends GetxController {
       final records = await _partiesRepository.getParties(
         queryParameters: <String, dynamic>{'type': type},
       );
-      parties.assignAll(records.where((item) => item.isActive).toList());
+      final filtered = records.where((item) => item.isActive).toList()
+        ..sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
+      parties.assignAll(filtered);
     } finally {
       isPartiesLoading.value = false;
     }
@@ -164,7 +166,7 @@ class TransactionFormLookupController extends GetxController {
     isCashBankAccountsLoading.value = true;
     try {
       final records = await _accountsRepository.getCashBankAccounts(mode: mode);
-      cashBankAccounts.assignAll(_mapLookupOptions(records));
+      cashBankAccounts.assignAll(_dedupeCashBankOptions(_mapLookupOptions(records)));
       if (mode == null) {
         _rebuildInvoicePartyOptions();
       }
@@ -239,15 +241,69 @@ class TransactionFormLookupController extends GetxController {
     return double.tryParse(value.toString());
   }
 
+  List<LookupOption> _dedupeCashBankOptions(List<LookupOption> options) {
+    final seenKeys = <String>{};
+    final deduped = <LookupOption>[];
+
+    for (final option in options) {
+      final key = _normalizeCashBankLabel(option.label);
+      if (!seenKeys.add(key)) {
+        continue;
+      }
+      deduped.add(option);
+    }
+
+    return deduped;
+  }
+
+  String _normalizeCashBankLabel(String label) {
+    return label
+        .replaceFirst(RegExp(r'^\s*\d+\s*-\s*'), '')
+        .replaceFirst(RegExp(r'\s*\(Avail:.*\)\s*$'), '')
+        .trim()
+        .toLowerCase();
+  }
+
   void _rebuildInvoicePartyOptions() {
+    final orderedParties = parties
+        .where((item) => item.isActive)
+        .toList()
+      ..sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
+    final orderedLedgers = cashBankAccounts
+        .where((item) => item.id > 0 && item.label.trim().isNotEmpty)
+        .toList()
+      ..sort((a, b) => _invoiceAccountCode(a).compareTo(_invoiceAccountCode(b)));
+
     final options = <InvoicePartyOption>[
-      ...parties
-          .where((item) => item.isActive)
+      ...orderedParties
           .map(InvoicePartyOption.party),
-      ...cashBankAccounts
-          .where((item) => item.id > 0 && item.label.trim().isNotEmpty)
-          .map(InvoicePartyOption.account),
+      ...orderedLedgers.map(
+        (item) => InvoicePartyOption.account(
+          item,
+          overrideLabel: _formatInvoiceLedgerLabel(item),
+        ),
+      ),
     ];
     invoicePartyOptions.assignAll(options);
+  }
+
+  String _formatInvoiceLedgerLabel(LookupOption option) {
+    final raw = option.label.trim();
+    final trimmed = raw.replaceFirst(RegExp(r'\s*\(Avail:.*\)\s*$'), '').trim();
+    final match = RegExp(r'^(\d+)\s*-\s*(.+)$').firstMatch(trimmed);
+    if (match == null) {
+      return trimmed;
+    }
+    final code = match.group(1)?.trim() ?? '';
+    final name = match.group(2)?.trim() ?? trimmed;
+    return code.isEmpty ? name : '$name ($code)';
+  }
+
+  String _invoiceAccountCode(LookupOption option) {
+    final trimmed = option.label
+        .replaceFirst(RegExp(r'\s*\(Avail:.*\)\s*$'), '')
+        .trim();
+    final match = RegExp(r'^(\d+)\s*-\s*').firstMatch(trimmed);
+    return match?.group(1)?.trim() ?? trimmed.toLowerCase();
   }
 }

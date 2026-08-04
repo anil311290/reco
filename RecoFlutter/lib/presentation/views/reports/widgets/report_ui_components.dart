@@ -141,60 +141,65 @@ class ReportStatCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: .08),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: color.withValues(alpha: .18)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: <Widget>[
-          Row(
+    return LayoutBuilder(
+      builder: (BuildContext context, BoxConstraints constraints) {
+        final bool compact = constraints.maxWidth < 180;
+        return Container(
+          padding: EdgeInsets.all(compact ? 11 : 12),
+          decoration: BoxDecoration(
+            color: color.withValues(alpha: .08),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: color.withValues(alpha: .18)),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: <Widget>[
-              if (icon != null) ...<Widget>[
-                Icon(icon, size: 14, color: color),
-                const SizedBox(width: 5),
-              ],
-              Expanded(
-                child: Text(
-                  label,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                    color: color,
-                    fontWeight: FontWeight.w700,
-                    fontSize: 12.5,
+              Row(
+                children: <Widget>[
+                  if (icon != null) ...<Widget>[
+                    Icon(icon, size: compact ? 13 : 14, color: color),
+                    const SizedBox(width: 5),
+                  ],
+                  Expanded(
+                    child: Text(
+                      label,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                        color: color,
+                        fontWeight: FontWeight.w700,
+                        fontSize: compact ? 12 : 12.5,
+                      ),
+                    ),
                   ),
+                ],
+              ),
+              const SizedBox(height: 6),
+              Text(
+                value,
+                maxLines: compact ? 2 : 1,
+                overflow: TextOverflow.ellipsis,
+                style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                  fontWeight: FontWeight.w800,
+                  fontSize: compact ? 16.5 : 18,
+                  height: 1.1,
+                ),
+              ),
+              const SizedBox(height: 3),
+              Text(
+                note,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  fontSize: compact ? 10.5 : 11,
+                  height: 1.2,
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 6),
-          Text(
-            value,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: Theme.of(context).textTheme.titleLarge?.copyWith(
-              fontWeight: FontWeight.w800,
-              fontSize: 18,
-              height: 1.1,
-            ),
-          ),
-          const SizedBox(height: 3),
-          Text(
-            note,
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-              color: Theme.of(context).colorScheme.onSurfaceVariant,
-              fontSize: 11,
-              height: 1.2,
-            ),
-          ),
-        ],
-      ),
+        );
+      },
     );
   }
 }
@@ -217,39 +222,59 @@ class ReportSectionCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: <Widget>[
-        Row(
+    return LayoutBuilder(
+      builder: (BuildContext context, BoxConstraints constraints) {
+        final bool stacked = trailing != null && constraints.maxWidth < 520;
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: <Widget>[
-            Expanded(
-              child: Row(
+            if (stacked)
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: <Widget>[
-                  if (icon != null) ...<Widget>[
-                    Icon(
-                      icon,
-                      size: 16,
-                      color: iconColor ?? Theme.of(context).colorScheme.primary,
-                    ),
-                    const SizedBox(width: 8),
-                  ],
-                  Expanded(
-                    child: Text(
-                      title,
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w600,
-                        fontSize: 15,
-                      ),
-                    ),
+                  _buildTitleRow(context),
+                  const SizedBox(height: 6),
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: trailing!,
                   ),
                 ],
+              )
+            else
+              Row(
+                children: <Widget>[
+                  Expanded(child: _buildTitleRow(context)),
+                  trailing ?? const SizedBox.shrink(),
+                ],
               ),
-            ),
-            trailing ?? const SizedBox.shrink(),
+            const SizedBox(height: 10),
+            child,
           ],
+        );
+      },
+    );
+  }
+
+  Widget _buildTitleRow(BuildContext context) {
+    return Row(
+      children: <Widget>[
+        if (icon != null) ...<Widget>[
+          Icon(
+            icon,
+            size: 16,
+            color: iconColor ?? Theme.of(context).colorScheme.primary,
+          ),
+          const SizedBox(width: 8),
+        ],
+        Expanded(
+          child: Text(
+            title,
+            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+              fontWeight: FontWeight.w600,
+              fontSize: 15,
+            ),
+          ),
         ),
-        const SizedBox(height: 10),
-        child,
       ],
     );
   }
@@ -290,9 +315,9 @@ class ReportFilterPanel extends StatelessWidget {
     final theme = Theme.of(context);
     final Color accent = iconColor ?? theme.colorScheme.primary;
     return Container(
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(16),
         gradient: LinearGradient(
           colors: <Color>[
             accent.withValues(alpha: .06),
@@ -371,7 +396,7 @@ class ReportDateRangeRow extends StatelessWidget {
             label: fromLabel,
             controller: fromController,
             readOnly: true,
-            suffixIcon: Icons.calendar_today_outlined,
+            suffixIcon: Icons.edit_calendar_rounded,
             onTap: onFromTap,
             bottomPadding: 0,
           ),
@@ -382,7 +407,7 @@ class ReportDateRangeRow extends StatelessWidget {
             label: toLabel,
             controller: toController,
             readOnly: true,
-            suffixIcon: Icons.calendar_today_outlined,
+            suffixIcon: Icons.edit_calendar_rounded,
             onTap: onToTap,
             bottomPadding: 0,
           ),

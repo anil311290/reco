@@ -138,4 +138,28 @@ class FinancialYearsController extends GetxController {
       isProcessing.value = false;
     }
   }
+
+  Future<void> toggleFinancialYearStatus(
+    FinancialYearEntity entity, {
+    required bool isEnabled,
+  }) async {
+    isProcessing.value = true;
+    try {
+      await _repository.setClosedStatus(entity, isClosed: !isEnabled);
+      AppSnackbar.success(
+        isEnabled
+            ? 'Financial year enabled successfully.'
+            : 'Financial year disabled successfully.',
+      );
+      await refreshData();
+    } catch (e) {
+      AppSnackbar.error(
+        isEnabled
+            ? 'Failed to enable financial year: $e'
+            : 'Failed to disable financial year: $e',
+      );
+    } finally {
+      isProcessing.value = false;
+    }
+  }
 }

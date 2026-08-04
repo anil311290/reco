@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:get/get.dart';
 
+import '../../../core/utils/app_date_formatter.dart';
+import '../../../core/utils/amount_formatter.dart';
 import '../../controllers/settings/subscription_controller.dart';
 
 class SubscriptionScreen extends GetView<SubscriptionController> {
@@ -67,7 +69,7 @@ class SubscriptionScreen extends GetView<SubscriptionController> {
                             borderRadius: BorderRadius.circular(999),
                           ),
                           child: Text(
-                            '${controller.invoices.length} items',
+                            '${controller.invoices.length} of ${controller.invoicesTotal.value}',
                             style: Theme.of(context).textTheme.labelMedium?.copyWith(
                               color: Theme.of(context).colorScheme.primary,
                               fontWeight: FontWeight.w700,
@@ -84,9 +86,25 @@ class SubscriptionScreen extends GetView<SubscriptionController> {
                       subtitle: 'Subscription invoices from the web plan will appear here.',
                     )
                   else
-                    ...controller.invoices.take(5).map(
-                      (item) => _InvoiceCard(item: item),
-                    ),
+                    ...<Widget>[
+                      ...controller.invoices.map((item) => _InvoiceCard(item: item)),
+                      if (controller.hasMoreInvoices || controller.isLoadingMoreInvoices.value)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 10),
+                          child: Center(
+                            child: controller.isLoadingMoreInvoices.value
+                                ? const SizedBox(
+                                    width: 22,
+                                    height: 22,
+                                    child: CircularProgressIndicator(strokeWidth: 2),
+                                  )
+                                : TextButton(
+                                    onPressed: controller.loadMoreInvoices,
+                                    child: const Text('Load more invoices'),
+                                  ),
+                          ),
+                        ),
+                    ],
                   const SizedBox(height: 18),
                   Row(
                     children: <Widget>[
@@ -112,7 +130,7 @@ class SubscriptionScreen extends GetView<SubscriptionController> {
                             borderRadius: BorderRadius.circular(999),
                           ),
                           child: Text(
-                            '${controller.payments.length} items',
+                            '${controller.payments.length} of ${controller.paymentsTotal.value}',
                             style: Theme.of(context).textTheme.labelMedium?.copyWith(
                               color: Theme.of(context).colorScheme.primary,
                               fontWeight: FontWeight.w700,
@@ -129,9 +147,25 @@ class SubscriptionScreen extends GetView<SubscriptionController> {
                       subtitle: 'Subscription payments from the web plan will appear here.',
                     )
                   else
-                    ...controller.payments.take(5).map(
-                      (item) => _PaymentCard(item: item),
-                    ),
+                    ...<Widget>[
+                      ...controller.payments.map((item) => _PaymentCard(item: item)),
+                      if (controller.hasMorePayments || controller.isLoadingMorePayments.value)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 10),
+                          child: Center(
+                            child: controller.isLoadingMorePayments.value
+                                ? const SizedBox(
+                                    width: 22,
+                                    height: 22,
+                                    child: CircularProgressIndicator(strokeWidth: 2),
+                                  )
+                                : TextButton(
+                                    onPressed: controller.loadMorePayments,
+                                    child: const Text('Load more payments'),
+                                  ),
+                          ),
+                        ),
+                    ],
                 ],
               ),
       ),
@@ -378,28 +412,9 @@ class _SubscriptionHeroCard extends StatelessWidget {
   }
 
   String _shortDate(String value) {
-    final parsed = DateTime.tryParse(value);
-    if (parsed != null) {
-      const months = <int, String>{
-        1: 'Jan',
-        2: 'Feb',
-        3: 'Mar',
-        4: 'Apr',
-        5: 'May',
-        6: 'Jun',
-        7: 'Jul',
-        8: 'Aug',
-        9: 'Sep',
-        10: 'Oct',
-        11: 'Nov',
-        12: 'Dec',
-      };
-      return '${parsed.day.toString().padLeft(2, '0')} ${months[parsed.month]} ${parsed.year}';
-    }
-    if (value.length >= 10) {
-      return value.substring(0, 10);
-    }
-    return value.isEmpty ? '-' : value;
+    return value.isEmpty
+        ? '-'
+        : AppDateFormatter.formatDisplay(value, fallback: value);
   }
 
   String _rangeLabel(String start, String end) {
@@ -425,22 +440,22 @@ class _SubscriptionHeroCard extends StatelessWidget {
   }
 
   String _planAmountLabel(Map<String, dynamic> plan) {
-    final monthly = (plan['monthly_price'] ?? '').toString().trim();
-    final yearly = (plan['yearly_price'] ?? '').toString().trim();
-    final price = (plan['price'] ?? '').toString().trim();
+    final monthly = AmountFormatter.parse(plan['monthly_price']);
+    final yearly = AmountFormatter.parse(plan['yearly_price']);
+    final price = AmountFormatter.parse(plan['price']);
     final cycle = (controller.currentSubscription['billing_cycle'] ?? '')
         .toString()
         .toLowerCase();
 
     if (cycle == 'lifetime') {
-      final amount = price.isNotEmpty ? price : monthly;
-      return amount.isEmpty ? '-' : '₹$amount (Lifetime)';
+      final amount = price > 0 ? price : monthly;
+      return amount <= 0 ? '-' : '${AmountFormatter.currency(amount)} (Lifetime)';
     }
-    if (cycle == 'yearly' && yearly.isNotEmpty) {
-      return '₹$yearly /year';
+    if (cycle == 'yearly' && yearly > 0) {
+      return '${AmountFormatter.currency(yearly)} /year';
     }
-    final amount = monthly.isNotEmpty ? monthly : price;
-    return amount.isEmpty ? '-' : '₹$amount /month';
+    final amount = monthly > 0 ? monthly : price;
+    return amount <= 0 ? '-' : '${AmountFormatter.currency(amount)} /month';
   }
 }
 
@@ -508,7 +523,7 @@ class _PlanCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final name = (plan['name'] ?? 'Plan').toString();
     final description = (plan['description'] ?? '').toString();
-    final price = '₹${(plan['monthly_price'] ?? 0).toString()}';
+    final price = AmountFormatter.currency(plan['monthly_price']);
     final isTrial = name.toLowerCase().contains('trial');
     final accent = isTrial ? const Color(0xFF7C3AED) : Theme.of(context).colorScheme.primary;
 
@@ -595,7 +610,7 @@ class _InvoiceCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final status = (item['status'] ?? '').toString();
-    final amount = '₹${(item['amount'] ?? 0).toString()}';
+    final amount = AmountFormatter.currency(item['amount']);
     final invoiceNumber = (item['invoice_number'] ?? 'Invoice').toString();
     final accent = status.toLowerCase() == 'paid'
         ? const Color(0xFF16A34A)
@@ -669,7 +684,7 @@ class _PaymentCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final status = (item['status'] ?? '').toString();
-    final amount = '₹${(item['amount'] ?? 0).toString()}';
+    final amount = AmountFormatter.currency(item['amount']);
     final paymentId = (item['razorpay_payment_id'] ?? item['payment_id'] ?? 'Payment')
         .toString();
     final accent = status.toLowerCase() == 'completed'

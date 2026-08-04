@@ -178,9 +178,7 @@ class _PartyHistoryScreenState extends State<PartyHistoryScreen> {
                 controller.formatCurrency(controller.closingBalance.value),
                 trailing: _typeBadge(
                   theme,
-                  controller.closingType.value.toLowerCase() == 'debit'
-                      ? 'Debit'
-                      : 'Credit',
+                  _shortDrCr(controller.closingType.value),
                   controller.closingType.value.toLowerCase() == 'debit'
                       ? const Color(0xFF2563EB)
                       : const Color(0xFF16A34A),
@@ -322,10 +320,10 @@ class _PartyHistoryScreenState extends State<PartyHistoryScreen> {
           ),
           const SizedBox(height: 4),
           Text(
-            'Debit ${controller.formatCurrency(controller.totalDebit.value)} • '
-            'Credit ${controller.formatCurrency(controller.totalCredit.value)} • '
+            'Dr ${controller.formatCurrency(controller.totalDebit.value)} • '
+            'Cr ${controller.formatCurrency(controller.totalCredit.value)} • '
             'Closing ${controller.formatCurrency(controller.closingBalance.value)} '
-            '${controller.closingType.value.toUpperCase()}',
+            '${_shortDrCr(controller.closingType.value)}',
             style: theme.textTheme.bodySmall?.copyWith(
               color: theme.colorScheme.onSurfaceVariant,
               fontSize: 11.5,
@@ -342,8 +340,8 @@ class _PartyHistoryScreenState extends State<PartyHistoryScreen> {
                 masterColumn(context, 'Date', size: ColumnSize.M),
                 masterColumn(context, 'Voucher #', size: ColumnSize.M),
                 masterColumn(context, 'Particulars', size: ColumnSize.L),
-                masterColumn(context, 'Debit (₹)', size: ColumnSize.M),
-                masterColumn(context, 'Credit (₹)', size: ColumnSize.M),
+                masterColumn(context, 'Dr (₹)', size: ColumnSize.M),
+                masterColumn(context, 'Cr (₹)', size: ColumnSize.M),
                 masterColumn(context, 'Balance (₹)', size: ColumnSize.M),
               ],
               rows: tableRows,
@@ -432,8 +430,7 @@ class _PartyHistoryScreenState extends State<PartyHistoryScreen> {
                 children: <InlineSpan>[
                   TextSpan(text: _plainAmount(row['running_balance'])),
                   TextSpan(
-                    text:
-                        ' ${((row["running_type"] ?? '').toString()).toUpperCase()}',
+                    text: ' ${_shortDrCr((row["running_type"] ?? '').toString())}',
                     style: theme.textTheme.bodyMedium?.copyWith(
                       fontWeight: FontWeight.w500,
                       color: theme.colorScheme.onSurfaceVariant,
@@ -481,7 +478,7 @@ class _PartyHistoryScreenState extends State<PartyHistoryScreen> {
         DataCell(
           Center(
             child: Text(
-              '${_plainAmount(controller.closingBalance.value)} ${controller.closingType.value.toUpperCase()}',
+              '${_plainAmount(controller.closingBalance.value)} ${_shortDrCr(controller.closingType.value)}',
               style: reportTotalRowTextStyle(context)?.copyWith(fontSize: 13),
             ),
           ),
@@ -498,6 +495,19 @@ class _PartyHistoryScreenState extends State<PartyHistoryScreen> {
   }
 
   String _plainAmount(dynamic value) => _amount(value).toStringAsFixed(2);
+
+  String _shortDrCr(String value) {
+    switch (value.trim().toLowerCase()) {
+      case 'debit':
+      case 'dr':
+        return 'Dr';
+      case 'credit':
+      case 'cr':
+        return 'Cr';
+      default:
+        return value.trim().isEmpty ? '-' : value;
+    }
+  }
 
   String _formatHistoryDate(String value) {
     if (value.trim().isEmpty) {

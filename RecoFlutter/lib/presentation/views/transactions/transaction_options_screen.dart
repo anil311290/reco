@@ -40,7 +40,12 @@ class TransactionOptionsScreen extends GetView<TransactionOptionsController> {
           final item = controller.items[index];
           return TransactionOptionCard(
             item: item,
-            onTap: () => openTransactionForm(item.tag),
+            onTap: () async {
+              final result = await openTransactionForm(item.tag);
+              if (result == true && context.mounted) {
+                Get.back<bool>(result: true);
+              }
+            },
           );
         },
       ),
@@ -59,10 +64,10 @@ class TransactionOptionsScreen extends GetView<TransactionOptionsController> {
 
 }
 
-void openTransactionForm(String tag) {
+Future<dynamic> openTransactionForm(String tag) async {
   switch (tag) {
     case 'payment':
-      Get.to(
+      return await Get.to(
         () => const PaymentVoucherScreen(),
         binding: BindingsBuilder(
           () {
@@ -83,9 +88,9 @@ void openTransactionForm(String tag) {
           },
         ),
       );
-      break;
+      
     case 'receipt':
-      Get.to(
+      return await Get.to(
         () => const ReceiptVoucherScreen(),
         binding: BindingsBuilder(
           () {
@@ -106,9 +111,9 @@ void openTransactionForm(String tag) {
           },
         ),
       );
-      break;
+      
     case 'adjustment':
-      Get.to(
+      return await Get.to(
         () => const AdjustmentVoucherScreen(),
         binding: BindingsBuilder(
           () {
@@ -129,9 +134,9 @@ void openTransactionForm(String tag) {
           },
         ),
       );
-      break;
+      
     case 'sales':
-      Get.to(
+      return await Get.to(
         () => const SalesInvoiceScreen(),
         binding: BindingsBuilder(
           () {
@@ -152,9 +157,9 @@ void openTransactionForm(String tag) {
           },
         ),
       );
-      break;
+      
     case 'purchase':
-      Get.to(
+      return await Get.to(
         () => const PurchaseInvoiceScreen(),
         binding: BindingsBuilder(
           () {
@@ -175,6 +180,7 @@ void openTransactionForm(String tag) {
           },
         ),
       );
-      break;
+      
   }
+  return null;
 }

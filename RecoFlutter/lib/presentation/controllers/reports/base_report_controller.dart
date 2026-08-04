@@ -12,6 +12,8 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../../core/config/app_config.dart';
 import '../../../core/services/network_monitor_service.dart';
 import '../../../core/utils/app_action_loader.dart';
+import '../../../core/utils/app_date_formatter.dart';
+import '../../../core/utils/amount_formatter.dart';
 import '../../../core/utils/app_snackbar.dart';
 import '../../../data/repositories/reports/reports_repository.dart';
 
@@ -36,15 +38,7 @@ abstract class BaseReportController extends GetxController {
   Map<String, dynamic> get queryParameters;
 
   String formatCurrency(dynamic value) {
-    final amount = double.tryParse(value?.toString() ?? '0') ?? 0;
-    return '₹${_formatAmount(amount)}';
-  }
-
-  String _formatAmount(double amount) {
-    if (amount == amount.roundToDouble()) {
-      return amount.toStringAsFixed(0);
-    }
-    return amount.toStringAsFixed(2);
+    return AmountFormatter.currency(value);
   }
 
   Future<void> loadReport() async {
@@ -337,6 +331,5 @@ abstract class BaseReportController extends GetxController {
     return null;
   }
 
-  String formatDate(String value) =>
-      value.length >= 10 ? value.substring(0, 10) : value;
+  String formatDate(String value) => AppDateFormatter.formatDisplay(value);
 }

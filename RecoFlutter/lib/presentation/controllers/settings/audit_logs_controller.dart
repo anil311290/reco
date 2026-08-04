@@ -36,6 +36,33 @@ class AuditLogsController extends GetxController {
 
   bool get hasMore => currentPage.value < lastPage.value;
 
+  List<String> _uniqueStrings(Iterable<dynamic> values) {
+    final seen = <String>{};
+    final result = <String>[];
+    for (final value in values) {
+      final normalized = value.toString().trim();
+      if (normalized.isEmpty || !seen.add(normalized)) {
+        continue;
+      }
+      result.add(normalized);
+    }
+    return result;
+  }
+
+  List<Map<String, dynamic>> _uniqueUsersById(Iterable<dynamic> values) {
+    final seen = <String>{};
+    final result = <Map<String, dynamic>>[];
+    for (final value in values.whereType<Map>()) {
+      final item = Map<String, dynamic>.from(value);
+      final id = item['id']?.toString().trim() ?? '';
+      if (id.isEmpty || !seen.add(id)) {
+        continue;
+      }
+      result.add(item);
+    }
+    return result;
+  }
+
   @override
   void onInit() {
     super.onInit();
@@ -97,24 +124,29 @@ class AuditLogsController extends GetxController {
           ? result['filters'] as Map<String, dynamic>
           : <String, dynamic>{};
       actionOptions.assignAll(
-        (filters['actions'] as List? ?? const <dynamic>[])
-            .map((item) => item.toString())
-            .where((item) => item.isNotEmpty)
-            .toList(),
+        _uniqueStrings(filters['actions'] as List? ?? const <dynamic>[]),
       );
       moduleOptions.assignAll(
-        (filters['modules'] as List? ?? const <dynamic>[])
-            .map((item) => item.toString())
-            .where((item) => item.isNotEmpty)
-            .toList(),
+        _uniqueStrings(filters['modules'] as List? ?? const <dynamic>[]),
       );
       userOptions.assignAll(
-        (filters['users'] as List?)
-                ?.whereType<Map>()
-                .map((item) => Map<String, dynamic>.from(item))
-                .toList() ??
-            <Map<String, dynamic>>[],
+        _uniqueUsersById(filters['users'] as List? ?? const <dynamic>[]),
       );
+
+      if (selectedAction.value.isNotEmpty &&
+          !actionOptions.contains(selectedAction.value)) {
+        selectedAction.value = '';
+      }
+      if (selectedModule.value.isNotEmpty &&
+          !moduleOptions.contains(selectedModule.value)) {
+        selectedModule.value = '';
+      }
+      if (selectedUserId.value.isNotEmpty &&
+          !userOptions.any(
+            (item) => item['id']?.toString() == selectedUserId.value,
+          )) {
+        selectedUserId.value = '';
+      }
 
       final pagination = (result['pagination'] is Map<String, dynamic>)
           ? result['pagination'] as Map<String, dynamic>

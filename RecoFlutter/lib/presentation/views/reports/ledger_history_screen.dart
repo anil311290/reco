@@ -4,6 +4,7 @@ import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:get/get.dart';
 
 import '../../../core/network/api_client.dart';
+import '../../../core/utils/app_date_formatter.dart';
 import '../../controllers/reports/ledger_history_controller.dart';
 import '../masters/widgets/masters_ui_components.dart';
 import 'widgets/report_ui_components.dart';
@@ -109,9 +110,6 @@ class _LedgerHistoryScreenState extends State<LedgerHistoryScreen> {
   }
 
   String _formatDateTime(String value) {
-    if (value.length >= 16) {
-      return value.substring(0, 16).replaceFirst('T', ' ');
-    }
-    return value;
+    return AppDateFormatter.formatDateTime(value, fallback: value);
   }
 }

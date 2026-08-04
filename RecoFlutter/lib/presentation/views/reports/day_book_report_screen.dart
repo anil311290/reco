@@ -5,6 +5,7 @@ import 'package:get/get.dart';
 
 import '../../../core/config/api_endpoints.dart';
 import '../../../core/utils/app_action_loader.dart';
+import '../../../core/utils/app_date_formatter.dart';
 import '../../../core/utils/app_snackbar.dart';
 import '../../../data/repositories/transactions/transactions_repository.dart';
 import '../../../data/models/transactions/transaction_entities.dart';
@@ -57,13 +58,13 @@ class DayBookReportScreen extends GetView<DayBookReportController> {
                   iconColor: const Color(0xFF0891B2),
                   child: Column(
                     children: <Widget>[
-                      CustomTextField(
-                        label: 'Date',
-                        controller: controller.dateController,
-                        readOnly: true,
-                        suffixIcon: Icons.calendar_today_outlined,
-                        onTap: () => _pickDate(context),
+                      ReportDateRangeRow(
+                        fromController: controller.fromDateController,
+                        toController: controller.toDateController,
+                        onFromTap: () => _pickDate(context, controller.fromDateController),
+                        onToTap: () => _pickDate(context, controller.toDateController),
                       ),
+                      const SizedBox(height: 10),
                       Obx(
                         () => CustomDropdown<int>(
                           label: 'Financial Year',
@@ -79,7 +80,8 @@ class DayBookReportScreen extends GetView<DayBookReportController> {
                             );
                             return (item['name'] ?? 'FY').toString();
                           },
-                          onChanged: (value) => controller.financialYearId.value = value,
+                          onChanged: (value) =>
+                              controller.applyFinancialYear(value, lookup),
                         ),
                       ),
                       ReportActionBar(
@@ -119,9 +121,10 @@ class DayBookReportScreen extends GetView<DayBookReportController> {
                         children: <Widget>[
                           Expanded(
                             child: ReportStatCard(
-                              label: 'Report Date',
-                              value: controller.formatDate(controller.dateController.text),
-                              note: 'Selected daily book date',
+                              label: 'Report Period',
+                              value:
+                                  '${controller.formatDate(controller.fromDateController.text)} to ${controller.formatDate(controller.toDateController.text)}',
+                              note: 'Selected date range for voucher activity',
                               color: const Color(0xFF0891B2),
                               icon: FontAwesomeIcons.calendarCheck,
                             ),
@@ -172,7 +175,7 @@ class DayBookReportScreen extends GetView<DayBookReportController> {
               iconColor: const Color(0xFF0891B2),
               trailing: report is Map<String, dynamic>
                   ? Text(
-                      'Dr ${controller.formatCurrency(report['total_debit'])} | Cr ${controller.formatCurrency(report['total_credit'])}',
+                      '${rows.length} lines',
                       style: Theme.of(context).textTheme.labelLarge?.copyWith(
                         color: const Color(0xFF0891B2),
                         fontWeight: FontWeight.w700,
@@ -194,8 +197,13 @@ class DayBookReportScreen extends GetView<DayBookReportController> {
     );
   }
 
-  Future<void> _pickDate(BuildContext context) async {
-    final initial = DateTime.tryParse(controller.dateController.text) ?? DateTime(2026, 7, 22);
+  Future<void> _pickDate(
+    BuildContext context,
+    TextEditingController target,
+  ) async {
+    final initial =
+        AppDateFormatter.parse(target.text) ??
+            DateTime(2026, 7, 22);
     final selected = await showDatePicker(
       context: context,
       initialDate: initial,
@@ -203,7 +211,7 @@ class DayBookReportScreen extends GetView<DayBookReportController> {
       lastDate: DateTime(2100),
     );
     if (selected != null) {
-      controller.dateController.text = selected.toIso8601String().substring(0, 10);
+      target.text = AppDateFormatter.formatDisplay(selected);
     }
   }
 
@@ -227,6 +235,9 @@ class DayBookReportScreen extends GetView<DayBookReportController> {
         final accountId = _asInt(row['account_id']);
         return DataRow(
           cells: <DataCell>[
+            masterTextCell(
+              controller.formatDate((row['voucher_date'] ?? '').toString()),
+            ),
             DataCell(
               Center(
                 child: ReportLinkText(
@@ -277,6 +288,7 @@ class DayBookReportScreen extends GetView<DayBookReportController> {
           const DataCell(SizedBox.shrink()),
           const DataCell(SizedBox.shrink()),
           const DataCell(SizedBox.shrink()),
+          const DataCell(SizedBox.shrink()),
           DataCell(
             Center(
               child: Text(
@@ -299,15 +311,16 @@ class DayBookReportScreen extends GetView<DayBookReportController> {
       child: MastersTableShell(
         isLoading: false,
         emptyText: 'No posted transactions found.',
-        minWidth: 1120,
+        minWidth: 1240,
         columns: <DataColumn2>[
+          masterColumn(context, 'Date', size: ColumnSize.M),
           masterColumn(context, 'Voucher #', size: ColumnSize.M),
           masterColumn(context, 'Type', size: ColumnSize.S),
           masterColumn(context, 'Particulars', size: ColumnSize.L),
           masterColumn(context, 'Party', size: ColumnSize.M),
           masterColumn(context, 'Narration', size: ColumnSize.L),
-          masterColumn(context, 'Debit', size: ColumnSize.M),
-          masterColumn(context, 'Credit', size: ColumnSize.M),
+          masterColumn(context, 'Dr', size: ColumnSize.M),
+          masterColumn(context, 'Cr', size: ColumnSize.M),
         ],
         rows: tableRows,
       ),
@@ -350,7 +363,7 @@ class DayBookReportScreen extends GetView<DayBookReportController> {
       'voucher_number': row['voucher_number'],
       'voucher_type': row['voucher_type'],
       'type_label': (row['voucher_type'] ?? '').toString(),
-      'voucher_date': row['date'] ?? controller.dateController.text,
+      'voucher_date': row['voucher_date'] ?? controller.fromDateController.text,
       'status': 'posted',
       'party_id': row['party_id'],
       'party': row['party_id'] == null

@@ -25,6 +25,7 @@ class AccountsTabScreen extends GetView<AccountsController> {
             CompactSearchFilterBar(
               controller: controller.searchController,
               hint: 'Search account list...',
+              onChanged: (_) => controller.onSearchChanged(),
               filterTooltip: 'Ledger filters',
               onFilterTap: () => _openFilters(context),
               onExcelTap: controller.exportExcel,
@@ -32,11 +33,17 @@ class AccountsTabScreen extends GetView<AccountsController> {
             ),
             const SizedBox(height: 12),
             Expanded(
-              child: MastersTableShell(
-                isLoading: controller.isLoading.value,
-                emptyText: 'No accounts found',
-                minWidth: 1120,
-                columns: <DataColumn2>[
+              child: PaginatedTablePane(
+                hasMore: controller.hasMore,
+                isLoadingMore: controller.isLoadingMore.value,
+                loadedCount: controller.accounts.length,
+                totalCount: controller.total.value,
+                onLoadMore: controller.loadMore,
+                child: MastersTableShell(
+                  isLoading: controller.isLoading.value,
+                  emptyText: 'No accounts found',
+                  minWidth: 1120,
+                  columns: <DataColumn2>[
                   masterColumn(
                     context,
                     '#',
@@ -52,7 +59,7 @@ class AccountsTabScreen extends GetView<AccountsController> {
                   masterColumn(context, 'Status', fixedWidth: 120),
                   masterColumn(context, 'Actions', fixedWidth: 170),
                 ],
-                rows: List<DataRow>.generate(controller.filteredItems.length, (
+                  rows: List<DataRow>.generate(controller.filteredItems.length, (
                   index,
                 ) {
                   final item = controller.filteredItems[index];
@@ -111,26 +118,29 @@ class AccountsTabScreen extends GetView<AccountsController> {
                       ),
                       DataCell(
                         Center(
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: <Widget>[
-                              Transform.scale(
-                                scale: .72,
-                                child: CupertinoSwitch(
-                                  value: item.isActive,
-                                  onChanged: (value) =>
-                                      controller.toggleStatus(item, value),
+                          child: FittedBox(
+                            fit: BoxFit.scaleDown,
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: <Widget>[
+                                Transform.scale(
+                                  scale: .68,
+                                  child: CupertinoSwitch(
+                                    value: item.isActive,
+                                    onChanged: (value) =>
+                                        controller.toggleStatus(item, value),
+                                  ),
                                 ),
-                              ),
-                              const SizedBox(width: 4),
-                              Text(
-                                item.isActive ? 'Active' : 'Inactive',
-                                style: Theme.of(context)
-                                    .textTheme
-                                    .bodyMedium
-                                    ?.copyWith(fontWeight: FontWeight.w600),
-                              ),
-                            ],
+                                const SizedBox(width: 2),
+                                Text(
+                                  item.isActive ? 'Active' : 'Inactive',
+                                  style: Theme.of(context)
+                                      .textTheme
+                                      .bodySmall
+                                      ?.copyWith(fontWeight: FontWeight.w600),
+                                ),
+                              ],
+                            ),
                           ),
                         ),
                       ),
@@ -181,7 +191,8 @@ class AccountsTabScreen extends GetView<AccountsController> {
                       ),
                     ],
                   );
-                }),
+                  }),
+                ),
               ),
             ),
           ],
@@ -330,8 +341,11 @@ class _MasterFilterSheet extends StatelessWidget {
                       Expanded(
                         child: OutlinedButton(
                           onPressed: () {
-                            controller.clearFilters();
-                            Navigator.of(context).pop();
+                            controller.clearFilters().then((_) {
+                              if (context.mounted) {
+                                Navigator.of(context).pop();
+                              }
+                            });
                           },
                           child: const Text('Clear'),
                         ),
@@ -343,8 +357,11 @@ class _MasterFilterSheet extends StatelessWidget {
                             controller.applyFilters(
                               type: selectedType,
                               status: selectedStatus,
-                            );
-                            Navigator.of(context).pop();
+                            ).then((_) {
+                              if (context.mounted) {
+                                Navigator.of(context).pop();
+                              }
+                            });
                           },
                           child: const Text('Apply'),
                         ),

@@ -23,6 +23,7 @@ class ItemsTabScreen extends GetView<ItemsController> {
             CompactSearchFilterBar(
               controller: controller.searchController,
               hint: 'Search by name, code, barcode, HSN...',
+              onChanged: (_) => controller.onSearchChanged(),
               filterTooltip: 'Item filters',
               onFilterTap: () => _openFilters(context),
               onExcelTap: controller.exportExcel,
@@ -30,11 +31,17 @@ class ItemsTabScreen extends GetView<ItemsController> {
             ),
             const SizedBox(height: 12),
             Expanded(
-              child: MastersTableShell(
-                isLoading: controller.isLoading.value,
-                emptyText: 'No items found',
-                minWidth: 1120,
-                columns: <DataColumn2>[
+              child: PaginatedTablePane(
+                hasMore: controller.hasMore,
+                isLoadingMore: controller.isLoadingMore.value,
+                loadedCount: controller.items.length,
+                totalCount: controller.total.value,
+                onLoadMore: controller.loadMore,
+                child: MastersTableShell(
+                  isLoading: controller.isLoading.value,
+                  emptyText: 'No items found',
+                  minWidth: 1120,
+                  columns: <DataColumn2>[
                   masterColumn(
                     context,
                     '#',
@@ -51,7 +58,7 @@ class ItemsTabScreen extends GetView<ItemsController> {
                   masterColumn(context, 'Status', fixedWidth: 120),
                   masterColumn(context, 'Actions', fixedWidth: 170),
                 ],
-                rows: List<DataRow>.generate(controller.filteredItems.length, (
+                  rows: List<DataRow>.generate(controller.filteredItems.length, (
                   index,
                 ) {
                   final item = controller.filteredItems[index];
@@ -60,11 +67,11 @@ class ItemsTabScreen extends GetView<ItemsController> {
                       masterTextCell('${index + 1}'),
                       masterTextCell(item.itemCode),
                       DataCell(
-                        Align(
-                          alignment: Alignment.centerLeft,
+                        Center(
                           child: item.id == null
                               ? Text(
                                   item.name,
+                                  textAlign: TextAlign.center,
                                   style: Theme.of(context).textTheme.bodyMedium
                                       ?.copyWith(
                                         fontWeight: FontWeight.w600,
@@ -80,6 +87,7 @@ class ItemsTabScreen extends GetView<ItemsController> {
                                     child: Text(
                                       item.name,
                                       maxLines: 2,
+                                      textAlign: TextAlign.center,
                                       overflow: TextOverflow.ellipsis,
                                       style: Theme.of(context)
                                           .textTheme
@@ -171,7 +179,8 @@ class ItemsTabScreen extends GetView<ItemsController> {
                       ),
                     ],
                   );
-                }),
+                  }),
+                ),
               ),
             ),
           ],
@@ -318,8 +327,11 @@ class _MasterFilterSheet extends StatelessWidget {
                       Expanded(
                         child: OutlinedButton(
                           onPressed: () {
-                            controller.clearFilters();
-                            Navigator.of(context).pop();
+                            controller.clearFilters().then((_) {
+                              if (context.mounted) {
+                                Navigator.of(context).pop();
+                              }
+                            });
                           },
                           child: const Text('Clear'),
                         ),
@@ -332,8 +344,11 @@ class _MasterFilterSheet extends StatelessWidget {
                               type: selectedType,
                               category: selectedCategory,
                               status: selectedStatus,
-                            );
-                            Navigator.of(context).pop();
+                            ).then((_) {
+                              if (context.mounted) {
+                                Navigator.of(context).pop();
+                              }
+                            });
                           },
                           child: const Text('Apply'),
                         ),
