@@ -54,7 +54,7 @@ class LedgerPartyHistoryTest extends TestCase
             'company_id' => $this->company->id,
             'financial_year_id' => $this->financialYear->id,
             'account_code' => Account::CODE_SUSPENSE,
-            'account_name' => 'Opening Balance Difference',
+            'account_name' => 'Opening Balance',
             'account_type' => 'asset',
             'opening_balance' => 0,
             'is_system' => true,

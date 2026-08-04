@@ -102,7 +102,7 @@ use OpenApi\Annotations as OA;
  *     path="/accounts/cash-bank",
  *     tags={"Accounts"},
  *     summary="Cash / Bank / OD accounts for payments and receipts",
- *     description="Dropdown helper matching web Paid From / Received In. Includes available_balance (null for OD).",
+ *     description="Dropdown helper matching web Paid From / Received In. Includes available_balance (null for OD). Opening Balance is always excluded.",
  *     operationId="getCashBankAccounts",
  *     security={{"bearerAuth":{}}},
  *     @OA\Parameter(name="financial_year_id", in="query", @OA\Schema(type="integer")),
@@ -124,6 +124,7 @@ use OpenApi\Annotations as OA;
  *     path="/accounts/adjustment-particulars",
  *     tags={"Accounts"},
  *     summary="Particulars for adjustment/journal vouchers",
+ *     description="Grouped parties plus selectable ledger accounts. Opening Balance and AR/AP control ledgers are excluded from direct account rows.",
  *     operationId="getAdjustmentParticulars",
  *     security={{"bearerAuth":{}}},
  *     @OA\Response(response=200, description="Success", @OA\JsonContent(ref="#/components/schemas/SuccessResponse"))

@@ -717,12 +717,18 @@
                     <form id="partyQuickAddForm">
                         @csrf
                         <input type="hidden" name="party_target" value="">
-                        <input type="hidden" name="type" value="debtor">
 
                         <div class="row g-3">
                             <div class="col-md-6">
                                 <label class="form-label">Party Name <span class="text-danger">*</span></label>
                                 <input type="text" class="form-control" name="name" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Party Type <span class="text-danger">*</span></label>
+                                <select class="form-select" name="type" required>
+                                    <option value="debtor">Customer</option>
+                                    <option value="creditor">Supplier</option>
+                                </select>
                             </div>
                             <div class="col-md-6">
                                 <label class="form-label">Mobile</label>

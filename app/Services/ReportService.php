@@ -249,6 +249,10 @@ class ReportService
                 continue;
             }
 
+            if ((string) $account->account_code === Account::CODE_SUSPENSE && $closingDebit < 0.001 && $closingCredit < 0.001) {
+                continue;
+            }
+
             $destination = in_array($account->account_type, ['income', 'expense'], true) ? 'PL' : 'BS';
 
             $trialBalance[] = [
@@ -549,7 +553,7 @@ class ReportService
         [$receiptRows, $receiptSuspenseTotal] = $this->extractOpeningDifferenceRows($receiptRows);
         [$paymentRows, $paymentSuspenseTotal] = $this->extractOpeningDifferenceRows($paymentRows);
 
-        // Treat Opening Balance Difference as part of opening, not period head movement.
+        // Treat Opening Balance as part of opening, not period head movement.
         $openingTotal = round($openingTotal + $receiptSuspenseTotal - $paymentSuspenseTotal, 2);
 
         $receiptsTotal = round(array_sum(array_column($receiptRows, 'amount')), 2);
@@ -577,7 +581,7 @@ class ReportService
     }
 
     /**
-     * Remove Opening Balance Difference heads from side rows and return their total.
+    * Remove Opening Balance heads from side rows and return their total.
      *
      * @param  array<int, array<string, mixed>>  $rows
      * @return array{0: array<int, array<string, mixed>>, 1: float}
@@ -589,7 +593,7 @@ class ReportService
 
         foreach ($rows as $row) {
             $isSuspense = (string) ($row['code'] ?? '') === Account::CODE_SUSPENSE
-                || strtolower((string) ($row['label'] ?? '')) === 'opening balance difference';
+                || strtolower((string) ($row['label'] ?? '')) === 'opening balance';
 
             if ($isSuspense) {
                 $suspenseTotal += (float) ($row['amount'] ?? 0);
@@ -656,7 +660,7 @@ class ReportService
         }
 
         foreach ($entries->whereNull('voucher_id') as $entry) {
-            $label = str_contains((string) $entry->reference_type, 'opening')
+            $label = ((bool) ($entry->is_opening_balance ?? false) || str_contains((string) $entry->reference_type, 'opening'))
                 ? 'Opening Balance Entries'
                 : ($entry->description ?: 'Unclassified');
 

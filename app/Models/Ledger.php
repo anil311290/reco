@@ -62,6 +62,7 @@ class Ledger extends Model
         'transaction_date',
         'reference_type',
         'reference_id',
+        'is_opening_balance',
         'description',
         'debit',
         'credit',
@@ -75,6 +76,7 @@ class Ledger extends Model
 
     protected $casts = [
         'transaction_date' => 'date',
+        'is_opening_balance' => 'boolean',
         'debit' => 'decimal:2',
         'credit' => 'decimal:2',
         'running_balance' => 'decimal:2',
