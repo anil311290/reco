@@ -187,25 +187,23 @@ class BalanceSheetReportScreen extends GetView<BalanceSheetReportController> {
               ? FontAwesomeIcons.fileCircleMinus
               : FontAwesomeIcons.chartPie,
       iconColor: color,
-      trailing: Column(
-        crossAxisAlignment: CrossAxisAlignment.end,
+      trailing: Wrap(
+        spacing: 8,
+        runSpacing: 6,
+        alignment: WrapAlignment.start,
+        crossAxisAlignment: WrapCrossAlignment.center,
         children: <Widget>[
-          Text(
+          _sectionPill(
+            context,
             _dateRangeLabelForBalanceSheet(controller),
-            style: Theme.of(context).textTheme.labelMedium?.copyWith(
-              color: const Color(0xFF64748B),
-              fontWeight: FontWeight.w600,
-            ),
+            const Color(0xFF64748B),
           ),
-          const SizedBox(height: 2),
-          Text(
+          _sectionPill(
+            context,
             controller.formatCurrency(
               section is Map<String, dynamic> ? section['total'] : 0,
             ),
-            style: Theme.of(context).textTheme.labelLarge?.copyWith(
-              color: color,
-              fontWeight: FontWeight.w700,
-            ),
+            color,
           ),
         ],
       ),
@@ -454,6 +452,26 @@ class BalanceSheetReportScreen extends GetView<BalanceSheetReportController> {
                 ],
               ),
             ),
+    );
+  }
+
+  Widget _sectionPill(BuildContext context, String text, Color color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: .10),
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Text(
+        text,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: Theme.of(context).textTheme.labelMedium?.copyWith(
+          color: color,
+          fontWeight: FontWeight.w800,
+          fontSize: 12,
+        ),
+      ),
     );
   }
 

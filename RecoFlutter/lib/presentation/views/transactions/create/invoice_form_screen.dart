@@ -11,6 +11,47 @@ import '../../masters/forms/account_form_sheet.dart';
 import '../../../widgets/common/custom_text_field.dart';
 import 'widgets/transaction_form_components.dart';
 
+String _catalogOptionSearchText(InvoiceCatalogOption item) {
+  return '${item.label} ${item.isItem ? 'Goods' : 'Service'}';
+}
+
+Widget _buildCatalogOptionMenuItem(
+  BuildContext context,
+  InvoiceCatalogOption item,
+) {
+  final theme = Theme.of(context);
+  final scheme = theme.colorScheme;
+  final typeLabel = item.isItem ? 'Goods' : 'Service';
+
+  return Padding(
+    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+    child: SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      physics: const BouncingScrollPhysics(),
+      child: RichText(
+        text: TextSpan(
+          children: <InlineSpan>[
+            TextSpan(
+              text: '$typeLabel: ',
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: item.isItem ? scheme.primary : scheme.secondary,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            TextSpan(
+              text: item.label,
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: scheme.onSurface,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+        ),
+      ),
+    ),
+  );
+}
+
 class InvoiceFormScreen<T extends BaseInvoiceFormController> extends GetView<T> {
   const InvoiceFormScreen({super.key});
 
@@ -34,59 +75,39 @@ class InvoiceFormScreen<T extends BaseInvoiceFormController> extends GetView<T> 
   ) {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
-    final index = items.indexOf(item);
-    final previous = index > 0 ? items[index - 1] : null;
-    final isParty = item.isParty;
+    final _ = items;
     final type = (item.party?.type ?? '').toLowerCase();
-
-    String? sectionTitle;
-    if (item.isAccount && (previous == null || previous.isParty)) {
-      sectionTitle = 'Ledger Accounts (Cash/Bank/OD)';
-    } else if (isParty &&
-        type == 'debtor' &&
-        (previous == null ||
-            !previous.isParty ||
-            (previous.party?.type.toLowerCase() != 'debtor'))) {
-      sectionTitle = 'Customers (Parties)';
-    } else if (isParty &&
-        type == 'creditor' &&
-        (previous == null ||
-            !previous.isParty ||
-            (previous.party?.type.toLowerCase() != 'creditor'))) {
-      sectionTitle = 'Suppliers (Parties)';
-    }
+    final typeLabel = item.isAccount
+        ? 'Ledger'
+        : type == 'creditor'
+            ? 'Supplier Party'
+            : 'Customer Party';
 
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min,
-        children: <Widget>[
-          if (sectionTitle != null) ...<Widget>[
-            Text(
-              sectionTitle,
-              style: theme.textTheme.labelMedium?.copyWith(
-                color: scheme.onSurfaceVariant,
-                fontWeight: FontWeight.w800,
-                letterSpacing: .4,
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        physics: const BouncingScrollPhysics(),
+        child: RichText(
+          text: TextSpan(
+            children: <InlineSpan>[
+              TextSpan(
+                text: '$typeLabel: ',
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: scheme.primary,
+                  fontWeight: FontWeight.w700,
+                ),
               ),
-            ),
-            const SizedBox(height: 8),
-          ],
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            physics: const BouncingScrollPhysics(),
-            child: Text(
-              item.label,
-              maxLines: 1,
-              softWrap: false,
-              style: theme.textTheme.bodyMedium?.copyWith(
-                color: scheme.onSurface,
-                fontWeight: FontWeight.w600,
+              TextSpan(
+                text: item.label,
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: scheme.onSurface,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
-            ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }
@@ -467,6 +488,9 @@ class _ItemRowCard<T extends BaseInvoiceFormController> extends GetView<T> {
                         value: row.catalogOption.value,
                         items: controller.salesCatalogOptions,
                         itemLabelBuilder: (item) => item.label,
+                        searchTextBuilder: _catalogOptionSearchText,
+                        menuItemBuilder: (context, item) =>
+                            _buildCatalogOptionMenuItem(context, item),
                         onChanged: (item) =>
                             controller.onSalesCatalogChanged(row, item),
                         hint: 'Select item or service',

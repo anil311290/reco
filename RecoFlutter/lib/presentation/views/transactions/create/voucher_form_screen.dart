@@ -7,6 +7,8 @@ import '../../../widgets/common/app_help_dialog.dart';
 import '../../../../data/models/masters/master_entities.dart';
 import '../../../controllers/transactions/create/base_voucher_form_controller.dart';
 import '../../../controllers/transactions/create/transaction_form_models.dart';
+import '../../masters/forms/account_form_sheet.dart';
+import '../../masters/forms/party_form_sheet.dart';
 import 'widgets/transaction_form_components.dart';
 
 class VoucherFormScreen<T extends BaseVoucherFormController>
@@ -129,6 +131,8 @@ class _PaymentRowsSection<T extends BaseVoucherFormController>
       ),
       child: Column(
         children: <Widget>[
+          _VoucherInlineQuickActions<T>(label: 'Particulars'),
+          const SizedBox(height: 4),
           for (final row in controller.paymentRows) _PaymentRowCard<T>(row: row),
           const SizedBox(height: 8),
           TransactionAmountPill(
@@ -211,6 +215,82 @@ class _PaymentRowCard<T extends BaseVoucherFormController> extends GetView<T> {
   }
 }
 
+class _VoucherInlineQuickActions<T extends BaseVoucherFormController>
+    extends GetView<T> {
+  const _VoucherInlineQuickActions({required this.label});
+
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          Text(
+            '$label *',
+            style: theme.textTheme.titleSmall?.copyWith(
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Align(
+            alignment: Alignment.centerRight,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: <Widget>[
+                _VoucherQuickActionLink(
+                  label: 'Quick Add Cash / Bank Ledger',
+                  onTap: () => _openVoucherQuickAddLedger(context, controller),
+                ),
+                const SizedBox(height: 2),
+                _VoucherQuickActionLink(
+                  label: 'Quick Add Party',
+                  onTap: () => _openVoucherQuickAddParty(context, controller),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _VoucherQuickActionLink extends StatelessWidget {
+  const _VoucherQuickActionLink({
+    required this.label,
+    required this.onTap,
+  });
+
+  final String label;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(6),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 1),
+        child: Text(
+          label,
+          textAlign: TextAlign.right,
+          style: theme.textTheme.labelMedium?.copyWith(
+            color: theme.colorScheme.primary,
+            fontWeight: FontWeight.w700,
+            decoration: TextDecoration.underline,
+            decorationColor: theme.colorScheme.primary,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class _AdjustmentRowsSection<T extends BaseVoucherFormController>
     extends GetView<T> {
   @override
@@ -224,6 +304,8 @@ class _AdjustmentRowsSection<T extends BaseVoucherFormController>
         ),
         child: Column(
           children: <Widget>[
+            _VoucherInlineQuickActions<T>(label: 'Particulars (Party / Ledger)'),
+            const SizedBox(height: 4),
             for (final row in controller.adjustmentRows)
               _AdjustmentRowCard<T>(row: row),
             const SizedBox(height: 8),
@@ -363,6 +445,38 @@ class _AdjustmentVoucherHelp extends StatelessWidget {
       ),
     );
   }
+}
+
+Future<void> _openVoucherQuickAddParty(
+  BuildContext context,
+  BaseVoucherFormController controller,
+) async {
+  final result = await Get.to(
+    () => PartyFormSheet(
+      initialType: controller.voucherType == 'payment' ? 'creditor' : 'debtor',
+    ),
+  );
+  if (result == null) {
+    return;
+  }
+  await controller.lookupController.loadVoucherLookups(
+    voucherType: controller.voucherType,
+  );
+  controller.update();
+}
+
+Future<void> _openVoucherQuickAddLedger(
+  BuildContext context,
+  BaseVoucherFormController controller,
+) async {
+  final result = await Get.to(() => const AccountFormSheet());
+  if (result == null) {
+    return;
+  }
+  await controller.lookupController.loadVoucherLookups(
+    voucherType: controller.voucherType,
+  );
+  controller.update();
 }
 
 class _VoucherModeHelp<T extends BaseVoucherFormController> extends GetView<T> {

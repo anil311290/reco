@@ -93,76 +93,119 @@ class ProfitLossReportScreen extends GetView<ProfitLossReportController> {
             ),
             const SizedBox(height: 12),
             if (report is Map<String, dynamic>) ...<Widget>[
-              Column(
-                children: <Widget>[
-                  Row(
+              _summaryCards(context, report, income, expense),
+              const SizedBox(height: 12),
+              LayoutBuilder(
+                builder: (BuildContext context, BoxConstraints constraints) {
+                  final compact = constraints.maxWidth < 720;
+                  final sections = <Widget>[
+                    _accountSection(
+                      context,
+                      title: 'Income',
+                      color: const Color(0xFF16A34A),
+                      section: income,
+                    ),
+                    _accountSection(
+                      context,
+                      title: 'Expenses',
+                      color: const Color(0xFFEF4444),
+                      section: expense,
+                    ),
+                  ];
+                  if (compact) {
+                    return Column(
+                      children: <Widget>[
+                        sections.first,
+                        const SizedBox(height: 12),
+                        sections.last,
+                      ],
+                    );
+                  }
+                  return Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: <Widget>[
-                      Expanded(
-                        child: ReportStatCard(
-                          label: 'Total Income',
-                          value: controller.formatCurrency(
-                            income is Map<String, dynamic> ? income['total'] : 0,
-                          ),
-                          note: 'Revenue and income recorded in the selected financial year.',
-                          color: const Color(0xFF16A34A),
-                          icon: FontAwesomeIcons.sackDollar,
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: ReportStatCard(
-                          label: 'Total Expenses',
-                          value: controller.formatCurrency(
-                            expense is Map<String, dynamic> ? expense['total'] : 0,
-                          ),
-                          note: 'All expense heads included in this period.',
-                          color: const Color(0xFFEF4444),
-                          icon: FontAwesomeIcons.moneyBillTransfer,
-                        ),
-                      ),
+                      Expanded(child: sections.first),
+                      const SizedBox(width: 12),
+                      Expanded(child: sections.last),
                     ],
-                  ),
-                  const SizedBox(height: 10),
-                  Row(
-                    children: <Widget>[
-                      Expanded(
-                        child: ReportStatCard(
-                          label: 'Net Result',
-                          value: '${(report['is_profit'] == true) ? '+' : '-'}${controller.formatCurrency((report['net_profit'] as num?)?.abs() ?? 0)}',
-                          note: (report['is_profit'] == true)
-                              ? 'Profit recorded for this period.'
-                              : 'Loss recorded for this period.',
-                          color: (report['is_profit'] == true)
-                              ? const Color(0xFF2563EB)
-                              : const Color(0xFFF59E0B),
-                          icon: (report['is_profit'] == true)
-                              ? FontAwesomeIcons.chartSimple
-                              : FontAwesomeIcons.chartColumn,
-                        ),
-                      ),
-                      const Spacer(),
-                    ],
-                  ),
-                ],
+                  );
+                },
               ),
               const SizedBox(height: 12),
+              _netResultBar(context, report),
             ],
-            _accountSection(
-              context,
-              title: 'Income',
-              color: const Color(0xFF16A34A),
-              section: income,
-            ),
-            const SizedBox(height: 12),
-            _accountSection(
-              context,
-              title: 'Expenses',
-              color: const Color(0xFFEF4444),
-              section: expense,
-            ),
           ],
         );
       }),
+    );
+  }
+
+  Widget _summaryCards(
+    BuildContext context,
+    Map<String, dynamic> report,
+    dynamic income,
+    dynamic expense,
+  ) {
+    final isProfit = report['is_profit'] == true;
+    final netProfit = _asDouble(report['net_profit']).abs();
+    final cards = <Widget>[
+      ReportStatCard(
+        label: 'Total Income',
+        value: controller.formatCurrency(
+          income is Map<String, dynamic> ? income['total'] : 0,
+        ),
+        note: 'Revenue and income recorded in the selected financial year.',
+        color: const Color(0xFF16A34A),
+        icon: FontAwesomeIcons.sackDollar,
+      ),
+      ReportStatCard(
+        label: 'Total Expenses',
+        value: controller.formatCurrency(
+          expense is Map<String, dynamic> ? expense['total'] : 0,
+        ),
+        note: 'All expense heads included in this period.',
+        color: const Color(0xFFEF4444),
+        icon: FontAwesomeIcons.moneyBillTransfer,
+      ),
+      ReportStatCard(
+        label: 'Net Result',
+        value: '${isProfit ? '+' : '-'}${controller.formatCurrency(netProfit)}',
+        note: isProfit
+            ? 'Profit recorded for this period.'
+            : 'Loss recorded for this period.',
+        color: isProfit ? const Color(0xFF2563EB) : const Color(0xFFF59E0B),
+        icon: isProfit ? FontAwesomeIcons.chartSimple : FontAwesomeIcons.chartColumn,
+      ),
+    ];
+
+    return LayoutBuilder(
+      builder: (BuildContext context, BoxConstraints constraints) {
+        final compact = constraints.maxWidth < 720;
+        if (compact) {
+          return Column(
+            children: <Widget>[
+              Row(
+                children: <Widget>[
+                  Expanded(child: cards[0]),
+                  const SizedBox(width: 10),
+                  Expanded(child: cards[1]),
+                ],
+              ),
+              const SizedBox(height: 10),
+              cards[2],
+            ],
+          );
+        }
+        return Row(
+          children: <Widget>[
+            Expanded(child: cards[0]),
+            const SizedBox(width: 12),
+            Expanded(child: cards[1]),
+            const SizedBox(width: 12),
+            Expanded(child: cards[2]),
+          ],
+        );
+      },
     );
   }
 
@@ -175,124 +218,212 @@ class ProfitLossReportScreen extends GetView<ProfitLossReportController> {
     final accounts = section is Map<String, dynamic> && section['accounts'] is List
         ? List<Map<String, dynamic>>.from((section['accounts'] as List).whereType<Map>())
         : <Map<String, dynamic>>[];
+    final theme = Theme.of(context);
+    final total = section is Map<String, dynamic> ? section['total'] : 0;
     return ReportSectionCard(
       title: title,
       icon: title == 'Income'
-          ? FontAwesomeIcons.coins
-          : FontAwesomeIcons.fileInvoiceDollar,
+          ? FontAwesomeIcons.circleArrowDown
+          : FontAwesomeIcons.circleArrowUp,
       iconColor: color,
-      trailing: Column(
-        crossAxisAlignment: CrossAxisAlignment.end,
+      trailing: Wrap(
+        spacing: 8,
+        runSpacing: 6,
+        alignment: WrapAlignment.end,
+        crossAxisAlignment: WrapCrossAlignment.center,
         children: <Widget>[
-          Text(
-            _dateRangeLabel(),
-            style: Theme.of(context).textTheme.labelMedium?.copyWith(
-              color: const Color(0xFF64748B),
-              fontWeight: FontWeight.w600,
+          _pill(context, _dateRangeLabel(), const Color(0xFF0EA5E9)),
+          _pill(context, controller.formatCurrency(total), color),
+        ],
+      ),
+      child: Container(
+        clipBehavior: Clip.antiAlias,
+        decoration: BoxDecoration(
+          color: theme.cardColor,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(
+            color: theme.dividerColor.withValues(alpha: .35),
+          ),
+        ),
+        child: Column(
+          children: <Widget>[
+            if (accounts.isEmpty)
+              SizedBox(
+                width: double.infinity,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 18),
+                  child: Text(
+                    title == 'Income'
+                        ? 'No income recorded'
+                        : 'No expenses recorded',
+                    textAlign: TextAlign.center,
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                ),
+              )
+            else
+              ...accounts.map((item) => _accountRow(context, item, color)),
+            _totalRow(context, title, total, color),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _accountRow(
+    BuildContext context,
+    Map<String, dynamic> item,
+    Color color,
+  ) {
+    final theme = Theme.of(context);
+    final account = item['account'];
+    final id = account is Map<String, dynamic> ? _asInt(account['id']) : null;
+    final name = account is Map<String, dynamic>
+        ? (account['account_name'] ?? '-').toString()
+        : '-';
+    return InkWell(
+      onTap: id == null ? null : () => Get.to(() => LedgerReportScreen(initialAccountId: id)),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+        decoration: BoxDecoration(
+          border: Border(
+            bottom: BorderSide(
+              color: theme.dividerColor.withValues(alpha: .20),
             ),
           ),
-          const SizedBox(height: 2),
-          Text(
-            controller.formatCurrency(
-              section is Map<String, dynamic> ? section['total'] : 0,
+        ),
+        child: Row(
+          children: <Widget>[
+            Expanded(
+              child: Text(
+                name,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: id == null ? theme.colorScheme.onSurface : color,
+                  fontWeight: FontWeight.w800,
+                  decoration: id == null ? null : TextDecoration.underline,
+                  decorationColor: color.withValues(alpha: .45),
+                ),
+              ),
             ),
-            style: Theme.of(context).textTheme.labelLarge?.copyWith(
-              color: color,
-              fontWeight: FontWeight.w700,
+            const SizedBox(width: 10),
+            Text(
+              controller.formatCurrency(item['amount']),
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: color,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _totalRow(
+    BuildContext context,
+    String title,
+    dynamic total,
+    Color color,
+  ) {
+    final theme = Theme.of(context);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 13),
+      color: const Color(0xFF23263A),
+      child: Row(
+        children: <Widget>[
+          Expanded(
+            child: Text(
+              'Total $title',
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: Colors.white,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ),
+          Text(
+            controller.formatCurrency(total),
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: title == 'Income' ? const Color(0xFF22C55E) : const Color(0xFFFF5A6A),
+              fontWeight: FontWeight.w800,
             ),
           ),
         ],
       ),
-      child: accounts.isEmpty
-          ? Text(
-              title == 'Income'
-                  ? 'No income recorded'
-                  : 'No expenses recorded',
-            )
-          : Container(
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(
-                  color: Theme.of(context).dividerColor.withValues(alpha: .4),
-                ),
-              ),
-              child: Column(
-                children: <Widget>[
-                  ...accounts.map((item) {
-                    final account = item['account'];
-                    final id = account is Map<String, dynamic> ? _asInt(account['id']) : null;
-                    return ListTile(
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 12),
-                      title: Row(
-                        children: <Widget>[
-                          Expanded(
-                            child: Text(
-                              account is Map<String, dynamic>
-                                  ? (account['account_name'] ?? '-').toString()
-                                  : '-',
-                              style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                                fontWeight: FontWeight.w700,
-                                color: id == null ? null : color,
-                                decoration: id == null ? null : TextDecoration.underline,
-                                decorationColor: id == null ? null : color.withValues(alpha: .45),
-                              ),
-                            ),
-                          ),
-                          if (id != null) ...<Widget>[
-                            const SizedBox(width: 8),
-                            Icon(
-                              Icons.arrow_outward_rounded,
-                              size: 14,
-                              color: color.withValues(alpha: .75),
-                            ),
-                          ],
-                        ],
-                      ),
-                      subtitle: id == null
-                          ? null
-                          : Text(
-                              'Tap to open ledger',
-                              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                color: Theme.of(context).colorScheme.onSurfaceVariant,
-                              ),
-                            ),
-                      trailing: Text(
-                        controller.formatCurrency(item['amount']),
-                        style: TextStyle(color: color, fontWeight: FontWeight.w700),
-                      ),
-                      onTap: id == null ? null : () => Get.to(() => LedgerReportScreen(initialAccountId: id)),
-                    );
-                  }),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-                    decoration: BoxDecoration(
-                      color: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: .75),
-                      borderRadius: const BorderRadius.vertical(
-                        bottom: Radius.circular(16),
-                      ),
-                    ),
-                    child: Row(
-                      children: <Widget>[
-                        Expanded(
-                          child: Text(
-                            'Total $title',
-                            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                              fontWeight: FontWeight.w800,
-                            ),
-                          ),
-                        ),
-                        Text(
-                          controller.formatCurrency(
-                            section is Map<String, dynamic> ? section['total'] : 0,
-                          ),
-                          style: TextStyle(color: color, fontWeight: FontWeight.w800),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
+    );
+  }
+
+  Widget _netResultBar(BuildContext context, Map<String, dynamic> report) {
+    final theme = Theme.of(context);
+    final isProfit = report['is_profit'] == true;
+    final color = isProfit ? const Color(0xFF16A34A) : const Color(0xFFEF4444);
+    final label = isProfit ? 'Net Profit' : 'Net Loss';
+    final amount = '${isProfit ? '+' : '-'}${controller.formatCurrency(_asDouble(report['net_profit']).abs())}';
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: theme.cardColor,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(
+          color: theme.dividerColor.withValues(alpha: .20),
+        ),
+      ),
+      child: Wrap(
+        spacing: 10,
+        runSpacing: 10,
+        crossAxisAlignment: WrapCrossAlignment.center,
+        children: <Widget>[
+          _pill(
+            context,
+            '$label: $amount',
+            const Color(0xFF6366F1),
+            icon: FontAwesomeIcons.calculator,
+          ),
+          _pill(
+            context,
+            isProfit ? 'Profitable' : 'Loss Position',
+            color,
+            icon: isProfit
+                ? FontAwesomeIcons.circleCheck
+                : FontAwesomeIcons.circleExclamation,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _pill(
+    BuildContext context,
+    String label,
+    Color color, {
+    IconData? icon,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 7),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: .10),
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: <Widget>[
+          if (icon != null) ...<Widget>[
+            Icon(icon, size: 12, color: color),
+            const SizedBox(width: 6),
+          ],
+          Text(
+            label,
+            style: Theme.of(context).textTheme.labelMedium?.copyWith(
+              color: color,
+              fontWeight: FontWeight.w800,
             ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -313,6 +444,13 @@ class ProfitLossReportScreen extends GetView<ProfitLossReportController> {
   }
 
   int? _asInt(dynamic value) => int.tryParse(value?.toString() ?? '');
+
+  double _asDouble(dynamic value) {
+    if (value is num) {
+      return value.toDouble();
+    }
+    return double.tryParse(value?.toString() ?? '') ?? 0;
+  }
 
   String _dateRangeLabel() {
     return '${controller.formatDate(controller.fromDateController.text)} to ${controller.formatDate(controller.toDateController.text)}';

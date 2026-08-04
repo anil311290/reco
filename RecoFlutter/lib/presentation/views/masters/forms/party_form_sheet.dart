@@ -99,16 +99,16 @@ class _PartyFormSheetState extends State<PartyFormSheet> {
       appBar: AppBar(
         title: Text(
           widget.entity == null ? 'Create Party' : 'Edit Party',
-          style: theme.textTheme.titleLarge?.copyWith(
-                fontWeight: FontWeight.w800,
-              ),
+          style: theme.textTheme.titleMedium?.copyWith(
+            fontWeight: FontWeight.w700,
+          ),
         ),
       ),
       body: SafeArea(
         child: Form(
           key: _formKey,
           child: ListView(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.symmetric(horizontal: 14,vertical: 5),
             children: <Widget>[
               _buildHero(theme),
               if (_isEditMode) ...<Widget>[
@@ -117,8 +117,10 @@ class _PartyFormSheetState extends State<PartyFormSheet> {
               ],
               const SizedBox(height: 12),
               _buildMainCard(theme),
-              const SizedBox(height: 12),
-              _buildSideSetupCard(theme),
+              if (_isEditMode) ...<Widget>[
+                const SizedBox(height: 12),
+                _buildSideSetupCard(theme),
+              ],
               const SizedBox(height: 12),
               _buildActionCard(theme),
             ],
@@ -131,6 +133,7 @@ class _PartyFormSheetState extends State<PartyFormSheet> {
   Widget _buildHero(ThemeData theme) {
     final scheme = theme.colorScheme;
     return Container(
+      margin: const EdgeInsets.only(bottom: 4),
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(24),
@@ -166,7 +169,7 @@ class _PartyFormSheetState extends State<PartyFormSheet> {
             _isEditMode
                 ? 'Edit party details'
                 : 'Create a new party',
-            style: theme.textTheme.titleLarge?.copyWith(
+            style: theme.textTheme.titleMedium?.copyWith(
               fontWeight: FontWeight.w800,
             ),
           ),
@@ -230,238 +233,235 @@ class _PartyFormSheetState extends State<PartyFormSheet> {
 
   Widget _buildMainCard(ThemeData theme) {
     return Container(
-      decoration: BoxDecoration(
-        color: theme.cardColor,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: theme.colorScheme.outlineVariant.withValues(alpha: .6),
-        ),
-      ),
+      // decoration: BoxDecoration(
+      //   color: theme.cardColor,
+      //   borderRadius: BorderRadius.circular(20),
+      //   border: Border.all(
+      //     color: theme.colorScheme.outlineVariant.withValues(alpha: .6),
+      //   ),
+      // ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: <Widget>[
-                Text(
-                  'Party Details',
-                  style: theme.textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.w800,
-                    fontSize: 17,
-                  ),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              Text(
+                'Party Details',
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  fontWeight: FontWeight.w700,
+                  fontSize: 16
                 ),
-                const SizedBox(height: 4),
-                Text(
-                  _isEditMode
-                      ? 'Update editable information below.'
-                      : 'Fields marked with * are required.',
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: theme.colorScheme.onSurfaceVariant,
-                  ),
+              ),
+
+              Text(
+                _isEditMode
+                    ? 'Update editable information below.'
+                    : 'Fields marked with * are required.',
+                style: theme.textTheme.labelSmall?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
-          Divider(height: 1, color: theme.dividerColor.withValues(alpha: .45)),
           Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              children: <Widget>[
-                _buildSectionHeader(
-                  theme,
-                  icon: Icons.badge_outlined,
-                  title: 'Identity & Contact',
-                  subtitle: 'Basic party and communication details',
-                ),
-                _twoColumn(
-                  left: CustomTextField(
-                    controller: _nameController,
-                    label: 'Party Name',
-                    hintText: 'e.g., ABC Company',
-                    requiredField: true,
-                    validator: _required,
-                    keyboardType: TextInputType.name,
-                    textInputAction: TextInputAction.next,
-                  ),
-                  right: CustomDropdown<String>(
-                    label: 'Party Type',
-                    items: const <String>['debtor', 'creditor'],
-                    value: partyType,
-                    requiredField: true,
-                    enabled: !_isTypeLocked,
-                    itemLabelBuilder: (value) =>
-                        value == 'debtor' ? 'Customer' : 'Supplier',
-                    validator: _requiredDropdown,
-                    onChanged: (value) =>
-                        setState(() => partyType = value ?? partyType),
-                  ),
-                ),
-                _twoColumn(
-                  left: CustomTextField(
-                    controller: _mobileController,
-                    label: 'Mobile',
-                    hintText: '+91 9876543210',
-                    keyboardType: TextInputType.phone,
-                    textInputAction: TextInputAction.next,
-                  ),
-                  right: CustomTextField(
-                    controller: _emailController,
-                    label: 'Email',
-                    hintText: 'party@example.com',
-                    keyboardType: TextInputType.emailAddress,
-                    textInputAction: TextInputAction.next,
-                  ),
-                ),
-                if (_isTypeLocked) _buildInlineNote(
-                  theme,
-                  Icons.lock_outline_rounded,
-                  'Locked because transactions exist.',
-                ),
-                const SizedBox(height: 6),
-                _buildSectionHeader(
-                  theme,
-                  icon: Icons.receipt_long_outlined,
-                  title: 'Tax Information',
-                  subtitle: 'Optional statutory registration details',
-                ),
-                _twoColumn(
-                  left: CustomTextField(
-                    controller: _gstController,
-                    label: 'GSTIN',
-                    hintText: '22AAAAA0000A1Z5',
-                    keyboardType: TextInputType.text,
-                    textInputAction: TextInputAction.next,
-                  ),
-                  right: CustomTextField(
-                    controller: _panController,
-                    label: 'PAN Number',
-                    hintText: 'AAAAA1111A',
-                    keyboardType: TextInputType.text,
-                    textInputAction: TextInputAction.next,
-                  ),
-                ),
-                const SizedBox(height: 6),
-                _buildSectionHeader(
-                  theme,
-                  icon: Icons.location_on_outlined,
-                  title: 'Billing Address',
-                  subtitle: 'Used on invoices and party documents',
-                ),
-                CustomTextField(
-                  controller: _addressController,
-                  label: 'Address',
-                  hintText: 'Enter complete billing address',
-                  requiredField: true,
-                  maxLines: 3,
-                  validator: _required,
-                  keyboardType: TextInputType.streetAddress,
-                  textInputAction: TextInputAction.newline,
-                ),
-                _twoColumn(
-                  left: Obx(
-                    () => CustomDropdown<int>(
-                      label: 'State',
-                      items: lookupController.states.map((item) => item.id).toList(),
-                      value: selectedStateId,
-                      requiredField: true,
-                      isLoading: lookupController.states.isEmpty,
-                      itemLabelBuilder: (id) => lookupController.states
-                          .firstWhere((item) => item.id == id)
-                          .label,
-                      validator: _requiredDropdown,
-                      onChanged: (value) async {
-                        setState(() {
-                          selectedStateId = value;
-                          selectedCityId = null;
-                        });
-                        await lookupController.loadCitiesForState(value);
-                      },
-                    ),
-                  ),
-                  right: Obx(
-                    () => CustomDropdown<int>(
-                      label: 'City',
-                      items: lookupController.cities.map((item) => item.id).toList(),
-                      value: selectedCityId,
-                      requiredField: true,
-                      enabled: selectedStateId != null,
-                      isLoading:
-                          selectedStateId != null && lookupController.cities.isEmpty,
-                      itemLabelBuilder: (id) => lookupController.cities
-                          .firstWhere((item) => item.id == id)
-                          .label,
-                      validator: _requiredDropdown,
-                      onChanged: (value) =>
-                          setState(() => selectedCityId = value),
-                    ),
-                  ),
-                ),
-                CustomTextField(
-                  controller: _postalController,
-                  label: 'Pincode',
-                  hintText: '400001',
+            padding: const EdgeInsets.symmetric(vertical: 16.0),
+            child: Divider(height: 1, color: theme.dividerColor.withValues(alpha: .45)),
+          ),
+          Column(
+            children: <Widget>[
+              _buildSectionHeader(
+                theme,
+                icon: Icons.badge_outlined,
+                title: 'Identity & Contact',
+                subtitle: 'Basic party and communication details',
+              ),
+              _twoColumn(
+                left: CustomTextField(
+                  controller: _nameController,
+                  label: 'Party Name',
+                  hintText: 'e.g., ABC Company',
                   requiredField: true,
                   validator: _required,
-                  keyboardType: TextInputType.number,
+                  keyboardType: TextInputType.name,
                   textInputAction: TextInputAction.next,
                 ),
-                const SizedBox(height: 6),
-                _buildSectionHeader(
-                  theme,
-                  icon: _isEditMode
-                      ? Icons.shield_outlined
-                      : Icons.account_balance_wallet_outlined,
-                  title: 'Opening Balance',
-                  subtitle: _isEditMode
-                      ? 'Locked financial values'
-                      : 'Set once when creating the party',
+                right: CustomDropdown<String>(
+                  label: 'Party Type',
+                  items: const <String>['debtor', 'creditor'],
+                  value: partyType,
+                  requiredField: true,
+                  enabled: !_isTypeLocked,
+                  itemLabelBuilder: (value) =>
+                      value == 'debtor' ? 'Customer' : 'Supplier',
+                  validator: _requiredDropdown,
+                  onChanged: (value) =>
+                      setState(() => partyType = value ?? partyType),
                 ),
-                _twoColumn(
-                  left: CustomTextField(
-                    controller: _amountController,
-                    label: 'Amount',
-                    hintText: '0.00',
-                    prefixText: '₹ ',
-                    readOnly: _isEditMode,
-                    keyboardType: const TextInputType.numberWithOptions(
-                      decimal: true,
-                    ),
-                    textInputAction: TextInputAction.next,
-                  ),
-                  right: CustomDropdown<String>(
-                    label: 'Balance Type',
-                    items: const <String>['debit', 'credit'],
-                    value: openingBalanceType,
-                    enableSearch: false,
-                    enabled: !_isEditMode,
-                    itemLabelBuilder: (value) =>
-                        value == 'debit' ? 'Debit (DR)' : 'Credit (CR)',
+              ),
+              _twoColumn(
+                left: CustomTextField(
+                  controller: _mobileController,
+                  label: 'Mobile',
+                  hintText: '+91 9876543210',
+                  keyboardType: TextInputType.phone,
+                  textInputAction: TextInputAction.next,
+                ),
+                right: CustomTextField(
+                  controller: _emailController,
+                  label: 'Email',
+                  hintText: 'party@example.com',
+                  keyboardType: TextInputType.emailAddress,
+                  textInputAction: TextInputAction.next,
+                ),
+              ),
+              if (_isTypeLocked) _buildInlineNote(
+                theme,
+                Icons.lock_outline_rounded,
+                'Locked because transactions exist.',
+              ),
+              const SizedBox(height: 6),
+              _buildSectionHeader(
+                theme,
+                icon: Icons.receipt_long_outlined,
+                title: 'Tax Information',
+                subtitle: 'Optional statutory registration details',
+              ),
+              _twoColumn(
+                left: CustomTextField(
+                  controller: _gstController,
+                  label: 'GSTIN',
+                  hintText: '22AAAAA0000A1Z5',
+                  keyboardType: TextInputType.text,
+                  textInputAction: TextInputAction.next,
+                ),
+                right: CustomTextField(
+                  controller: _panController,
+                  label: 'PAN Number',
+                  hintText: 'AAAAA1111A',
+                  keyboardType: TextInputType.text,
+                  textInputAction: TextInputAction.next,
+                ),
+              ),
+              const SizedBox(height: 6),
+              _buildSectionHeader(
+                theme,
+                icon: Icons.location_on_outlined,
+                title: 'Billing Address',
+                subtitle: 'Used on invoices and party documents',
+              ),
+              CustomTextField(
+                controller: _addressController,
+                label: 'Address',
+                hintText: 'Enter complete billing address',
+                requiredField: true,
+                maxLines: 3,
+                validator: _required,
+                keyboardType: TextInputType.streetAddress,
+                textInputAction: TextInputAction.newline,
+              ),
+              _twoColumn(
+                left: Obx(
+                  () => CustomDropdown<int>(
+                    label: 'State',
+                    items: lookupController.states.map((item) => item.id).toList(),
+                    value: selectedStateId,
+                    requiredField: true,
+                    isLoading: lookupController.states.isEmpty,
+                    itemLabelBuilder: (id) => lookupController.states
+                        .firstWhere((item) => item.id == id)
+                        .label,
                     validator: _requiredDropdown,
-                    onChanged: (value) => setState(
-                      () => openingBalanceType = value ?? openingBalanceType,
-                    ),
+                    onChanged: (value) async {
+                      setState(() {
+                        selectedStateId = value;
+                        selectedCityId = null;
+                      });
+                      await lookupController.loadCitiesForState(value);
+                    },
                   ),
                 ),
-                _buildInlineNote(
-                  theme,
-                  Icons.lock_outline_rounded,
-                  _isEditMode
-                      ? 'Opening balance cannot be edited after creation.'
-                      : 'Opening balance cannot be changed after creation. Opening date is auto-set to current financial year start date: $_openingDateDisplay.',
+                right: Obx(
+                  () => CustomDropdown<int>(
+                    label: 'City',
+                    items: lookupController.cities.map((item) => item.id).toList(),
+                    value: selectedCityId,
+                    requiredField: true,
+                    enabled: selectedStateId != null,
+                    isLoading:
+                        selectedStateId != null && lookupController.cities.isEmpty,
+                    itemLabelBuilder: (id) => lookupController.cities
+                        .firstWhere((item) => item.id == id)
+                        .label,
+                    validator: _requiredDropdown,
+                    onChanged: (value) =>
+                        setState(() => selectedCityId = value),
+                  ),
                 ),
-                const SizedBox(height: 6),
-                CustomTextField(
-                  controller: _remarksController,
-                  label: 'Notes',
-                  hintText: 'Add internal notes about this party',
-                  maxLines: 3,
-                  keyboardType: TextInputType.multiline,
-                  textInputAction: TextInputAction.newline,
+              ),
+              CustomTextField(
+                controller: _postalController,
+                label: 'Pincode',
+                hintText: '400001',
+                requiredField: true,
+                validator: _required,
+                keyboardType: TextInputType.number,
+                textInputAction: TextInputAction.next,
+              ),
+              const SizedBox(height: 6),
+              _buildSectionHeader(
+                theme,
+                icon: _isEditMode
+                    ? Icons.shield_outlined
+                    : Icons.account_balance_wallet_outlined,
+                title: 'Opening Balance',
+                subtitle: _isEditMode
+                    ? 'Locked financial values'
+                    : 'Set once when creating the party',
+              ),
+              _twoColumn(
+                left: CustomTextField(
+                  controller: _amountController,
+                  label: 'Amount',
+                  hintText: '0.00',
+                  prefixText: '₹ ',
+                  readOnly: _isEditMode,
+                  keyboardType: const TextInputType.numberWithOptions(
+                    decimal: true,
+                  ),
+                  textInputAction: TextInputAction.next,
                 ),
-              ],
-            ),
+                right: CustomDropdown<String>(
+                  label: 'Balance Type',
+                  items: const <String>['debit', 'credit'],
+                  value: openingBalanceType,
+                  enableSearch: false,
+                  enabled: !_isEditMode,
+                  itemLabelBuilder: (value) =>
+                      value == 'debit' ? 'Debit (DR)' : 'Credit (CR)',
+                  validator: _requiredDropdown,
+                  onChanged: (value) => setState(
+                    () => openingBalanceType = value ?? openingBalanceType,
+                  ),
+                ),
+              ),
+              _buildInlineNote(
+                theme,
+                Icons.lock_outline_rounded,
+                _isEditMode
+                    ? 'Opening balance cannot be edited after creation.'
+                    : 'Opening balance cannot be changed after creation. Opening date is auto-set to current financial year start date: $_openingDateDisplay.',
+              ),
+              const SizedBox(height: 6),
+              CustomTextField(
+                controller: _remarksController,
+                label: 'Notes',
+                hintText: 'Add internal notes about this party',
+                maxLines: 3,
+                keyboardType: TextInputType.multiline,
+                textInputAction: TextInputAction.newline,
+              ),
+            ],
           ),
         ],
       ),
@@ -469,7 +469,6 @@ class _PartyFormSheetState extends State<PartyFormSheet> {
   }
 
   Widget _buildSideSetupCard(ThemeData theme) {
-    final summaryTitle = _isEditMode ? 'Party Summary' : 'Party Setup';
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
@@ -483,57 +482,32 @@ class _PartyFormSheetState extends State<PartyFormSheet> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
           Text(
-            summaryTitle,
-            style: theme.textTheme.titleMedium?.copyWith(
+            'Party Summary',
+            style: theme.textTheme.titleSmall?.copyWith(
               fontWeight: FontWeight.w800,
             ),
           ),
           const SizedBox(height: 10),
-          ..._isEditMode ? <Widget>[
-            _buildInfoStat(
-              theme,
-              label: 'Party Code',
-              value: _codeController.text.trim().isEmpty
-                  ? 'Generated automatically'
-                  : _codeController.text.trim(),
-            ),
-            const SizedBox(height: 10),
-            _buildInfoStat(
-              theme,
-              label: 'Current Type',
-              value: partyType == 'debtor' ? 'Customer' : 'Supplier',
-            ),
-            const SizedBox(height: 10),
-            _buildInfoStat(
-              theme,
-              label: 'Opening Balance',
-              value:
-                  '₹${(double.tryParse(_amountController.text.trim()) ?? 0).toStringAsFixed(2)} ${openingBalanceType == 'debit' ? 'DR' : 'CR'}',
-            ),
-          ] : <Widget>[
-            _buildInfoStat(
-              theme,
-              label: 'Customer',
-              value: 'Money receivable',
-              note:
-                  'Choose Customer when the party normally owes your business.',
-            ),
-            const SizedBox(height: 10),
-            _buildInfoStat(
-              theme,
-              label: 'Supplier',
-              value: 'Money payable',
-              note:
-                  'Choose Supplier when your business normally owes the party.',
-            ),
-            const SizedBox(height: 10),
-            _buildInfoStat(
-              theme,
-              label: 'Party code',
-              value: 'Generated automatically',
-              note: 'Customer and supplier codes are assigned when saved.',
-            ),
-          ],
+          _buildInfoStat(
+            theme,
+            label: 'Party Code',
+            value: _codeController.text.trim().isEmpty
+                ? 'Generated automatically'
+                : _codeController.text.trim(),
+          ),
+          const SizedBox(height: 10),
+          _buildInfoStat(
+            theme,
+            label: 'Current Type',
+            value: partyType == 'debtor' ? 'Customer' : 'Supplier',
+          ),
+          const SizedBox(height: 10),
+          _buildInfoStat(
+            theme,
+            label: 'Opening Balance',
+            value:
+                '₹${(double.tryParse(_amountController.text.trim()) ?? 0).toStringAsFixed(2)} ${openingBalanceType == 'debit' ? 'DR' : 'CR'}',
+          ),
         ],
       ),
     );
@@ -632,7 +606,7 @@ class _PartyFormSheetState extends State<PartyFormSheet> {
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: <Widget>[
           Padding(
             padding: const EdgeInsets.only(top: 1),
@@ -649,8 +623,9 @@ class _PartyFormSheetState extends State<PartyFormSheet> {
               children: <Widget>[
                 Text(
                   title,
-                  style: theme.textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.w800,
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                      fontWeight: FontWeight.w700,
+                      fontSize: 16
                   ),
                 ),
                 const SizedBox(height: 2),

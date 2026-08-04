@@ -284,34 +284,9 @@ class _ItemFormSheetState extends State<ItemFormSheet> {
                   inputFormatters: <TextInputFormatter>[
                     FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d{0,2}')),
                   ],
-                  bottomPadding: 0,
+                  bottomPadding: 14,
                 ),
-              if (_isServiceType) ...<Widget>[
-                const SizedBox(height: 4),
-                Align(
-                  alignment: Alignment.centerLeft,
-                  child: AppHelpDialogButton(
-                    title: 'Service Pricing Help',
-                    tooltip: 'Default rate help',
-                    label: 'Default rate help',
-                    sections: const <AppHelpDialogSection>[
-                      AppHelpDialogSection(
-                        title: 'Default rate',
-                        message:
-                            'Default rate is optional for service items. The amount can still be changed later in the sales invoice.',
-                      ),
-                    ],
-                  ),
-                ),
-                if (_isEditMode) ...<Widget>[
-                  const SizedBox(height: 10),
-                  const _InlineInfo(
-                    title: 'Service behavior',
-                    text:
-                        'Stock does not apply to service items. They are non-stockable and post to Service Revenue via income account.',
-                  ),
-                ],
-              ],
+
               if (!_isServiceType)
                 CustomTextField(
                   controller: _barcodeController,
@@ -328,8 +303,36 @@ class _ItemFormSheetState extends State<ItemFormSheet> {
                 maxLines: 2,
                 keyboardType: TextInputType.multiline,
                 textInputAction: TextInputAction.newline,
-                bottomPadding: 0,
+
+                bottomPadding: 14,
               ),
+              if (_isServiceType) ...<Widget>[
+                const SizedBox(height: 4),
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: AppHelpDialogButton(
+                    title: 'Service Pricing Help',
+                    tooltip: 'Default rate help',
+                    label: 'Default rate help',
+                    sections: const <AppHelpDialogSection>[
+                      AppHelpDialogSection(
+                        title: 'Default rate',
+                        message:
+                        'Default rate is optional for service items. The amount can still be changed later in the sales invoice.',
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 4),
+                if (_isEditMode) ...<Widget>[
+                  const SizedBox(height: 10),
+                  const _InlineInfo(
+                    title: 'Service behavior',
+                    text:
+                    'Stock does not apply to service items. They are non-stockable and post to Service Revenue via income account.',
+                  ),
+                ],
+              ],
               const SizedBox(height: 16),
               CommonButton(
                 text: _isEditMode

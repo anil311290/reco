@@ -57,7 +57,7 @@ class CustomTextField extends StatelessWidget {
     final effectivePrefixIcon = prefixIcon ?? icon;
     final bool useCompactSuffixIcon =
         suffixIcon != null && readOnly && onTap != null && onSuffixTap == null;
-
+    final scheme = Theme.of(context).colorScheme;
     return Padding(
       padding: EdgeInsets.only(bottom: bottomPadding),
       child: TextFormField(
@@ -77,6 +77,11 @@ class CustomTextField extends StatelessWidget {
           contentPadding: EdgeInsets.symmetric(horizontal: 10,vertical: 10),
           labelText: requiredField ? '$label *' : label,
           hintText: hintText,
+          hintStyle: TextStyle(
+              color: scheme.onSurfaceVariant.withOpacity(0.7),
+              fontWeight: FontWeight.w400,
+              fontSize: 14
+          ),
           prefixIcon: effectivePrefixIcon == null
               ? null
               : Icon(effectivePrefixIcon, size: 18),
@@ -150,6 +155,10 @@ class CustomDropdown<T> extends StatefulWidget {
 class _CustomDropdownState<T> extends State<CustomDropdown<T>> {
   late final ValueNotifier<T?> _valueNotifier;
   final _searchController = TextEditingController();
+
+  String _searchableText(T item) {
+    return widget.searchTextBuilder?.call(item) ?? widget.itemLabelBuilder(item);
+  }
 
   Widget _buildScrollableLabel(
     BuildContext context,
@@ -308,8 +317,9 @@ class _CustomDropdownState<T> extends State<CustomDropdown<T>> {
               decoration: InputDecoration(
                 hintText: 'Search...',
                 hintStyle: TextStyle(
-                  color: scheme.onSurfaceVariant,
-                  fontWeight: FontWeight.w500,
+                  color: scheme.onSurfaceVariant.withOpacity(0.7),
+                  fontWeight: FontWeight.w400,
+                  fontSize: 12
                 ),
                 prefixIcon: const Icon(Icons.search, size: 20),
                 isDense: true,
@@ -317,8 +327,7 @@ class _CustomDropdownState<T> extends State<CustomDropdown<T>> {
               ),
             ),
           ),
-          searchMatchFn: (item, searchValue) => widget
-              ._searchableText(item.value as T)
+          searchMatchFn: (item, searchValue) => _searchableText(item.value as T)
               .toLowerCase()
               .contains(searchValue.toLowerCase()),
         )
@@ -328,13 +337,5 @@ class _CustomDropdownState<T> extends State<CustomDropdown<T>> {
         },
       ),
     );
-  }
-
-}
-
-extension on CustomDropdown {
-  String _searchableText<T>(T item) {
-    return (searchTextBuilder as String Function(T item)?)?.call(item) ??
-        (itemLabelBuilder as String Function(T item)).call(item);
   }
 }

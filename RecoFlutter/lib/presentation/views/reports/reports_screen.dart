@@ -140,7 +140,7 @@ class _ReportsHeroCard extends StatelessWidget {
     final primary = theme.colorScheme.primary;
 
     return Container(
-      padding: const EdgeInsets.all(18),
+      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: <Color>[
@@ -159,32 +159,67 @@ class _ReportsHeroCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            decoration: BoxDecoration(
-              color: primary.withValues(alpha: .10),
-              borderRadius: BorderRadius.circular(999),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: <Widget>[
-                Icon(
-                  FontAwesomeIcons.chartSimple,
-                  size: 13,
-                  color: primary,
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                decoration: BoxDecoration(
+                  color: primary.withValues(alpha: .10),
+                  borderRadius: BorderRadius.circular(999),
                 ),
-                const SizedBox(width: 8),
-                Text(
-                  'Books & Statements',
-                  style: theme.textTheme.labelLarge?.copyWith(
-                    color: primary,
-                    fontWeight: FontWeight.w800,
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: <Widget>[
+                    Icon(
+                      FontAwesomeIcons.chartSimple,
+                      size: 13,
+                      color: primary,
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      'Books & Statements',
+                      style: theme.textTheme.labelLarge?.copyWith(
+                        color: primary,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+
+                  ],
+                ),
+              ),
+
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+                decoration: BoxDecoration(
+                  color: theme.cardColor,
+                  borderRadius: BorderRadius.circular(999),
+                  border: Border.all(
+                    color: theme.dividerColor.withValues(alpha: .35),
                   ),
                 ),
-              ],
-            ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: <Widget>[
+                    Icon(
+                      FontAwesomeIcons.tableCellsLarge,
+                      size: 13,
+                      color: const Color(0xFF2563EB),
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      '$reportCount report views',
+                      style: theme.textTheme.labelLarge?.copyWith(
+                        fontWeight: FontWeight.w700,
+                        color: const Color(0xFF2563EB),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ),
-          const SizedBox(height: 14),
+          const SizedBox(height: 5),
           Text(
             'Financial Reports',
             style: theme.textTheme.titleLarge?.copyWith(
@@ -194,40 +229,12 @@ class _ReportsHeroCard extends StatelessWidget {
           const SizedBox(height: 6),
           Text(
             'Tally-style sequence: books first, then trial balance and statutory statements, then receivables and payables.',
-            style: theme.textTheme.bodyMedium?.copyWith(
+            style: theme.textTheme.labelMedium?.copyWith(
               color: theme.colorScheme.onSurfaceVariant,
-              height: 1.4,
+              height: 1.3,
             ),
           ),
-          const SizedBox(height: 14),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
-            decoration: BoxDecoration(
-              color: theme.cardColor,
-              borderRadius: BorderRadius.circular(999),
-              border: Border.all(
-                color: theme.dividerColor.withValues(alpha: .35),
-              ),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: <Widget>[
-                Icon(
-                  FontAwesomeIcons.tableCellsLarge,
-                  size: 13,
-                  color: const Color(0xFF2563EB),
-                ),
-                const SizedBox(width: 8),
-                Text(
-                  '$reportCount report views',
-                  style: theme.textTheme.labelLarge?.copyWith(
-                    fontWeight: FontWeight.w700,
-                    color: const Color(0xFF2563EB),
-                  ),
-                ),
-              ],
-            ),
-          ),
+
         ],
       ),
     );

@@ -35,7 +35,11 @@ class DayBookReportController extends BaseReportController {
     if (lookup.financialYears.isEmpty || lookup.currentFinancialYearId.value == null) {
       await lookup.preload();
     }
-    applyFinancialYear(lookup.currentFinancialYearId.value, lookup);
+    financialYearId.value = lookup.currentFinancialYearId.value;
+    final today = DateTime.now();
+    final todayDisplay = AppDateFormatter.formatDisplay(today);
+    fromDateController.text = todayDisplay;
+    toDateController.text = todayDisplay;
     await loadReport();
   }
 

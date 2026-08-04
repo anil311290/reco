@@ -33,22 +33,11 @@ class ReceiptPaymentReportScreen extends GetView<ReceiptPaymentReportController>
         if (controller.shouldShowInitialLoader) {
           return const ReportLoadingView();
         }
-        final data = controller.reportData['data'];
-        final report = data is Map<String, dynamic> ? data : <String, dynamic>{};
+        final report = _mapOf(controller.reportData['data']);
         final message = report['message']?.toString();
-        final receipts = report['receipts'] is Map<String, dynamic>
-            ? report['receipts'] as Map<String, dynamic>
-            : <String, dynamic>{};
-        final payments = report['payments'] is Map<String, dynamic>
-            ? report['payments'] as Map<String, dynamic>
-            : <String, dynamic>{};
-        final ledgers = report['accounts'] is List
-            ? List<Map<String, dynamic>>.from(
-                (report['accounts'] as List).whereType<Map>().map(
-                      (item) => Map<String, dynamic>.from(item),
-                    ),
-              )
-            : <Map<String, dynamic>>[];
+        final receipts = _mapOf(report['receipts']);
+        final payments = _mapOf(report['payments']);
+        final ledgers = _listOfMaps(report['accounts']);
 
         return ListView(
           padding: const EdgeInsets.all(16),
@@ -199,23 +188,21 @@ class ReceiptPaymentReportScreen extends GetView<ReceiptPaymentReportController>
                 title: 'Cash / Bank Ledgers',
                 icon: FontAwesomeIcons.tableList,
                 iconColor: const Color(0xFF059669),
-                trailing: Column(
-                  crossAxisAlignment: CrossAxisAlignment.end,
+                trailing: Wrap(
+                  spacing: 8,
+                  runSpacing: 6,
+                  alignment: WrapAlignment.end,
                   children: <Widget>[
-                    Text(
-                      _dateRangeLabel(),
-                      style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                        color: const Color(0xFF64748B),
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      '${ledgers.length} ledgers',
-                      style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                        color: const Color(0xFF059669),
-                        fontWeight: FontWeight.w700,
-                      ),
+                    _pill(context, _dateRangeLabel(), const Color(0xFF0EA5E9)),
+                    _pill(
+                      context,
+                      report['is_balanced'] == true ? 'Balanced' : 'Not balanced',
+                      report['is_balanced'] == true
+                          ? const Color(0xFF16A34A)
+                          : const Color(0xFFEF4444),
+                      icon: report['is_balanced'] == true
+                          ? FontAwesomeIcons.circleCheck
+                          : FontAwesomeIcons.circleExclamation,
                     ),
                   ],
                 ),
@@ -230,15 +217,8 @@ class ReceiptPaymentReportScreen extends GetView<ReceiptPaymentReportController>
     );
   }
 
-  List<Map<String, dynamic>> _rowsOf(Map<String, dynamic> section) {
-    return section['rows'] is List
-        ? List<Map<String, dynamic>>.from(
-            (section['rows'] as List).whereType<Map>().map(
-                  (item) => Map<String, dynamic>.from(item),
-                ),
-          )
-        : <Map<String, dynamic>>[];
-  }
+  List<Map<String, dynamic>> _rowsOf(Map<String, dynamic> section) =>
+      _listOfMaps(section['rows']);
 
   Widget _headSection(
     BuildContext context, {
@@ -256,31 +236,22 @@ class ReceiptPaymentReportScreen extends GetView<ReceiptPaymentReportController>
       title: title,
       icon: icon,
       iconColor: color,
-      trailing: Column(
-        crossAxisAlignment: CrossAxisAlignment.end,
+      trailing: Wrap(
+        spacing: 8,
+        runSpacing: 6,
+        alignment: WrapAlignment.end,
         children: <Widget>[
-          Text(
-            _dateRangeLabel(),
-            style: Theme.of(context).textTheme.labelMedium?.copyWith(
-              color: const Color(0xFF64748B),
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-          const SizedBox(height: 2),
-          Text(
-            controller.formatCurrency(total),
-            style: Theme.of(context).textTheme.labelLarge?.copyWith(
-              color: color,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
+          _pill(context, _dateRangeLabel(), const Color(0xFF0EA5E9)),
+          _pill(context, controller.formatCurrency(total), color),
         ],
       ),
       child: Container(
+        clipBehavior: Clip.antiAlias,
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(16),
+          color: Theme.of(context).cardColor,
+          borderRadius: BorderRadius.circular(8),
           border: Border.all(
-            color: Theme.of(context).dividerColor.withValues(alpha: .4),
+            color: Theme.of(context).dividerColor.withValues(alpha: .35),
           ),
         ),
         child: Column(
@@ -293,8 +264,8 @@ class ReceiptPaymentReportScreen extends GetView<ReceiptPaymentReportController>
                 title: Text('No $title in this period'),
               ),
             ...rows.map((row) {
-              final account = row['account'];
-              final id = account is Map<String, dynamic> ? _asInt(account['id']) : null;
+              final account = _mapOf(row['account']);
+              final id = _asInt(account['id']);
               return ListTile(
                 contentPadding: const EdgeInsets.symmetric(horizontal: 12),
                 title: Text(
@@ -326,29 +297,25 @@ class ReceiptPaymentReportScreen extends GetView<ReceiptPaymentReportController>
             if (trailingLabel != null)
               _balanceTile(context, trailingLabel, trailingAmount),
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-              decoration: BoxDecoration(
-                color: Theme.of(context)
-                    .colorScheme
-                    .surfaceContainerHighest
-                    .withValues(alpha: .75),
-                borderRadius: const BorderRadius.vertical(
-                  bottom: Radius.circular(16),
-                ),
-              ),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 13),
+              color: const Color(0xFF23263A),
               child: Row(
                 children: <Widget>[
                   Expanded(
                     child: Text(
                       'Total',
                       style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        color: Colors.white,
                         fontWeight: FontWeight.w800,
                       ),
                     ),
                   ),
                   Text(
                     controller.formatCurrency(total),
-                    style: TextStyle(color: color, fontWeight: FontWeight.w800),
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: color,
+                      fontWeight: FontWeight.w800,
+                    ),
                   ),
                 ],
               ),
@@ -376,6 +343,37 @@ class ReceiptPaymentReportScreen extends GetView<ReceiptPaymentReportController>
     );
   }
 
+  Widget _pill(
+    BuildContext context,
+    String label,
+    Color color, {
+    IconData? icon,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: .10),
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: <Widget>[
+          if (icon != null) ...<Widget>[
+            Icon(icon, size: 12, color: color),
+            const SizedBox(width: 6),
+          ],
+          Text(
+            label,
+            style: Theme.of(context).textTheme.labelMedium?.copyWith(
+              color: color,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildLedgerTable(
     BuildContext context,
     List<Map<String, dynamic>> ledgers,
@@ -388,9 +386,7 @@ class ReceiptPaymentReportScreen extends GetView<ReceiptPaymentReportController>
 
     final tableRows = <DataRow>[
       ...ledgers.map((row) {
-        final account = row['account'] is Map<String, dynamic>
-            ? row['account'] as Map<String, dynamic>
-            : <String, dynamic>{};
+        final account = _mapOf(row['account']);
         final id = _asInt(account['id']);
         return DataRow(
           cells: <DataCell>[
@@ -490,6 +486,26 @@ class ReceiptPaymentReportScreen extends GetView<ReceiptPaymentReportController>
   }
 
   int? _asInt(dynamic value) => int.tryParse(value?.toString() ?? '');
+
+  Map<String, dynamic> _mapOf(dynamic value) {
+    if (value is Map<String, dynamic>) {
+      return value;
+    }
+    if (value is Map) {
+      return Map<String, dynamic>.from(value);
+    }
+    return <String, dynamic>{};
+  }
+
+  List<Map<String, dynamic>> _listOfMaps(dynamic value) {
+    if (value is! List) {
+      return <Map<String, dynamic>>[];
+    }
+    return value
+        .whereType<Map>()
+        .map((item) => Map<String, dynamic>.from(item))
+        .toList(growable: false);
+  }
 
   String _dateRangeLabel() {
     return '${controller.formatDate(controller.fromDateController.text)} to ${controller.formatDate(controller.toDateController.text)}';

@@ -69,6 +69,11 @@ class LedgerReportController extends BaseReportController {
   @override
   Future<void> loadReport() async {
     await super.loadReport();
+    if (_applyEntriesFromReportData()) {
+      isLoadingEntries.value = false;
+      isLoadingMoreEntries.value = false;
+      return;
+    }
     await loadEntries(reset: true);
   }
 
@@ -146,14 +151,42 @@ class LedgerReportController extends BaseReportController {
     }
   }
 
+  bool _applyEntriesFromReportData() {
+    final data = reportData['data'];
+    if (data is! Map<String, dynamic>) {
+      return false;
+    }
+    final rawEntries = data['entries'];
+    if (rawEntries is! List) {
+      return false;
+    }
+
+    final mapped = rawEntries
+        .whereType<Map>()
+        .map((item) => Map<String, dynamic>.from(item))
+        .toList(growable: false);
+
+    entries.assignAll(
+      _mergeEntries(
+        mapped,
+        base: const <Map<String, dynamic>>[],
+      ),
+    );
+    entriesCurrentPage.value = 1;
+    entriesLastPage.value = 1;
+    entriesTotal.value = mapped.length;
+    return true;
+  }
+
   void _applyEntryPage(dynamic result, {required bool reset}) {
     entriesCurrentPage.value = result.currentPage;
     entriesLastPage.value = result.lastPage;
     entriesTotal.value = result.total;
-    final mapped = result.items
+    final mapped = List<Map<String, dynamic>>.from(
+      (result.items as List)
         .whereType<Map>()
-        .map((item) => Map<String, dynamic>.from(item))
-        .toList();
+        .map((item) => Map<String, dynamic>.from(item)),
+    );
     if (reset) {
       entries.assignAll(
         _mergeEntries(
@@ -165,7 +198,7 @@ class LedgerReportController extends BaseReportController {
       entries.assignAll(
         _mergeEntries(
           mapped,
-          base: entries,
+          base: entries.toList(growable: false),
         ),
       );
     }

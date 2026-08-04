@@ -143,26 +143,7 @@ class CreditorsOutstandingReportScreen
               title: 'Outstanding Creditors',
               icon: FontAwesomeIcons.tableList,
               iconColor: _primaryColor,
-              trailing: Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: <Widget>[
-                  Text(
-                    _dateRangeLabel(),
-                    style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                      color: const Color(0xFF64748B),
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    controller.formatCurrency(total),
-                    style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                      color: _primaryColor,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                ],
-              ),
+              trailing: _buildSectionMeta(context, total),
               child: rows.isEmpty
                   ? _buildEmptyState(theme)
                   : _buildCreditorsTable(
@@ -198,6 +179,47 @@ class CreditorsOutstandingReportScreen
 
   String _dateRangeLabel() {
     return '${controller.formatDate(controller.fromDateController.text)} to ${controller.formatDate(controller.toDateController.text)}';
+  }
+
+  Widget _buildSectionMeta(BuildContext context, double total) {
+    return Wrap(
+      spacing: 8,
+      runSpacing: 6,
+      alignment: WrapAlignment.start,
+      crossAxisAlignment: WrapCrossAlignment.center,
+      children: <Widget>[
+        _sectionPill(
+          context,
+          _dateRangeLabel(),
+          const Color(0xFF64748B),
+        ),
+        _sectionPill(
+          context,
+          controller.formatCurrency(total),
+          _primaryColor,
+        ),
+      ],
+    );
+  }
+
+  Widget _sectionPill(BuildContext context, String text, Color color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: .10),
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Text(
+        text,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: Theme.of(context).textTheme.labelMedium?.copyWith(
+          color: color,
+          fontWeight: FontWeight.w800,
+          fontSize: 12,
+        ),
+      ),
+    );
   }
 
   List<Map<String, dynamic>> _getCreditorRows(dynamic report) {
