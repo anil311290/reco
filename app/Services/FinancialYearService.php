@@ -154,6 +154,7 @@ class FinancialYearService
             \App\Models\Ledger::where('voucher_id', $voucher->id)->update([
                 'reference_type' => 'fy_opening_balance',
                 'reference_id' => $targetFy->id,
+                'is_opening_balance' => true,
             ]);
 
             foreach ($voucher->lines as $line) {

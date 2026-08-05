@@ -24,7 +24,7 @@ class AccountSeeder extends Seeder
 
         /*
          | Default system ledgers (fixed account codes):
-         | 1000 Opening Balance Difference — balancing suspense
+         | 1000 Opening Balance — balancing suspense
          | 1100 Purchase Tax — tax on purchase invoice lines
          | 1250 Accounts Receivable (AR) — debtors control
          | 1251 Sales Tax — tax on sales invoice lines
@@ -36,7 +36,7 @@ class AccountSeeder extends Seeder
         $accounts = [
             [
                 'account_code' => Account::CODE_SUSPENSE,
-                'account_name' => 'Opening Balance Difference',
+                'account_name' => 'Opening Balance',
                 'account_type' => 'asset',
                 'balance_type' => 'debit',
                 'opening_balance' => 0,

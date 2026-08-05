@@ -175,7 +175,7 @@ class Account extends Model
 
     /**
      * Account code ranges:
-     *   1000         → Opening Balance Difference (system suspense)
+    *   1000         → Opening Balance (system suspense)
      *   1001–1099    → Assets (user)
      *   1100         → Purchase Tax (system, reserved)
      *   1101–1249    → Assets (user)
@@ -200,7 +200,7 @@ class Account extends Model
 
     /** Codes reserved for system accounts — cannot be assigned to user accounts */
     public const RESERVED_CODES = [
-        '1000' => 'Opening Balance Difference',
+        '1000' => 'Opening Balance',
         '1100' => 'Purchase Tax',
         '1250' => 'Accounts Receivable',
         '1251' => 'Sales Tax',

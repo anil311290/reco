@@ -54,7 +54,7 @@ class PartyTest extends TestCase
             'company_id' => $this->company->id,
             'financial_year_id' => $this->financialYear->id,
             'account_code' => Account::CODE_SUSPENSE,
-            'account_name' => 'Opening Balance Difference',
+            'account_name' => 'Opening Balance',
             'account_type' => 'asset',
             'opening_balance' => 0,
             'is_system' => true,
@@ -197,7 +197,7 @@ class PartyTest extends TestCase
         foreach ([
             [Account::CODE_AR, 'Accounts Receivable', 'asset'],
             [Account::CODE_AP, 'Accounts Payable', 'liability'],
-            [Account::CODE_SUSPENSE, 'Opening Balance Difference', 'asset'],
+            [Account::CODE_SUSPENSE, 'Opening Balance', 'asset'],
         ] as [$code, $name, $type]) {
             Account::factory()->create([
                 'company_id' => $otherCompany->id,

@@ -388,7 +388,8 @@ class AccountService
     public function getForDropdown(int $companyId, ?string $type = null): array
     {
         $query = Account::where('company_id', $companyId)
-            ->where('is_active', true);
+            ->where('is_active', true)
+            ->where('account_code', '!=', Account::CODE_SUSPENSE);
 
         if ($type) {
             $query->where('account_type', $type);
@@ -417,6 +418,7 @@ class AccountService
         $query = Account::query()
             ->where('company_id', $companyId)
             ->where('is_active', true)
+            ->where('account_code', '!=', Account::CODE_SUSPENSE)
             ->cashBankOd();
 
         $financialYearId ??= FinancialYear::getCurrent($companyId)?->id ?? 0;
@@ -540,7 +542,7 @@ class AccountService
         Account::query()
             ->where('company_id', $companyId)
             ->where('is_active', true)
-            ->whereNotIn('account_code', [Account::CODE_AR, Account::CODE_AP])
+            ->whereNotIn('account_code', [Account::CODE_SUSPENSE, Account::CODE_AR, Account::CODE_AP])
             ->when(
                 $excludedTransactionModes !== [],
                 // Cash / Bank / OD contra ledgers are controlled by the boolean
@@ -606,7 +608,7 @@ class AccountService
     ): int {
         $defaults = [
             Account::CODE_SUSPENSE => [
-                'account_name' => 'Opening Balance Difference',
+                'account_name' => 'Opening Balance',
                 'account_type' => 'asset',
                 'balance_type' => 'debit',
                 'remarks' => 'System suspense ledger used for balancing opening entries.',
@@ -672,6 +674,7 @@ class AccountService
                     'account_name' => $meta['account_name'],
                     'account_type' => $meta['account_type'],
                     'entry_source' => 'system',
+                    'is_cash_bank_od' => false,
                     'opening_balance' => 0,
                     'balance_type' => $meta['balance_type'],
                     'opening_date' => now()->toDateString(),
@@ -696,6 +699,7 @@ class AccountService
                 'account_name' => $meta['account_name'],
                 'account_type' => $meta['account_type'],
                 'entry_source' => 'system',
+                'is_cash_bank_od' => false,
                 'balance_type' => $meta['balance_type'],
                 'remarks' => $meta['remarks'],
                 'is_system' => true,
