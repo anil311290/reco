@@ -36,6 +36,8 @@ use App\Http\Controllers\Auth\ForgotPasswordController;
 use App\Http\Controllers\Auth\ResetPasswordController;
 use App\Http\Controllers\Auth\VerificationController;
 use App\Http\Controllers\Auth\ConfirmPasswordController;
+use App\Http\Controllers\Admin\DatabaseBackupController;
+use App\Http\Controllers\BackupLinkController;
 use App\Http\Middleware\CheckPermission;
 use App\Http\Middleware\CheckRole;
 use Illuminate\Support\Facades\Route;
@@ -71,6 +73,10 @@ Route::get('/USER_GUIDE.html', fn () => redirect()->route('user-guide'));
 
 // Public webhook endpoints (Razorpay)
 Route::post('/webhooks/razorpay', [WebhookController::class, 'razorpay'])->name('webhooks.razorpay');
+
+Route::get('/backup/download/{company}', [BackupLinkController::class, 'download'])
+    ->middleware(['signed', 'throttle:10,1'])
+    ->name('backup.signed-download');
 
 // Registration
 Route::get('/register', [RegisterController::class, 'showRegistrationForm'])->name('register');
@@ -139,6 +145,15 @@ Route::prefix('admin')->name('admin.')->group(function () {
                 ->middleware(CheckPermission::class . ':settings.edit');
             Route::get('settings/theme-css', [SettingsController::class, 'getThemeCss'])
                 ->name('settings.theme-css');
+            Route::get('settings/backup/download', [DatabaseBackupController::class, 'download'])
+                ->name('settings.backup.download')
+                ->middleware(CheckPermission::class . ':settings.edit');
+            Route::post('settings/backup/restore', [DatabaseBackupController::class, 'restore'])
+                ->name('settings.backup.restore')
+                ->middleware(CheckPermission::class . ':settings.edit');
+            Route::put('settings/backup/automation', [DatabaseBackupController::class, 'updateAutomation'])
+                ->name('settings.backup.automation')
+                ->middleware(CheckPermission::class . ':settings.edit');
         });
 
         // User Profile
