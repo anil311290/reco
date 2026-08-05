@@ -59,6 +59,8 @@ class DatabaseBackupService
 
     public function restoreFromSqlUpload(UploadedFile $file): void
     {
+        $this->assertValidSqlBackupFile($file);
+
         $connection = $this->getDatabaseConnectionConfig();
 
         if (($connection['driver'] ?? '') !== 'mysql') {
@@ -81,6 +83,35 @@ class DatabaseBackupService
 
         if (!$process->isSuccessful()) {
             throw new RuntimeException('Restore failed. ' . $this->cleanCliError($stderr));
+        }
+    }
+
+    protected function assertValidSqlBackupFile(UploadedFile $file): void
+    {
+        $handle = fopen($file->getRealPath(), 'rb');
+
+        if ($handle === false) {
+            throw new RuntimeException('Unable to read uploaded backup file.');
+        }
+
+        $sample = (string) fread($handle, 65536);
+        fclose($handle);
+
+        $sample = ltrim($sample, "\xEF\xBB\xBF \t\n\r\0\x0B");
+        if ($sample === '') {
+            throw new RuntimeException('Uploaded backup file is empty.');
+        }
+
+        $lower = strtolower($sample);
+        $looksLikeHtml = str_contains($lower, '<!doctype html')
+            || str_contains($lower, '<html')
+            || str_contains($lower, '<head')
+            || str_contains($lower, '<body');
+
+        if ($looksLikeHtml) {
+            throw new RuntimeException(
+                'Uploaded file is not a valid SQL backup. It appears to be an HTML page (login/error page). Please generate a fresh backup and upload that SQL file.'
+            );
         }
     }
 
