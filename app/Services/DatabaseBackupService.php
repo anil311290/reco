@@ -50,7 +50,7 @@ class DatabaseBackupService
             });
 
             if (!$process->isSuccessful()) {
-                throw new RuntimeException('Backup generation failed. ' . trim($stderr));
+                throw new RuntimeException('Backup generation failed. ' . $this->cleanCliError($stderr));
             }
         }, $filename, [
             'Content-Type' => 'application/sql',
@@ -80,7 +80,7 @@ class DatabaseBackupService
         });
 
         if (!$process->isSuccessful()) {
-            throw new RuntimeException('Restore failed. ' . trim($stderr));
+            throw new RuntimeException('Restore failed. ' . $this->cleanCliError($stderr));
         }
     }
 
@@ -118,9 +118,9 @@ class DatabaseBackupService
             '--single-transaction',
             '--quick',
             '--skip-lock-tables',
+            '--skip-ssl',
             '--routines',
             '--triggers',
-            '--events',
             '--default-character-set=utf8mb4',
             '--host=' . (string) ($connection['host'] ?? '127.0.0.1'),
             '--port=' . (string) ($connection['port'] ?? '3306'),
@@ -145,6 +145,7 @@ class DatabaseBackupService
 
         $command = [
             'mysql',
+            '--skip-ssl',
             '--host=' . (string) ($connection['host'] ?? '127.0.0.1'),
             '--port=' . (string) ($connection['port'] ?? '3306'),
             '--user=' . (string) ($connection['username'] ?? ''),
@@ -168,5 +169,18 @@ class DatabaseBackupService
         }
 
         return ['MYSQL_PWD' => $password];
+    }
+
+    protected function cleanCliError(string $stderr): string
+    {
+        $lines = preg_split('/\r\n|\r|\n/', trim($stderr)) ?: [];
+
+        $filtered = array_values(array_filter($lines, function (string $line): bool {
+            return !str_contains($line, 'WARNING: option --ssl-verify-server-cert is disabled, because of an insecure passwordless login.');
+        }));
+
+        $message = trim(implode(PHP_EOL, $filtered));
+
+        return $message !== '' ? $message : 'Unknown database client error.';
     }
 }
