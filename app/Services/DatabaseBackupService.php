@@ -94,15 +94,22 @@ class DatabaseBackupService
             throw new RuntimeException('Unable to read uploaded backup file.');
         }
 
-        $sample = (string) fread($handle, 65536);
+        $headSample = (string) fread($handle, 65536);
+
+        $tailSample = '';
+        $size = $file->getSize();
+        if (is_int($size) && $size > 65536) {
+            fseek($handle, max(0, $size - 65536));
+            $tailSample = (string) fread($handle, 65536);
+        }
         fclose($handle);
 
-        $sample = ltrim($sample, "\xEF\xBB\xBF \t\n\r\0\x0B");
+        $sample = ltrim($headSample, "\xEF\xBB\xBF \t\n\r\0\x0B");
         if ($sample === '') {
             throw new RuntimeException('Uploaded backup file is empty.');
         }
 
-        $lower = strtolower($sample);
+        $lower = strtolower($sample . "\n" . $tailSample);
         $looksLikeHtml = str_contains($lower, '<!doctype html')
             || str_contains($lower, '<html')
             || str_contains($lower, '<head')
@@ -204,6 +211,11 @@ class DatabaseBackupService
 
     protected function cleanCliError(string $stderr): string
     {
+        $lowerStderr = strtolower($stderr);
+        if (str_contains($lowerStderr, '<!doctype html') || str_contains($lowerStderr, '<html')) {
+            return 'Uploaded file is not a valid SQL backup. It contains HTML content (likely login/error page response mixed into SQL). Please generate a fresh backup file and upload again.';
+        }
+
         $lines = preg_split('/\r\n|\r|\n/', trim($stderr)) ?: [];
 
         $filtered = array_values(array_filter($lines, function (string $line): bool {
