@@ -121,7 +121,6 @@ class DatabaseBackupService
             '--routines',
             '--triggers',
             '--events',
-            '--set-gtid-purged=OFF',
             '--default-character-set=utf8mb4',
             '--host=' . (string) ($connection['host'] ?? '127.0.0.1'),
             '--port=' . (string) ($connection['port'] ?? '3306'),
