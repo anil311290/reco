@@ -41,20 +41,23 @@ class DatabaseBackupService
         }
 
         $stderr = '';
-        $process = new Process($command, null, $env);
-        $process->setTimeout(0);
-        $process->setIdleTimeout(0);
-        $process->run(function (string $type, string $buffer) use (&$stderr, $tempHandle): void {
-            if ($type === Process::OUT) {
-                fwrite($tempHandle, $buffer);
-                return;
-            }
+        $success = $this->runDumpProcess($command, $env, $tempHandle, $stderr);
 
-            $stderr .= $buffer;
-        });
+        if (!$success && $this->shouldRetryWithoutRoutines($stderr)) {
+            ftruncate($tempHandle, 0);
+            rewind($tempHandle);
+            $stderr = '';
+            $fallbackCommand = array_values(array_filter(
+                $command,
+                fn (string $arg): bool => $arg !== '--routines'
+            ));
+
+            $success = $this->runDumpProcess($fallbackCommand, $env, $tempHandle, $stderr);
+        }
+
         fclose($tempHandle);
 
-        if (!$process->isSuccessful()) {
+        if (!$success) {
             @unlink($tempPath);
             throw new RuntimeException('Backup generation failed. ' . $this->cleanCliError($stderr));
         }
@@ -232,5 +235,31 @@ class DatabaseBackupService
         $message = trim(implode(PHP_EOL, $filtered));
 
         return $message !== '' ? $message : 'Unknown database client error.';
+    }
+
+    protected function runDumpProcess(array $command, array $env, $outputHandle, string &$stderr): bool
+    {
+        $process = new Process($command, null, $env);
+        $process->setTimeout(0);
+        $process->setIdleTimeout(0);
+        $process->run(function (string $type, string $buffer) use (&$stderr, $outputHandle): void {
+            if ($type === Process::OUT) {
+                fwrite($outputHandle, $buffer);
+                return;
+            }
+
+            $stderr .= $buffer;
+        });
+
+        return $process->isSuccessful();
+    }
+
+    protected function shouldRetryWithoutRoutines(string $stderr): bool
+    {
+        $lower = strtolower($stderr);
+
+        return str_contains($lower, 'show function status')
+            || str_contains($lower, 'column count of mysql.proc is wrong')
+            || str_contains($lower, 'error 1558');
     }
 }
