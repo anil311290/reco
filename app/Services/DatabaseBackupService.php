@@ -29,32 +29,39 @@ class DatabaseBackupService
 
         $command = $this->buildMysqlDumpCommand($connection);
         $env = $this->buildMySqlEnv($connection);
+        $tempPath = tempnam(sys_get_temp_dir(), 'reco_backup_');
+        if ($tempPath === false) {
+            throw new RuntimeException('Unable to create temporary backup file.');
+        }
 
-        return response()->streamDownload(function () use ($command, $env): void {
-            $stderr = '';
+        $tempHandle = fopen($tempPath, 'wb');
+        if ($tempHandle === false) {
+            @unlink($tempPath);
+            throw new RuntimeException('Unable to open temporary backup file for writing.');
+        }
 
-            $process = new Process($command, null, $env);
-            $process->setTimeout(0);
-            $process->setIdleTimeout(0);
-            $process->run(function (string $type, string $buffer) use (&$stderr): void {
-                if ($type === Process::OUT) {
-                    echo $buffer;
-                    if (ob_get_level() > 0) {
-                        ob_flush();
-                    }
-                    flush();
-                    return;
-                }
-
-                $stderr .= $buffer;
-            });
-
-            if (!$process->isSuccessful()) {
-                throw new RuntimeException('Backup generation failed. ' . $this->cleanCliError($stderr));
+        $stderr = '';
+        $process = new Process($command, null, $env);
+        $process->setTimeout(0);
+        $process->setIdleTimeout(0);
+        $process->run(function (string $type, string $buffer) use (&$stderr, $tempHandle): void {
+            if ($type === Process::OUT) {
+                fwrite($tempHandle, $buffer);
+                return;
             }
-        }, $filename, [
-            'Content-Type' => 'application/sql',
-        ]);
+
+            $stderr .= $buffer;
+        });
+        fclose($tempHandle);
+
+        if (!$process->isSuccessful()) {
+            @unlink($tempPath);
+            throw new RuntimeException('Backup generation failed. ' . $this->cleanCliError($stderr));
+        }
+
+        return response()
+            ->download($tempPath, $filename, ['Content-Type' => 'application/sql'])
+            ->deleteFileAfterSend(true);
     }
 
     public function restoreFromSqlUpload(UploadedFile $file): void
