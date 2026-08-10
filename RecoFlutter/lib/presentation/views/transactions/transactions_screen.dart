@@ -94,7 +94,12 @@ class TransactionsScreen extends StatelessWidget {
           ),
           floatingActionButton: MasterFab(
             label: _fabLabel(controller.selectedTab.value),
-            onPressed: () => _openCreateFlow(controller.selectedTab.value),
+            onPressed: () async {
+              await _openCreateFlow(
+                controller: controller,
+                tab: controller.selectedTab.value,
+              );
+            },
           ),
         );
       },
@@ -112,26 +117,34 @@ class TransactionsScreen extends StatelessWidget {
     };
   }
 
-  void _openCreateFlow(TransactionsTab tab) {
+  Future<void> _openCreateFlow({
+    required TransactionsShellController controller,
+    required TransactionsTab tab,
+  }) async {
+    dynamic result;
     switch (tab) {
       case TransactionsTab.all:
-        Get.to(() => const TransactionOptionsScreen());
+        result = await Get.to(() => const TransactionOptionsScreen());
         break;
       case TransactionsTab.sales:
-        openTransactionForm('sales');
+        result = await openTransactionForm('sales');
         break;
       case TransactionsTab.purchases:
-        openTransactionForm('purchase');
+        result = await openTransactionForm('purchase');
         break;
       case TransactionsTab.payments:
-        openTransactionForm('payment');
+        result = await openTransactionForm('payment');
         break;
       case TransactionsTab.receipts:
-        openTransactionForm('receipt');
+        result = await openTransactionForm('receipt');
         break;
       case TransactionsTab.adjustments:
-        openTransactionForm('adjustment');
+        result = await openTransactionForm('adjustment');
         break;
+    }
+
+    if (result == true) {
+      await controller.refreshAll();
     }
   }
 }

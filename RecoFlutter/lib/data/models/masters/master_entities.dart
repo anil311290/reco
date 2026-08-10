@@ -45,8 +45,13 @@ class LookupOption {
     final rawId = json['id']?.toString();
     return LookupOption(
       id: _parseInt(json['id']),
-      label: (json['name'] ?? json['label'] ?? '').toString(),
-      code: json['code']?.toString(),
+      label: (json['text'] ??
+              json['account_name'] ??
+              json['name'] ??
+              json['label'] ??
+              '')
+          .toString(),
+      code: (json['code'] ?? json['account_code'])?.toString(),
       rawId: rawId,
       group: json['group']?.toString(),
       kind: json['kind']?.toString(),
@@ -81,6 +86,7 @@ class PartyEntity {
     this.remarks = '',
     this.isActive = true,
     this.typeLocked = false,
+    this.linkedLedgerName = '',
   });
 
   final int? id;
@@ -106,9 +112,18 @@ class PartyEntity {
   final String remarks;
   final bool isActive;
   final bool typeLocked;
+  final String linkedLedgerName;
 
   factory PartyEntity.fromRecord(Map<String, dynamic> record) {
     final payload = _recordPayload(record);
+    final linkedLedgerRaw =
+        payload['linked_ledger'] ??
+        payload['linked_ledger_name'] ??
+        payload['control_ledger'] ??
+        payload['control_ledger_name'] ??
+        payload['ledger_name'] ??
+        payload['linked_account_name'];
+
     return PartyEntity(
       id: _tryParseInt(payload['id']),
       localId: record['local_id']?.toString(),
@@ -134,6 +149,10 @@ class PartyEntity {
       remarks: (payload['remarks'] ?? '').toString(),
       isActive: _parseBool(payload['is_active'], fallback: true),
       typeLocked: _parseBool(payload['type_locked'], fallback: false),
+      linkedLedgerName: switch (linkedLedgerRaw) {
+        Map<dynamic, dynamic> map => (map['name'] ?? map['label'] ?? '').toString(),
+        _ => (linkedLedgerRaw ?? '').toString(),
+      },
     );
   }
 
@@ -159,6 +178,15 @@ class PartyEntity {
       if (state.isNotEmpty) 'state': state,
       if (city.isNotEmpty) 'city': city,
     };
+  }
+
+  String get linkedLedgerDisplay {
+    if (linkedLedgerName.trim().isNotEmpty) {
+      return linkedLedgerName.trim();
+    }
+    return type.toLowerCase() == 'creditor'
+        ? '1500 - Accounts Payable'
+        : '1250 - Accounts Receivable';
   }
 }
 

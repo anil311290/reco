@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
+import '../../../../core/utils/app_date_formatter.dart';
 import '../../../../data/models/masters/master_entities.dart';
+import '../../../../data/repositories/masters/financial_years_repository.dart';
 import '../../../controllers/masters/masters_lookup_controller.dart';
 import '../../../controllers/masters/parties_controller.dart';
+import '../../../widgets/common/app_help_dialog.dart';
 import '../../../widgets/common/common_button.dart';
 import '../../../widgets/common/custom_text_field.dart';
 
@@ -28,17 +31,19 @@ class _PartyFormSheetState extends State<PartyFormSheet> {
   final _gstController = TextEditingController();
   final _panController = TextEditingController();
   final _amountController = TextEditingController(text: '0');
-  final _dateController = TextEditingController();
   final _remarksController = TextEditingController();
 
   late final PartiesController controller;
   late final MastersLookupController lookupController;
+  late final FinancialYearsRepository _financialYearsRepository;
   bool isSaving = false;
   String partyType = 'debtor';
   String openingBalanceType = 'debit';
   int? selectedStateId;
   int? selectedCityId;
   bool _isActive = true;
+  String _openingDateApi = AppDateFormatter.toApiDate(DateTime.now());
+  String _openingDateDisplay = AppDateFormatter.formatDisplay(DateTime.now());
 
   bool get _isEditMode => widget.entity != null;
   bool get _isTypeLocked => widget.entity?.typeLocked ?? false;
@@ -48,6 +53,7 @@ class _PartyFormSheetState extends State<PartyFormSheet> {
     super.initState();
     controller = Get.find<PartiesController>();
     lookupController = Get.find<MastersLookupController>();
+    _financialYearsRepository = Get.find<FinancialYearsRepository>();
     final entity = widget.entity;
     _codeController.text = entity?.partyCode ?? '';
     _nameController.text = entity?.name ?? '';
@@ -58,19 +64,16 @@ class _PartyFormSheetState extends State<PartyFormSheet> {
     _gstController.text = entity?.gstin ?? '';
     _panController.text = entity?.panNumber ?? '';
     _amountController.text = '${entity?.openingBalance ?? 0}';
-    _dateController.text = entity?.openingDate ?? '';
     _remarksController.text = entity?.remarks ?? '';
     partyType = entity?.type ?? widget.initialType ?? 'debtor';
     openingBalanceType = entity?.openingBalanceType ?? 'debit';
     selectedStateId = entity?.stateId;
     selectedCityId = entity?.cityId;
     _isActive = entity?.isActive ?? true;
-    if (_dateController.text.trim().isEmpty) {
-      _dateController.text = DateTime.now().toIso8601String().split('T').first;
-    }
     if (selectedStateId != null) {
       lookupController.loadCitiesForState(selectedStateId);
     }
+    _loadOpeningDateDefault();
   }
 
   @override
@@ -84,7 +87,6 @@ class _PartyFormSheetState extends State<PartyFormSheet> {
     _gstController.dispose();
     _panController.dispose();
     _amountController.dispose();
-    _dateController.dispose();
     _remarksController.dispose();
     super.dispose();
   }
@@ -92,28 +94,33 @@ class _PartyFormSheetState extends State<PartyFormSheet> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final scheme = theme.colorScheme;
 
     return Scaffold(
       appBar: AppBar(
         title: Text(
           widget.entity == null ? 'Create Party' : 'Edit Party',
-          style: theme.textTheme.titleLarge?.copyWith(
-                fontWeight: FontWeight.w800,
-              ),
+          style: theme.textTheme.titleMedium?.copyWith(
+            fontWeight: FontWeight.w700,
+          ),
         ),
       ),
       body: SafeArea(
         child: Form(
           key: _formKey,
           child: ListView(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.symmetric(horizontal: 14,vertical: 5),
             children: <Widget>[
-              _buildHero(theme, scheme),
-              const SizedBox(height: 16),
+              _buildHero(theme),
+              if (_isEditMode) ...<Widget>[
+                const SizedBox(height: 12),
+                _buildCodeCard(theme),
+              ],
+              const SizedBox(height: 12),
               _buildMainCard(theme),
-              const SizedBox(height: 16),
-              _buildSideSetupCard(theme),
+              if (_isEditMode) ...<Widget>[
+                const SizedBox(height: 12),
+                _buildSideSetupCard(theme),
+              ],
               const SizedBox(height: 12),
               _buildActionCard(theme),
             ],
@@ -123,9 +130,11 @@ class _PartyFormSheetState extends State<PartyFormSheet> {
     );
   }
 
-  Widget _buildHero(ThemeData theme, ColorScheme scheme) {
+  Widget _buildHero(ThemeData theme) {
+    final scheme = theme.colorScheme;
     return Container(
-      padding: const EdgeInsets.all(16),
+      margin: const EdgeInsets.only(bottom: 4),
+      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(24),
         gradient: LinearGradient(
@@ -158,40 +167,65 @@ class _PartyFormSheetState extends State<PartyFormSheet> {
           const SizedBox(height: 10),
           Text(
             _isEditMode
-                ? 'Edit ${widget.entity?.name ?? 'party'}'
-                : 'Create a new customer or supplier',
-            style: theme.textTheme.titleLarge?.copyWith(
+                ? 'Edit party details'
+                : 'Create a new party',
+            style: theme.textTheme.titleMedium?.copyWith(
               fontWeight: FontWeight.w800,
             ),
           ),
           const SizedBox(height: 6),
           Text(
             _isEditMode
-                ? 'Update contact, tax, address, and status details for ${widget.entity?.partyCode ?? 'this party'}.'
-                : 'Add contact, tax, address, and opening balance details in one place.',
+                ? 'Update contact, tax, address, and status details for ${widget.entity?.name ?? 'this party'}.'
+                : 'Create customer or supplier records with tax, address, and opening balance details in one flow.',
             style: theme.textTheme.bodySmall?.copyWith(
               color: scheme.onSurfaceVariant,
               height: 1.35,
             ),
           ),
-          if (_isEditMode && _codeController.text.trim().isNotEmpty) ...<Widget>[
-            const SizedBox(height: 10),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              decoration: BoxDecoration(
-                color: scheme.primary.withValues(alpha: .10),
-                borderRadius: BorderRadius.circular(999),
-                border: Border.all(color: scheme.primary.withValues(alpha: .14)),
-              ),
-              child: Text(
-                _codeController.text.trim(),
-                style: theme.textTheme.labelMedium?.copyWith(
-                  color: scheme.primary,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCodeCard(ThemeData theme) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: theme.cardColor,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(
+          color: theme.colorScheme.outlineVariant.withValues(alpha: .7),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          Text(
+            'Party Code',
+            style: theme.textTheme.labelMedium?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+              fontWeight: FontWeight.w700,
             ),
-          ],
+          ),
+          const SizedBox(height: 4),
+          Text(
+            _codeController.text.trim().isEmpty
+                ? 'Generated automatically'
+                : _codeController.text.trim(),
+            style: theme.textTheme.titleSmall?.copyWith(
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'Party code is preserved from the existing record.',
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+              height: 1.35,
+            ),
+          ),
         ],
       ),
     );
@@ -199,245 +233,235 @@ class _PartyFormSheetState extends State<PartyFormSheet> {
 
   Widget _buildMainCard(ThemeData theme) {
     return Container(
-      decoration: BoxDecoration(
-        color: theme.cardColor,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: theme.colorScheme.outlineVariant.withValues(alpha: .6),
-        ),
-      ),
+      // decoration: BoxDecoration(
+      //   color: theme.cardColor,
+      //   borderRadius: BorderRadius.circular(20),
+      //   border: Border.all(
+      //     color: theme.colorScheme.outlineVariant.withValues(alpha: .6),
+      //   ),
+      // ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: <Widget>[
-                Text(
-                  'Party Details',
-                  style: theme.textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.w800,
-                    fontSize: 17,
-                  ),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              Text(
+                'Party Details',
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  fontWeight: FontWeight.w700,
+                  fontSize: 16
                 ),
-                const SizedBox(height: 4),
-                Text(
-                  _isEditMode
-                      ? 'Update editable information below.'
-                      : 'Fields marked with * are required.',
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: theme.colorScheme.onSurfaceVariant,
-                  ),
+              ),
+
+              Text(
+                _isEditMode
+                    ? 'Update editable information below.'
+                    : 'Fields marked with * are required.',
+                style: theme.textTheme.labelSmall?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
-          Divider(height: 1, color: theme.dividerColor.withValues(alpha: .45)),
           Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              children: <Widget>[
-                _buildSectionHeader(
-                  theme,
-                  icon: Icons.badge_outlined,
-                  title: 'Identity & Contact',
-                  subtitle: 'Basic party and communication details',
-                ),
-                _twoColumn(
-                  left: CustomTextField(
-                    controller: _nameController,
-                    label: 'Party Name',
-                    hintText: 'e.g., ABC Company',
-                    requiredField: true,
-                    validator: _required,
-                    keyboardType: TextInputType.name,
-                    textInputAction: TextInputAction.next,
-                  ),
-                  right: CustomDropdown<String>(
-                    label: 'Party Type',
-                    items: const <String>['debtor', 'creditor'],
-                    value: partyType,
-                    requiredField: true,
-                    enabled: !_isTypeLocked,
-                    itemLabelBuilder: (value) =>
-                        value == 'debtor' ? 'Customer' : 'Supplier',
-                    validator: _requiredDropdown,
-                    onChanged: (value) =>
-                        setState(() => partyType = value ?? partyType),
-                  ),
-                ),
-                _twoColumn(
-                  left: CustomTextField(
-                    controller: _mobileController,
-                    label: 'Mobile',
-                    hintText: '+91 9876543210',
-                    keyboardType: TextInputType.phone,
-                    textInputAction: TextInputAction.next,
-                  ),
-                  right: CustomTextField(
-                    controller: _emailController,
-                    label: 'Email',
-                    hintText: 'party@example.com',
-                    keyboardType: TextInputType.emailAddress,
-                    textInputAction: TextInputAction.next,
-                  ),
-                ),
-                if (_isTypeLocked) _buildInlineNote(
-                  theme,
-                  Icons.lock_outline_rounded,
-                  'Locked because transactions exist.',
-                ),
-                const SizedBox(height: 6),
-                _buildSectionHeader(
-                  theme,
-                  icon: Icons.receipt_long_outlined,
-                  title: 'Tax Information',
-                  subtitle: 'Optional statutory registration details',
-                ),
-                _twoColumn(
-                  left: CustomTextField(
-                    controller: _gstController,
-                    label: 'GSTIN',
-                    hintText: '22AAAAA0000A1Z5',
-                    keyboardType: TextInputType.text,
-                    textInputAction: TextInputAction.next,
-                  ),
-                  right: CustomTextField(
-                    controller: _panController,
-                    label: 'PAN Number',
-                    hintText: 'AAAAA1111A',
-                    keyboardType: TextInputType.text,
-                    textInputAction: TextInputAction.next,
-                  ),
-                ),
-                const SizedBox(height: 6),
-                _buildSectionHeader(
-                  theme,
-                  icon: Icons.location_on_outlined,
-                  title: 'Billing Address',
-                  subtitle: 'Used on invoices and party documents',
-                ),
-                CustomTextField(
-                  controller: _addressController,
-                  label: 'Address',
-                  hintText: 'Enter complete billing address',
-                  requiredField: true,
-                  maxLines: 3,
-                  validator: _required,
-                  keyboardType: TextInputType.streetAddress,
-                  textInputAction: TextInputAction.newline,
-                ),
-                _twoColumn(
-                  left: Obx(
-                    () => CustomDropdown<int>(
-                      label: 'State',
-                      items: lookupController.states.map((item) => item.id).toList(),
-                      value: selectedStateId,
-                      requiredField: true,
-                      isLoading: lookupController.states.isEmpty,
-                      itemLabelBuilder: (id) => lookupController.states
-                          .firstWhere((item) => item.id == id)
-                          .label,
-                      validator: _requiredDropdown,
-                      onChanged: (value) async {
-                        setState(() {
-                          selectedStateId = value;
-                          selectedCityId = null;
-                        });
-                        await lookupController.loadCitiesForState(value);
-                      },
-                    ),
-                  ),
-                  right: Obx(
-                    () => CustomDropdown<int>(
-                      label: 'City',
-                      items: lookupController.cities.map((item) => item.id).toList(),
-                      value: selectedCityId,
-                      requiredField: true,
-                      enabled: selectedStateId != null,
-                      isLoading:
-                          selectedStateId != null && lookupController.cities.isEmpty,
-                      itemLabelBuilder: (id) => lookupController.cities
-                          .firstWhere((item) => item.id == id)
-                          .label,
-                      validator: _requiredDropdown,
-                      onChanged: (value) =>
-                          setState(() => selectedCityId = value),
-                    ),
-                  ),
-                ),
-                CustomTextField(
-                  controller: _postalController,
-                  label: 'Pincode',
-                  hintText: '400001',
+            padding: const EdgeInsets.symmetric(vertical: 16.0),
+            child: Divider(height: 1, color: theme.dividerColor.withValues(alpha: .45)),
+          ),
+          Column(
+            children: <Widget>[
+              _buildSectionHeader(
+                theme,
+                icon: Icons.badge_outlined,
+                title: 'Identity & Contact',
+                subtitle: 'Basic party and communication details',
+              ),
+              _twoColumn(
+                left: CustomTextField(
+                  controller: _nameController,
+                  label: 'Party Name',
+                  hintText: 'e.g., ABC Company',
                   requiredField: true,
                   validator: _required,
-                  keyboardType: TextInputType.number,
+                  keyboardType: TextInputType.name,
                   textInputAction: TextInputAction.next,
                 ),
-                const SizedBox(height: 6),
-                _buildSectionHeader(
-                  theme,
-                  icon: _isEditMode
-                      ? Icons.shield_outlined
-                      : Icons.account_balance_wallet_outlined,
-                  title: 'Opening Balance',
-                  subtitle: _isEditMode
-                      ? 'Locked financial values'
-                      : 'Set once when creating the party',
+                right: CustomDropdown<String>(
+                  label: 'Party Type',
+                  items: const <String>['debtor', 'creditor'],
+                  value: partyType,
+                  requiredField: true,
+                  enabled: !_isTypeLocked,
+                  itemLabelBuilder: (value) =>
+                      value == 'debtor' ? 'Customer' : 'Supplier',
+                  validator: _requiredDropdown,
+                  onChanged: (value) =>
+                      setState(() => partyType = value ?? partyType),
                 ),
-                _twoColumn(
-                  left: CustomTextField(
-                    controller: _amountController,
-                    label: 'Amount',
-                    hintText: '0.00',
-                    prefixText: '₹ ',
-                    readOnly: _isEditMode,
-                    keyboardType: const TextInputType.numberWithOptions(
-                      decimal: true,
-                    ),
-                    textInputAction: TextInputAction.next,
-                  ),
-                  right: CustomDropdown<String>(
-                    label: 'Balance Type',
-                    items: const <String>['debit', 'credit'],
-                    value: openingBalanceType,
-                    enabled: !_isEditMode,
-                    itemLabelBuilder: (value) =>
-                        value == 'debit' ? 'Debit (DR)' : 'Credit (CR)',
+              ),
+              _twoColumn(
+                left: CustomTextField(
+                  controller: _mobileController,
+                  label: 'Mobile',
+                  hintText: '+91 9876543210',
+                  keyboardType: TextInputType.phone,
+                  textInputAction: TextInputAction.next,
+                ),
+                right: CustomTextField(
+                  controller: _emailController,
+                  label: 'Email',
+                  hintText: 'party@example.com',
+                  keyboardType: TextInputType.emailAddress,
+                  textInputAction: TextInputAction.next,
+                ),
+              ),
+              if (_isTypeLocked) _buildInlineNote(
+                theme,
+                Icons.lock_outline_rounded,
+                'Locked because transactions exist.',
+              ),
+              const SizedBox(height: 6),
+              _buildSectionHeader(
+                theme,
+                icon: Icons.receipt_long_outlined,
+                title: 'Tax Information',
+                subtitle: 'Optional statutory registration details',
+              ),
+              _twoColumn(
+                left: CustomTextField(
+                  controller: _gstController,
+                  label: 'GSTIN',
+                  hintText: '22AAAAA0000A1Z5',
+                  keyboardType: TextInputType.text,
+                  textInputAction: TextInputAction.next,
+                ),
+                right: CustomTextField(
+                  controller: _panController,
+                  label: 'PAN Number',
+                  hintText: 'AAAAA1111A',
+                  keyboardType: TextInputType.text,
+                  textInputAction: TextInputAction.next,
+                ),
+              ),
+              const SizedBox(height: 6),
+              _buildSectionHeader(
+                theme,
+                icon: Icons.location_on_outlined,
+                title: 'Billing Address',
+                subtitle: 'Used on invoices and party documents',
+              ),
+              CustomTextField(
+                controller: _addressController,
+                label: 'Address',
+                hintText: 'Enter complete billing address',
+                requiredField: true,
+                maxLines: 3,
+                validator: _required,
+                keyboardType: TextInputType.streetAddress,
+                textInputAction: TextInputAction.newline,
+              ),
+              _twoColumn(
+                left: Obx(
+                  () => CustomDropdown<int>(
+                    label: 'State',
+                    items: lookupController.states.map((item) => item.id).toList(),
+                    value: selectedStateId,
+                    requiredField: true,
+                    isLoading: lookupController.states.isEmpty,
+                    itemLabelBuilder: (id) => lookupController.states
+                        .firstWhere((item) => item.id == id)
+                        .label,
                     validator: _requiredDropdown,
-                    onChanged: (value) => setState(
-                      () => openingBalanceType = value ?? openingBalanceType,
-                    ),
+                    onChanged: (value) async {
+                      setState(() {
+                        selectedStateId = value;
+                        selectedCityId = null;
+                      });
+                      await lookupController.loadCitiesForState(value);
+                    },
                   ),
                 ),
-                CustomTextField(
-                  controller: _dateController,
-                  label: 'Opening Date',
-                  hintText: DateTime.now().toIso8601String().split('T').first,
-                  readOnly: true,
-                  suffixIcon: Icons.calendar_today_outlined,
-                  onTap: _isEditMode ? null : _pickDate,
+                right: Obx(
+                  () => CustomDropdown<int>(
+                    label: 'City',
+                    items: lookupController.cities.map((item) => item.id).toList(),
+                    value: selectedCityId,
+                    requiredField: true,
+                    enabled: selectedStateId != null,
+                    isLoading:
+                        selectedStateId != null && lookupController.cities.isEmpty,
+                    itemLabelBuilder: (id) => lookupController.cities
+                        .firstWhere((item) => item.id == id)
+                        .label,
+                    validator: _requiredDropdown,
+                    onChanged: (value) =>
+                        setState(() => selectedCityId = value),
+                  ),
                 ),
-                _buildInlineNote(
-                  theme,
-                  Icons.lock_outline_rounded,
-                  _isEditMode
-                      ? 'Opening balance cannot be edited after creation.'
-                      : 'Opening balance cannot be changed after creation.',
+              ),
+              CustomTextField(
+                controller: _postalController,
+                label: 'Pincode',
+                hintText: '400001',
+                requiredField: true,
+                validator: _required,
+                keyboardType: TextInputType.number,
+                textInputAction: TextInputAction.next,
+              ),
+              const SizedBox(height: 6),
+              _buildSectionHeader(
+                theme,
+                icon: _isEditMode
+                    ? Icons.shield_outlined
+                    : Icons.account_balance_wallet_outlined,
+                title: 'Opening Balance',
+                subtitle: _isEditMode
+                    ? 'Locked financial values'
+                    : 'Set once when creating the party',
+              ),
+              _twoColumn(
+                left: CustomTextField(
+                  controller: _amountController,
+                  label: 'Amount',
+                  hintText: '0.00',
+                  prefixText: '₹ ',
+                  readOnly: _isEditMode,
+                  keyboardType: const TextInputType.numberWithOptions(
+                    decimal: true,
+                  ),
+                  textInputAction: TextInputAction.next,
                 ),
-                const SizedBox(height: 6),
-                CustomTextField(
-                  controller: _remarksController,
-                  label: 'Notes',
-                  hintText: 'Add internal notes about this party',
-                  maxLines: 3,
-                  keyboardType: TextInputType.multiline,
-                  textInputAction: TextInputAction.newline,
+                right: CustomDropdown<String>(
+                  label: 'Balance Type',
+                  items: const <String>['debit', 'credit'],
+                  value: openingBalanceType,
+                  enableSearch: false,
+                  enabled: !_isEditMode,
+                  itemLabelBuilder: (value) =>
+                      value == 'debit' ? 'Debit (DR)' : 'Credit (CR)',
+                  validator: _requiredDropdown,
+                  onChanged: (value) => setState(
+                    () => openingBalanceType = value ?? openingBalanceType,
+                  ),
                 ),
-              ],
-            ),
+              ),
+              _buildInlineNote(
+                theme,
+                Icons.lock_outline_rounded,
+                _isEditMode
+                    ? 'Opening balance cannot be edited after creation.'
+                    : 'Opening balance cannot be changed after creation. Opening date is auto-set to current financial year start date: $_openingDateDisplay.',
+              ),
+              const SizedBox(height: 6),
+              CustomTextField(
+                controller: _remarksController,
+                label: 'Notes',
+                hintText: 'Add internal notes about this party',
+                maxLines: 3,
+                keyboardType: TextInputType.multiline,
+                textInputAction: TextInputAction.newline,
+              ),
+            ],
           ),
         ],
       ),
@@ -445,12 +469,11 @@ class _PartyFormSheetState extends State<PartyFormSheet> {
   }
 
   Widget _buildSideSetupCard(ThemeData theme) {
-    final summaryTitle = _isEditMode ? 'Party Summary' : 'Party Setup';
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: theme.cardColor,
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(18),
         border: Border.all(
           color: theme.colorScheme.outlineVariant.withValues(alpha: .6),
         ),
@@ -459,57 +482,32 @@ class _PartyFormSheetState extends State<PartyFormSheet> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
           Text(
-            summaryTitle,
-            style: theme.textTheme.titleMedium?.copyWith(
+            'Party Summary',
+            style: theme.textTheme.titleSmall?.copyWith(
               fontWeight: FontWeight.w800,
             ),
           ),
-          const SizedBox(height: 12),
-          ..._isEditMode ? <Widget>[
-            _buildInfoStat(
-              theme,
-              label: 'Party Code',
-              value: _codeController.text.trim().isEmpty
-                  ? 'Generated automatically'
-                  : _codeController.text.trim(),
-            ),
-            const SizedBox(height: 10),
-            _buildInfoStat(
-              theme,
-              label: 'Current Type',
-              value: partyType == 'debtor' ? 'Customer' : 'Supplier',
-            ),
-            const SizedBox(height: 10),
-            _buildInfoStat(
-              theme,
-              label: 'Opening Balance',
-              value:
-                  '₹${(double.tryParse(_amountController.text.trim()) ?? 0).toStringAsFixed(2)} ${openingBalanceType == 'debit' ? 'DR' : 'CR'}',
-            ),
-          ] : <Widget>[
-            _buildInfoStat(
-              theme,
-              label: 'Customer',
-              value: 'Money receivable',
-              note:
-                  'Choose Customer when the party normally owes your business.',
-            ),
-            const SizedBox(height: 10),
-            _buildInfoStat(
-              theme,
-              label: 'Supplier',
-              value: 'Money payable',
-              note:
-                  'Choose Supplier when your business normally owes the party.',
-            ),
-            const SizedBox(height: 10),
-            _buildInfoStat(
-              theme,
-              label: 'Party code',
-              value: 'Generated automatically',
-              note: 'Customer and supplier codes are assigned when saved.',
-            ),
-          ],
+          const SizedBox(height: 10),
+          _buildInfoStat(
+            theme,
+            label: 'Party Code',
+            value: _codeController.text.trim().isEmpty
+                ? 'Generated automatically'
+                : _codeController.text.trim(),
+          ),
+          const SizedBox(height: 10),
+          _buildInfoStat(
+            theme,
+            label: 'Current Type',
+            value: partyType == 'debtor' ? 'Customer' : 'Supplier',
+          ),
+          const SizedBox(height: 10),
+          _buildInfoStat(
+            theme,
+            label: 'Opening Balance',
+            value:
+                '₹${(double.tryParse(_amountController.text.trim()) ?? 0).toStringAsFixed(2)} ${openingBalanceType == 'debit' ? 'DR' : 'CR'}',
+          ),
         ],
       ),
     );
@@ -520,40 +518,79 @@ class _PartyFormSheetState extends State<PartyFormSheet> {
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: theme.cardColor,
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(18),
         border: Border.all(
           color: theme.colorScheme.outlineVariant.withValues(alpha: .6),
         ),
       ),
       child: Column(
         children: <Widget>[
+          Row(
+            children: <Widget>[
+              Text(
+                'Party Help',
+                style: theme.textTheme.titleSmall?.copyWith(
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const Spacer(),
+              const AppHelpDialogButton(
+                title: 'Party Setup',
+                tooltip: 'Party setup help',
+                sections: <AppHelpDialogSection>[
+                  AppHelpDialogSection(
+                    title: 'Customer',
+                    message:
+                        'Choose Customer when the party normally owes your business.',
+                  ),
+                  AppHelpDialogSection(
+                    title: 'Supplier',
+                    message:
+                        'Choose Supplier when your business normally owes the party.',
+                  ),
+                  AppHelpDialogSection(
+                    title: 'Party code',
+                    message:
+                        'Customer and supplier codes are assigned automatically when the record is saved.',
+                  ),
+                  AppHelpDialogSection(
+                    title: 'Opening balance',
+                    message:
+                        'Opening balance can be set while creating the party. Opening date is auto-set to the current financial year start date and cannot be changed later.',
+                  ),
+                  AppHelpDialogSection(
+                    title: 'Address details',
+                    message:
+                        'State, city, and pincode are used on invoices and report exports.',
+                  ),
+                ],
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
           SwitchListTile(
             contentPadding: EdgeInsets.zero,
             title: Text(
-              'Active party',
-              style: theme.textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.w800,
+              'Active Party',
+              style: theme.textTheme.titleSmall?.copyWith(
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            subtitle: Text(
+              'Inactive parties won\'t appear in dropdowns',
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
               ),
             ),
             value: _isActive,
             onChanged: (value) => setState(() => _isActive = value),
+            dense: true,
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 10),
           CommonButton(
             text: _isEditMode ? 'Update Party' : 'Create Party',
             isLoading: isSaving,
             onPressed: _submit,
-          ),
-          const SizedBox(height: 10),
-          OutlinedButton(
-            onPressed: isSaving ? null : () => Navigator.of(context).pop(),
-            style: OutlinedButton.styleFrom(
-              minimumSize: const Size.fromHeight(48),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-            ),
-            child: const Text('Cancel'),
           ),
         ],
       ),
@@ -569,7 +606,7 @@ class _PartyFormSheetState extends State<PartyFormSheet> {
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: <Widget>[
           Padding(
             padding: const EdgeInsets.only(top: 1),
@@ -586,8 +623,9 @@ class _PartyFormSheetState extends State<PartyFormSheet> {
               children: <Widget>[
                 Text(
                   title,
-                  style: theme.textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.w800,
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                      fontWeight: FontWeight.w700,
+                      fontSize: 16
                   ),
                 ),
                 const SizedBox(height: 2),
@@ -632,18 +670,26 @@ class _PartyFormSheetState extends State<PartyFormSheet> {
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
           Icon(icon, size: 14, color: theme.colorScheme.onSurfaceVariant),
           const SizedBox(width: 6),
-          Expanded(
-            child: Text(
-              text,
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
-                height: 1.3,
-              ),
+          Text(
+            'Opening balance rule',
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+              fontWeight: FontWeight.w600,
             ),
+          ),
+          const SizedBox(width: 4),
+          AppHelpDialogButton(
+            title: 'Opening Balance Rule',
+            tooltip: 'Opening balance help',
+            sections: <AppHelpDialogSection>[
+              AppHelpDialogSection(
+                title: 'Rule',
+                message: text,
+              ),
+            ],
           ),
         ],
       ),
@@ -696,15 +742,21 @@ class _PartyFormSheetState extends State<PartyFormSheet> {
     );
   }
 
-  Future<void> _pickDate() async {
-    final picked = await showDatePicker(
-      context: context,
-      initialDate: DateTime.now(),
-      firstDate: DateTime(2000),
-      lastDate: DateTime(2100),
-    );
-    if (picked != null) {
-      _dateController.text = picked.toIso8601String().split('T').first;
+  Future<void> _loadOpeningDateDefault() async {
+    try {
+      final currentFinancialYear =
+          await _financialYearsRepository.getCurrentFinancialYear();
+      final startDate = currentFinancialYear?.startDate.trim();
+      if (startDate != null && startDate.isNotEmpty) {
+        _openingDateApi = startDate;
+        _openingDateDisplay = AppDateFormatter.formatDisplay(startDate);
+      }
+    } catch (_) {
+      _openingDateApi = AppDateFormatter.toApiDate(DateTime.now());
+      _openingDateDisplay = AppDateFormatter.formatDisplay(DateTime.now());
+    }
+    if (mounted) {
+      setState(() {});
     }
   }
 
@@ -739,7 +791,7 @@ class _PartyFormSheetState extends State<PartyFormSheet> {
           panNumber: _panController.text.trim(),
           openingBalance: double.tryParse(_amountController.text.trim()) ?? 0,
           openingBalanceType: openingBalanceType,
-          openingDate: _dateController.text.trim(),
+          openingDate: widget.entity?.openingDate ?? _openingDateApi,
           remarks: _remarksController.text.trim(),
           isActive: _isActive,
         ),

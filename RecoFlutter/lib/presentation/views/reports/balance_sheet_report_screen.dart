@@ -3,6 +3,7 @@ import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:get/get.dart';
 
 import '../../../core/config/api_endpoints.dart';
+import '../../../core/utils/app_date_formatter.dart';
 import '../../controllers/reports/balance_sheet_report_controller.dart';
 import '../../controllers/reports/report_lookup_controller.dart';
 import '../../widgets/common/custom_text_field.dart';
@@ -53,8 +54,16 @@ class BalanceSheetReportScreen extends GetView<BalanceSheetReportController> {
                       );
                       return (item['name'] ?? 'FY').toString();
                     },
-                    onChanged: (value) => controller.financialYearId.value = value,
+                    onChanged: (value) => controller.applyFinancialYear(value, lookup),
                   ),
+
+                  ReportDateRangeRow(
+                    fromController: controller.fromDateController,
+                    toController: controller.toDateController,
+                    onFromTap: () => _pickBalanceSheetDate(context, controller.fromDateController),
+                    onToTap: () => _pickBalanceSheetDate(context, controller.toDateController),
+                  ),
+                  const SizedBox(height: 12),
                   ReportActionBar(
                     children: <Widget>[
                       ReportPrimaryButton(
@@ -178,12 +187,25 @@ class BalanceSheetReportScreen extends GetView<BalanceSheetReportController> {
               ? FontAwesomeIcons.fileCircleMinus
               : FontAwesomeIcons.chartPie,
       iconColor: color,
-      trailing: Text(
-        controller.formatCurrency(section is Map<String, dynamic> ? section['total'] : 0),
-        style: Theme.of(context).textTheme.labelLarge?.copyWith(
-          color: color,
-          fontWeight: FontWeight.w700,
-        ),
+      trailing: Wrap(
+        spacing: 8,
+        runSpacing: 6,
+        alignment: WrapAlignment.start,
+        crossAxisAlignment: WrapCrossAlignment.center,
+        children: <Widget>[
+          _sectionPill(
+            context,
+            _dateRangeLabelForBalanceSheet(controller),
+            const Color(0xFF64748B),
+          ),
+          _sectionPill(
+            context,
+            controller.formatCurrency(
+              section is Map<String, dynamic> ? section['total'] : 0,
+            ),
+            color,
+          ),
+        ],
       ),
       child: accounts.isEmpty
           ? _EmptyBalanceSection(
@@ -433,7 +455,31 @@ class BalanceSheetReportScreen extends GetView<BalanceSheetReportController> {
     );
   }
 
+  Widget _sectionPill(BuildContext context, String text, Color color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: .10),
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Text(
+        text,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: Theme.of(context).textTheme.labelMedium?.copyWith(
+          color: color,
+          fontWeight: FontWeight.w800,
+          fontSize: 12,
+        ),
+      ),
+    );
+  }
+
 int? _asInt(dynamic value) => int.tryParse(value?.toString() ?? '');
+
+String _dateRangeLabelForBalanceSheet(BalanceSheetReportController controller) {
+  return '${controller.formatDate(controller.fromDateController.text)} to ${controller.formatDate(controller.toDateController.text)}';
+}
 }
 
 class _BalanceHeadlineCard extends StatelessWidget {
@@ -565,6 +611,7 @@ class _BalanceHeadlineCard extends StatelessWidget {
       ),
     );
   }
+
 }
 
 class _MiniMetricCard extends StatelessWidget {
@@ -609,6 +656,22 @@ class _MiniMetricCard extends StatelessWidget {
         ],
       ),
     );
+  }
+}
+
+Future<void> _pickBalanceSheetDate(
+  BuildContext context,
+  TextEditingController target,
+) async {
+  final initial = AppDateFormatter.parse(target.text) ?? DateTime.now();
+  final selected = await showDatePicker(
+    context: context,
+    initialDate: initial,
+    firstDate: DateTime(2000),
+    lastDate: DateTime(2100),
+  );
+  if (selected != null) {
+    target.text = AppDateFormatter.formatDisplay(selected);
   }
 }
 

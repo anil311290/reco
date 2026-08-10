@@ -198,10 +198,35 @@ class SupportTicketsScreen extends GetView<SupportTicketsController> {
                   sliver: SliverList(
                     delegate: SliverChildBuilderDelegate(
                       (_, index) {
+                        if (index >= controller.visibleTickets.length) {
+                          controller.loadMore();
+                          return Padding(
+                            padding: const EdgeInsets.only(top: 8, bottom: 16),
+                            child: Center(
+                              child: controller.isLoadingMore.value
+                                  ? const SizedBox(
+                                      width: 24,
+                                      height: 24,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                      ),
+                                    )
+                                  : Text(
+                                      'Showing ${controller.visibleTickets.length} of ${controller.total.value}. Scroll for more.',
+                                      style: theme.textTheme.bodySmall?.copyWith(
+                                            color: theme.colorScheme.onSurfaceVariant,
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                    ),
+                            ),
+                          );
+                        }
                         final ticket = controller.visibleTickets[index];
                         return Padding(
                           padding: EdgeInsets.only(
-                            bottom: index == controller.visibleTickets.length - 1
+                            bottom: index ==
+                                    controller.visibleTickets.length - 1 &&
+                                !controller.hasMore
                                 ? 0
                                 : 12,
                           ),
@@ -211,7 +236,10 @@ class SupportTicketsScreen extends GetView<SupportTicketsController> {
                           ),
                         );
                       },
-                      childCount: controller.visibleTickets.length,
+                      childCount: controller.visibleTickets.length +
+                          (controller.hasMore || controller.isLoadingMore.value
+                              ? 1
+                              : 0),
                     ),
                   ),
                 ),

@@ -174,6 +174,77 @@ class SearchBox extends StatelessWidget {
   }
 }
 
+class PaginatedTablePane extends StatelessWidget {
+  const PaginatedTablePane({
+    super.key,
+    required this.child,
+    required this.hasMore,
+    required this.isLoadingMore,
+    required this.loadedCount,
+    required this.totalCount,
+    this.onLoadMore,
+  });
+
+  final Widget child;
+  final bool hasMore;
+  final bool isLoadingMore;
+  final int loadedCount;
+  final int totalCount;
+  final Future<void> Function()? onLoadMore;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: <Widget>[
+        Expanded(
+          child: NotificationListener<ScrollNotification>(
+            onNotification: (notification) {
+              if (notification.metrics.axis != Axis.vertical) {
+                return false;
+              }
+              if (!hasMore || isLoadingMore || onLoadMore == null) {
+                return false;
+              }
+              if (notification.metrics.pixels >=
+                  notification.metrics.maxScrollExtent - 160) {
+                onLoadMore!.call();
+              }
+              return false;
+            },
+            child: child,
+          ),
+        ),
+        if (isLoadingMore || hasMore) ...<Widget>[
+          const SizedBox(height: 8),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: <Widget>[
+              if (isLoadingMore) ...<Widget>[
+                const SizedBox(
+                  width: 16,
+                  height: 16,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  'Loading more...',
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
+              ] else
+                Text(
+                  'Showing $loadedCount of $totalCount. Scroll to load more.',
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
+                ),
+            ],
+          ),
+        ],
+      ],
+    );
+  }
+}
+
 class CompactSearchFilterBar extends StatelessWidget {
   const CompactSearchFilterBar({
     required this.hint,
@@ -456,10 +527,14 @@ class MasterDropdownField<T> extends StatelessWidget {
           .map(
             (item) => DropdownItem<T>(
               value: item,
-              child: Text(
-                itemLabelBuilder(item),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
+              child: SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                physics: const BouncingScrollPhysics(),
+                child: Text(
+                  itemLabelBuilder(item),
+                  maxLines: 1,
+                  softWrap: false,
+                ),
               ),
             ),
           )
@@ -476,6 +551,7 @@ class MastersTableShell extends StatelessWidget {
     required this.emptyText,
     this.minWidth = 920,
     this.isLoading = false,
+    this.dataRowHeight = 52,
   });
 
   final List<DataColumn2> columns;
@@ -483,6 +559,7 @@ class MastersTableShell extends StatelessWidget {
   final String emptyText;
   final double minWidth;
   final bool isLoading;
+  final double dataRowHeight;
 
   @override
   Widget build(BuildContext context) {
@@ -510,7 +587,7 @@ class MastersTableShell extends StatelessWidget {
             ).colorScheme.surfaceContainerHighest.withValues(alpha: .45),
           ),
           headingRowHeight: 42,
-          dataRowHeight: 52,
+          dataRowHeight: dataRowHeight,
           horizontalMargin: 12,
           columnSpacing: 12,
           minWidth: minWidth,

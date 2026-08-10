@@ -4,6 +4,7 @@ import 'package:get/get.dart';
 
 import '../../../core/services/local_storage_service.dart';
 import '../../../core/services/network_monitor_service.dart';
+import '../../../core/utils/app_date_formatter.dart';
 import '../../../data/repositories/dashboard/dashboard_repository.dart';
 import '../../bindings/login_binding.dart';
 import '../../views/auth/login_screen.dart';
@@ -184,25 +185,7 @@ class DashboardController extends GetxController {
   }
 
   String formatDate(String value) {
-    final parsed = DateTime.tryParse(value);
-    if (parsed == null) {
-      return value;
-    }
-    const months = <int, String>{
-      1: 'Jan',
-      2: 'Feb',
-      3: 'Mar',
-      4: 'Apr',
-      5: 'May',
-      6: 'Jun',
-      7: 'Jul',
-      8: 'Aug',
-      9: 'Sep',
-      10: 'Oct',
-      11: 'Nov',
-      12: 'Dec',
-    };
-    return '${parsed.day.toString().padLeft(2, '0')} ${months[parsed.month]} ${parsed.year}';
+    return AppDateFormatter.formatDisplay(value);
   }
 
   Future<void> logout() async {

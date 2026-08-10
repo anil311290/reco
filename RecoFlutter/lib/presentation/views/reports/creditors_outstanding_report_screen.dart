@@ -4,7 +4,10 @@ import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:get/get.dart';
 
 import '../../../core/config/api_endpoints.dart';
+import '../../../core/utils/app_date_formatter.dart';
 import '../../controllers/reports/creditors_outstanding_report_controller.dart';
+import '../../controllers/reports/report_lookup_controller.dart';
+import '../../widgets/common/custom_text_field.dart';
 import '../masters/history/party_history_screen.dart';
 import '../masters/widgets/masters_ui_components.dart';
 import 'widgets/report_ui_components.dart';
@@ -19,6 +22,7 @@ class CreditorsOutstandingReportScreen
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final lookup = Get.find<ReportLookupController>();
 
     return Scaffold(
       appBar: AppBar(
@@ -46,30 +50,65 @@ class CreditorsOutstandingReportScreen
           keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
           children: <Widget>[
             ReportFilterPanel(
-              title: 'Export',
+              title: 'Filters',
               subtitle: 'Creditors with credit balances on their linked ledgers (Accounts Payable).',
-              icon: FontAwesomeIcons.fileExport,
+              icon: FontAwesomeIcons.sliders,
               iconColor: _primaryColor,
-              child: ReportActionBar(
+              child: Column(
                 children: <Widget>[
-                  ReportSecondaryButton(
-                    label: 'Excel',
-                    icon: FontAwesomeIcons.fileExcel,
-                    onTap: () {
-                      controller.exportExcel(
-                        reportName: 'creditors_outstanding',
-                        exportEndpoint: ApiEndpoints.exportCreditorsOutstandingExcel,
+                  CustomDropdown<int>(
+                    label: 'Financial Year',
+                    value: controller.financialYearId.value,
+                    items: lookup.financialYears
+                        .map((item) => _asInt(item['id']))
+                        .whereType<int>()
+                        .toList(),
+                    itemLabelBuilder: (value) {
+                      final item = lookup.financialYears.firstWhere(
+                        (row) => _asInt(row['id']) == value,
+                        orElse: () => <String, dynamic>{},
                       );
+                      return (item['name'] ?? 'FY').toString();
                     },
+                    onChanged: (value) => controller.applyFinancialYear(value, lookup),
                   ),
-                  ReportSecondaryButton(
-                    label: 'PDF',
-                    icon: FontAwesomeIcons.filePdf,
-                    onTap: () {
-                      controller.exportPdf(
-                        exportEndpoint: ApiEndpoints.exportCreditorsOutstandingPdf,
-                      );
-                    },
+
+                  ReportDateRangeRow(
+                    fromController: controller.fromDateController,
+                    toController: controller.toDateController,
+                    onFromTap: () => _pickDate(context, controller.fromDateController),
+                    onToTap: () => _pickDate(context, controller.toDateController),
+                  ),
+                  const SizedBox(height: 12),
+                  ReportActionBar(
+                    children: <Widget>[
+                      ReportPrimaryButton(
+                        label: 'Filter',
+                        icon: FontAwesomeIcons.sliders,
+                        onTap: controller.loadReport,
+                      ),
+                      ReportSecondaryButton(
+                        label: 'Excel',
+                        icon: FontAwesomeIcons.fileExcel,
+                        onTap: () {
+                          controller.exportExcel(
+                            reportName: 'creditors_outstanding',
+                            exportEndpoint: ApiEndpoints.exportCreditorsOutstandingExcel,
+                            queryParameters: controller.queryParameters,
+                          );
+                        },
+                      ),
+                      ReportSecondaryButton(
+                        label: 'PDF',
+                        icon: FontAwesomeIcons.filePdf,
+                        onTap: () {
+                          controller.exportPdf(
+                            exportEndpoint: ApiEndpoints.exportCreditorsOutstandingPdf,
+                            queryParameters: controller.queryParameters,
+                          );
+                        },
+                      ),
+                    ],
                   ),
                 ],
               ),
@@ -104,6 +143,7 @@ class CreditorsOutstandingReportScreen
               title: 'Outstanding Creditors',
               icon: FontAwesomeIcons.tableList,
               iconColor: _primaryColor,
+              trailing: _buildSectionMeta(context, total),
               child: rows.isEmpty
                   ? _buildEmptyState(theme)
                   : _buildCreditorsTable(
@@ -116,6 +156,69 @@ class CreditorsOutstandingReportScreen
           ],
         );
       }),
+    );
+  }
+
+  Future<void> _pickDate(
+    BuildContext context,
+    TextEditingController target,
+  ) async {
+    final initial = AppDateFormatter.parse(target.text) ?? DateTime.now();
+    final selected = await showDatePicker(
+      context: context,
+      initialDate: initial,
+      firstDate: DateTime(2000),
+      lastDate: DateTime(2100),
+    );
+    if (selected != null) {
+      target.text = AppDateFormatter.formatDisplay(selected);
+    }
+  }
+
+  int? _asInt(dynamic value) => int.tryParse(value?.toString() ?? '');
+
+  String _dateRangeLabel() {
+    return '${controller.formatDate(controller.fromDateController.text)} to ${controller.formatDate(controller.toDateController.text)}';
+  }
+
+  Widget _buildSectionMeta(BuildContext context, double total) {
+    return Wrap(
+      spacing: 8,
+      runSpacing: 6,
+      alignment: WrapAlignment.start,
+      crossAxisAlignment: WrapCrossAlignment.center,
+      children: <Widget>[
+        _sectionPill(
+          context,
+          _dateRangeLabel(),
+          const Color(0xFF64748B),
+        ),
+        _sectionPill(
+          context,
+          controller.formatCurrency(total),
+          _primaryColor,
+        ),
+      ],
+    );
+  }
+
+  Widget _sectionPill(BuildContext context, String text, Color color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: .10),
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Text(
+        text,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: Theme.of(context).textTheme.labelMedium?.copyWith(
+          color: color,
+          fontWeight: FontWeight.w800,
+          fontSize: 12,
+        ),
+      ),
     );
   }
 

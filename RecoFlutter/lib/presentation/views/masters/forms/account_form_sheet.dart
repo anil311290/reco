@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
+import '../../../../core/utils/app_date_formatter.dart';
 import '../../../../data/models/masters/master_entities.dart';
+import '../../../../data/repositories/masters/financial_years_repository.dart';
 import '../../../controllers/masters/accounts_controller.dart';
+import '../../../widgets/common/app_help_dialog.dart';
 import '../../../widgets/common/common_button.dart';
 import '../../../widgets/common/custom_text_field.dart';
 
@@ -19,16 +22,18 @@ class _AccountFormSheetState extends State<AccountFormSheet> {
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
   final _amountController = TextEditingController(text: '0');
-  final _dateController = TextEditingController();
   final _remarksController = TextEditingController();
 
   late final AccountsController controller;
+  late final FinancialYearsRepository _financialYearsRepository;
 
   bool isSaving = false;
   bool _isActive = true;
   String accountType = 'asset';
   String balanceType = 'debit';
   bool isCashBankOd = false;
+  String _openingDateApi = AppDateFormatter.toApiDate(DateTime.now());
+  String _openingDateDisplay = AppDateFormatter.formatDisplay(DateTime.now());
 
   bool get _isCreate => widget.entity == null;
   bool get _isAssetAccount => accountType == 'asset';
@@ -42,11 +47,11 @@ class _AccountFormSheetState extends State<AccountFormSheet> {
   void initState() {
     super.initState();
     controller = Get.find<AccountsController>();
+    _financialYearsRepository = Get.find<FinancialYearsRepository>();
 
     final entity = widget.entity;
     _nameController.text = entity?.accountName ?? '';
     _amountController.text = '${entity?.openingBalance ?? 0}';
-    _dateController.text = entity?.openingDate ?? _todayText();
     _remarksController.text = entity?.remarks ?? '';
     accountType = entity?.accountType ?? 'asset';
     isCashBankOd = entity?.isCashBankOd ?? false;
@@ -54,13 +59,13 @@ class _AccountFormSheetState extends State<AccountFormSheet> {
     _isActive = entity?.isActive ?? true;
 
     _syncAccountTypeState(accountType, onlyCashBank: true);
+    _loadOpeningDateDefault();
   }
 
   @override
   void dispose() {
     _nameController.dispose();
     _amountController.dispose();
-    _dateController.dispose();
     _remarksController.dispose();
     super.dispose();
   }
@@ -145,12 +150,45 @@ class _AccountFormSheetState extends State<AccountFormSheet> {
 
               if (!_isCreate) ...<Widget>[
                 const SizedBox(height: 12),
-                _InfoTile(
-                  title: 'Account Code',
-                  value: widget.entity?.accountCode.isNotEmpty == true
-                      ? widget.entity!.accountCode
-                      : 'Generated ledger',
-                  note: 'Account code is preserved from the existing record.',
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: theme.cardColor,
+                    borderRadius: BorderRadius.circular(18),
+                    border: Border.all(
+                      color: scheme.outlineVariant.withValues(alpha: .7),
+                    ),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: <Widget>[
+                      Text(
+                        'Account Code',
+                        style: theme.textTheme.labelMedium?.copyWith(
+                          color: scheme.onSurfaceVariant,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        widget.entity?.accountCode.isNotEmpty == true
+                            ? widget.entity!.accountCode
+                            : 'Generated ledger',
+                        style: theme.textTheme.titleSmall?.copyWith(
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Account code is preserved from the existing record.',
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: scheme.onSurfaceVariant,
+                          height: 1.35,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ],
               const SizedBox(height: 12),
@@ -288,6 +326,7 @@ class _AccountFormSheetState extends State<AccountFormSheet> {
                       label: 'Balance Type',
                       items: const <String>['debit', 'credit'],
                       value: balanceType,
+                      enableSearch: false,
                       itemLabelBuilder: _capitalize,
                       requiredField: true,
                       enabled: _isCreate,
@@ -299,17 +338,17 @@ class _AccountFormSheetState extends State<AccountFormSheet> {
                   ),
                 ],
               ),
-              CustomTextField(
-                controller: _dateController,
-                label: 'Opening Date',
-                hintText: 'YYYY-MM-DD',
-                readOnly: true,
-                onTap: _isCreate ? () => _pickDate(_dateController) : null,
-                suffixIcon: Icons.calendar_today,
-                onSuffixTap: _isCreate ? () => _pickDate(_dateController) : null,
-              ),
-              if (!_isCreate)
-                const SizedBox(height: 12),
+              if (_isCreate) ...<Widget>[
+                const SizedBox(height: 5),
+                Text(
+                  'Opening date is auto-set to current financial year start date: $_openingDateDisplay.',
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: scheme.onSurfaceVariant,
+                    height: 1.35,
+                  ),
+                ),
+                const SizedBox(height: 8),
+              ],
               CustomTextField(
                 controller: _remarksController,
                 label: 'Notes',
@@ -328,38 +367,53 @@ class _AccountFormSheetState extends State<AccountFormSheet> {
                 dense: true,
               ),
               const SizedBox(height: 12),
+              Row(
+                children: <Widget>[
+                  Text(
+                    'Account Help',
+                    style: theme.textTheme.titleSmall?.copyWith(
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  const Spacer(),
+                  const AppHelpDialogButton(
+                    title: 'Account Help',
+                    tooltip: 'Account form help',
+                    sections: <AppHelpDialogSection>[
+                      AppHelpDialogSection(
+                        title: 'Auto-generated code',
+                        message:
+                            'Account code is generated from the selected account type in the live server flow.',
+                      ),
+                      AppHelpDialogSection(
+                        title: 'Asset accounts',
+                        message:
+                            'Use Cash / Bank / OD only when this asset should appear in receipt and payment selections.',
+                      ),
+                      AppHelpDialogSection(
+                        title: 'Ledger impact',
+                        message:
+                            'Saved opening balances flow into vouchers and ledger reports after sync.',
+                      ),
+                      AppHelpDialogSection(
+                        title: 'Opening date',
+                        message:
+                            'Opening date is auto-set to the current financial year start date. It is not entered manually in the form.',
+                      ),
+                      AppHelpDialogSection(
+                        title: 'Quick tips',
+                        message:
+                            'Use clear account names such as Cash, HDFC Bank, or Sales Revenue. Keep opening balance and balance type accurate for reports.',
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
               CommonButton(
                 text: _isCreate ? 'Create Account' : 'Update Account',
                 isLoading: isSaving,
                 onPressed: _submit,
-              ),
-              const SizedBox(height: 20),
-              const _InfoTile(
-                title: 'Auto-generated code',
-                value: 'Based on account type',
-                note:
-                'Code fills automatically when the account is created from the live server flow.',
-              ),
-              const SizedBox(height: 12),
-              const _InfoTile(
-                title: 'Asset accounts',
-                value: 'Cash / Bank / OD',
-                note:
-                'Enable only when this asset should be available in Receipt/Payment selection.',
-              ),
-              const SizedBox(height: 12),
-              const _InfoTile(
-                title: 'Ledger impact',
-                value: 'Opening balances flow to reports',
-                note:
-                'Saved accounts are immediately available in vouchers and ledger reports after sync.',
-              ),
-              const SizedBox(height: 12),
-              const _InfoTile(
-                title: 'Quick Tips',
-                value: 'Use clear account names',
-                note:
-                'Examples: Cash, HDFC Bank, Sales Revenue. Keep opening balance and balance type accurate for reports.',
               ),
             ],
           ),
@@ -368,33 +422,31 @@ class _AccountFormSheetState extends State<AccountFormSheet> {
     );
   }
 
-  Future<void> _pickDate(TextEditingController controller) async {
-    final initial = DateTime.tryParse(controller.text.trim());
-    final picked = await showDatePicker(
-      context: context,
-      initialDate: initial ?? DateTime.now(),
-      firstDate: DateTime(2000),
-      lastDate: DateTime(2100),
-      helpText: 'Select date',
-    );
-    if (picked != null) {
-      controller.text =
-          '${picked.year}-${picked.month.toString().padLeft(2, '0')}-${picked.day.toString().padLeft(2, '0')}';
-    }
-  }
-
   String _capitalize(String value) {
     if (value.isEmpty) return value;
     return '${value[0].toUpperCase()}${value.substring(1)}';
   }
 
-  String _todayText() {
-    final now = DateTime.now();
-    return '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
-  }
-
   String _defaultBalanceType(String type) {
     return (type == 'asset' || type == 'expense') ? 'debit' : 'credit';
+  }
+
+  Future<void> _loadOpeningDateDefault() async {
+    try {
+      final currentFinancialYear =
+          await _financialYearsRepository.getCurrentFinancialYear();
+      final startDate = currentFinancialYear?.startDate.trim();
+      if (startDate != null && startDate.isNotEmpty) {
+        _openingDateApi = startDate;
+        _openingDateDisplay = AppDateFormatter.formatDisplay(startDate);
+      }
+    } catch (_) {
+      _openingDateApi = AppDateFormatter.toApiDate(DateTime.now());
+      _openingDateDisplay = AppDateFormatter.formatDisplay(DateTime.now());
+    }
+    if (mounted) {
+      setState(() {});
+    }
   }
 
   void _syncAccountTypeState(String value, {bool onlyCashBank = false}) {
@@ -439,8 +491,9 @@ class _AccountFormSheetState extends State<AccountFormSheet> {
               ? balanceType
               : (widget.entity?.balanceType ?? balanceType),
           openingDate: _isCreate
-              ? _dateController.text.trim()
-              : (widget.entity?.openingDate ?? _dateController.text.trim()),
+              ? _openingDateApi
+              : (widget.entity?.openingDate ??
+                  _openingDateApi),
           remarks: _remarksController.text.trim(),
           isActive: _isActive,
           isSystem: widget.entity?.isSystem ?? false,
@@ -459,11 +512,8 @@ class _AccountFormSheetState extends State<AccountFormSheet> {
 
   Future<bool> _confirmOpeningBalance() async {
     final amount = double.tryParse(_amountController.text.trim()) ?? 0;
-    final openingDate = _dateController.text.trim().isEmpty
-        ? '-'
-        : _dateController.text.trim();
     final message = amount > 0
-        ? 'Opening balance of ₹${amount.toStringAsFixed(2)} (${_capitalize(balanceType)}) dated $openingDate will be posted and cannot be edited later.'
+        ? 'Opening balance of ₹${amount.toStringAsFixed(2)} (${_capitalize(balanceType)}) dated $_openingDateDisplay will be posted and cannot be edited later.'
         : 'No opening balance will be posted. Opening balance cannot be set later after the ledger is created.';
 
     final result = await showDialog<bool>(
@@ -507,61 +557,4 @@ class _AccountFormSheetState extends State<AccountFormSheet> {
 
   String? _required(String? value) =>
       (value ?? '').trim().isEmpty ? 'Required field' : null;
-}
-
-class _InfoTile extends StatelessWidget {
-  const _InfoTile({
-    required this.title,
-    required this.value,
-    required this.note,
-  });
-
-  final String title;
-  final String value;
-  final String note;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final scheme = theme.colorScheme;
-
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: theme.cardColor,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: scheme.outlineVariant.withValues(alpha: .7)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: <Widget>[
-          Text(
-            title,
-            style: theme.textTheme.labelMedium?.copyWith(
-              color: scheme.onSurfaceVariant,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            value,
-            style: theme.textTheme.titleSmall?.copyWith(
-              fontWeight: FontWeight.w800,
-            ),
-          ),
-          if (note.isNotEmpty) ...<Widget>[
-            const SizedBox(height: 4),
-            Text(
-              note,
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: scheme.onSurfaceVariant,
-                height: 1.35,
-              ),
-            ),
-          ],
-        ],
-      ),
-    );
-  }
 }

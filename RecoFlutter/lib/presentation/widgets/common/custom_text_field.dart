@@ -55,6 +55,9 @@ class CustomTextField extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final effectivePrefixIcon = prefixIcon ?? icon;
+    final bool useCompactSuffixIcon =
+        suffixIcon != null && readOnly && onTap != null && onSuffixTap == null;
+    final scheme = Theme.of(context).colorScheme;
     return Padding(
       padding: EdgeInsets.only(bottom: bottomPadding),
       child: TextFormField(
@@ -71,17 +74,36 @@ class CustomTextField extends StatelessWidget {
         textInputAction: textInputAction,
         onFieldSubmitted: onFieldSubmitted,
         decoration: InputDecoration(
+          contentPadding: EdgeInsets.symmetric(horizontal: 10,vertical: 10),
           labelText: requiredField ? '$label *' : label,
           hintText: hintText,
+          hintStyle: TextStyle(
+              color: scheme.onSurfaceVariant.withOpacity(0.7),
+              fontWeight: FontWeight.w400,
+              fontSize: 14
+          ),
           prefixIcon: effectivePrefixIcon == null
               ? null
               : Icon(effectivePrefixIcon, size: 18),
           suffixIcon: suffixIcon == null
               ? null
-              : IconButton(
-                  onPressed: onSuffixTap,
-                  icon: Icon(suffixIcon, size: 18),
+              : InkWell(
+
+                  onTap: onSuffixTap,
+
+                  child: Padding(
+                    padding:EdgeInsets.symmetric(
+                      horizontal: useCompactSuffixIcon ? 6 : 8,
+                    ),
+                    child: Icon(suffixIcon, size: 18),
+                  ),
                 ),
+          suffixIconConstraints:  BoxConstraints(
+
+            minWidth: useCompactSuffixIcon ? 26 : 40,
+            minHeight: useCompactSuffixIcon ? 30 : 40,
+          ),
+
           suffixText: suffixText,
           prefixText: prefixText,
         ),
@@ -97,6 +119,8 @@ class CustomDropdown<T> extends StatefulWidget {
     required this.items,
     required this.itemLabelBuilder,
     required this.onChanged,
+    this.menuItemBuilder,
+    this.searchTextBuilder,
     this.hint,
     this.validator,
     this.requiredField = false,
@@ -113,6 +137,8 @@ class CustomDropdown<T> extends StatefulWidget {
   final List<T> items;
   final String Function(T item) itemLabelBuilder;
   final ValueChanged<T?> onChanged;
+  final Widget Function(BuildContext context, T item)? menuItemBuilder;
+  final String Function(T item)? searchTextBuilder;
   final String? hint;
   final FormFieldValidator<T>? validator;
   final bool requiredField;
@@ -129,6 +155,31 @@ class CustomDropdown<T> extends StatefulWidget {
 class _CustomDropdownState<T> extends State<CustomDropdown<T>> {
   late final ValueNotifier<T?> _valueNotifier;
   final _searchController = TextEditingController();
+
+  String _searchableText(T item) {
+    return widget.searchTextBuilder?.call(item) ?? widget.itemLabelBuilder(item);
+  }
+
+  Widget _buildScrollableLabel(
+    BuildContext context,
+    String text,
+  ) {
+    final scheme = Theme.of(context).colorScheme;
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      physics: const BouncingScrollPhysics(),
+      child: Text(
+        text,
+        maxLines: 1,
+        softWrap: false,
+        style: TextStyle(
+          color: scheme.onSurface,
+          fontSize: 14,
+          fontWeight: FontWeight.normal,
+        ),
+      ),
+    );
+  }
 
   @override
   void initState() {
@@ -154,24 +205,27 @@ class _CustomDropdownState<T> extends State<CustomDropdown<T>> {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
+    final selectedCount = widget.value == null
+        ? 0
+        : widget.items.where((item) => item == widget.value).length;
+    final safeValue = selectedCount == 1 ? widget.value : null;
+    if (_valueNotifier.value != safeValue) {
+      _valueNotifier.value = safeValue;
+    }
     final dropdownItems = widget.items
         .map(
           (item) => DropdownItem<T>(
         value: item,
-        height: 44,
-        child: Padding(
-          padding: EdgeInsets.only(left: 0.0),
-          child: Text(
-            widget.itemLabelBuilder(item),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(
-              color: scheme.onSurface,
-              fontSize: 14,
-              fontWeight: FontWeight.normal,
-            ),
-          ),
-        ),
+        // height: widget.menuItemBuilder != null ? null : 44,
+        child: widget.menuItemBuilder != null
+            ? widget.menuItemBuilder!(context, item)
+            : Padding(
+                padding: EdgeInsets.only(left: 0.0),
+                child: _buildScrollableLabel(
+                  context,
+                  widget.itemLabelBuilder(item),
+                ),
+              ),
       ),
     )
         .toList();
@@ -222,9 +276,9 @@ class _CustomDropdownState<T> extends State<CustomDropdown<T>> {
                     strokeWidth: 2,
                     color: scheme.primary,
                   ),
-                )
+                  )
               : Icon(
-                  Icons.keyboard_arrow_down_rounded,
+                  Icons.expand_more_rounded,
                   color: scheme.onSurfaceVariant,
                 ),
           iconSize: widget.isLoading ? 18 : 22,
@@ -263,8 +317,9 @@ class _CustomDropdownState<T> extends State<CustomDropdown<T>> {
               decoration: InputDecoration(
                 hintText: 'Search...',
                 hintStyle: TextStyle(
-                  color: scheme.onSurfaceVariant,
-                  fontWeight: FontWeight.w500,
+                  color: scheme.onSurfaceVariant.withOpacity(0.7),
+                  fontWeight: FontWeight.w400,
+                  fontSize: 12
                 ),
                 prefixIcon: const Icon(Icons.search, size: 20),
                 isDense: true,
@@ -272,8 +327,7 @@ class _CustomDropdownState<T> extends State<CustomDropdown<T>> {
               ),
             ),
           ),
-          searchMatchFn: (item, searchValue) => widget
-              .itemLabelBuilder(item.value as T)
+          searchMatchFn: (item, searchValue) => _searchableText(item.value as T)
               .toLowerCase()
               .contains(searchValue.toLowerCase()),
         )

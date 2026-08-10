@@ -142,7 +142,7 @@
 <!-- Payment Modal -->
 @if($invoice->status !== 'cancelled' && !$invoice->isPaid())
 <div class="modal fade" id="paymentModal" tabindex="-1">
-    <div class="modal-dialog">
+    <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title">Record Payment</h5>
@@ -194,6 +194,18 @@ function refreshCashBankDropdown() {
 
 refreshCashBankDropdown();
 
+const shouldOpenPayment = new URLSearchParams(window.location.search).get('open_payment') === '1';
+if (shouldOpenPayment && $('#paymentModal').length) {
+    const paymentModalEl = document.getElementById('paymentModal');
+    const paymentModal = new bootstrap.Modal(paymentModalEl);
+    setTimeout(() => paymentModal.show(), 120);
+
+    const url = new URL(window.location.href);
+    url.searchParams.delete('open_payment');
+    url.hash = '';
+    window.history.replaceState({}, document.title, url.pathname + (url.search ? '?' + url.searchParams.toString() : ''));
+}
+
 $('#paymentForm').on('submit', function(e) {
     e.preventDefault();
     $.ajax({
@@ -203,7 +215,10 @@ $('#paymentForm').on('submit', function(e) {
         headers: { 'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content') },
         success: function(r) {
             toastr.success(r.message);
-            setTimeout(() => location.reload(), 1000);
+            setTimeout(() => {
+                const cleanUrl = window.location.pathname;
+                window.location.href = cleanUrl;
+            }, 1000);
         },
         error: function(xhr) {
             toastr.error(xhr.responseJSON?.message || 'Error recording payment');

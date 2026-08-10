@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
+import '../../../../core/utils/app_date_formatter.dart';
 import '../../../../data/models/masters/master_entities.dart';
 import '../../../controllers/settings/financial_years_controller.dart';
 import '../../../widgets/common/common_button.dart';
@@ -30,8 +31,12 @@ class _FinancialYearFormSheetState extends State<FinancialYearFormSheet> {
     _controller = Get.find<FinancialYearsController>();
     final entity = widget.entity;
     _nameController.text = entity?.name ?? '';
-    _startDateController.text = entity?.startDate ?? '';
-    _endDateController.text = entity?.endDate ?? '';
+    _startDateController.text = entity?.startDate.isNotEmpty == true
+        ? AppDateFormatter.formatDisplay(entity!.startDate)
+        : '';
+    _endDateController.text = entity?.endDate.isNotEmpty == true
+        ? AppDateFormatter.formatDisplay(entity!.endDate)
+        : '';
   }
 
   @override
@@ -51,8 +56,8 @@ class _FinancialYearFormSheetState extends State<FinancialYearFormSheet> {
         id: widget.entity?.id,
         localId: widget.entity?.localId,
         name: _nameController.text.trim(),
-        startDate: _startDateController.text.trim(),
-        endDate: _endDateController.text.trim(),
+        startDate: AppDateFormatter.toApiDate(_startDateController.text.trim()),
+        endDate: AppDateFormatter.toApiDate(_endDateController.text.trim()),
       );
 
       if (_isEdit) {
@@ -68,7 +73,7 @@ class _FinancialYearFormSheetState extends State<FinancialYearFormSheet> {
   }
 
   Future<void> _pickDate(TextEditingController controller) async {
-    final initial = DateTime.tryParse(controller.text.trim());
+    final initial = AppDateFormatter.parse(controller.text.trim());
     final picked = await showDatePicker(
       context: context,
       initialDate: initial ?? DateTime.now(),
@@ -77,8 +82,7 @@ class _FinancialYearFormSheetState extends State<FinancialYearFormSheet> {
       helpText: 'Select date',
     );
     if (picked != null) {
-      controller.text =
-          '${picked.year}-${picked.month.toString().padLeft(2, '0')}-${picked.day.toString().padLeft(2, '0')}';
+      controller.text = AppDateFormatter.formatDisplay(picked);
     }
   }
 
@@ -111,7 +115,7 @@ class _FinancialYearFormSheetState extends State<FinancialYearFormSheet> {
               CustomTextField(
                 controller: _startDateController,
                 label: 'Start Date',
-                hintText: 'YYYY-MM-DD',
+                hintText: 'DD-MMM-YYYY',
                 validator: _required,
                 readOnly: true,
                 onTap: () => _pickDate(_startDateController),
@@ -122,15 +126,15 @@ class _FinancialYearFormSheetState extends State<FinancialYearFormSheet> {
               CustomTextField(
                 controller: _endDateController,
                 label: 'End Date',
-                hintText: 'YYYY-MM-DD',
+                hintText: 'DD-MMM-YYYY',
                 validator: (value) {
                   if (value == null || value.trim().isEmpty) {
                     return 'End date is required';
                   }
-                  final start = DateTime.tryParse(
+                  final start = AppDateFormatter.parse(
                     _startDateController.text.trim(),
                   );
-                  final end = DateTime.tryParse(value.trim());
+                  final end = AppDateFormatter.parse(value.trim());
                   if (start != null && end != null && !end.isAfter(start)) {
                     return 'End date must be after start date';
                   }

@@ -45,6 +45,8 @@
         </div>
     </div>
 
+    @include('exports._meta')
+
     <table class="table">
         <thead>
         <tr>

@@ -64,6 +64,7 @@ class VoucherTypeChip extends StatelessWidget {
     };
 
     return Container(
+      constraints: const BoxConstraints(minWidth: 78),
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
       decoration: BoxDecoration(
         color: color,
@@ -71,6 +72,10 @@ class VoucherTypeChip extends StatelessWidget {
       ),
       child: Text(
         label,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        softWrap: false,
+        textAlign: TextAlign.center,
         style: Theme.of(context).textTheme.labelSmall?.copyWith(
           color: Colors.white,
           fontWeight: FontWeight.w800,

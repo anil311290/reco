@@ -69,8 +69,9 @@
     <h1>Stock &amp; Transaction History</h1>
     <div class="meta">
         {{ $item->name }} ({{ $item->item_code }})
-        &middot; Generated on {{ now()->timezone('Asia/Kolkata')->format('d-M-Y h:i A') }}
     </div>
+
+    @include('exports._meta')
 
     <table class="summary">
         <tr>

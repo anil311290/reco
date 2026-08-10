@@ -9,12 +9,16 @@ class SupportTicketsController extends GetxController {
   final SupportTicketsRepository _repository;
 
   final isLoading = false.obs;
+  final isLoadingMore = false.obs;
   final isRefreshing = false.obs;
   final refreshTurns = 0.0.obs;
   final selectedStatus = ''.obs;
   final tickets = <Map<String, dynamic>>[].obs;
   final searchController = TextEditingController();
   final visibleTickets = <Map<String, dynamic>>[].obs;
+  final currentPage = 1.obs;
+  final lastPage = 1.obs;
+  final total = 0.obs;
   final stats = <String, int>{
     'total': 0,
     'open': 0,
@@ -22,6 +26,9 @@ class SupportTicketsController extends GetxController {
     'waiting_on_customer': 0,
     'resolved': 0,
   }.obs;
+
+  static const int pageSize = 20;
+  bool get hasMore => currentPage.value < lastPage.value;
 
   @override
   void onInit() {
@@ -42,12 +49,22 @@ class SupportTicketsController extends GetxController {
       refreshTurns.value += 1;
     }
     isLoading.value = true;
+    currentPage.value = 1;
     try {
-      tickets.assignAll(
-        await _repository.getTickets(
-          status: selectedStatus.value.isEmpty ? null : selectedStatus.value,
-        ),
+      final status = selectedStatus.value.isEmpty ? null : selectedStatus.value;
+      final localResult = await _repository.getPaginatedTickets(
+        status: status,
+        page: 1,
+        perPage: pageSize,
       );
+      _applyPage(localResult, reset: true);
+
+      final remoteResult = await _repository.refreshPaginatedTickets(
+        status: status,
+        page: 1,
+        perPage: pageSize,
+      );
+      _applyPage(remoteResult, reset: true);
       _recomputeState();
     } finally {
       isLoading.value = false;
@@ -60,6 +77,26 @@ class SupportTicketsController extends GetxController {
   Future<void> applyStatus(String status) async {
     selectedStatus.value = status;
     await loadTickets();
+  }
+
+  Future<void> loadMore() async {
+    if (isLoading.value || isLoadingMore.value || !hasMore) {
+      return;
+    }
+    isLoadingMore.value = true;
+    try {
+      final status = selectedStatus.value.isEmpty ? null : selectedStatus.value;
+      final nextPage = currentPage.value + 1;
+      final result = await _repository.refreshPaginatedTickets(
+        status: status,
+        page: nextPage,
+        perPage: pageSize,
+      );
+      _applyPage(result, reset: false);
+      _recomputeState();
+    } finally {
+      isLoadingMore.value = false;
+    }
   }
 
   void applySearch(String value) {
@@ -86,6 +123,58 @@ class SupportTicketsController extends GetxController {
     }
 
     _recomputeState();
+  }
+
+  void _applyPage(dynamic result, {required bool reset}) {
+    currentPage.value = result.currentPage;
+    lastPage.value = result.lastPage;
+    total.value = result.total;
+    final incoming = result.items
+        .whereType<Map>()
+        .map((item) => Map<String, dynamic>.from(item))
+        .toList();
+    if (reset) {
+      tickets.assignAll(
+        _mergeTickets(
+          incoming,
+          base: const <Map<String, dynamic>>[],
+        ),
+      );
+    } else {
+      tickets.assignAll(
+        _mergeTickets(
+          incoming,
+          base: tickets,
+        ),
+      );
+    }
+  }
+
+  List<Map<String, dynamic>> _mergeTickets(
+    List<Map<String, dynamic>> incoming, {
+    required List<Map<String, dynamic>> base,
+  }) {
+    final merged = <String, Map<String, dynamic>>{};
+    for (final item in base) {
+      merged[_ticketKey(item)] = item;
+    }
+    for (final item in incoming) {
+      merged[_ticketKey(item)] = item;
+    }
+    return merged.values.toList();
+  }
+
+  String _ticketKey(Map<String, dynamic> item) {
+    final id = item['id']?.toString();
+    if (id != null && id.isNotEmpty) {
+      return 'id:$id';
+    }
+    final localId = item['local_id']?.toString();
+    if (localId != null && localId.isNotEmpty) {
+      return 'local:$localId';
+    }
+    final number = item['ticket_number']?.toString() ?? '';
+    return 'ticket:$number';
   }
 
   void _recomputeState() {

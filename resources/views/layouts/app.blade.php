@@ -4,6 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
+    <meta name="reco-company-name" content="{{ auth()->check() ? (auth()->user()->company->name ?? '') : '' }}">
 
     <title>{{ config('app.name', 'Reco') }} - @yield('title', 'Admin')</title>
 
@@ -491,6 +492,12 @@
                                 <a class="nav-link {{ request()->routeIs('admin.reports.creditors-outstanding') ? 'active' : '' }}" href="{{ route('admin.reports.creditors-outstanding') }}">
                                     <i class="bi bi-people-fill"></i>
                                     <span>Payables</span>
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link {{ request()->routeIs('admin.reports.aging-summary') ? 'active' : '' }}" href="{{ route('admin.reports.aging-summary') }}">
+                                    <i class="bi bi-hourglass-split"></i>
+                                    <span>Aging Summary</span>
                                 </a>
                             </li>
                         </ul>

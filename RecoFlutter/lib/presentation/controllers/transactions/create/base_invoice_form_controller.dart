@@ -1,9 +1,13 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
 import '../../../../core/config/api_endpoints.dart';
+import '../../../../core/utils/app_date_formatter.dart';
 import '../../../../core/utils/app_snackbar.dart';
 import '../../../../data/models/masters/master_entities.dart';
+import '../../../../data/repositories/masters/financial_years_repository.dart';
 import '../../../../data/repositories/transactions/transactions_repository.dart';
 import '../purchase_invoices_controller.dart';
 import '../sales_invoices_controller.dart';
@@ -20,6 +24,8 @@ abstract class BaseInvoiceFormController extends GetxController {
   final TransactionsRepository repository;
   final TransactionFormLookupController lookupController;
   final Map<String, dynamic>? initialPayload;
+  final FinancialYearsRepository _financialYearsRepository =
+      Get.find<FinancialYearsRepository>();
 
   final formKey = GlobalKey<FormState>();
   final invoiceNumberController = TextEditingController();
@@ -94,6 +100,14 @@ abstract class BaseInvoiceFormController extends GetxController {
   }
 
   @override
+  void onReady() {
+    super.onReady();
+    if (!isEditing) {
+      _ensureGeneratedInvoiceNumber();
+    }
+  }
+
+  @override
   void onClose() {
     invoiceDateController.dispose();
     invoiceNumberController.dispose();
@@ -122,23 +136,102 @@ abstract class BaseInvoiceFormController extends GetxController {
 
   Future<void> _initializeForm() async {
     final now = DateTime.now();
-    invoiceDateController.text =
-        '${now.year.toString().padLeft(4, '0')}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
+    invoiceDateController.text = AppDateFormatter.formatDisplay(now);
     final dueDate = now.add(const Duration(days: 30));
-    dueDateController.text =
-        '${dueDate.year.toString().padLeft(4, '0')}-${dueDate.month.toString().padLeft(2, '0')}-${dueDate.day.toString().padLeft(2, '0')}';
+    dueDateController.text = AppDateFormatter.formatDisplay(dueDate);
 
     await _loadLookups();
 
     if (initialPayload != null) {
       _applyInitialPayload(initialPayload!);
     } else {
-      draftInvoiceNumber.value =
-          '$temporaryPrefix-${DateTime.now().millisecondsSinceEpoch}';
+      draftInvoiceNumber.value = await _generateDraftInvoiceNumber();
       invoiceNumberController.text = draftInvoiceNumber.value;
       _ensureMinimumRows();
     }
     update();
+  }
+
+  Future<void> _ensureGeneratedInvoiceNumber() async {
+    final current = invoiceNumberController.text.trim();
+    if (_looksLikeFormattedInvoiceNumber(current)) {
+      return;
+    }
+    final generated = await _generateDraftInvoiceNumber();
+    draftInvoiceNumber.value = generated;
+    invoiceNumberController.text = generated;
+    update();
+  }
+
+  Future<String> _generateDraftInvoiceNumber() async {
+    final currentFinancialYear =
+        await _financialYearsRepository.getCurrentFinancialYear();
+    final fyCode = _buildFinancialYearCode(currentFinancialYear);
+    final prefix = '$temporaryPrefix-$fyCode/';
+    final records = await _loadInvoiceRecordsForDraft();
+    var maxSequence = 0;
+
+    for (final record in records) {
+      final payload = _payloadOf(record);
+      final invoiceNumber = (payload['invoice_number'] ?? '').toString().trim();
+      if (!invoiceNumber.startsWith(prefix)) {
+        continue;
+      }
+      final slashIndex = invoiceNumber.lastIndexOf('/');
+      final rawSequence = slashIndex >= 0
+          ? invoiceNumber.substring(slashIndex + 1)
+          : '';
+      final sequence = int.tryParse(rawSequence) ?? 0;
+      if (sequence > maxSequence) {
+        maxSequence = sequence;
+      }
+    }
+
+    return '$prefix${(maxSequence + 1).toString().padLeft(4, '0')}';
+  }
+
+  Future<List<Map<String, dynamic>>> _loadInvoiceRecordsForDraft() async {
+    try {
+      return await repository.refreshCollection(
+        module: module,
+        endpoint: endpoint,
+      );
+    } catch (_) {
+      return repository.getCollection(
+        module: module,
+        endpoint: endpoint,
+      );
+    }
+  }
+
+  String _buildFinancialYearCode(FinancialYearEntity? financialYear) {
+    final startDate = DateTime.tryParse(financialYear?.startDate ?? '');
+    final endDate = DateTime.tryParse(financialYear?.endDate ?? '');
+    if (startDate != null && endDate != null) {
+      final startYear = startDate.year.toString().padLeft(4, '0');
+      final endYear = (endDate.year % 100).toString().padLeft(2, '0');
+      return '$startYear$endYear';
+    }
+
+    final now = DateTime.now();
+    final nextYear = now.year + 1;
+    return '${now.year}${(nextYear % 100).toString().padLeft(2, '0')}';
+  }
+
+  bool _looksLikeFormattedInvoiceNumber(String value) {
+    if (value.isEmpty) {
+      return false;
+    }
+    final pattern = RegExp('^${RegExp.escape(temporaryPrefix)}-\\d{6}/\\d{4}\$');
+    return pattern.hasMatch(value);
+  }
+
+  Map<String, dynamic> _payloadOf(Map<String, dynamic> record) {
+    final payload = record['payload'];
+    if (payload is Map<String, dynamic>) {
+      return payload;
+    }
+    return record;
   }
 
   void _ensureMinimumRows() {
@@ -301,7 +394,7 @@ abstract class BaseInvoiceFormController extends GetxController {
     BuildContext context,
     TextEditingController controller,
   ) async {
-    final initial = DateTime.tryParse(controller.text) ?? DateTime.now();
+    final initial = AppDateFormatter.parse(controller.text) ?? DateTime.now();
     final selected = await showDatePicker(
       context: context,
       initialDate: initial,
@@ -309,8 +402,7 @@ abstract class BaseInvoiceFormController extends GetxController {
       lastDate: DateTime(2100),
     );
     if (selected != null) {
-      controller.text =
-          '${selected.year.toString().padLeft(4, '0')}-${selected.month.toString().padLeft(2, '0')}-${selected.day.toString().padLeft(2, '0')}';
+      controller.text = AppDateFormatter.formatDisplay(selected);
     }
   }
 
@@ -360,6 +452,7 @@ abstract class BaseInvoiceFormController extends GetxController {
     row.taxRate.value = item.taxRateId == null
         ? null
         : taxRates.firstWhereOrNull((entry) => entry.id == item.taxRateId);
+    _appendBlankItemRowIfNeeded(row);
     update();
   }
 
@@ -406,7 +499,25 @@ abstract class BaseInvoiceFormController extends GetxController {
         : taxRates.firstWhereOrNull(
             (entry) => entry.id == serviceItem?.taxRateId,
           );
+    _appendBlankItemRowIfNeeded(row);
     update();
+  }
+
+  void _appendBlankItemRowIfNeeded(InvoiceItemRowModel row) {
+    if (!supportsItems) {
+      return;
+    }
+    final currentIndex = itemRows.indexOf(row);
+    if (currentIndex == -1 || currentIndex != itemRows.length - 1) {
+      return;
+    }
+    final hasTrailingBlankRow = itemRows.any(
+      (entry) => entry != row && entry.item.value == null,
+    );
+    if (hasTrailingBlankRow) {
+      return;
+    }
+    itemRows.add(InvoiceItemRowModel());
   }
 
   void onServiceAccountChanged(InvoiceServiceRowModel row, LookupOption? account) {
@@ -421,12 +532,18 @@ abstract class BaseInvoiceFormController extends GetxController {
       return;
     }
     if (selectedPartyOption.value == null) {
-      AppSnackbar.error(isPurchaseInvoice
-          ? 'Please select a supplier.'
-          : 'Please select a customer.');
+      AppSnackbar.error(
+        isPurchaseInvoice
+            ? 'Please select a supplier.'
+            : 'Please select a customer or ledger account.',
+      );
       return;
     }
-    if (dueDateController.text.compareTo(invoiceDateController.text) < 0) {
+    if (AppDateFormatter.compareDates(
+          dueDateController.text,
+          invoiceDateController.text,
+        ) <
+        0) {
       AppSnackbar.error('Due date cannot be earlier than the invoice date.');
       return;
     }
@@ -481,13 +598,13 @@ abstract class BaseInvoiceFormController extends GetxController {
           payload: payload,
         );
       }
-      await _refreshList();
-      Get.back<void>();
+      Get.back<bool>(result: true);
       AppSnackbar.success(
         isEditing
             ? '$title was updated locally and will sync when online.'
             : '$title was saved locally and will sync when online.',
       );
+      await _refreshList();
     } catch (error) {
       AppSnackbar.error(error.toString());
     } finally {
@@ -503,15 +620,15 @@ abstract class BaseInvoiceFormController extends GetxController {
     final currentNumber = draftInvoiceNumber.value.trim();
     final tempNumber = currentNumber.isNotEmpty
         ? currentNumber
-        : '$temporaryPrefix-${DateTime.now().millisecondsSinceEpoch}';
+        : invoiceNumberController.text.trim();
     final currentStatus = (_editingPayload?['status'] ?? 'draft').toString();
     final currentStatusLabel =
         (_editingPayload?['status_label'] ?? 'Draft').toString();
     return <String, dynamic>{
       if (recordId case final currentRecordId?) 'id': currentRecordId,
       'party_id': selectedPartyOption.value?.token,
-      'invoice_date': invoiceDateController.text.trim(),
-      'due_date': dueDateController.text.trim(),
+      'invoice_date': AppDateFormatter.toApiDate(invoiceDateController.text.trim()),
+      'due_date': AppDateFormatter.toApiDate(dueDateController.text.trim()),
       if (isPurchaseInvoice)
         'supplier_invoice_number': supplierInvoiceController.text.trim().isEmpty
             ? null
@@ -567,6 +684,11 @@ abstract class BaseInvoiceFormController extends GetxController {
       'amount_paid': _toDouble(_editingPayload?['amount_paid']),
       'balance_due':
           summaryTotal - _toDouble(_editingPayload?['amount_paid']),
+      'party_name': selectedParty?.name,
+      if (isPurchaseInvoice)
+        'supplier_name': selectedParty?.name
+      else
+        'customer_name': selectedParty?.name,
       'party': selectedParty == null
           ? null
           : <String, dynamic>{
@@ -597,7 +719,7 @@ abstract class BaseInvoiceFormController extends GetxController {
     if (value == null || value.trim().isEmpty) {
       return '';
     }
-    return value.length >= 10 ? value.substring(0, 10) : value;
+    return AppDateFormatter.formatDisplay(value);
   }
 
   String _formatEditableNumber(dynamic value, {String fallback = ''}) {

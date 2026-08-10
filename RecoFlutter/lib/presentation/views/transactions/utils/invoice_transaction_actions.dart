@@ -13,6 +13,7 @@ import '../../../../core/config/app_config.dart';
 import '../../../../core/config/api_endpoints.dart';
 import '../../../../core/utils/app_action_loader.dart';
 import '../../../../core/utils/app_alert_dialog.dart';
+import '../../../../core/utils/app_date_formatter.dart';
 import '../../../../core/utils/app_snackbar.dart';
 import '../../../../data/models/masters/master_entities.dart';
 import '../../../../data/models/transactions/transaction_entities.dart';
@@ -25,6 +26,7 @@ import '../../../controllers/transactions/base_transactions_tab_controller.dart'
 import '../../../controllers/transactions/create/base_invoice_form_controller.dart';
 import '../../../controllers/transactions/create/base_voucher_form_controller.dart';
 import '../../../controllers/transactions/create/transaction_form_lookup_controller.dart';
+import '../../../widgets/common/custom_text_field.dart';
 import '../create/adjustment_voucher_screen.dart';
 import '../create/payment_voucher_screen.dart';
 import '../create/purchase_invoice_screen.dart';
@@ -317,10 +319,7 @@ Future<bool> recordInvoicePayment(TransactionRecord record) async {
     () => accountsRepository.getCashBankAccounts(),
     message: 'Loading payment options...',
   );
-  final cashBankOptions = cashBankRecords
-      .map(LookupOption.fromJson)
-      .where((item) => item.id > 0 && item.label.trim().isNotEmpty)
-      .toList();
+  final cashBankOptions = _mapCashBankOptions(cashBankRecords);
 
   if (cashBankOptions.isEmpty) {
     AppSnackbar.error('Cash / Bank accounts are not available.');
@@ -356,6 +355,54 @@ Future<bool> recordInvoicePayment(TransactionRecord record) async {
         : 'Payment recorded and payment voucher posted.',
   );
   return true;
+}
+
+List<LookupOption> _mapCashBankOptions(List<Map<String, dynamic>> records) {
+  final seen = <String>{};
+  final options = <LookupOption>[];
+
+  for (final record in records) {
+    final id = int.tryParse(record['id']?.toString() ?? '') ?? 0;
+    final label = (record['text'] ??
+            record['account_name'] ??
+            record['name'] ??
+            record['label'] ??
+            '')
+        .toString()
+        .trim();
+    if (id <= 0 || label.isEmpty) {
+      continue;
+    }
+
+    final option = LookupOption(
+      id: id,
+      label: label,
+      code: (record['code'] ?? record['account_code'])?.toString(),
+      rawId: record['id']?.toString(),
+      group: record['group']?.toString(),
+      kind: record['kind']?.toString(),
+      transactionMode: record['transaction_mode']?.toString(),
+      availableBalance: _parseNullableDouble(record['available_balance']),
+    );
+
+    final dedupeKey = label.toLowerCase();
+    if (!seen.add(dedupeKey)) {
+      continue;
+    }
+    options.add(option);
+  }
+
+  return options;
+}
+
+double? _parseNullableDouble(dynamic value) {
+  if (value == null) {
+    return null;
+  }
+  if (value is num) {
+    return value.toDouble();
+  }
+  return double.tryParse(value.toString());
 }
 
 Future<bool> cancelInvoice(TransactionRecord record) async {
@@ -533,27 +580,21 @@ Future<Map<String, dynamic>?> _showInvoicePaymentDialog({
     text: record.balanceDue.toStringAsFixed(2),
   );
   final dateController = TextEditingController(
-    text: DateTime.now().toIso8601String().substring(0, 10),
+    text: AppDateFormatter.formatDisplay(DateTime.now()),
   );
-  String paymentMode = '';
   LookupOption? selectedAccount;
 
-  return Get.dialog<Map<String, dynamic>>(
+  return Get.bottomSheet<Map<String, dynamic>>(
     StatefulBuilder(
       builder: (context, setState) {
         final theme = Theme.of(context);
-        final filteredAccounts = paymentMode.isEmpty
-            ? cashBankOptions
-            : cashBankOptions
-                .where((item) => item.transactionMode == paymentMode)
-                .toList();
         if (selectedAccount != null &&
-            !filteredAccounts.any((item) => item.id == selectedAccount!.id)) {
+            !cashBankOptions.any((item) => item.id == selectedAccount!.id)) {
           selectedAccount = null;
         }
 
         Future<void> pickDate() async {
-          final parsed = DateTime.tryParse(dateController.text) ?? DateTime.now();
+          final parsed = AppDateFormatter.parse(dateController.text) ?? DateTime.now();
           final selected = await showDatePicker(
             context: context,
             initialDate: parsed,
@@ -561,157 +602,198 @@ Future<Map<String, dynamic>?> _showInvoicePaymentDialog({
             lastDate: DateTime(2100),
           );
           if (selected != null) {
-            dateController.text = selected.toIso8601String().substring(0, 10);
+            dateController.text = AppDateFormatter.formatDisplay(selected);
             setState(() {});
           }
         }
 
-        return Dialog(
-          insetPadding: const EdgeInsets.symmetric(horizontal: 20),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(18),
+        return Container(
+          decoration: BoxDecoration(
+            color: theme.colorScheme.surface,
+            borderRadius: const BorderRadius.vertical(
+              top: Radius.circular(24),
+            ),
           ),
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: <Widget>[
-                Text(
-                  'Record Payment',
-                  style: theme.textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.w700,
+          child: SafeArea(
+            top: false,
+            child: SingleChildScrollView(
+              padding: EdgeInsets.only(
+                left: 16,
+                right: 16,
+                top: 12,
+                bottom: MediaQuery.of(context).viewInsets.bottom + 16,
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: <Widget>[
+                  Center(
+                    child: Container(
+                      width: 44,
+                      height: 5,
+                      margin: const EdgeInsets.only(bottom: 16),
+                      decoration: BoxDecoration(
+                        color: theme.colorScheme.outlineVariant,
+                        borderRadius: BorderRadius.circular(999),
+                      ),
+                    ),
                   ),
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  record.kind == TransactionRecordKind.salesInvoice
-                      ? 'Creates a receipt voucher against this sales invoice.'
-                      : 'Creates a payment voucher against this purchase invoice.',
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: theme.colorScheme.onSurfaceVariant,
-                  ),
-                ),
-                const SizedBox(height: 14),
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: theme.colorScheme.errorContainer.withValues(alpha: .35),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Text(
-                    'Balance Due: Rs ${record.balanceDue.toStringAsFixed(2)}',
-                    style: theme.textTheme.titleSmall?.copyWith(
+                  Text(
+                    'Record Payment',
+                    style: theme.textTheme.titleMedium?.copyWith(
                       fontWeight: FontWeight.w700,
                     ),
                   ),
-                ),
-                const SizedBox(height: 14),
-                TextField(
-                  controller: dateController,
-                  readOnly: true,
-                  onTap: pickDate,
-                  decoration: const InputDecoration(
-                    labelText: 'Payment Date',
-                    suffixIcon: Icon(Icons.calendar_today_outlined),
+                  const SizedBox(height: 6),
+                  Text(
+                    record.kind == TransactionRecordKind.salesInvoice
+                        ? 'Creates a receipt voucher against this sales invoice.'
+                        : 'Creates a payment voucher against this purchase invoice.',
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
                   ),
-                ),
-                const SizedBox(height: 12),
-                DropdownButtonFormField<String>(
-                  initialValue: paymentMode.isEmpty ? null : paymentMode,
-                  decoration: const InputDecoration(
-                    labelText: 'Payment Mode',
+                  const SizedBox(height: 14),
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(
+                      color: theme.colorScheme.primaryContainer.withValues(alpha: .55),
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(
+                        color: theme.colorScheme.primary.withValues(alpha: .15),
+                      ),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: <Widget>[
+                        Text(
+                          'Balance Due',
+                          style: theme.textTheme.labelLarge?.copyWith(
+                            color: theme.colorScheme.onSurfaceVariant,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          '₹${record.balanceDue.toStringAsFixed(2)}',
+                          style: theme.textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.w800,
+                            color: theme.colorScheme.primary,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
-                  items: const <DropdownMenuItem<String>>[
-                    DropdownMenuItem(value: 'cash', child: Text('Cash')),
-                    DropdownMenuItem(value: 'bank', child: Text('Bank')),
-                    DropdownMenuItem(value: 'od', child: Text('OD')),
-                  ],
-                  onChanged: (value) {
-                    setState(() {
-                      paymentMode = value ?? '';
-                      selectedAccount = null;
-                    });
-                  },
-                ),
-                const SizedBox(height: 12),
-                DropdownButtonFormField<LookupOption>(
-                  initialValue: selectedAccount,
-                  decoration: InputDecoration(
-                    labelText: record.kind == TransactionRecordKind.salesInvoice
+                  const SizedBox(height: 14),
+                  CustomTextField(
+                    label: 'Payment Date',
+                    controller: dateController,
+                    readOnly: true,
+                    onTap: pickDate,
+                    suffixIcon: Icons.edit_calendar_rounded,
+                  ),
+                  CustomDropdown<LookupOption>(
+                    label: record.kind == TransactionRecordKind.salesInvoice
                         ? 'Received In'
                         : 'Paid From',
+                    value: selectedAccount,
+                    items: cashBankOptions,
+                    itemLabelBuilder: (item) => item.label,
+                    onChanged: (value) {
+                      setState(() {
+                        selectedAccount = value;
+                      });
+                    },
                   ),
-                  items: filteredAccounts
-                      .map(
-                        (item) => DropdownMenuItem<LookupOption>(
-                          value: item,
-                          child: Text(item.label),
+                  CustomTextField(
+                    label: 'Amount',
+                    controller: amountController,
+                    keyboardType: const TextInputType.numberWithOptions(
+                      decimal: true,
+                    ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.only(top: 2, bottom: 12),
+                    child: Text(
+                      record.kind == TransactionRecordKind.salesInvoice
+                          ? 'Posts a Receipt voucher (Dr Cash/Bank, Cr Party) linked to this invoice.'
+                          : 'Posts a Payment voucher (Dr Party, Cr Cash/Bank) linked to this invoice.',
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Row(
+                    children: <Widget>[
+                      Expanded(
+                        flex: 4,
+                        child: OutlinedButton(
+                          onPressed: () => Get.back<Map<String, dynamic>>(),
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: theme.colorScheme.onSurfaceVariant,
+                            side: BorderSide(
+                              color: theme.colorScheme.outlineVariant,
+                            ),
+                            minimumSize: const Size.fromHeight(50),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          child: const Text('Cancel'),
                         ),
-                      )
-                      .toList(),
-                  onChanged: (value) {
-                    setState(() {
-                      selectedAccount = value;
-                    });
-                  },
-                ),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: amountController,
-                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                  decoration: const InputDecoration(
-                    labelText: 'Amount',
-                  ),
-                ),
-                const SizedBox(height: 16),
-                Row(
-                  children: <Widget>[
-                    Expanded(
-                      child: OutlinedButton(
-                        onPressed: () => Get.back<Map<String, dynamic>>(),
-                        child: const Text('Cancel'),
                       ),
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: FilledButton(
-                        onPressed: () {
-                          final amount =
-                              double.tryParse(amountController.text.trim()) ?? 0;
-                          if (paymentMode.isEmpty) {
-                            AppSnackbar.error('Please select payment mode.');
-                            return;
-                          }
-                          if (selectedAccount == null) {
-                            AppSnackbar.error('Please select cash / bank account.');
-                            return;
-                          }
-                          if (amount <= 0) {
-                            AppSnackbar.error('Please enter valid amount.');
-                            return;
-                          }
+                      const SizedBox(width: 12),
+                      Expanded(
+                        flex: 6,
+                        child: FilledButton(
+                          onPressed: () {
+                            final amount =
+                                double.tryParse(amountController.text.trim()) ?? 0;
+                            if (selectedAccount == null) {
+                              AppSnackbar.error('Please select cash / bank account.');
+                              return;
+                            }
+                            if (amount > record.balanceDue) {
+                              AppSnackbar.error('Payment amount cannot exceed balance due.');
+                              return;
+                            }
+                            if (amount <= 0) {
+                              AppSnackbar.error('Please enter valid amount.');
+                              return;
+                            }
                           Get.back<Map<String, dynamic>>(
-                            result: <String, dynamic>{
-                              'amount': amount,
-                              'payment_mode': paymentMode,
-                              'cash_bank_account_id': selectedAccount!.id,
-                              'payment_date': dateController.text.trim(),
-                            },
-                          );
-                        },
-                        child: const Text('Record Payment'),
+                              result: <String, dynamic>{
+                                'amount': amount,
+                                'cash_bank_account_id': selectedAccount!.id,
+                                'payment_date': AppDateFormatter.toApiDate(
+                                  dateController.text.trim(),
+                                ),
+                              },
+                            );
+                          },
+                          style: FilledButton.styleFrom(
+                            minimumSize: const Size.fromHeight(50),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          child: const Text('Record Payment'),
+                        ),
                       ),
-                    ),
-                  ],
-                ),
-              ],
+                    ],
+                  ),
+                ],
+              ),
             ),
           ),
         );
       },
     ),
-    barrierDismissible: true,
+    isDismissible: true,
+    enableDrag: true,
+    isScrollControlled: true,
+    backgroundColor: Colors.transparent,
   );
 }

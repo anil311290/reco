@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import '../../../core/config/api_endpoints.dart';
+import '../../models/common/paginated_result.dart';
 import '../../models/masters/master_entities.dart';
 import '../base/offline_first_repository.dart';
 
@@ -34,6 +35,17 @@ class ItemsRepository extends OfflineFirstRepository {
     return entities;
   }
 
+  Future<PaginatedResult<ItemEntity>> getPaginatedItems({
+    Map<String, dynamic>? queryParameters,
+    int page = 1,
+    int perPage = 20,
+  }) async {
+    final local = await getLocalModuleRecords(_module);
+    final entities = local.map(ItemEntity.fromRecord).toList()..sort(_sortItems);
+    final filtered = _applyFilters(entities, queryParameters);
+    return _slicePage(filtered, page: page, perPage: perPage);
+  }
+
   Future<List<ItemEntity>> refreshItems({
     Map<String, dynamic>? queryParameters,
   }) async {
@@ -44,6 +56,41 @@ class ItemsRepository extends OfflineFirstRepository {
     final records = _extractList(response.data?['data']);
     await mergeRemoteRecords(module: _module, records: records);
     return records.map(ItemEntity.fromRecord).toList()..sort(_sortItems);
+  }
+
+  Future<PaginatedResult<ItemEntity>> refreshPaginatedItems({
+    Map<String, dynamic>? queryParameters,
+    int page = 1,
+    int perPage = 20,
+  }) async {
+    final response = await apiClient.get<Map<String, dynamic>>(
+      ApiEndpoints.items,
+      queryParameters: <String, dynamic>{
+        ...?queryParameters,
+        'page': page,
+        'per_page': perPage,
+      },
+    );
+    final data = response.data?['data'];
+    final records = _extractList(data);
+    await mergeRemoteRecords(module: _module, records: records);
+
+    if (data is Map<String, dynamic> && data['data'] is List) {
+      final items = records.map(ItemEntity.fromRecord).toList()..sort(_sortItems);
+      return PaginatedResult<ItemEntity>(
+        items: items,
+        currentPage: int.tryParse(data['current_page']?.toString() ?? '$page') ?? page,
+        lastPage: int.tryParse(data['last_page']?.toString() ?? '$page') ?? page,
+        perPage: int.tryParse(data['per_page']?.toString() ?? '$perPage') ?? perPage,
+        total: int.tryParse(data['total']?.toString() ?? '${items.length}') ?? items.length,
+      );
+    }
+
+    return getPaginatedItems(
+      queryParameters: queryParameters,
+      page: page,
+      perPage: perPage,
+    );
   }
 
   Future<Map<String, dynamic>> getItemHistory(
@@ -238,6 +285,70 @@ class ItemsRepository extends OfflineFirstRepository {
           .toList();
     }
     return <Map<String, dynamic>>[];
+  }
+
+  List<ItemEntity> _applyFilters(
+    List<ItemEntity> items,
+    Map<String, dynamic>? queryParameters,
+  ) {
+    final query = (queryParameters?['search'] ?? '').toString().trim().toLowerCase();
+    final type = (queryParameters?['type'] ?? '').toString().trim().toLowerCase();
+    final categoryId =
+        int.tryParse((queryParameters?['category_id'] ?? '0').toString()) ?? 0;
+    final isActive = queryParameters != null && queryParameters.containsKey('is_active')
+        ? (queryParameters['is_active'].toString() == '1' ||
+            queryParameters['is_active'].toString().toLowerCase() == 'true')
+        : null;
+
+    return items.where((item) {
+      final matchesQuery = query.isEmpty ||
+          item.name.toLowerCase().contains(query) ||
+          item.itemCode.toLowerCase().contains(query) ||
+          item.barcode.toLowerCase().contains(query) ||
+          item.hsnSacCode.toLowerCase().contains(query) ||
+          item.categoryName.toLowerCase().contains(query);
+      final matchesType = type.isEmpty || item.type.toLowerCase() == type;
+      final matchesCategory = categoryId == 0 || item.categoryId == categoryId;
+      final matchesStatus = isActive == null || item.isActive == isActive;
+      return matchesQuery && matchesType && matchesCategory && matchesStatus;
+    }).toList();
+  }
+
+  PaginatedResult<ItemEntity> _slicePage(
+    List<ItemEntity> items, {
+    required int page,
+    required int perPage,
+  }) {
+    if (items.isEmpty) {
+      return PaginatedResult<ItemEntity>(
+        items: const <ItemEntity>[],
+        currentPage: 1,
+        lastPage: 1,
+        perPage: perPage,
+        total: 0,
+      );
+    }
+    final safePage = page < 1 ? 1 : page;
+    final start = (safePage - 1) * perPage;
+    if (start >= items.length) {
+      final lastPage = ((items.length + perPage - 1) ~/ perPage).clamp(1, 999999);
+      return PaginatedResult<ItemEntity>(
+        items: const <ItemEntity>[],
+        currentPage: safePage,
+        lastPage: lastPage,
+        perPage: perPage,
+        total: items.length,
+      );
+    }
+    final end = (start + perPage) > items.length ? items.length : start + perPage;
+    final lastPage = ((items.length + perPage - 1) ~/ perPage).clamp(1, 999999);
+    return PaginatedResult<ItemEntity>(
+      items: items.sublist(start, end),
+      currentPage: safePage,
+      lastPage: lastPage,
+      perPage: perPage,
+      total: items.length,
+    );
   }
 
   int _sortItems(ItemEntity a, ItemEntity b) {

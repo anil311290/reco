@@ -14,6 +14,7 @@ import '../../../data/models/transactions/transaction_entities.dart';
 import '../../controllers/main/main_controller.dart';
 import '../../controllers/dashboard/dashboard_controller.dart';
 import '../../controllers/reports/report_lookup_controller.dart';
+import '../masters/forms/account_form_sheet.dart';
 import '../masters/forms/party_form_sheet.dart';
 import '../reports/receipt_payment_report_screen.dart';
 import '../reports/creditors_outstanding_report_screen.dart';
@@ -111,8 +112,12 @@ class DashboardScreen extends GetView<DashboardController> {
         openTransactionForm('adjustment');
       case _DashboardAction.salesInvoice:
         openTransactionForm('sales');
+      case _DashboardAction.purchaseInvoice:
+        openTransactionForm('purchase');
       case _DashboardAction.party:
         Get.to<bool>(() => const PartyFormSheet());
+      case _DashboardAction.ledger:
+        Get.to<bool>(() => const AccountFormSheet());
       case _DashboardAction.reports:
         _openReportsHome();
     }
@@ -472,7 +477,9 @@ enum _DashboardAction {
   receipt,
   adjustment,
   salesInvoice,
+  purchaseInvoice,
   party,
+  ledger,
   reports,
 }
 
@@ -488,7 +495,9 @@ class _QuickActionsCard extends StatelessWidget {
       ('Receipt', FontAwesomeIcons.arrowTrendDown, const Color(0xFF2563EB), _DashboardAction.receipt),
       ('Adjustment', FontAwesomeIcons.bookBookmark, const Color(0xFF8B5CF6), _DashboardAction.adjustment),
       ('Sale Invoice', FontAwesomeIcons.fileCirclePlus, const Color(0xFF16A36A), _DashboardAction.salesInvoice),
+      ('Purchase Invoice', FontAwesomeIcons.cartPlus, const Color(0xFFEF5B62), _DashboardAction.purchaseInvoice),
       ('Add Party', FontAwesomeIcons.userPlus, const Color(0xFF475569), _DashboardAction.party),
+      ('Add Ledger', FontAwesomeIcons.buildingColumns, const Color(0xFF0EA5E9), _DashboardAction.ledger),
       ('Reports', FontAwesomeIcons.chartSimple, const Color(0xFFEF5B62), _DashboardAction.reports),
     ];
 
@@ -504,49 +513,61 @@ class _QuickActionsCard extends StatelessWidget {
               iconColor: Color(0xFFF59E0B),
             ),
             const SizedBox(height: 10),
-            GridView.builder(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              itemCount: actions.length,
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 3,
-                mainAxisSpacing: 7,
-                crossAxisSpacing: 7,
-                mainAxisExtent: 78,
-              ),
-          itemBuilder: (context, index) {
-            final action = actions[index];
-            return Material(
-                  color: action.$3.withValues(alpha: .05),
-                  borderRadius: BorderRadius.circular(10),
-                  child: InkWell(
-                    onTap: () => onAction(action.$4),
-                    borderRadius: BorderRadius.circular(10),
-                    child: Container(
-                      decoration: BoxDecoration(
+            LayoutBuilder(
+              builder: (context, constraints) {
+                final crossAxisCount = constraints.maxWidth >= 360 ? 4 : 3;
+                return GridView.builder(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  itemCount: actions.length,
+                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: crossAxisCount,
+                    mainAxisSpacing: 7,
+                    crossAxisSpacing: 7,
+                    mainAxisExtent: 72,
+                  ),
+                  itemBuilder: (context, index) {
+                    final action = actions[index];
+                    return Material(
+                      color: action.$3.withValues(alpha: .05),
+                      borderRadius: BorderRadius.circular(10),
+                      child: InkWell(
+                        onTap: () => onAction(action.$4),
                         borderRadius: BorderRadius.circular(10),
-                        border: Border.all(color: action.$3.withValues(alpha: .18)),
-                      ),
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: <Widget>[
-                          Icon(action.$2, color: action.$3, size: 16),
-                          const SizedBox(height: 6),
-                          Text(
-                            action.$1,
-                            textAlign: TextAlign.center,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: Theme.of(context).textTheme.bodySmall
-                                ?.copyWith(
-                              fontWeight: FontWeight.w700,
-                              fontSize: 11,
+                        child: Container(
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(
+                              color: action.$3.withValues(alpha: .18),
                             ),
                           ),
-                        ],
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 6,
+                            vertical: 8,
+                          ),
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: <Widget>[
+                              Icon(action.$2, color: action.$3, size: 15),
+                              const SizedBox(height: 6),
+                              Text(
+                                action.$1,
+                                textAlign: TextAlign.center,
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                                style: Theme.of(context).textTheme.bodySmall
+                                    ?.copyWith(
+                                      fontWeight: FontWeight.w700,
+                                      fontSize: 10.5,
+                                      height: 1.15,
+                                    ),
+                              ),
+                            ],
+                          ),
+                        ),
                       ),
-                    ),
-                  ),
+                    );
+                  },
                 );
               },
             ),

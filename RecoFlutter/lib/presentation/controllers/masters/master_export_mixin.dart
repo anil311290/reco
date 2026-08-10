@@ -12,6 +12,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../../core/config/app_config.dart';
 import '../../../core/utils/app_action_loader.dart';
 import '../../../core/utils/app_snackbar.dart';
+import '../../../core/utils/simple_table_pdf_builder.dart';
 import '../../../data/repositories/masters/masters_export_repository.dart';
 
 mixin MasterExportMixin on GetxController {
@@ -94,7 +95,12 @@ mixin MasterExportMixin on GetxController {
         final fileName =
             '${reportName.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]+'), '_')}_${DateTime.now().millisecondsSinceEpoch}.pdf';
         final file = File(p.join(directory.path, fileName));
-        await file.writeAsBytes(_buildSimplePdf(reportName, fallbackRows));
+        await file.writeAsBytes(
+          SimpleTablePdfBuilder.build(
+            title: reportName,
+            rows: fallbackRows,
+          ),
+        );
 
         await _openOrShare(
           filePath: file.path,
@@ -215,106 +221,4 @@ mixin MasterExportMixin on GetxController {
     return '"$escaped"';
   }
 
-  List<int> _buildSimplePdf(
-    String title,
-    List<Map<String, dynamic>> rows,
-  ) {
-    final headers = <String>{};
-    for (final row in rows) {
-      headers.addAll(row.keys);
-    }
-    final orderedHeaders = headers.toList();
-    final lines = <String>[
-      title.replaceAll('_', ' ').toUpperCase(),
-      '',
-      orderedHeaders.join(' | '),
-      ...rows.map(
-        (row) => orderedHeaders
-            .map((header) => (row[header]?.toString() ?? '-').replaceAll('\n', ' '))
-            .join(' | '),
-      ),
-    ];
-
-    const int linesPerPage = 34;
-    final pages = <List<String>>[];
-    for (var index = 0; index < lines.length; index += linesPerPage) {
-      final end = (index + linesPerPage < lines.length)
-          ? index + linesPerPage
-          : lines.length;
-      pages.add(lines.sublist(index, end));
-    }
-
-    final objects = <String>[];
-    final pageObjectNumbers = <int>[];
-    final contentObjectNumbers = <int>[];
-    int objectNumber = 1;
-
-    final fontObjectNumber = objectNumber++;
-    objects.add('<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>');
-
-    for (final pageLines in pages) {
-      final content = _buildPdfContentStream(pageLines);
-      final contentObjectNumber = objectNumber++;
-      contentObjectNumbers.add(contentObjectNumber);
-      objects.add(
-        '<< /Length ${utf8.encode(content).length} >>\nstream\n$content\nendstream',
-      );
-
-      final pageObjectNumber = objectNumber++;
-      pageObjectNumbers.add(pageObjectNumber);
-      objects.add(
-        '<< /Type /Page /Parent 0 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 $fontObjectNumber 0 R >> >> /Contents $contentObjectNumber 0 R >>',
-      );
-    }
-
-    final pagesObjectNumber = objectNumber++;
-    final kids = pageObjectNumbers.map((id) => '$id 0 R').join(' ');
-    objects.add(
-      '<< /Type /Pages /Kids [ $kids ] /Count ${pageObjectNumbers.length} >>',
-    );
-
-    for (var index = 0; index < pageObjectNumbers.length; index++) {
-      final pageObjectIndex = pageObjectNumbers[index] - 1;
-      objects[pageObjectIndex] = objects[pageObjectIndex].replaceFirst(
-        '/Parent 0 0 R',
-        '/Parent $pagesObjectNumber 0 R',
-      );
-    }
-
-    final catalogObjectNumber = objectNumber++;
-    objects.add('<< /Type /Catalog /Pages $pagesObjectNumber 0 R >>');
-
-    final buffer = StringBuffer('%PDF-1.4\n');
-    final offsets = <int>[0];
-    for (var index = 0; index < objects.length; index++) {
-      offsets.add(utf8.encode(buffer.toString()).length);
-      buffer.write('${index + 1} 0 obj\n${objects[index]}\nendobj\n');
-    }
-
-    final xrefStart = utf8.encode(buffer.toString()).length;
-    buffer.write('xref\n0 ${objects.length + 1}\n');
-    buffer.write('0000000000 65535 f \n');
-    for (var index = 1; index < offsets.length; index++) {
-      buffer.writeln('${offsets[index].toString().padLeft(10, '0')} 00000 n ');
-    }
-    buffer.write(
-      'trailer\n<< /Size ${objects.length + 1} /Root $catalogObjectNumber 0 R >>\nstartxref\n$xrefStart\n%%EOF',
-    );
-
-    return utf8.encode(buffer.toString());
-  }
-
-  String _buildPdfContentStream(List<String> lines) {
-    final buffer = StringBuffer('BT\n/F1 10 Tf\n40 800 Td\n12 TL\n');
-    for (final line in lines) {
-      final escaped = line
-          .replaceAll(r'\', r'\\')
-          .replaceAll('(', r'\(')
-          .replaceAll(')', r'\)');
-      buffer.writeln('($escaped) Tj');
-      buffer.writeln('T*');
-    }
-    buffer.write('ET');
-    return buffer.toString();
-  }
 }

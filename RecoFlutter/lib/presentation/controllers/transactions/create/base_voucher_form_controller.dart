@@ -1,7 +1,10 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
 import '../../../../core/config/api_endpoints.dart';
+import '../../../../core/utils/app_date_formatter.dart';
 import '../../../../core/utils/app_snackbar.dart';
 import '../../../../data/models/masters/master_entities.dart';
 import '../../../../data/repositories/transactions/transactions_repository.dart';
@@ -117,8 +120,7 @@ abstract class BaseVoucherFormController extends GetxController {
 
   Future<void> _initializeForm() async {
     final now = DateTime.now();
-    dateController.text =
-        '${now.year.toString().padLeft(4, '0')}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
+    dateController.text = AppDateFormatter.formatDisplay(now);
     await _loadLookups();
     if (initialPayload != null) {
       _applyInitialPayload(initialPayload!);
@@ -230,7 +232,7 @@ abstract class BaseVoucherFormController extends GetxController {
   }
 
   Future<void> pickDate(BuildContext context) async {
-    final current = DateTime.tryParse(dateController.text) ?? DateTime.now();
+    final current = AppDateFormatter.parse(dateController.text) ?? DateTime.now();
     final selected = await showDatePicker(
       context: context,
       initialDate: current,
@@ -238,8 +240,7 @@ abstract class BaseVoucherFormController extends GetxController {
       lastDate: DateTime(2100),
     );
     if (selected != null) {
-      dateController.text =
-          '${selected.year.toString().padLeft(4, '0')}-${selected.month.toString().padLeft(2, '0')}-${selected.day.toString().padLeft(2, '0')}';
+      dateController.text = AppDateFormatter.formatDisplay(selected);
     }
   }
 
@@ -395,13 +396,13 @@ abstract class BaseVoucherFormController extends GetxController {
           payload: payload,
         );
       }
-      await _refreshList();
       Get.back<void>();
       AppSnackbar.success(
         isEditing
             ? '$title was updated locally and will sync when available.'
             : '$title was saved locally and will sync when available.',
       );
+      unawaited(_refreshList());
     } catch (error) {
       AppSnackbar.error(error.toString());
     } finally {
@@ -435,7 +436,7 @@ abstract class BaseVoucherFormController extends GetxController {
     return <String, dynamic>{
       if (recordId != null) 'id': recordId,
       'voucher_type': voucherType,
-      'voucher_date': dateController.text.trim(),
+      'voucher_date': AppDateFormatter.toApiDate(dateController.text.trim()),
       'payment_mode':
           selectedCashBankAccount.value?.transactionMode?.trim().isNotEmpty == true
               ? selectedCashBankAccount.value!.transactionMode!.trim()
@@ -471,7 +472,7 @@ abstract class BaseVoucherFormController extends GetxController {
     return <String, dynamic>{
       if (recordId != null) 'id': recordId,
       'voucher_type': 'journal',
-      'voucher_date': dateController.text.trim(),
+      'voucher_date': AppDateFormatter.toApiDate(dateController.text.trim()),
       'narration': narrationController.text.trim().isEmpty
           ? null
           : narrationController.text.trim(),
@@ -544,7 +545,7 @@ abstract class BaseVoucherFormController extends GetxController {
     if (value == null || value.trim().isEmpty) {
       return '';
     }
-    return value.length >= 10 ? value.substring(0, 10) : value;
+    return AppDateFormatter.formatDisplay(value);
   }
 }
 

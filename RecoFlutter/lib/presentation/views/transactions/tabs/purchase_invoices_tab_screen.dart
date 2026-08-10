@@ -2,6 +2,7 @@ import 'package:data_table_2/data_table_2.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
+import '../../../../core/utils/app_date_formatter.dart';
 import '../../../controllers/transactions/purchase_invoices_controller.dart';
 import '../../masters/widgets/masters_ui_components.dart';
 import '../details/transaction_detail_screen.dart';
@@ -121,31 +122,6 @@ class PurchaseInvoicesTabScreen extends GetView<PurchaseInvoicesController> {
   }
 
   String _formatDate(String value) {
-    if (value.length < 10) {
-      return value;
-    }
-    final date = value.substring(0, 10).split('-');
-    if (date.length != 3) {
-      return value.substring(0, 10);
-    }
-    const months = <String>[
-      'Jan',
-      'Feb',
-      'Mar',
-      'Apr',
-      'May',
-      'Jun',
-      'Jul',
-      'Aug',
-      'Sep',
-      'Oct',
-      'Nov',
-      'Dec',
-    ];
-    final monthIndex = int.tryParse(date[1]) ?? 1;
-    final month = monthIndex >= 1 && monthIndex <= 12
-        ? months[monthIndex - 1]
-        : date[1];
-    return '${date[2]} $month ${date[0]}';
+    return AppDateFormatter.formatDisplay(value);
   }
 }

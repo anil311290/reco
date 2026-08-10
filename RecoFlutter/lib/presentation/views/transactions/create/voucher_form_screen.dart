@@ -3,9 +3,12 @@ import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 
 import '../../../widgets/common/custom_text_field.dart';
+import '../../../widgets/common/app_help_dialog.dart';
 import '../../../../data/models/masters/master_entities.dart';
 import '../../../controllers/transactions/create/base_voucher_form_controller.dart';
 import '../../../controllers/transactions/create/transaction_form_models.dart';
+import '../../masters/forms/account_form_sheet.dart';
+import '../../masters/forms/party_form_sheet.dart';
 import 'widgets/transaction_form_components.dart';
 
 class VoucherFormScreen<T extends BaseVoucherFormController>
@@ -76,7 +79,7 @@ class VoucherFormScreen<T extends BaseVoucherFormController>
                               Align(
                                 alignment: Alignment.centerLeft,
                                 child: Padding(
-                                  padding: const EdgeInsets.only(top: 6, left: 4),
+                                  padding: const EdgeInsets.only(top: 6, left: 4,bottom: 10),
                                   child: Text(
                                     controller.paymentBalanceHint,
                                     style: Theme.of(context).textTheme.bodySmall
@@ -128,6 +131,8 @@ class _PaymentRowsSection<T extends BaseVoucherFormController>
       ),
       child: Column(
         children: <Widget>[
+          _VoucherInlineQuickActions<T>(label: 'Particulars'),
+          const SizedBox(height: 4),
           for (final row in controller.paymentRows) _PaymentRowCard<T>(row: row),
           const SizedBox(height: 8),
           TransactionAmountPill(
@@ -135,7 +140,7 @@ class _PaymentRowsSection<T extends BaseVoucherFormController>
             value: 'Rs ${formatAmount(controller.paymentTotal)}',
           ),
           const SizedBox(height: 10),
-          _VoucherModeNote<T>(),
+          _VoucherModeHelp<T>(),
         ],
       ),
     );
@@ -210,6 +215,82 @@ class _PaymentRowCard<T extends BaseVoucherFormController> extends GetView<T> {
   }
 }
 
+class _VoucherInlineQuickActions<T extends BaseVoucherFormController>
+    extends GetView<T> {
+  const _VoucherInlineQuickActions({required this.label});
+
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          Text(
+            '$label *',
+            style: theme.textTheme.titleSmall?.copyWith(
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Align(
+            alignment: Alignment.centerRight,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: <Widget>[
+                _VoucherQuickActionLink(
+                  label: 'Quick Add Cash / Bank Ledger',
+                  onTap: () => _openVoucherQuickAddLedger(context, controller),
+                ),
+                const SizedBox(height: 2),
+                _VoucherQuickActionLink(
+                  label: 'Quick Add Party',
+                  onTap: () => _openVoucherQuickAddParty(context, controller),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _VoucherQuickActionLink extends StatelessWidget {
+  const _VoucherQuickActionLink({
+    required this.label,
+    required this.onTap,
+  });
+
+  final String label;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(6),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 1),
+        child: Text(
+          label,
+          textAlign: TextAlign.right,
+          style: theme.textTheme.labelMedium?.copyWith(
+            color: theme.colorScheme.primary,
+            fontWeight: FontWeight.w700,
+            decoration: TextDecoration.underline,
+            decorationColor: theme.colorScheme.primary,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class _AdjustmentRowsSection<T extends BaseVoucherFormController>
     extends GetView<T> {
   @override
@@ -223,6 +304,8 @@ class _AdjustmentRowsSection<T extends BaseVoucherFormController>
         ),
         child: Column(
           children: <Widget>[
+            _VoucherInlineQuickActions<T>(label: 'Particulars (Party / Ledger)'),
+            const SizedBox(height: 4),
             for (final row in controller.adjustmentRows)
               _AdjustmentRowCard<T>(row: row),
             const SizedBox(height: 8),
@@ -246,7 +329,7 @@ class _AdjustmentRowsSection<T extends BaseVoucherFormController>
                   : Theme.of(context).colorScheme.error,
             ),
             const SizedBox(height: 10),
-            _AdjustmentVoucherNote<T>(),
+            const _AdjustmentVoucherHelp(),
           ],
         ),
     );
@@ -303,6 +386,7 @@ class _AdjustmentRowCard<T extends BaseVoucherFormController>
                 label: 'Dr / Cr',
                 value: value,
                 items: const <String>['debit', 'credit'],
+                enableSearch: false,
                 itemLabelBuilder: (item) =>
                     item[0].toUpperCase() + item.substring(1),
                 onChanged: (next) {
@@ -340,58 +424,80 @@ class _AdjustmentRowCard<T extends BaseVoucherFormController>
   }
 }
 
-class _AdjustmentVoucherNote<T extends BaseVoucherFormController>
-    extends GetView<T> {
+class _AdjustmentVoucherHelp extends StatelessWidget {
+  const _AdjustmentVoucherHelp();
+
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-      decoration: BoxDecoration(
-        color: theme.colorScheme.primary.withValues(alpha: .06),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(
-          color: theme.colorScheme.primary.withValues(alpha: .10),
-        ),
-      ),
-      child: Text(
-        'Journal (Tally style): add debit and credit lines. Total Debit must equal Total Credit - auto-posted to ledger & journal.',
-        style: theme.textTheme.bodySmall?.copyWith(
-          color: theme.colorScheme.onSurfaceVariant,
-          fontWeight: FontWeight.w500,
-          height: 1.35,
-        ),
+    return const Align(
+      alignment: Alignment.centerLeft,
+      child: AppHelpDialogButton(
+        title: 'Journal Voucher Help',
+        tooltip: 'Journal voucher help',
+        label: 'Journal voucher help',
+        sections: <AppHelpDialogSection>[
+          AppHelpDialogSection(
+            title: 'Journal flow',
+            message:
+                'Add debit and credit lines in Tally style. Total Debit must equal Total Credit and entries auto-post to ledger and journal.',
+          ),
+        ],
       ),
     );
   }
 }
 
-class _VoucherModeNote<T extends BaseVoucherFormController> extends GetView<T> {
+Future<void> _openVoucherQuickAddParty(
+  BuildContext context,
+  BaseVoucherFormController controller,
+) async {
+  final result = await Get.to(
+    () => PartyFormSheet(
+      initialType: controller.voucherType == 'payment' ? 'creditor' : 'debtor',
+    ),
+  );
+  if (result == null) {
+    return;
+  }
+  await controller.lookupController.loadVoucherLookups(
+    voucherType: controller.voucherType,
+  );
+  controller.update();
+}
+
+Future<void> _openVoucherQuickAddLedger(
+  BuildContext context,
+  BaseVoucherFormController controller,
+) async {
+  final result = await Get.to(() => const AccountFormSheet());
+  if (result == null) {
+    return;
+  }
+  await controller.lookupController.loadVoucherLookups(
+    voucherType: controller.voucherType,
+  );
+  controller.update();
+}
+
+class _VoucherModeHelp<T extends BaseVoucherFormController> extends GetView<T> {
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     final isReceipt = controller.voucherType == 'receipt';
     final note = isReceipt
-        ? 'Receipt (Tally style): Dr Cash/Bank, Cr Party - auto-posted to ledger & journal.'
-        : 'Payment (Tally style): Dr Party, Cr Cash/Bank - auto-posted to ledger & journal.';
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-      decoration: BoxDecoration(
-        color: theme.colorScheme.primary.withValues(alpha: .06),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(
-          color: theme.colorScheme.primary.withValues(alpha: .10),
-        ),
-      ),
-      child: Text(
-        note,
-        style: theme.textTheme.bodySmall?.copyWith(
-          color: theme.colorScheme.onSurfaceVariant,
-          fontWeight: FontWeight.w500,
-          height: 1.35,
-        ),
+        ? 'Receipt follows Tally style: Dr Cash or Bank, Cr Party. The entry auto-posts to ledger and journal.'
+        : 'Payment follows Tally style: Dr Party, Cr Cash or Bank. The entry auto-posts to ledger and journal.';
+    return Align(
+      alignment: Alignment.centerLeft,
+      child: AppHelpDialogButton(
+        title: isReceipt ? 'Receipt Voucher Help' : 'Payment Voucher Help',
+        tooltip: isReceipt ? 'Receipt voucher help' : 'Payment voucher help',
+        label: isReceipt ? 'Receipt voucher help' : 'Payment voucher help',
+        sections: <AppHelpDialogSection>[
+          AppHelpDialogSection(
+            title: isReceipt ? 'Receipt flow' : 'Payment flow',
+            message: note,
+          ),
+        ],
       ),
     );
   }

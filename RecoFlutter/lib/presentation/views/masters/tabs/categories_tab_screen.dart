@@ -22,6 +22,7 @@ class CategoriesTabScreen extends GetView<CategoriesController> {
             CompactSearchFilterBar(
               controller: controller.searchController,
               hint: 'Search category list...',
+              onChanged: (_) => controller.onSearchChanged(),
               filterTooltip: 'Category filters',
               onFilterTap: () => _openFilters(context),
               onExcelTap: controller.exportExcel,
@@ -29,19 +30,25 @@ class CategoriesTabScreen extends GetView<CategoriesController> {
             ),
             const SizedBox(height: 12),
             Expanded(
-              child: MastersTableShell(
-                isLoading: controller.isLoading.value,
-                emptyText: 'No categories found',
-                minWidth: 860,
-                columns: <DataColumn2>[
+              child: PaginatedTablePane(
+                hasMore: controller.hasMore,
+                isLoadingMore: controller.isLoadingMore.value,
+                loadedCount: controller.items.length,
+                totalCount: controller.total.value,
+                onLoadMore: controller.loadMore,
+                child: MastersTableShell(
+                  isLoading: controller.isLoading.value,
+                  emptyText: 'No categories found',
+                  minWidth: 860,
+                  columns: <DataColumn2>[
                   masterColumn(context, '#', fixedWidth: 52),
                   masterColumn(context, 'Name', size: ColumnSize.L),
                   masterColumn(context, 'Description', size: ColumnSize.L),
                   masterColumn(context, 'Sort Order', size: ColumnSize.S),
                   masterColumn(context, 'Status', fixedWidth: 120),
                   masterColumn(context, 'Actions', fixedWidth: 120),
-                ],
-                rows: List<DataRow>.generate(controller.filteredItems.length, (
+                  ],
+                  rows: List<DataRow>.generate(controller.filteredItems.length, (
                   index,
                 ) {
                   final item = controller.filteredItems[index];
@@ -89,7 +96,8 @@ class CategoriesTabScreen extends GetView<CategoriesController> {
                       ),
                     ],
                   );
-                }),
+                  }),
+                ),
               ),
             ),
           ],
@@ -168,8 +176,11 @@ class _MasterFilterSheet extends StatelessWidget {
                       Expanded(
                         child: OutlinedButton(
                           onPressed: () {
-                            controller.clearFilters();
-                            Navigator.of(context).pop();
+                            controller.clearFilters().then((_) {
+                              if (context.mounted) {
+                                Navigator.of(context).pop();
+                              }
+                            });
                           },
                           child: const Text('Clear'),
                         ),
@@ -178,8 +189,11 @@ class _MasterFilterSheet extends StatelessWidget {
                       Expanded(
                         child: FilledButton(
                           onPressed: () {
-                            controller.applyFilters(status: selectedStatus);
-                            Navigator.of(context).pop();
+                            controller.applyFilters(status: selectedStatus).then((_) {
+                              if (context.mounted) {
+                                Navigator.of(context).pop();
+                              }
+                            });
                           },
                           child: const Text('Apply'),
                         ),

@@ -47,7 +47,7 @@ class TransactionRecord {
 
   factory TransactionRecord.fromVoucher(Map<String, dynamic> record) {
     final payload = _recordPayload(record);
-    final party = payload['party'];
+    final party = _asMap(payload['party']);
     final voucherType = (payload['voucher_type'] ?? '').toString();
     return TransactionRecord(
       kind: TransactionRecordKind.voucher,
@@ -59,9 +59,10 @@ class TransactionRecord {
       type: voucherType,
       typeLabel: (payload['type_label'] ?? _voucherLabel(voucherType)).toString(),
       partyId: _tryParseInt(payload['party_id']),
-      partyName: party is Map<String, dynamic>
-          ? (party['name'] ?? '').toString()
-          : '',
+      partyName: _partyName(
+        party,
+        payload['party_name'],
+      ),
       date: (payload['voucher_date'] ?? '').toString(),
       status: (payload['status'] ?? '').toString(),
       statusLabel: _titleCase((payload['status'] ?? '').toString()),
@@ -73,7 +74,7 @@ class TransactionRecord {
 
   factory TransactionRecord.fromSalesInvoice(Map<String, dynamic> record) {
     final payload = _recordPayload(record);
-    final party = payload['party'];
+    final party = _asMap(payload['party']);
     final invoiceType = 'sales';
     return TransactionRecord(
       kind: TransactionRecordKind.salesInvoice,
@@ -85,9 +86,10 @@ class TransactionRecord {
       type: invoiceType,
       typeLabel: 'Sales Invoice',
       partyId: _tryParseInt(payload['party_id']),
-      partyName: party is Map<String, dynamic>
-          ? (party['name'] ?? '').toString()
-          : '',
+      partyName: _partyName(
+        party,
+        payload['party_name'] ?? payload['customer_name'],
+      ),
       date: (payload['invoice_date'] ?? '').toString(),
       dueDate: (payload['due_date'] ?? '').toString(),
       status: (payload['status'] ?? '').toString(),
@@ -102,7 +104,7 @@ class TransactionRecord {
 
   factory TransactionRecord.fromPurchaseInvoice(Map<String, dynamic> record) {
     final payload = _recordPayload(record);
-    final party = payload['party'];
+    final party = _asMap(payload['party']);
     return TransactionRecord(
       kind: TransactionRecordKind.purchaseInvoice,
       id: _tryParseInt(payload['id']),
@@ -113,9 +115,10 @@ class TransactionRecord {
       type: 'purchase',
       typeLabel: 'Purchase',
       partyId: _tryParseInt(payload['party_id']),
-      partyName: party is Map<String, dynamic>
-          ? (party['name'] ?? '').toString()
-          : '',
+      partyName: _partyName(
+        party,
+        payload['party_name'] ?? payload['supplier_name'],
+      ),
       date: (payload['invoice_date'] ?? '').toString(),
       dueDate: (payload['due_date'] ?? '').toString(),
       status: (payload['status'] ?? '').toString(),
@@ -146,10 +149,34 @@ class TransactionLookupOption {
 
 Map<String, dynamic> _recordPayload(Map<String, dynamic> record) {
   final payload = record['payload'];
-  if (payload is Map<String, dynamic>) {
-    return payload;
+  final typedPayload = _asMap(payload);
+  if (typedPayload.isNotEmpty) {
+    return typedPayload;
   }
   return record;
+}
+
+Map<String, dynamic> _asMap(dynamic value) {
+  if (value is Map<String, dynamic>) {
+    return value;
+  }
+  if (value is Map) {
+    return value.map(
+      (key, item) => MapEntry(
+        key.toString(),
+        item,
+      ),
+    );
+  }
+  return <String, dynamic>{};
+}
+
+String _partyName(
+  Map<String, dynamic> party,
+  dynamic fallback,
+) {
+  final name = (party['name'] ?? fallback ?? '').toString().trim();
+  return name;
 }
 
 int? _tryParseInt(dynamic value) {

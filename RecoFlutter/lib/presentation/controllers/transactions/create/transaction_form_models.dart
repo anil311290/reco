@@ -7,22 +7,36 @@ enum InvoiceCatalogOptionKind { item, service }
 enum InvoicePartyOptionKind { party, cashBankOd }
 
 class InvoicePartyOption {
-  const InvoicePartyOption.party(this.party)
+  const InvoicePartyOption.party(
+    this.party, {
+    this.overrideLabel,
+    this.overrideToken,
+  })
     : kind = InvoicePartyOptionKind.party,
       account = null;
 
-  const InvoicePartyOption.account(this.account)
+  const InvoicePartyOption.account(
+    this.account, {
+    this.overrideLabel,
+    this.overrideToken,
+  })
     : kind = InvoicePartyOptionKind.cashBankOd,
       party = null;
 
   final InvoicePartyOptionKind kind;
   final PartyEntity? party;
   final LookupOption? account;
+  final String? overrideLabel;
+  final String? overrideToken;
 
   bool get isParty => kind == InvoicePartyOptionKind.party;
   bool get isAccount => kind == InvoicePartyOptionKind.cashBankOd;
 
   String get token {
+    final rawToken = overrideToken?.trim();
+    if (rawToken != null && rawToken.isNotEmpty) {
+      return rawToken;
+    }
     if (isParty) {
       return 'party:${party?.id ?? ''}';
     }
@@ -30,6 +44,10 @@ class InvoicePartyOption {
   }
 
   String get label {
+    final rawLabel = overrideLabel?.trim();
+    if (rawLabel != null && rawLabel.isNotEmpty) {
+      return rawLabel;
+    }
     if (isParty) {
       final entity = party;
       if (entity == null) {
@@ -47,8 +65,9 @@ class InvoicePartyOption {
     return code.isEmpty ? option.label : '${option.label} ($code)';
   }
 
-  int? get partyId => party?.id;
-  int? get accountId => account?.id;
+  int? get partyId => isParty ? (party?.id ?? _tokenId(token, 'party:')) : null;
+  int? get accountId =>
+      isAccount ? (account?.id ?? _tokenId(token, 'account:')) : null;
   String get displayKindLabel => isParty ? 'Party' : 'Ledger';
 
   @override
@@ -63,6 +82,13 @@ class InvoicePartyOption {
 
   @override
   int get hashCode => Object.hash(kind, token);
+}
+
+int? _tokenId(String token, String prefix) {
+  if (!token.startsWith(prefix)) {
+    return null;
+  }
+  return int.tryParse(token.substring(prefix.length));
 }
 
 class InvoiceCatalogOption {

@@ -232,6 +232,27 @@ class _CustomDropdownState<T> extends State<CustomDropdown<T>> {
   late final ValueNotifier<T?> _valueNotifier;
   final _searchController = TextEditingController();
 
+  Widget _buildScrollableLabel(
+    BuildContext context,
+    String text,
+  ) {
+    final scheme = Theme.of(context).colorScheme;
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      physics: const BouncingScrollPhysics(),
+      child: Text(
+        text,
+        maxLines: 1,
+        softWrap: false,
+        style: TextStyle(
+          color: scheme.onSurface,
+          fontSize: 14,
+          fontWeight: FontWeight.normal,
+        ),
+      ),
+    );
+  }
+
   @override
   void initState() {
     super.initState();
@@ -263,15 +284,9 @@ class _CustomDropdownState<T> extends State<CustomDropdown<T>> {
             height: 44,
             child: Padding(
               padding: EdgeInsets.only(left: 0.0),
-              child: Text(
+              child: _buildScrollableLabel(
+                context,
                 widget.itemLabelBuilder(item),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  color: scheme.onSurface,
-                  fontSize: 14,
-                  fontWeight: FontWeight.normal,
-                ),
               ),
             ),
           ),

@@ -177,7 +177,13 @@ class ExportApiController extends Controller
         $companyId = $request->user()->company_id;
 
         try {
-            $pdf = $this->exportService->exportDebtorsOutstandingPdf($companyId);
+            $pdf = $this->exportService->exportDebtorsOutstandingPdf(
+                $companyId,
+                $request->filled('financial_year_id') ? (int) $request->input('financial_year_id') : null,
+                $request->input('date_from'),
+                $request->input('date_to'),
+                $request->only(['overdue_status', 'age_bucket'])
+            );
 
             return $this->storePdfResponse($pdf, 'debtors-outstanding-' . date('Y-m-d') . '.pdf');
         } catch (\Exception $e) {
@@ -195,7 +201,13 @@ class ExportApiController extends Controller
         $companyId = $request->user()->company_id;
 
         try {
-            $pdf = $this->exportService->exportCreditorsOutstandingPdf($companyId);
+            $pdf = $this->exportService->exportCreditorsOutstandingPdf(
+                $companyId,
+                $request->filled('financial_year_id') ? (int) $request->input('financial_year_id') : null,
+                $request->input('date_from'),
+                $request->input('date_to'),
+                $request->only(['overdue_status', 'age_bucket'])
+            );
 
             return $this->storePdfResponse($pdf, 'creditors-outstanding-' . date('Y-m-d') . '.pdf');
         } catch (\Exception $e) {

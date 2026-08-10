@@ -121,6 +121,13 @@ class FinancialYearsRepository extends OfflineFirstRepository {
   }
 
   Future<void> closeYear(FinancialYearEntity entity) async {
+    return setClosedStatus(entity, isClosed: true);
+  }
+
+  Future<void> setClosedStatus(
+    FinancialYearEntity entity, {
+    required bool isClosed,
+  }) async {
     final serverId = entity.id?.toString();
     if (serverId == null) return;
 
@@ -130,7 +137,9 @@ class FinancialYearsRepository extends OfflineFirstRepository {
       payload: <String, dynamic>{
         ...entity.toPayload(),
         'id': entity.id,
-        'is_closed': true,
+        'is_closed': isClosed,
+        'is_current': isClosed ? false : entity.isCurrent,
+        'closed_at': isClosed ? DateTime.now().toIso8601String() : null,
       },
       syncAction: 'update',
       localId: localId,
@@ -140,7 +149,7 @@ class FinancialYearsRepository extends OfflineFirstRepository {
       module: _module,
       endpoint: '${ApiEndpoints.financialYears}/$serverId/close',
       method: 'PATCH',
-      payload: const <String, dynamic>{},
+      payload: <String, dynamic>{'status': isClosed ? 1 : 0},
       recordLocalId: localId,
     );
     if (await networkMonitorService.hasInternetNow()) {

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:get/get.dart';
 
+import '../../../core/utils/app_date_formatter.dart';
 import '../../controllers/settings/notifications_center_controller.dart';
 import '../../controllers/settings/audit_log_detail_controller.dart';
 import '../../controllers/settings/support_ticket_chat_controller.dart';
@@ -315,12 +316,7 @@ class _NotificationCard extends StatelessWidget {
   }
 
   static String _formatDateTime(dynamic value) {
-    final raw = (value ?? '').toString().trim();
-    if (raw.isEmpty) {
-      return '';
-    }
-    final normalized = raw.replaceFirst('T', ' ');
-    return normalized.length > 16 ? normalized.substring(0, 16) : normalized;
+    return AppDateFormatter.formatDateTime(value);
   }
 }
 

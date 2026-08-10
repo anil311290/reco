@@ -36,6 +36,8 @@ use App\Http\Controllers\Auth\ForgotPasswordController;
 use App\Http\Controllers\Auth\ResetPasswordController;
 use App\Http\Controllers\Auth\VerificationController;
 use App\Http\Controllers\Auth\ConfirmPasswordController;
+use App\Http\Controllers\Admin\DatabaseBackupController;
+use App\Http\Controllers\BackupLinkController;
 use App\Http\Middleware\CheckPermission;
 use App\Http\Middleware\CheckRole;
 use Illuminate\Support\Facades\Route;
@@ -71,6 +73,10 @@ Route::get('/USER_GUIDE.html', fn () => redirect()->route('user-guide'));
 
 // Public webhook endpoints (Razorpay)
 Route::post('/webhooks/razorpay', [WebhookController::class, 'razorpay'])->name('webhooks.razorpay');
+
+Route::get('/backup/download/{company}', [BackupLinkController::class, 'download'])
+    ->middleware(['signed', 'throttle:10,1'])
+    ->name('backup.signed-download');
 
 // Registration
 Route::get('/register', [RegisterController::class, 'showRegistrationForm'])->name('register');
@@ -139,6 +145,15 @@ Route::prefix('admin')->name('admin.')->group(function () {
                 ->middleware(CheckPermission::class . ':settings.edit');
             Route::get('settings/theme-css', [SettingsController::class, 'getThemeCss'])
                 ->name('settings.theme-css');
+            Route::get('settings/backup/download', [DatabaseBackupController::class, 'download'])
+                ->name('settings.backup.download')
+                ->middleware(CheckPermission::class . ':settings.edit');
+            Route::post('settings/backup/restore', [DatabaseBackupController::class, 'restore'])
+                ->name('settings.backup.restore')
+                ->middleware(CheckPermission::class . ':settings.edit');
+            Route::put('settings/backup/automation', [DatabaseBackupController::class, 'updateAutomation'])
+                ->name('settings.backup.automation')
+                ->middleware(CheckPermission::class . ':settings.edit');
         });
 
         // User Profile
@@ -290,6 +305,7 @@ Route::prefix('admin')->name('admin.')->group(function () {
             Route::get('reports/balance-sheet', [ReportController::class, 'balanceSheet'])->name('reports.balance-sheet');
             Route::get('reports/debtors-outstanding', [ReportController::class, 'debtorsOutstanding'])->name('reports.debtors-outstanding');
             Route::get('reports/creditors-outstanding', [ReportController::class, 'creditorsOutstanding'])->name('reports.creditors-outstanding');
+            Route::get('reports/aging-summary', [ReportController::class, 'agingSummary'])->name('reports.aging-summary');
             // Legacy: thin Cash Flow removed — Receipt & Payment replaces it
             Route::redirect('reports/cash-flow', '/admin/reports/receipt-payment')->name('reports.cash-flow');
             Route::get('ledgers/{ledger}/history', [LedgerHistoryController::class, 'show'])
@@ -340,6 +356,7 @@ Route::prefix('admin')->name('admin.')->group(function () {
             Route::get('export/day-book/pdf', [ExportController::class, 'dayBookPdf'])->name('export.day-book.pdf');
             Route::get('export/debtors-outstanding/pdf', [ExportController::class, 'debtorsOutstandingPdf'])->name('export.debtors-outstanding.pdf');
             Route::get('export/creditors-outstanding/pdf', [ExportController::class, 'creditorsOutstandingPdf'])->name('export.creditors-outstanding.pdf');
+            Route::get('export/aging-summary/pdf', [ExportController::class, 'agingSummaryPdf'])->name('export.aging-summary.pdf');
             Route::get('export/voucher/{id}/pdf', [ExportController::class, 'voucherPdf'])->name('export.voucher.pdf');
             Route::get('export/{type}/excel', [ExportController::class, 'excel'])->name('export.excel');
             Route::get('export/{type}/csv', [ExportController::class, 'csv'])->name('export.csv');

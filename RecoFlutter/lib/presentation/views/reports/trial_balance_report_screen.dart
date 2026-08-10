@@ -4,6 +4,7 @@ import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:get/get.dart';
 
 import '../../../core/config/api_endpoints.dart';
+import '../../../core/utils/app_date_formatter.dart';
 import '../../controllers/reports/report_lookup_controller.dart';
 import '../../controllers/reports/trial_balance_report_controller.dart';
 import '../../widgets/common/custom_text_field.dart';
@@ -54,8 +55,16 @@ class TrialBalanceReportScreen extends GetView<TrialBalanceReportController> {
                       );
                       return (item['name'] ?? 'FY').toString();
                     },
-                    onChanged: (value) => controller.financialYearId.value = value,
+                    onChanged: (value) => controller.applyFinancialYear(value, lookup),
                   ),
+
+                  ReportDateRangeRow(
+                    fromController: controller.fromDateController,
+                    toController: controller.toDateController,
+                    onFromTap: () => _pickDate(context, controller.fromDateController),
+                    onToTap: () => _pickDate(context, controller.toDateController),
+                  ),
+                  const SizedBox(height: 12),
                   ReportActionBar(
                     children: <Widget>[
                       ReportPrimaryButton(
@@ -93,7 +102,7 @@ class TrialBalanceReportScreen extends GetView<TrialBalanceReportController> {
                     children: <Widget>[
                       Expanded(
                         child: ReportStatCard(
-                          label: 'Closing Debit',
+                          label: 'Closing Dr',
                           value: controller.formatCurrency(report['total_debit']),
                           note: 'Must equal closing credit when books tally.',
                           color: const Color(0xFF2563EB),
@@ -103,7 +112,7 @@ class TrialBalanceReportScreen extends GetView<TrialBalanceReportController> {
                       const SizedBox(width: 10),
                       Expanded(
                         child: ReportStatCard(
-                          label: 'Closing Credit',
+                          label: 'Closing Cr',
                           value: controller.formatCurrency(report['total_credit']),
                           note: 'Closing balances across all ledgers.',
                           color: const Color(0xFFF59E0B),
@@ -142,13 +151,7 @@ class TrialBalanceReportScreen extends GetView<TrialBalanceReportController> {
               icon: FontAwesomeIcons.tableList,
               iconColor: const Color(0xFFD97706),
               trailing: report is Map<String, dynamic>
-                  ? Text(
-                      'Dr ${controller.formatCurrency(report['total_debit'])} | Cr ${controller.formatCurrency(report['total_credit'])}',
-                      style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                        color: const Color(0xFFD97706),
-                        fontWeight: FontWeight.w700,
-                      ),
-                    )
+                  ? _buildSectionMeta(context, report)
                   : null,
               child: accounts.isEmpty
                   ? const Text('No accounts found')
@@ -179,6 +182,8 @@ class TrialBalanceReportScreen extends GetView<TrialBalanceReportController> {
         final item = accounts[index];
         final account = item['account'];
         final accountId = account is Map<String, dynamic> ? _asInt(account['id']) : null;
+        final debit = _asDouble(item['debit']);
+        final credit = _asDouble(item['credit']);
         return DataRow(
           cells: <DataCell>[
             DataCell(
@@ -209,9 +214,19 @@ class TrialBalanceReportScreen extends GetView<TrialBalanceReportController> {
                 ),
               ),
             ),
-            masterTextCell(account is Map<String, dynamic> ? (account['account_type'] ?? '-').toString() : '-'),
-            DataCell(Center(child: Text(controller.formatCurrency(item['debit']), textAlign: TextAlign.center, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: Color(0xFF2563EB))))),
-            DataCell(Center(child: Text(controller.formatCurrency(item['credit']), textAlign: TextAlign.center, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: Color(0xFFF59E0B))))),
+            DataCell(
+              Center(
+                child: _typeChip(
+                  context,
+                  account is Map<String, dynamic>
+                      ? (account['account_type'] ?? '-').toString()
+                      : '-',
+                ),
+              ),
+            ),
+            DataCell(Center(child: Text(debit > 0 ? controller.formatCurrency(debit) : '-', textAlign: TextAlign.center, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: Color(0xFF2563EB))))),
+            DataCell(Center(child: Text(credit > 0 ? controller.formatCurrency(credit) : '-', textAlign: TextAlign.center, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: Color(0xFFF59E0B))))),
+            masterTextCell(_balanceText(debit, credit)),
           ],
         );
       }),
@@ -228,6 +243,20 @@ class TrialBalanceReportScreen extends GetView<TrialBalanceReportController> {
           const DataCell(SizedBox.shrink()),
           DataCell(Center(child: Text(controller.formatCurrency(reportData['total_debit']), style: reportTotalRowTextStyle(context)?.copyWith(fontSize: 13)))),
           DataCell(Center(child: Text(controller.formatCurrency(reportData['total_credit']), style: reportTotalRowTextStyle(context)?.copyWith(fontSize: 13)))),
+          DataCell(
+            Center(
+              child: Text(
+                reportData['is_balanced'] == true
+                    ? 'Balanced'
+                    : controller.formatCurrency(
+                        (_asDouble(reportData['total_debit']) -
+                                _asDouble(reportData['total_credit']))
+                            .abs(),
+                      ),
+                style: reportTotalRowTextStyle(context)?.copyWith(fontSize: 13),
+              ),
+            ),
+          ),
         ],
       ),
     ];
@@ -240,18 +269,132 @@ class TrialBalanceReportScreen extends GetView<TrialBalanceReportController> {
       child: MastersTableShell(
         isLoading: false,
         emptyText: 'No accounts found',
-        minWidth: 860,
+        minWidth: 980,
         columns: <DataColumn2>[
-          masterColumn(context, 'Code'),
+          masterColumn(context, 'Account Code'),
           masterColumn(context, 'Particulars', size: ColumnSize.L),
           masterColumn(context, 'Type'),
           masterColumn(context, 'Debit (₹)'),
           masterColumn(context, 'Credit (₹)'),
+          masterColumn(context, 'Balance (₹)'),
         ],
         rows: tableRows,
       ),
     );
   }
 
+  Future<void> _pickDate(
+    BuildContext context,
+    TextEditingController target,
+  ) async {
+    final initial = AppDateFormatter.parse(target.text) ?? DateTime.now();
+    final selected = await showDatePicker(
+      context: context,
+      initialDate: initial,
+      firstDate: DateTime(2000),
+      lastDate: DateTime(2100),
+    );
+    if (selected != null) {
+      target.text = AppDateFormatter.formatDisplay(selected);
+    }
+  }
+
   int? _asInt(dynamic value) => int.tryParse(value?.toString() ?? '');
+
+  Widget _buildSectionMeta(
+    BuildContext context,
+    Map<String, dynamic> report,
+  ) {
+    final statusColor = report['is_balanced'] == true
+        ? const Color(0xFF16A34A)
+        : const Color(0xFFEF4444);
+    return Wrap(
+      spacing: 8,
+      runSpacing: 6,
+      alignment: WrapAlignment.start,
+      crossAxisAlignment: WrapCrossAlignment.center,
+      children: <Widget>[
+        _sectionPill(
+          context,
+          _dateRangeLabel(),
+          const Color(0xFF64748B),
+        ),
+        _sectionPill(
+          context,
+          report['is_balanced'] == true ? 'Balanced' : 'Review Difference',
+          statusColor,
+        ),
+      ],
+    );
+  }
+
+  Widget _sectionPill(BuildContext context, String text, Color color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: .10),
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Text(
+        text,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: Theme.of(context).textTheme.labelMedium?.copyWith(
+          color: color,
+          fontWeight: FontWeight.w800,
+          fontSize: 12,
+        ),
+      ),
+    );
+  }
+
+  double _asDouble(dynamic value) {
+    if (value is num) {
+      return value.toDouble();
+    }
+    return double.tryParse(value?.toString() ?? '') ?? 0;
+  }
+
+  String _balanceText(double debit, double credit) {
+    if (debit > 0) {
+      return '${controller.formatCurrency(debit)} Dr';
+    }
+    if (credit > 0) {
+      return '${controller.formatCurrency(credit)} Cr';
+    }
+    return controller.formatCurrency(0);
+  }
+
+  Widget _typeChip(BuildContext context, String type) {
+    final normalized = type.trim().toLowerCase();
+    final label = normalized.isEmpty || normalized == '-'
+        ? '-'
+        : '${normalized[0].toUpperCase()}${normalized.substring(1)}';
+    final color = switch (normalized) {
+      'asset' => const Color(0xFF2563EB),
+      'liability' => const Color(0xFFEF4444),
+      'income' => const Color(0xFF059669),
+      'expense' => const Color(0xFFF59E0B),
+      _ => const Color(0xFF64748B),
+    };
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: .12),
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Text(
+        label,
+        textAlign: TextAlign.center,
+        style: Theme.of(context).textTheme.labelSmall?.copyWith(
+              color: color,
+              fontWeight: FontWeight.w800,
+            ),
+      ),
+    );
+  }
+
+  String _dateRangeLabel() {
+    return '${controller.formatDate(controller.fromDateController.text)} to ${controller.formatDate(controller.toDateController.text)}';
+  }
 }

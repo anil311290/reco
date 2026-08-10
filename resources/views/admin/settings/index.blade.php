@@ -9,6 +9,13 @@
     $secondary = $theme['secondary_color'] ?? '#6b7280';
     $sidebar = $theme['sidebar_color'] ?? '#ffffff';
     $header = $theme['header_color'] ?? '#ffffff';
+    $backup = $settings['backup'] ?? [];
+    $backupScheduleEnabled = in_array(strtolower((string) ($backup['schedule_enabled'] ?? '0')), ['1', 'true', 'yes', 'on'], true);
+    $backupScheduleEmail = (string) ($backup['schedule_email'] ?? ($company->email ?? ''));
+    $backupScheduleEveryValue = (int) ($backup['schedule_every_value'] ?? 1);
+    $backupScheduleEveryUnit = (string) ($backup['schedule_every_unit'] ?? 'days');
+    $backupExpiryValue = (int) ($backup['link_expiry_value'] ?? 1);
+    $backupExpiryUnit = (string) ($backup['link_expiry_unit'] ?? 'hours');
 @endphp
 
 <style>
@@ -129,6 +136,9 @@
                 </button>
                 <button class="nav-link" id="financial-tab" data-bs-toggle="pill" data-bs-target="#financial" type="button" role="tab">
                     <i class="bi bi-calendar3"></i> Financial Year
+                </button>
+                <button class="nav-link" id="backup-tab" data-bs-toggle="pill" data-bs-target="#backup" type="button" role="tab">
+                    <i class="bi bi-database"></i> Backup
                 </button>
                 <button class="nav-link" id="subscription-tab" data-bs-toggle="pill" data-bs-target="#subscription" type="button" role="tab">
                     <i class="bi bi-credit-card"></i> Subscription
@@ -355,6 +365,103 @@
                     </div>
                 </div>
 
+                <div class="tab-pane fade" id="backup" role="tabpanel">
+                    <div class="card mb-4">
+                        <div class="card-body">
+                            <h5 class="card-title mb-1">Manual Backup</h5>
+                            <p class="text-muted small mb-3">Generate SQL backup directly in browser and download to your system. Backup file is not stored on server.</p>
+                            <a href="{{ route('admin.settings.backup.download') }}" class="btn btn-primary">
+                                <i class="bi bi-download me-2"></i>Generate & Download Backup
+                            </a>
+                        </div>
+                    </div>
+
+                    <div class="card mb-4">
+                        <div class="card-body">
+                            <h5 class="card-title mb-1">Restore Backup</h5>
+                            <p class="text-muted small mb-3">Upload a valid SQL backup file to restore the database.</p>
+                            <div class="alert alert-warning small">
+                                <i class="bi bi-exclamation-triangle me-1"></i>
+                                Restore will overwrite existing data. Please confirm carefully before proceeding.
+                            </div>
+
+                            <form id="backupRestoreForm" action="{{ route('admin.settings.backup.restore') }}" method="POST" enctype="multipart/form-data">
+                                @csrf
+                                <div class="row g-3 align-items-end">
+                                    <div class="col-lg-8">
+                                        <label class="form-label">Backup SQL File <span class="text-danger">*</span></label>
+                                        <input type="file" class="form-control" name="backup_file" id="backup_file" accept=".sql,.txt" required>
+                                    </div>
+                                    <div class="col-lg-4">
+                                        <button type="submit" class="btn btn-outline-danger w-100" id="restoreBackupBtn">
+                                            <i class="bi bi-upload me-2"></i>Restore Backup
+                                        </button>
+                                    </div>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-body">
+                            <h5 class="card-title mb-1">Scheduled Backup Link Email</h5>
+                            <p class="text-muted small mb-3">Configure cron based backup email delivery with expiring secure download links.</p>
+
+                            <div class="alert alert-info small">
+                                <div class="fw-semibold mb-1">Server cron command</div>
+                                <code>* * * * * php {{ base_path('artisan') }} schedule:run >> /dev/null 2>&1</code>
+                            </div>
+
+                            <form id="backupAutomationForm" method="POST" action="{{ route('admin.settings.backup.automation') }}">
+                                @csrf
+                                @method('PUT')
+
+                                <div class="form-check form-switch mb-3">
+                                    <input class="form-check-input" type="checkbox" role="switch" id="schedule_enabled" name="schedule_enabled" value="1" {{ $backupScheduleEnabled ? 'checked' : '' }}>
+                                    <label class="form-check-label" for="schedule_enabled">Enable auto backup link email</label>
+                                </div>
+
+                                <div class="row g-3" id="backupAutomationFields">
+                                    <div class="col-md-6">
+                                        <label class="form-label">Recipient Email</label>
+                                        <input type="email" class="form-control" name="schedule_email" value="{{ old('schedule_email', $backupScheduleEmail) }}" placeholder="admin@company.com">
+                                    </div>
+                                    <div class="col-md-3">
+                                        <label class="form-label">Send Every</label>
+                                        <input type="number" min="1" max="1000" class="form-control" name="schedule_every_value" value="{{ old('schedule_every_value', $backupScheduleEveryValue) }}" required>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <label class="form-label">Schedule Unit</label>
+                                        <select class="form-select" name="schedule_every_unit" required>
+                                            <option value="minutes" {{ $backupScheduleEveryUnit === 'minutes' ? 'selected' : '' }}>Minutes</option>
+                                            <option value="hours" {{ $backupScheduleEveryUnit === 'hours' ? 'selected' : '' }}>Hours</option>
+                                            <option value="days" {{ $backupScheduleEveryUnit === 'days' ? 'selected' : '' }}>Days</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <label class="form-label">Link Expiry Value</label>
+                                        <input type="number" min="1" max="1000" class="form-control" name="link_expiry_value" value="{{ old('link_expiry_value', $backupExpiryValue) }}" required>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <label class="form-label">Link Expiry Unit</label>
+                                        <select class="form-select" name="link_expiry_unit" required>
+                                            <option value="minutes" {{ $backupExpiryUnit === 'minutes' ? 'selected' : '' }}>Minutes</option>
+                                            <option value="hours" {{ $backupExpiryUnit === 'hours' ? 'selected' : '' }}>Hours</option>
+                                            <option value="days" {{ $backupExpiryUnit === 'days' ? 'selected' : '' }}>Days</option>
+                                        </select>
+                                    </div>
+                                </div>
+
+                                <div class="text-end mt-4">
+                                    <button type="submit" class="btn btn-primary">
+                                        <i class="bi bi-check-circle me-2"></i>Save Backup Automation
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+
                 <div class="tab-pane fade" id="subscription" role="tabpanel">
                     <div class="card">
                         <div class="card-body">
@@ -522,6 +629,76 @@ nav.sidebar { background: ${sidebar} !important; }
         setThemeInputs(theme);
         applyThemeCss(css);
         updatePreviewCards(theme);
+    });
+
+    ajaxFormSubmit('backupAutomationForm', '{{ route("admin.settings.backup.automation") }}', 'PUT');
+
+    function toggleBackupAutomationFields() {
+        const enabled = $('#schedule_enabled').is(':checked');
+        $('#backupAutomationFields').find('input, select').prop('disabled', !enabled);
+    }
+
+    $('#schedule_enabled').on('change', toggleBackupAutomationFields);
+    toggleBackupAutomationFields();
+
+    $('#backupRestoreForm').on('submit', function(e) {
+        e.preventDefault();
+
+        const form = this;
+        const fileInput = $('#backup_file');
+
+        if (!fileInput.val()) {
+            toastr.error('Please select a backup SQL file.');
+            return;
+        }
+
+        Swal.fire({
+            title: 'Restore backup?'
+            , text: 'This will overwrite current database data. This action cannot be undone.'
+            , icon: 'warning'
+            , showCancelButton: true
+            , confirmButtonColor: '#d33'
+            , cancelButtonColor: '#6c757d'
+            , confirmButtonText: 'Yes, restore now'
+        }).then(function(result) {
+            if (!result.isConfirmed) {
+                return;
+            }
+
+            const formData = new FormData(form);
+            const btn = $('#restoreBackupBtn');
+            const oldHtml = btn.html();
+            btn.prop('disabled', true).html('<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Restoring...');
+
+            $.ajax({
+                url: '{{ route("admin.settings.backup.restore") }}',
+                type: 'POST',
+                data: formData,
+                processData: false,
+                contentType: false,
+                suppressGlobalErrorHandler: true,
+                success: function(response) {
+                    if (response.success) {
+                        toastr.success(response.message || 'Database restored successfully.');
+                        form.reset();
+                    } else {
+                        toastr.error(response.message || 'Restore failed.');
+                    }
+                },
+                error: function(xhr) {
+                    const response = xhr.responseJSON || {};
+                    if (xhr.status === 422 && response.errors) {
+                        const firstError = Object.values(response.errors)[0];
+                        toastr.error(Array.isArray(firstError) ? firstError[0] : 'Validation failed.');
+                    } else {
+                        toastr.error(response.message || 'Restore failed.');
+                    }
+                },
+                complete: function() {
+                    btn.prop('disabled', false).html(oldHtml);
+                }
+            });
+        });
     });
 
     applyLiveTheme();

@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\Setting;
 use App\Models\Company;
 use App\Models\Account;
+use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
@@ -178,6 +179,116 @@ class SettingsService
             ->first();
 
         return $account ? (string) $account->id : null;
+    }
+
+    public function getBackupSettings(int $companyId): array
+    {
+        return [
+            'schedule_enabled' => $this->toBool(Setting::getValue('backup.schedule_enabled', '0', $companyId)),
+            'schedule_email' => (string) Setting::getValue('backup.schedule_email', '', $companyId),
+            'schedule_every_value' => (int) Setting::getValue('backup.schedule_every_value', '1', $companyId),
+            'schedule_every_unit' => (string) Setting::getValue('backup.schedule_every_unit', 'days', $companyId),
+            'link_expiry_value' => (int) Setting::getValue('backup.link_expiry_value', '1', $companyId),
+            'link_expiry_unit' => (string) Setting::getValue('backup.link_expiry_unit', 'hours', $companyId),
+            'last_sent_at' => Setting::getValue('backup.last_sent_at', null, $companyId),
+        ];
+    }
+
+    public function updateBackupSettings(array $data, int $companyId): bool
+    {
+        try {
+            DB::beginTransaction();
+
+            $settings = [
+                'backup.schedule_enabled' => !empty($data['schedule_enabled']) ? '1' : '0',
+                'backup.schedule_email' => (string) ($data['schedule_email'] ?? ''),
+                'backup.schedule_every_value' => (string) (int) ($data['schedule_every_value'] ?? 1),
+                'backup.schedule_every_unit' => (string) ($data['schedule_every_unit'] ?? 'days'),
+                'backup.link_expiry_value' => (string) (int) ($data['link_expiry_value'] ?? 1),
+                'backup.link_expiry_unit' => (string) ($data['link_expiry_unit'] ?? 'hours'),
+            ];
+
+            foreach ($settings as $key => $value) {
+                Setting::setValue($key, $value, $companyId, 'backup');
+            }
+
+            DB::commit();
+            return true;
+        } catch (\Exception $e) {
+            DB::rollBack();
+            throw $e;
+        }
+    }
+
+    public function markBackupLinkSent(int $companyId, CarbonImmutable $sentAt): void
+    {
+        Setting::updateOrCreate(
+            [
+                'company_id' => $companyId,
+                'group' => 'backup',
+                'key' => 'backup.last_sent_at',
+            ],
+            [
+                'value' => $sentAt->toIso8601String(),
+            ]
+        );
+    }
+
+    public function shouldSendBackupLinkNow(array $backupSettings, CarbonImmutable $now): bool
+    {
+        if (empty($backupSettings['schedule_enabled'])) {
+            return false;
+        }
+
+        $intervalValue = max(1, (int) ($backupSettings['schedule_every_value'] ?? 1));
+        $intervalUnit = $this->normalizeScheduleUnit((string) ($backupSettings['schedule_every_unit'] ?? 'days'));
+
+        $lastSentAtRaw = $backupSettings['last_sent_at'] ?? null;
+        if (!$lastSentAtRaw) {
+            return true;
+        }
+
+        try {
+            $lastSentAt = CarbonImmutable::parse((string) $lastSentAtRaw);
+        } catch (\Throwable) {
+            return true;
+        }
+
+        $nextDue = $lastSentAt->add($intervalValue, $intervalUnit);
+
+        return $now->greaterThanOrEqualTo($nextDue);
+    }
+
+    public function calculateBackupLinkExpiryMinutes(array $backupSettings): int
+    {
+        $value = max(1, (int) ($backupSettings['link_expiry_value'] ?? 1));
+        $unit = $this->normalizeExpiryUnit((string) ($backupSettings['link_expiry_unit'] ?? 'hours'));
+
+        return match ($unit) {
+            'minutes' => $value,
+            'hours' => $value * 60,
+            'days' => $value * 60 * 24,
+            default => 60,
+        };
+    }
+
+    protected function normalizeScheduleUnit(string $unit): string
+    {
+        $unit = strtolower(trim($unit));
+
+        return in_array($unit, ['minutes', 'hours', 'days'], true) ? $unit : 'days';
+    }
+
+    protected function normalizeExpiryUnit(string $unit): string
+    {
+        $unit = strtolower(trim($unit));
+
+        return in_array($unit, ['minutes', 'hours', 'days'], true) ? $unit : 'hours';
+    }
+
+    protected function toBool(mixed $value): bool
+    {
+        return in_array(strtolower((string) $value), ['1', 'true', 'yes', 'on'], true);
     }
 
     /**

@@ -6,8 +6,11 @@ use App\Models\Account;
 use App\Models\FinancialYear;
 use App\Models\Ledger;
 use App\Models\Party;
+use App\Models\PurchaseInvoice;
+use App\Models\SalesInvoice;
 use App\Models\Voucher;
 use App\Interfaces\LedgerRepositoryInterface;
+use Carbon\Carbon;
 
 class ReportService
 {
@@ -716,10 +719,20 @@ class ReportService
         int $companyId,
         ?int $financialYearId = null,
         ?string $dateFrom = null,
-        ?string $dateTo = null
+        ?string $dateTo = null,
+        array $filters = []
     ): array
     {
         $financialYearId = $financialYearId ?: FinancialYear::getCurrent($companyId)?->id;
+        $filterMeta = $this->normalizeOutstandingFilters($dateTo, $filters);
+        $agingByParty = $this->buildPartyAgingMap(
+            SalesInvoice::class,
+            $companyId,
+            $financialYearId,
+            $dateFrom,
+            $dateTo,
+            $filterMeta['as_of_date']
+        );
 
         $debtors = Party::where('company_id', $companyId)
             ->where('type', 'debtor')
@@ -747,6 +760,12 @@ class ReportService
                 ? (float) $ledger['closing_balance']
                 : -1 * (float) $ledger['closing_balance'];
 
+            $aging = $agingByParty[(int) $debtor->id] ?? $this->defaultAgingData();
+
+            if (!$this->matchesOutstandingFilters($aging, $filterMeta)) {
+                continue;
+            }
+
             if ($amount > 0.01) {
                 $outstanding[] = [
                     'party' => $debtor,
@@ -754,6 +773,11 @@ class ReportService
                     'debit' => $amount,
                     'credit' => 0,
                     'balance' => $amount,
+                    'oldest_due_date' => $aging['oldest_due_date'],
+                    'overdue_days' => $aging['overdue_days'],
+                    'overdue_label' => $aging['overdue_label'],
+                    'overdue_amount' => $aging['overdue_amount'],
+                    'age_bucket' => $aging['age_bucket'],
                 ];
                 $totalOutstanding += $amount;
             }
@@ -765,6 +789,7 @@ class ReportService
             'date_from' => $dateFrom,
             'date_to' => $dateTo,
             'financial_year_id' => $financialYearId,
+            'filters' => $filterMeta,
         ];
     }
 
@@ -775,10 +800,20 @@ class ReportService
         int $companyId,
         ?int $financialYearId = null,
         ?string $dateFrom = null,
-        ?string $dateTo = null
+        ?string $dateTo = null,
+        array $filters = []
     ): array
     {
         $financialYearId = $financialYearId ?: FinancialYear::getCurrent($companyId)?->id;
+        $filterMeta = $this->normalizeOutstandingFilters($dateTo, $filters);
+        $agingByParty = $this->buildPartyAgingMap(
+            PurchaseInvoice::class,
+            $companyId,
+            $financialYearId,
+            $dateFrom,
+            $dateTo,
+            $filterMeta['as_of_date']
+        );
 
         $creditors = Party::where('company_id', $companyId)
             ->where('type', 'creditor')
@@ -806,6 +841,12 @@ class ReportService
                 ? (float) $ledger['closing_balance']
                 : -1 * (float) $ledger['closing_balance'];
 
+            $aging = $agingByParty[(int) $creditor->id] ?? $this->defaultAgingData();
+
+            if (!$this->matchesOutstandingFilters($aging, $filterMeta)) {
+                continue;
+            }
+
             if ($amount > 0.01) {
                 $outstanding[] = [
                     'party' => $creditor,
@@ -813,6 +854,11 @@ class ReportService
                     'debit' => 0,
                     'credit' => $amount,
                     'balance' => $amount,
+                    'oldest_due_date' => $aging['oldest_due_date'],
+                    'overdue_days' => $aging['overdue_days'],
+                    'overdue_label' => $aging['overdue_label'],
+                    'overdue_amount' => $aging['overdue_amount'],
+                    'age_bucket' => $aging['age_bucket'],
                 ];
                 $totalOutstanding += $amount;
             }
@@ -824,7 +870,148 @@ class ReportService
             'date_from' => $dateFrom,
             'date_to' => $dateTo,
             'financial_year_id' => $financialYearId,
+            'filters' => $filterMeta,
         ];
+    }
+
+    private function normalizeOutstandingFilters(?string $dateTo, array $filters): array
+    {
+        $overdueStatus = (string) ($filters['overdue_status'] ?? 'all');
+        if (!in_array($overdueStatus, ['all', 'overdue', 'current'], true)) {
+            $overdueStatus = 'all';
+        }
+
+        $ageBucket = (string) ($filters['age_bucket'] ?? 'all');
+        if (!in_array($ageBucket, ['all', 'current', '1_30', '31_60', '61_90', '91_plus'], true)) {
+            $ageBucket = 'all';
+        }
+
+        $asOfDate = $dateTo ? Carbon::parse($dateTo)->startOfDay() : now()->startOfDay();
+
+        return [
+            'overdue_status' => $overdueStatus,
+            'age_bucket' => $ageBucket,
+            'as_of_date' => $asOfDate->toDateString(),
+        ];
+    }
+
+    private function buildPartyAgingMap(
+        string $invoiceModel,
+        int $companyId,
+        ?int $financialYearId,
+        ?string $dateFrom,
+        ?string $dateTo,
+        string $asOfDate
+    ): array {
+        $query = $invoiceModel::query()
+            ->select(['party_id', 'due_date', 'balance_due'])
+            ->where('company_id', $companyId)
+            ->whereNotIn('status', ['paid', 'cancelled'])
+            ->where('balance_due', '>', 0);
+
+        if ($financialYearId) {
+            $query->where('financial_year_id', $financialYearId);
+        }
+
+        if ($dateFrom) {
+            $query->whereDate('invoice_date', '>=', $dateFrom);
+        }
+
+        if ($dateTo) {
+            $query->whereDate('invoice_date', '<=', $dateTo);
+        }
+
+        $asOf = Carbon::parse($asOfDate)->startOfDay();
+        $rows = $query->get();
+
+        $grouped = [];
+
+        foreach ($rows as $row) {
+            $partyId = (int) $row->party_id;
+            if (!isset($grouped[$partyId])) {
+                $grouped[$partyId] = $this->defaultAgingData();
+            }
+
+            $dueDate = $row->due_date ? Carbon::parse($row->due_date)->startOfDay() : null;
+            $balanceDue = (float) $row->balance_due;
+
+            if ($dueDate && ($grouped[$partyId]['oldest_due_date'] === null || $dueDate->lt(Carbon::parse($grouped[$partyId]['oldest_due_date'])))) {
+                $grouped[$partyId]['oldest_due_date'] = $dueDate->toDateString();
+            }
+
+            if ($dueDate && $dueDate->lt($asOf)) {
+                $days = $dueDate->diffInDays($asOf);
+                $grouped[$partyId]['overdue_days'] = max($grouped[$partyId]['overdue_days'], $days);
+                $grouped[$partyId]['overdue_amount'] += $balanceDue;
+            }
+        }
+
+        foreach ($grouped as $partyId => $aging) {
+            $grouped[$partyId]['overdue_amount'] = round((float) $aging['overdue_amount'], 2);
+            $grouped[$partyId]['age_bucket'] = $this->resolveAgeBucket((int) $aging['overdue_days']);
+            $grouped[$partyId]['overdue_label'] = (int) $aging['overdue_days'] > 0
+                ? ((int) $aging['overdue_days'] . ' days late')
+                : 'Current';
+        }
+
+        return $grouped;
+    }
+
+    private function defaultAgingData(): array
+    {
+        return [
+            'oldest_due_date' => null,
+            'overdue_days' => 0,
+            'overdue_amount' => 0.0,
+            'age_bucket' => 'current',
+            'overdue_label' => 'Current',
+        ];
+    }
+
+    private function resolveAgeBucket(int $days): string
+    {
+        if ($days <= 0) {
+            return 'current';
+        }
+
+        if ($days <= 30) {
+            return '1_30';
+        }
+
+        if ($days <= 60) {
+            return '31_60';
+        }
+
+        if ($days <= 90) {
+            return '61_90';
+        }
+
+        return '91_plus';
+    }
+
+    private function matchesOutstandingFilters(array $aging, array $filters): bool
+    {
+        $hasOverdue = (int) ($aging['overdue_days'] ?? 0) > 0;
+        $overdueStatus = (string) ($filters['overdue_status'] ?? 'all');
+        $ageBucket = (string) ($filters['age_bucket'] ?? 'all');
+
+        if ($overdueStatus === 'overdue' && !$hasOverdue) {
+            return false;
+        }
+
+        if ($overdueStatus === 'current' && $hasOverdue) {
+            return false;
+        }
+
+        if ($ageBucket === 'all') {
+            return true;
+        }
+
+        if ($ageBucket === 'current') {
+            return !$hasOverdue;
+        }
+
+        return ($aging['age_bucket'] ?? 'current') === $ageBucket;
     }
 
     protected function activeAccountsByType(int $companyId, string $type)
