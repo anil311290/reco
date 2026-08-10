@@ -194,6 +194,13 @@ function refreshCashBankDropdown() {
 
 refreshCashBankDropdown();
 
+const shouldOpenPayment = new URLSearchParams(window.location.search).get('open_payment') === '1';
+if (shouldOpenPayment && $('#paymentModal').length) {
+    const paymentModalEl = document.getElementById('paymentModal');
+    const paymentModal = new bootstrap.Modal(paymentModalEl);
+    paymentModal.show();
+}
+
 $('#paymentForm').on('submit', function(e) {
     e.preventDefault();
     $.ajax({
