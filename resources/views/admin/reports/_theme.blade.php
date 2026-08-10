@@ -8,7 +8,7 @@
 
             .report-hero {
                 position: relative;
-                overflow: hidden;
+                overflow: visible;
                 border: 1px solid rgba(31, 41, 55, 0.08);
                 border-radius: 14px;
                 padding: 0.85rem 1rem;
@@ -38,12 +38,20 @@
 
             .report-toolbar {
                 display: flex;
-                flex-wrap: wrap;
+                flex-wrap: nowrap;
                 gap: 0.65rem;
                 justify-content: flex-end;
                 align-items: center;
                 position: relative;
                 z-index: 1;
+                overflow-x: auto;
+                overflow-y: hidden;
+                scrollbar-width: thin;
+                -webkit-overflow-scrolling: touch;
+            }
+
+            .report-toolbar > .btn {
+                flex: 0 0 auto;
             }
 
             .report-btn-soft {
@@ -167,6 +175,31 @@
                 border-radius: 14px;
                 background: #fbfcff;
                 border-color: rgba(31, 41, 55, 0.08);
+            }
+
+            .report-filter-card .select2-container {
+                width: 100% !important;
+            }
+
+            .report-filter-card .select2-container--bootstrap-5 .select2-selection {
+                min-height: 44px;
+                height: 44px;
+                border-radius: 14px;
+                background: #fbfcff;
+                border-color: rgba(31, 41, 55, 0.08);
+            }
+
+            .report-filter-card .select2-container--bootstrap-5 .select2-selection--single {
+                padding: 0.58rem 2.25rem 0.58rem 0.95rem;
+            }
+
+            .report-filter-card .select2-container--bootstrap-5 .select2-selection--single .select2-selection__rendered {
+                line-height: 1.4;
+                padding: 0;
+            }
+
+            .report-filter-card .select2-container--bootstrap-5 .select2-selection--single .select2-selection__arrow {
+                right: 0.75rem;
             }
 
             .report-filter-actions {
@@ -498,48 +531,77 @@
 
             .report-feature-grid {
                 display: grid;
-                gap: 1rem;
-                grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+                gap: 0.9rem;
+                grid-template-columns: repeat(4, minmax(0, 1fr));
             }
 
             .report-feature-card {
                 height: 100%;
-                padding: 1.25rem;
+                padding: 1rem;
+                border-radius: 14px;
                 transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+                display: flex;
+                flex-direction: column;
             }
 
             .report-feature-card:hover {
-                transform: translateY(-4px);
+                transform: translateY(-2px);
                 border-color: rgba(115, 103, 240, 0.18);
-                box-shadow: 0 18px 40px rgba(15, 23, 42, 0.1);
+                box-shadow: 0 10px 26px rgba(15, 23, 42, 0.1);
             }
 
             .report-feature-icon {
-                width: 54px;
-                height: 54px;
+                width: 44px;
+                height: 44px;
                 display: inline-flex;
                 align-items: center;
                 justify-content: center;
-                border-radius: 18px;
-                margin-bottom: 1rem;
-                font-size: 1.45rem;
+                border-radius: 12px;
+                margin-bottom: 0.75rem;
+                font-size: 1.15rem;
                 color: #fff;
                 background: linear-gradient(135deg, var(--report-icon-start, #7367f0), var(--report-icon-end, #60a5fa));
-                box-shadow: 0 14px 30px rgba(115, 103, 240, 0.2);
+                box-shadow: 0 8px 18px rgba(115, 103, 240, 0.2);
             }
 
             .report-feature-title {
                 margin-bottom: 0.45rem;
-                font-size: 1.02rem;
+                font-size: 0.98rem;
                 font-weight: 700;
                 color: #23263a;
             }
 
             .report-feature-text {
-                margin-bottom: 1rem;
+                margin-bottom: 0.8rem;
                 color: #70758d;
-                line-height: 1.65;
-                font-size: 0.92rem;
+                line-height: 1.45;
+                font-size: 0.86rem;
+                flex-grow: 1;
+            }
+
+            .report-feature-card .btn {
+                width: 100%;
+                border-radius: 10px;
+                font-size: 0.82rem;
+                font-weight: 700;
+            }
+
+            @media (max-width: 1199.98px) {
+                .report-feature-grid {
+                    grid-template-columns: repeat(3, minmax(0, 1fr));
+                }
+            }
+
+            @media (max-width: 991.98px) {
+                .report-feature-grid {
+                    grid-template-columns: repeat(2, minmax(0, 1fr));
+                }
+            }
+
+            @media (max-width: 575.98px) {
+                .report-feature-grid {
+                    grid-template-columns: 1fr;
+                }
             }
 
             .report-kpi-bar {

@@ -249,7 +249,17 @@ class ItemController extends Controller
 
         $filename = 'item_history_' . preg_replace('/[^A-Za-z0-9_-]/', '_', $item->item_code) . '_' . date('Y-m-d_H-i-s') . '.pdf';
 
-        $pdf = \PDF::loadView('admin.items.export-pdf', compact('item', 'history'))
+        $company = $request->user()->company;
+        $exportMeta = [
+            'company_name' => $company?->name ?? 'N/A',
+            'financial_year' => $company?->currentFinancialYear?->name ?? 'All',
+            'date_from' => $request->input('date_from') ?: 'N/A',
+            'date_to' => $request->input('date_to') ?: 'N/A',
+            'generated_by' => $request->user()->name ?? 'System',
+            'generated_at' => now()->timezone(config('app.timezone'))->format('d-M-Y h:i A'),
+        ];
+
+        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('admin.items.export-pdf', compact('item', 'history', 'exportMeta'))
             ->setPaper('a4', 'landscape');
 
         return $pdf->download($filename);

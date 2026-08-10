@@ -42,8 +42,10 @@
 <div class="container">
     <div class="header">
         <h1>Trial Balance</h1>
-        <p>Opening · Transactions · Closing — Generated on {{ now()->format('d-M-Y H:i:s') }}</p>
+        <p>Opening · Transactions · Closing</p>
     </div>
+
+    @include('exports._meta')
 
     <table class="table">
         <thead>

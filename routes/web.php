@@ -305,6 +305,7 @@ Route::prefix('admin')->name('admin.')->group(function () {
             Route::get('reports/balance-sheet', [ReportController::class, 'balanceSheet'])->name('reports.balance-sheet');
             Route::get('reports/debtors-outstanding', [ReportController::class, 'debtorsOutstanding'])->name('reports.debtors-outstanding');
             Route::get('reports/creditors-outstanding', [ReportController::class, 'creditorsOutstanding'])->name('reports.creditors-outstanding');
+            Route::get('reports/aging-summary', [ReportController::class, 'agingSummary'])->name('reports.aging-summary');
             // Legacy: thin Cash Flow removed — Receipt & Payment replaces it
             Route::redirect('reports/cash-flow', '/admin/reports/receipt-payment')->name('reports.cash-flow');
             Route::get('ledgers/{ledger}/history', [LedgerHistoryController::class, 'show'])
@@ -355,6 +356,7 @@ Route::prefix('admin')->name('admin.')->group(function () {
             Route::get('export/day-book/pdf', [ExportController::class, 'dayBookPdf'])->name('export.day-book.pdf');
             Route::get('export/debtors-outstanding/pdf', [ExportController::class, 'debtorsOutstandingPdf'])->name('export.debtors-outstanding.pdf');
             Route::get('export/creditors-outstanding/pdf', [ExportController::class, 'creditorsOutstandingPdf'])->name('export.creditors-outstanding.pdf');
+            Route::get('export/aging-summary/pdf', [ExportController::class, 'agingSummaryPdf'])->name('export.aging-summary.pdf');
             Route::get('export/voucher/{id}/pdf', [ExportController::class, 'voucherPdf'])->name('export.voucher.pdf');
             Route::get('export/{type}/excel', [ExportController::class, 'excel'])->name('export.excel');
             Route::get('export/{type}/csv', [ExportController::class, 'csv'])->name('export.csv');

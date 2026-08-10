@@ -140,12 +140,14 @@ class ExportController extends Controller
     public function debtorsOutstandingPdf(Request $request): Response
     {
         $companyId = $this->getCompanyId($request);
+        $filters = $request->only(['overdue_status', 'age_bucket']);
 
         $pdf = $this->exportService->exportDebtorsOutstandingPdf(
             $companyId,
             $request->filled('financial_year_id') ? (int) $request->input('financial_year_id') : null,
             $request->input('date_from'),
-            $request->input('date_to')
+            $request->input('date_to'),
+            $filters
         );
 
         return response($pdf)
@@ -159,17 +161,40 @@ class ExportController extends Controller
     public function creditorsOutstandingPdf(Request $request): Response
     {
         $companyId = $this->getCompanyId($request);
+        $filters = $request->only(['overdue_status', 'age_bucket']);
 
         $pdf = $this->exportService->exportCreditorsOutstandingPdf(
             $companyId,
             $request->filled('financial_year_id') ? (int) $request->input('financial_year_id') : null,
             $request->input('date_from'),
-            $request->input('date_to')
+            $request->input('date_to'),
+            $filters
         );
 
         return response($pdf)
             ->header('Content-Type', 'application/pdf')
             ->header('Content-Disposition', 'attachment; filename="creditors-outstanding-report.pdf"');
+    }
+
+    /**
+     * Export Aging Summary to PDF
+     */
+    public function agingSummaryPdf(Request $request): Response
+    {
+        $companyId = $this->getCompanyId($request);
+        $filters = $request->only(['overdue_status', 'age_bucket']);
+
+        $pdf = $this->exportService->exportAgingSummaryPdf(
+            $companyId,
+            $request->filled('financial_year_id') ? (int) $request->input('financial_year_id') : null,
+            $request->input('date_from'),
+            $request->input('date_to'),
+            $filters
+        );
+
+        return response($pdf)
+            ->header('Content-Type', 'application/pdf')
+            ->header('Content-Disposition', 'attachment; filename="aging-summary-report.pdf"');
     }
 
     /**
@@ -203,7 +228,7 @@ class ExportController extends Controller
     public function excel(Request $request, string $type): Response
     {
         $companyId = $this->getCompanyId($request);
-        $filters = $request->only(['type', 'date', 'date_from', 'date_to', 'voucher_type', 'financial_year_id', 'account_id']);
+        $filters = $request->query();
 
         $excel = $this->exportService->exportToExcel($type, $companyId, $filters);
 
@@ -218,7 +243,7 @@ class ExportController extends Controller
     public function csv(Request $request, string $type): Response
     {
         $companyId = $this->getCompanyId($request);
-        $filters = $request->only(['type', 'date', 'date_from', 'date_to', 'voucher_type', 'financial_year_id', 'account_id']);
+        $filters = $request->query();
 
         $csv = $this->exportService->exportToCsv($type, $companyId, $filters);
 

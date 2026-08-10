@@ -65,6 +65,8 @@
             <p>Assets, liabilities, and equity summary for the selected financial year.</p>
         </div>
 
+        @include('exports._meta')
+
         <div class="section-title">Assets</div>
         <table class="summary">
             <tbody>

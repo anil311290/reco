@@ -219,6 +219,8 @@
             </tr>
         </table>
 
+        @include('exports._meta')
+
         <table class="items-table">
             <thead>
                 <tr>
@@ -295,9 +297,6 @@
         </div>
         @endif
 
-        <div class="footer">
-            Generated on {{ now()->format('d-M-Y h:i A') }}
-        </div>
     </div>
 </body>
 </html>

@@ -15,7 +15,7 @@
             </div>
             <div class="col-lg-4">
                 <div class="report-toolbar">
-                    <span class="report-pill report-pill--info"><i class="bi bi-grid-1x2"></i> 8 report views</span>
+                    <span class="report-pill report-pill--info"><i class="bi bi-grid-1x2"></i> 9 report views</span>
                 </div>
             </div>
         </div>
@@ -69,6 +69,12 @@
             <h5 class="report-feature-title">Payables</h5>
             <p class="report-feature-text">Creditors outstanding from party ledger balances.</p>
             <a href="{{ route('admin.reports.creditors-outstanding') }}" class="btn btn-outline-primary"><i class="bi bi-eye me-2"></i>Open</a>
+        </div>
+        <div class="report-feature-card" style="--report-icon-start:#0ea5e9; --report-icon-end:#38bdf8;">
+            <div class="report-feature-icon"><i class="bi bi-hourglass-split"></i></div>
+            <h5 class="report-feature-title">Aging Summary</h5>
+            <p class="report-feature-text">Combined receivable/payable aging with overdue days and bucket-wise analysis.</p>
+            <a href="{{ route('admin.reports.aging-summary') }}" class="btn btn-outline-primary"><i class="bi bi-eye me-2"></i>Open</a>
         </div>
     </div>
 </div>

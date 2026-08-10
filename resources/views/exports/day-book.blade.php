@@ -31,6 +31,8 @@
         <p>Period: @istDate($dateFrom) to @istDate($dateTo)</p>
     </div>
 
+    @include('exports._meta')
+
     <table class="table">
         <thead>
         <tr>

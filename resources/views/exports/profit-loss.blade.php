@@ -42,8 +42,9 @@
 <div class="container">
     <div class="header">
         <h1>Profit and Loss Statement</h1>
-        <p>Generated on {{ now()->format('d-M-Y H:i:s') }}</p>
     </div>
+
+    @include('exports._meta')
 
     <table class="summary">
         <tr>

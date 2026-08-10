@@ -80,7 +80,8 @@ $(document).ready(function() {
                 className: 'btn btn-success btn-sm dt-export-btn dt-export-excel',
                 exportOptions: {
                     columns: window.datatableExportableColumn
-                }
+                },
+                messageTop: window.buildDatatableExportMetaText
             },
             window.buildPdfButtonConfig()
         ],
@@ -109,7 +110,7 @@ $(document).ready(function() {
             { data: null, orderable: false, render: function(data) {
                 let buttons = `<a href="/admin/purchase-invoices/${data.id}" class="btn btn-sm btn-outline-info"><i class="bi bi-eye"></i></a>`;
                 if (data.status !== 'cancelled' && data.status !== 'paid') {
-                    buttons += ` <a href="/admin/purchase-invoices/${data.id}?open_payment=1#paymentModal" class="btn btn-sm btn-outline-success" title="Record Payment"><i class="bi bi-cash"></i></a>`;
+                    buttons += ` <a href="/admin/purchase-invoices/${data.id}?open_payment=1" class="btn btn-sm btn-outline-success" title="Record Payment"><i class="bi bi-cash"></i></a>`;
                 }
                 if (data.status !== 'cancelled' && data.status !== 'paid' && data.status !== 'partial') {
                     buttons += ` <a href="/admin/purchase-invoices/${data.id}/edit" class="btn btn-sm btn-outline-primary"><i class="bi bi-pencil"></i></a>`;

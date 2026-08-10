@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\Voucher;
 use App\Models\SalesInvoice;
 use App\Models\Account;
+use App\Models\Company;
 use App\Models\FinancialYear;
 use App\Models\Party;
 use App\Models\Item;
@@ -13,6 +14,7 @@ use App\Models\TaxRate;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Maatwebsite\Excel\Facades\Excel;
 use App\Exports\GenericExport;
+use Illuminate\Support\Facades\Auth;
 
 class ExportService
 {
@@ -36,8 +38,9 @@ class ExportService
     ): string
     {
         $report = $this->reportService->getProfitLoss($companyId, $financialYearId, $dateFrom, $dateTo);
+        $exportMeta = $this->buildExportMeta($companyId, 'profit-loss', [], $financialYearId, $dateFrom, $dateTo);
 
-        $pdf = Pdf::loadView('exports.profit-loss', compact('report'));
+        $pdf = Pdf::loadView('exports.profit-loss', compact('report', 'exportMeta'));
 
         return $pdf->output();
     }
@@ -53,8 +56,9 @@ class ExportService
     ): string
     {
         $report = $this->reportService->getBalanceSheet($companyId, $financialYearId, $dateFrom, $dateTo);
+        $exportMeta = $this->buildExportMeta($companyId, 'balance-sheet', [], $financialYearId, $dateFrom, $dateTo);
 
-        $pdf = Pdf::loadView('exports.balance-sheet', compact('report'));
+        $pdf = Pdf::loadView('exports.balance-sheet', compact('report', 'exportMeta'));
 
         return $pdf->output();
     }
@@ -70,8 +74,9 @@ class ExportService
     ): string
     {
         $report = $this->reportService->getTrialBalance($companyId, $financialYearId, $dateFrom, $dateTo);
+        $exportMeta = $this->buildExportMeta($companyId, 'trial-balance', [], $financialYearId, $dateFrom, $dateTo);
 
-        $pdf = Pdf::loadView('exports.trial-balance', compact('report'));
+        $pdf = Pdf::loadView('exports.trial-balance', compact('report', 'exportMeta'));
 
         return $pdf->output();
     }
@@ -88,8 +93,9 @@ class ExportService
     ): string
     {
         $report = $this->ledgerService->getAccountLedger($accountId, $companyId, $financialYearId, $dateFrom, $dateTo);
+        $exportMeta = $this->buildExportMeta($companyId, 'ledger', ['account_id' => $accountId], $financialYearId, $dateFrom, $dateTo);
 
-        $pdf = Pdf::loadView('exports.ledger', compact('report'));
+        $pdf = Pdf::loadView('exports.ledger', compact('report', 'exportMeta'));
 
         return $pdf->output();
     }
@@ -106,7 +112,9 @@ class ExportService
             ->orderByRaw('CASE WHEN id = ? THEN 0 ELSE 1 END', [$voucherId])
             ->firstOrFail();
 
-        $pdf = Pdf::loadView('exports.voucher', compact('voucher'));
+        $exportMeta = $this->buildExportMeta((int) $voucher->company_id, 'voucher', ['voucher_id' => $voucherId]);
+
+        $pdf = Pdf::loadView('exports.voucher', compact('voucher', 'exportMeta'));
 
         return $pdf->output();
     }
@@ -125,7 +133,16 @@ class ExportService
             'financialYear',
         ])->findOrFail($invoiceId);
 
-        $pdf = Pdf::loadView('exports.sales-invoice', compact('invoice'));
+        $exportMeta = $this->buildExportMeta(
+            (int) $invoice->company_id,
+            'sales-invoice',
+            ['invoice_id' => $invoiceId],
+            (int) ($invoice->financial_year_id ?? 0) ?: null,
+            optional($invoice->invoice_date)->format('Y-m-d'),
+            optional($invoice->due_date)->format('Y-m-d')
+        );
+
+        $pdf = Pdf::loadView('exports.sales-invoice', compact('invoice', 'exportMeta'));
 
         return $pdf->output();
     }
@@ -137,12 +154,14 @@ class ExportService
         int $companyId,
         ?int $financialYearId = null,
         ?string $dateFrom = null,
-        ?string $dateTo = null
+        ?string $dateTo = null,
+        array $filters = []
     ): string
     {
-        $report = $this->reportService->getDebtorsOutstanding($companyId, $financialYearId, $dateFrom, $dateTo);
+        $report = $this->reportService->getDebtorsOutstanding($companyId, $financialYearId, $dateFrom, $dateTo, $filters);
+        $exportMeta = $this->buildExportMeta($companyId, 'debtors-outstanding', $filters, $financialYearId, $dateFrom, $dateTo);
 
-        $pdf = Pdf::loadView('exports.debtors-outstanding', compact('report'));
+        $pdf = Pdf::loadView('exports.debtors-outstanding', compact('report', 'exportMeta'));
 
         return $pdf->output();
     }
@@ -154,12 +173,40 @@ class ExportService
         int $companyId,
         ?int $financialYearId = null,
         ?string $dateFrom = null,
-        ?string $dateTo = null
+        ?string $dateTo = null,
+        array $filters = []
     ): string
     {
-        $report = $this->reportService->getCreditorsOutstanding($companyId, $financialYearId, $dateFrom, $dateTo);
+        $report = $this->reportService->getCreditorsOutstanding($companyId, $financialYearId, $dateFrom, $dateTo, $filters);
+        $exportMeta = $this->buildExportMeta($companyId, 'creditors-outstanding', $filters, $financialYearId, $dateFrom, $dateTo);
 
-        $pdf = Pdf::loadView('exports.creditors-outstanding', compact('report'));
+        $pdf = Pdf::loadView('exports.creditors-outstanding', compact('report', 'exportMeta'));
+
+        return $pdf->output();
+    }
+
+    /**
+     * Export Aging Summary to PDF
+     */
+    public function exportAgingSummaryPdf(
+        int $companyId,
+        ?int $financialYearId = null,
+        ?string $dateFrom = null,
+        ?string $dateTo = null,
+        array $filters = []
+    ): string
+    {
+        $debtors = $this->reportService->getDebtorsOutstanding($companyId, $financialYearId, $dateFrom, $dateTo, $filters);
+        $creditors = $this->reportService->getCreditorsOutstanding($companyId, $financialYearId, $dateFrom, $dateTo, $filters);
+
+        $rows = $this->buildAgingSummaryRows($debtors['debtors'] ?? [], $creditors['creditors'] ?? []);
+        $summary = [
+            'receivables_total' => (float) ($debtors['total'] ?? 0),
+            'payables_total' => (float) ($creditors['total'] ?? 0),
+        ];
+        $exportMeta = $this->buildExportMeta($companyId, 'aging-summary', $filters, $financialYearId, $dateFrom, $dateTo);
+
+        $pdf = Pdf::loadView('exports.aging-summary', compact('rows', 'summary', 'dateFrom', 'dateTo', 'exportMeta'));
 
         return $pdf->output();
     }
@@ -184,8 +231,9 @@ class ExportService
             $dateTo,
             $financialYearId
         );
+        $exportMeta = $this->buildExportMeta($companyId, 'day-book', [], $financialYearId, $dateFrom, $dateTo);
 
-        $pdf = Pdf::loadView('exports.day-book', compact('report', 'dateFrom', 'dateTo'));
+        $pdf = Pdf::loadView('exports.day-book', compact('report', 'dateFrom', 'dateTo', 'exportMeta'));
 
         return $pdf->output();
     }
@@ -205,8 +253,9 @@ class ExportService
             $dateTo,
             $financialYearId ?? FinancialYear::getCurrent($companyId)?->id
         );
+        $exportMeta = $this->buildExportMeta($companyId, 'receipt-payment', [], $financialYearId, $dateFrom, $dateTo);
 
-        $pdf = Pdf::loadView('exports.receipt-payment', compact('report'));
+        $pdf = Pdf::loadView('exports.receipt-payment', compact('report', 'exportMeta'));
 
         return $pdf->output();
     }
@@ -217,11 +266,13 @@ class ExportService
     public function exportMasterPdf(string $type, int $companyId, array $filters = []): string
     {
         $dataset = $this->getMasterExportDataset($type, $companyId, $filters);
+        $exportMeta = $this->buildExportMeta($companyId, $type, $filters);
 
         $pdf = Pdf::loadView('exports.master-list', [
             'title' => $dataset['title'],
             'columns' => $dataset['columns'],
             'rows' => $dataset['rows'],
+            'exportMeta' => $exportMeta,
         ]);
 
         return $pdf->output();
@@ -232,10 +283,19 @@ class ExportService
      */
     public function exportToExcel(string $type, int $companyId, array $filters = []): string
     {
+        $exportMeta = $this->buildExportMeta(
+            $companyId,
+            $type,
+            $filters,
+            isset($filters['financial_year_id']) ? (int) $filters['financial_year_id'] : null,
+            $filters['date_from'] ?? ($filters['date'] ?? null),
+            $filters['date_to'] ?? ($filters['date'] ?? null)
+        );
+
         $masterTypes = ['accounts', 'parties', 'items', 'item-categories', 'tax-rates'];
         if (in_array($type, $masterTypes, true)) {
             $dataset = $this->getMasterExportDataset($type, $companyId, $filters);
-            return Excel::raw(new GenericExport($dataset['rows']), \Maatwebsite\Excel\Excel::XLSX);
+            return Excel::raw(new GenericExport($this->withExcelMeta($dataset['rows'], $exportMeta)), \Maatwebsite\Excel\Excel::XLSX);
         }
 
         $data = [];
@@ -261,13 +321,17 @@ class ExportService
                     $companyId,
                     isset($filters['financial_year_id']) ? (int) $filters['financial_year_id'] : null,
                     $filters['date_from'] ?? null,
-                    $filters['date_to'] ?? null
+                    $filters['date_to'] ?? null,
+                    $filters
                 )['debtors'])
                     ->map(function ($item) {
                         return [
                             'party' => $item['party']->name ?? '-',
                             'mobile' => $item['party']->mobile ?? '-',
                             'email' => $item['party']->email ?? '-',
+                            'oldest_due_date' => $item['oldest_due_date'] ?? '-',
+                            'overdue_days' => $item['overdue_days'] ?? 0,
+                            'overdue_amount' => $item['overdue_amount'] ?? 0,
                             'debit' => $item['debit'] ?? 0,
                             'credit' => $item['credit'] ?? 0,
                             'balance' => $item['balance'] ?? 0,
@@ -282,13 +346,17 @@ class ExportService
                     $companyId,
                     isset($filters['financial_year_id']) ? (int) $filters['financial_year_id'] : null,
                     $filters['date_from'] ?? null,
-                    $filters['date_to'] ?? null
+                    $filters['date_to'] ?? null,
+                    $filters
                 )['creditors'])
                     ->map(function ($item) {
                         return [
                             'party' => $item['party']->name ?? '-',
                             'mobile' => $item['party']->mobile ?? '-',
                             'email' => $item['party']->email ?? '-',
+                            'oldest_due_date' => $item['oldest_due_date'] ?? '-',
+                            'overdue_days' => $item['overdue_days'] ?? 0,
+                            'overdue_amount' => $item['overdue_amount'] ?? 0,
                             'debit' => $item['debit'] ?? 0,
                             'credit' => $item['credit'] ?? 0,
                             'balance' => $item['balance'] ?? 0,
@@ -296,6 +364,24 @@ class ExportService
                     })
                     ->values()
                     ->all();
+                break;
+
+            case 'aging-summary':
+                $debtors = $this->reportService->getDebtorsOutstanding(
+                    $companyId,
+                    isset($filters['financial_year_id']) ? (int) $filters['financial_year_id'] : null,
+                    $filters['date_from'] ?? null,
+                    $filters['date_to'] ?? null,
+                    $filters
+                );
+                $creditors = $this->reportService->getCreditorsOutstanding(
+                    $companyId,
+                    isset($filters['financial_year_id']) ? (int) $filters['financial_year_id'] : null,
+                    $filters['date_from'] ?? null,
+                    $filters['date_to'] ?? null,
+                    $filters
+                );
+                $data = $this->buildAgingSummaryRows($debtors['debtors'] ?? [], $creditors['creditors'] ?? []);
                 break;
 
             case 'receipt-payment':
@@ -398,7 +484,7 @@ class ExportService
                 break;
         }
 
-        return Excel::raw(new GenericExport($data), \Maatwebsite\Excel\Excel::XLSX);
+        return Excel::raw(new GenericExport($this->withExcelMeta($data, $exportMeta)), \Maatwebsite\Excel\Excel::XLSX);
     }
 
     /**
@@ -406,10 +492,19 @@ class ExportService
      */
     public function exportToCsv(string $type, int $companyId, array $filters = []): string
     {
+        $exportMeta = $this->buildExportMeta(
+            $companyId,
+            $type,
+            $filters,
+            isset($filters['financial_year_id']) ? (int) $filters['financial_year_id'] : null,
+            $filters['date_from'] ?? ($filters['date'] ?? null),
+            $filters['date_to'] ?? ($filters['date'] ?? null)
+        );
+
         $masterTypes = ['accounts', 'parties', 'items', 'item-categories', 'tax-rates'];
         if (in_array($type, $masterTypes, true)) {
             $dataset = $this->getMasterExportDataset($type, $companyId, $filters);
-            $data = $dataset['rows'];
+            $data = $this->withExcelMeta($dataset['rows'], $exportMeta);
             $csv = implode(',', array_keys($data[0] ?? [])) . "\n";
 
             foreach ($data as $row) {
@@ -478,13 +573,17 @@ class ExportService
                     $companyId,
                     isset($filters['financial_year_id']) ? (int) $filters['financial_year_id'] : null,
                     $filters['date_from'] ?? null,
-                    $filters['date_to'] ?? null
+                    $filters['date_to'] ?? null,
+                    $filters
                 )['debtors'])
                     ->map(function ($item) {
                         return [
                             'party' => $item['party']->name ?? '-',
                             'mobile' => $item['party']->mobile ?? '-',
                             'email' => $item['party']->email ?? '-',
+                            'oldest_due_date' => $item['oldest_due_date'] ?? '-',
+                            'overdue_days' => $item['overdue_days'] ?? 0,
+                            'overdue_amount' => $item['overdue_amount'] ?? 0,
                             'debit' => $item['debit'] ?? 0,
                             'credit' => $item['credit'] ?? 0,
                             'balance' => $item['balance'] ?? 0,
@@ -499,13 +598,17 @@ class ExportService
                     $companyId,
                     isset($filters['financial_year_id']) ? (int) $filters['financial_year_id'] : null,
                     $filters['date_from'] ?? null,
-                    $filters['date_to'] ?? null
+                    $filters['date_to'] ?? null,
+                    $filters
                 )['creditors'])
                     ->map(function ($item) {
                         return [
                             'party' => $item['party']->name ?? '-',
                             'mobile' => $item['party']->mobile ?? '-',
                             'email' => $item['party']->email ?? '-',
+                            'oldest_due_date' => $item['oldest_due_date'] ?? '-',
+                            'overdue_days' => $item['overdue_days'] ?? 0,
+                            'overdue_amount' => $item['overdue_amount'] ?? 0,
                             'debit' => $item['debit'] ?? 0,
                             'credit' => $item['credit'] ?? 0,
                             'balance' => $item['balance'] ?? 0,
@@ -513,6 +616,24 @@ class ExportService
                     })
                     ->values()
                     ->all();
+                break;
+
+            case 'aging-summary':
+                $debtors = $this->reportService->getDebtorsOutstanding(
+                    $companyId,
+                    isset($filters['financial_year_id']) ? (int) $filters['financial_year_id'] : null,
+                    $filters['date_from'] ?? null,
+                    $filters['date_to'] ?? null,
+                    $filters
+                );
+                $creditors = $this->reportService->getCreditorsOutstanding(
+                    $companyId,
+                    isset($filters['financial_year_id']) ? (int) $filters['financial_year_id'] : null,
+                    $filters['date_from'] ?? null,
+                    $filters['date_to'] ?? null,
+                    $filters
+                );
+                $data = $this->buildAgingSummaryRows($debtors['debtors'] ?? [], $creditors['creditors'] ?? []);
                 break;
 
             case 'trial-balance':
@@ -581,6 +702,7 @@ class ExportService
                 break;
         }
 
+        $data = $this->withExcelMeta($data, $exportMeta);
         $csv = implode(',', array_keys($data[0] ?? [])) . "\n";
         
         foreach ($data as $row) {
@@ -651,6 +773,126 @@ class ExportService
         ];
 
         return $rows;
+    }
+
+    protected function buildAgingSummaryRows(array $debtors, array $creditors): array
+    {
+        $rows = collect($debtors)
+            ->map(function (array $item) {
+                return [
+                    'type' => 'Receivable',
+                    'party' => $item['party']->name ?? '-',
+                    'mobile' => $item['party']->mobile ?? '-',
+                    'email' => $item['party']->email ?? '-',
+                    'oldest_due_date' => $item['oldest_due_date'] ?? '-',
+                    'overdue_days' => $item['overdue_days'] ?? 0,
+                    'overdue_amount' => $item['overdue_amount'] ?? 0,
+                    'balance' => $item['balance'] ?? 0,
+                ];
+            })
+            ->merge(
+                collect($creditors)->map(function (array $item) {
+                    return [
+                        'type' => 'Payable',
+                        'party' => $item['party']->name ?? '-',
+                        'mobile' => $item['party']->mobile ?? '-',
+                        'email' => $item['party']->email ?? '-',
+                        'oldest_due_date' => $item['oldest_due_date'] ?? '-',
+                        'overdue_days' => $item['overdue_days'] ?? 0,
+                        'overdue_amount' => $item['overdue_amount'] ?? 0,
+                        'balance' => $item['balance'] ?? 0,
+                    ];
+                })
+            )
+            ->sort(function (array $a, array $b) {
+                $daysCompare = (int) ($b['overdue_days'] ?? 0) <=> (int) ($a['overdue_days'] ?? 0);
+                if ($daysCompare !== 0) {
+                    return $daysCompare;
+                }
+
+                return (float) ($b['balance'] ?? 0) <=> (float) ($a['balance'] ?? 0);
+            })
+            ->values();
+
+        return $rows->all();
+    }
+
+    protected function buildExportMeta(
+        int $companyId,
+        string $exportType,
+        array $filters = [],
+        ?int $financialYearId = null,
+        ?string $dateFrom = null,
+        ?string $dateTo = null
+    ): array {
+        $company = Company::find($companyId);
+        $financialYear = $financialYearId
+            ? FinancialYear::where('company_id', $companyId)->find($financialYearId)
+            : null;
+        $user = Auth::user();
+
+        return [
+            'company_name' => $company->name ?? 'N/A',
+            'company_slug' => $company->slug ?? 'N/A',
+            'company_gst' => $company->gst_number ?? 'N/A',
+            'company_email' => $company->email ?? 'N/A',
+            'company_phone' => $company->phone ?? 'N/A',
+            'export_type' => strtoupper(str_replace('-', ' ', $exportType)),
+            'financial_year' => $financialYear?->name ?? 'All',
+            'date_from' => $dateFrom ?: 'N/A',
+            'date_to' => $dateTo ?: 'N/A',
+            'generated_at' => now()->format('Y-m-d H:i:s'),
+            'generated_by' => $user?->name ?? 'System',
+            'generated_by_email' => $user?->email ?? 'N/A',
+            'applied_filters' => $this->formatAppliedFilters($filters),
+        ];
+    }
+
+    protected function withExcelMeta(array $rows, array $meta): array
+    {
+        $normalizedRows = empty($rows) ? [['data' => 'No rows']] : $rows;
+
+        return array_map(function (array $row) use ($meta) {
+            return array_merge([
+                'Export Company' => $meta['company_name'] ?? 'N/A',
+                'Report Type' => $meta['export_type'] ?? 'N/A',
+                'Financial Year' => $meta['financial_year'] ?? 'All',
+                'From Date' => $meta['date_from'] ?? 'N/A',
+                'To Date' => $meta['date_to'] ?? 'N/A',
+                'Generated At' => $meta['generated_at'] ?? 'N/A',
+                'Generated By' => $meta['generated_by'] ?? 'System',
+                'Applied Filters' => $meta['applied_filters'] ?? 'None',
+            ], $row);
+        }, $normalizedRows);
+    }
+
+    protected function formatAppliedFilters(array $filters): string
+    {
+        if (empty($filters)) {
+            return 'None';
+        }
+
+        $excludedKeys = ['page', 'per_page', '_token'];
+        $pairs = [];
+
+        foreach ($filters as $key => $value) {
+            if (in_array((string) $key, $excludedKeys, true)) {
+                continue;
+            }
+
+            if ($value === null || $value === '') {
+                continue;
+            }
+
+            $label = ucwords(str_replace(['_', '-'], ' ', (string) $key));
+            if (is_array($value)) {
+                $value = implode(', ', array_map('strval', $value));
+            }
+
+            $pairs[] = $label . ': ' . (string) $value;
+        }
+
+        return empty($pairs) ? 'None' : implode(' | ', $pairs);
     }
 
     protected function getMasterExportDataset(string $type, int $companyId, array $filters = []): array
