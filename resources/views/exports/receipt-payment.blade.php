@@ -68,6 +68,8 @@
         @endif
     </div>
 
+    @include('exports._meta')
+
     @if(!$report['message'])
         <table class="layout">
             <tr>

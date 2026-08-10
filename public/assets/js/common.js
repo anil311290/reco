@@ -185,6 +185,10 @@ function initAjaxForms() {
  * Safe to call again for dynamically added rows.
  */
 function initSearchableSelects(scope) {
+    if (typeof $.fn.select2 !== 'function') {
+        return;
+    }
+
     const $scope = scope ? $(scope) : $(document);
     const selector = 'select.form-select, select[data-searchable="true"]';
     const $targets = $scope.find(selector)
@@ -195,23 +199,48 @@ function initSearchableSelects(scope) {
 
     $targets.each(function() {
         const $select = $(this);
+        const contextParent = $select.closest('.modal, .offcanvas, .swal2-container').first();
+        const hiddenInContext = contextParent.length > 0 && !contextParent.is(':visible');
+
+        if (hiddenInContext) {
+            return;
+        }
 
         if ($select.hasClass('select2-hidden-accessible')) {
             return;
         }
 
-        const modal = $select.closest('.modal');
+        const modal = $select.closest('.modal.show, .modal');
+        const offcanvas = $select.closest('.offcanvas.show, .offcanvas');
         const isSmall = $select.hasClass('form-select-sm');
+        const placeholder = $select.data('placeholder')
+            || $select.find('option[value=""]').first().text()
+            || 'Search...';
+        const hasEmptyOption = $select.find('option[value=""]').length > 0;
+        let dropdownParent = $(document.body);
+
+        if (modal.length) {
+            dropdownParent = modal.first();
+        } else if (offcanvas.length) {
+            dropdownParent = offcanvas.first();
+        }
 
         $select.select2({
             theme: 'bootstrap-5',
             width: '100%',
-            placeholder: $select.data('placeholder')
-                || $select.find('option[value=""]').first().text()
-                || 'Search...',
-            dropdownParent: modal.length ? modal : $(document.body),
+            placeholder: placeholder,
+            dropdownParent: dropdownParent,
+            allowClear: hasEmptyOption,
             selectionCssClass: isSmall ? 'select2-selection--sm' : '',
             dropdownCssClass: isSmall ? 'select2-dropdown--sm' : ''
+        });
+
+        // Keep keyboard search reliable, especially after dynamic row inserts.
+        $select.on('select2:open', function() {
+            const searchField = document.querySelector('.select2-container--open .select2-search__field');
+            if (searchField) {
+                searchField.focus();
+            }
         });
     });
 }
@@ -379,6 +408,54 @@ function datatableExportableColumn(columnIdx, data, node) {
     return true;
 }
 
+function buildDatatableExportMetaText() {
+    const companyNameMeta = document.querySelector('meta[name="reco-company-name"]');
+    const companyName = (companyNameMeta && companyNameMeta.content ? companyNameMeta.content : '').trim() || 'N/A';
+    const now = new Date().toLocaleString('en-IN', {
+        timeZone: 'Asia/Kolkata',
+        day: '2-digit',
+        month: 'short',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: true
+    });
+
+    const readValue = function(selector) {
+        const element = document.querySelector(selector);
+        if (!element) {
+            return '';
+        }
+
+        if (element.tagName === 'SELECT') {
+            const selected = element.options[element.selectedIndex];
+            return (selected && selected.text ? selected.text : element.value || '').trim();
+        }
+
+        return (element.value || element.textContent || '').trim();
+    };
+
+    const financialYear =
+        readValue('select[name="financial_year_id"]') ||
+        readValue('#financial_year_id') ||
+        'All';
+
+    const dateFrom = readValue('input[name="date_from"]') || readValue('#date_from') || 'N/A';
+    const dateTo = readValue('input[name="date_to"]') || readValue('#date_to') || 'N/A';
+
+    const lineOne = [
+        'Company: ' + companyName,
+        'Financial Year: ' + financialYear
+    ].join('   |   ');
+
+    const lineTwo = [
+        'Period: ' + dateFrom + ' to ' + dateTo,
+        'Generated At: ' + now
+    ].join('   |   ');
+
+    return [lineOne, lineTwo].join('\n');
+}
+
 function buildPdfButtonConfig(overrides = {}) {
     const AUTO_PORTRAIT_MAX_COLUMNS = 6;
 
@@ -389,6 +466,7 @@ function buildPdfButtonConfig(overrides = {}) {
         exportOptions: {
             columns: datatableExportableColumn
         },
+        messageTop: buildDatatableExportMetaText,
         orientation: 'portrait',
         pageSize: 'A4',
         title: (document.title || 'Reco Export').replace(/^Reco\s*-\s*/i, ''),
@@ -397,11 +475,11 @@ function buildPdfButtonConfig(overrides = {}) {
             doc.pageMargins = [12, 16, 12, 16];
             doc.defaultStyle.fontSize = 8;
             doc.styles.title = {
-                fontSize: 14,
+                fontSize: 13,
                 bold: true,
                 color: '#1f2937',
-                alignment: 'left',
-                margin: [0, 0, 0, 10]
+                alignment: 'center',
+                margin: [0, 0, 0, 4]
             };
             doc.styles.tableHeader = {
                 fillColor: '#1e3a5f',
@@ -417,6 +495,24 @@ function buildPdfButtonConfig(overrides = {}) {
 
             if (!tableBlock || !tableBlock.table || !Array.isArray(tableBlock.table.body)) {
                 return;
+            }
+
+            const tableIndex = (doc.content || []).findIndex(function(block) {
+                return block && block.table;
+            });
+
+            if (tableIndex > 0) {
+                for (let i = 0; i < tableIndex; i += 1) {
+                    const block = doc.content[i];
+                    if (block && (typeof block.text !== 'undefined' || typeof block.stack !== 'undefined')) {
+                        block.alignment = 'center';
+                        if (i > 0) {
+                            block.fontSize = 8.5;
+                            block.color = '#374151';
+                            block.margin = [0, 0, 0, 8];
+                        }
+                    }
+                }
             }
 
             // Force columns to share full available width instead of staying content-sized.
@@ -463,6 +559,7 @@ function buildPdfButtonConfig(overrides = {}) {
 
 window.datatableExportableColumn = datatableExportableColumn;
 window.buildPdfButtonConfig = buildPdfButtonConfig;
+window.buildDatatableExportMetaText = buildDatatableExportMetaText;
 window.formatDateIst = formatDateIst;
 window.formatDateTimeIst = formatDateTimeIst;
 window.istDateColumn = istDateColumn;
@@ -520,7 +617,8 @@ function loadDatatable(tableId, url, columns, additionalOptions = {}) {
                 className: 'btn btn-success btn-sm dt-export-btn dt-export-excel',
                 exportOptions: {
                     columns: datatableExportableColumn
-                }
+                },
+                messageTop: buildDatatableExportMetaText
             },
             buildPdfButtonConfig()
         ],
@@ -928,5 +1026,11 @@ $(document).ready(function() {
     initAjaxForms();
     initPartyQuickAdd();
     initSearchableSelects();
+
+    // Reinitialize searchable dropdowns when hidden containers become interactive.
+    $(document).on('shown.bs.modal shown.bs.offcanvas', function(event) {
+        initSearchableSelects(event.target);
+    });
+
     enforceResponsiveTables();
 });

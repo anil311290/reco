@@ -19,6 +19,7 @@
 <body>
 <div class="container">
     <div class="header"><h1>Receivables Outstanding</h1></div>
+    @include('exports._meta')
     <table class="table">
         <thead>
         <tr>
@@ -26,6 +27,9 @@
             <th>Party</th>
             <th>Mobile</th>
             <th>Email</th>
+            <th>Oldest Due Date</th>
+            <th>Overdue By</th>
+            <th class="text-right">Overdue (₹)</th>
             <th class="text-right">Balance (₹) Dr</th>
         </tr>
         </thead>
@@ -36,15 +40,18 @@
                 <td>{{ $item['party']->name }}</td>
                 <td>{{ $item['party']->mobile ?? '-' }}</td>
                 <td>{{ $item['party']->email ?? '-' }}</td>
+                <td>{{ !empty($item['oldest_due_date']) ? \Carbon\Carbon::parse($item['oldest_due_date'])->format('d/m/Y') : '-' }}</td>
+                <td>{{ $item['overdue_label'] ?? 'Current' }}</td>
+                <td class="text-right">{{ number_format((float) ($item['overdue_amount'] ?? 0), 2) }}</td>
                 <td class="text-right">{{ number_format($item['balance'], 2) }}</td>
             </tr>
         @empty
-            <tr><td colspan="5">No outstanding receivables</td></tr>
+            <tr><td colspan="8">No outstanding receivables</td></tr>
         @endforelse
         </tbody>
         <tfoot>
             <tr>
-                <td colspan="4">Total Outstanding</td>
+                <td colspan="7">Total Outstanding</td>
                 <td class="text-right">₹{{ number_format($report['total'], 2) }}</td>
             </tr>
         </tfoot>

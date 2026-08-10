@@ -298,7 +298,20 @@ class AccountController extends Controller
 
         $accounts = $this->accountService->getAll($filters);
 
-        $pdf = \PDF::loadView('admin.accounts.export-pdf', ['accounts' => $accounts]);
+        $company = $request->user()->company;
+        $exportMeta = [
+            'company_name' => $company?->name ?? 'N/A',
+            'financial_year' => $company?->currentFinancialYear?->name ?? 'All',
+            'date_from' => $request->input('date_from') ?: 'N/A',
+            'date_to' => $request->input('date_to') ?: 'N/A',
+            'generated_by' => $request->user()->name ?? 'System',
+            'generated_at' => now()->timezone(config('app.timezone'))->format('d-M-Y h:i A'),
+        ];
+
+        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('admin.accounts.export-pdf', [
+            'accounts' => $accounts,
+            'exportMeta' => $exportMeta,
+        ]);
         return $pdf->download('accounts_' . date('Y-m-d_H-i-s') . '.pdf');
     }
 }

@@ -49,7 +49,8 @@
 </head>
 <body>
     <h1>Account Master Report</h1>
-    <p>Generated on: {{ now()->format('d-M-Y H:i:s') }}</p>
+
+    @include('exports._meta')
 
     <table>
         <thead>

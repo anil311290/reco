@@ -180,8 +180,10 @@ class ReportController extends Controller
         $dateFrom = $context['dateFrom'];
         $dateTo = $context['dateTo'];
         $financialYears = $context['financialYears'];
+        $filters = $request->only(['overdue_status', 'age_bucket']);
 
-        $report = $this->reportService->getDebtorsOutstanding($companyId, $financialYearId, $dateFrom, $dateTo);
+        $report = $this->reportService->getDebtorsOutstanding($companyId, $financialYearId, $dateFrom, $dateTo, $filters);
+        $report['aging_summary'] = $this->summarizeAgingBuckets($report['debtors'] ?? []);
         $debtors = $this->paginateReportItems($request, $report['debtors'] ?? [], 10);
 
         return view('admin.reports.debtors-outstanding', compact('report', 'debtors', 'financialYearId', 'dateFrom', 'dateTo', 'financialYears'));
@@ -195,11 +197,93 @@ class ReportController extends Controller
         $dateFrom = $context['dateFrom'];
         $dateTo = $context['dateTo'];
         $financialYears = $context['financialYears'];
+        $filters = $request->only(['overdue_status', 'age_bucket']);
 
-        $report = $this->reportService->getCreditorsOutstanding($companyId, $financialYearId, $dateFrom, $dateTo);
+        $report = $this->reportService->getCreditorsOutstanding($companyId, $financialYearId, $dateFrom, $dateTo, $filters);
+        $report['aging_summary'] = $this->summarizeAgingBuckets($report['creditors'] ?? []);
         $creditors = $this->paginateReportItems($request, $report['creditors'] ?? [], 10);
 
         return view('admin.reports.creditors-outstanding', compact('report', 'creditors', 'financialYearId', 'dateFrom', 'dateTo', 'financialYears'));
+    }
+
+    public function agingSummary(Request $request)
+    {
+        $companyId = auth()->user()->company_id;
+        $context = $this->resolveReportContext($request, $companyId);
+        $financialYearId = $context['financialYearId'];
+        $dateFrom = $context['dateFrom'];
+        $dateTo = $context['dateTo'];
+        $financialYears = $context['financialYears'];
+        $filters = $request->only(['overdue_status', 'age_bucket']);
+
+        $debtorsReport = $this->reportService->getDebtorsOutstanding($companyId, $financialYearId, $dateFrom, $dateTo, $filters);
+        $creditorsReport = $this->reportService->getCreditorsOutstanding($companyId, $financialYearId, $dateFrom, $dateTo, $filters);
+
+        $rows = collect($debtorsReport['debtors'] ?? [])
+            ->map(function (array $item) {
+                $item['report_type'] = 'Receivable';
+                return $item;
+            })
+            ->merge(
+                collect($creditorsReport['creditors'] ?? [])->map(function (array $item) {
+                    $item['report_type'] = 'Payable';
+                    return $item;
+                })
+            )
+            ->sort(function (array $a, array $b) {
+                $daysCompare = (int) ($b['overdue_days'] ?? 0) <=> (int) ($a['overdue_days'] ?? 0);
+                if ($daysCompare !== 0) {
+                    return $daysCompare;
+                }
+
+                return (float) ($b['balance'] ?? 0) <=> (float) ($a['balance'] ?? 0);
+            })
+            ->values();
+
+        $agingRows = $this->paginateReportItems($request, $rows, 10);
+        $summary = [
+            'receivables_total' => (float) ($debtorsReport['total'] ?? 0),
+            'payables_total' => (float) ($creditorsReport['total'] ?? 0),
+            'receivables' => $this->summarizeAgingBuckets($debtorsReport['debtors'] ?? []),
+            'payables' => $this->summarizeAgingBuckets($creditorsReport['creditors'] ?? []),
+        ];
+
+        return view('admin.reports.aging-summary', compact(
+            'financialYearId',
+            'financialYears',
+            'dateFrom',
+            'dateTo',
+            'agingRows',
+            'summary',
+            'filters'
+        ));
+    }
+
+    private function summarizeAgingBuckets(iterable $rows): array
+    {
+        $summary = [
+            'current' => ['label' => 'Current', 'count' => 0, 'amount' => 0.0],
+            '1_30' => ['label' => '1-30 Days', 'count' => 0, 'amount' => 0.0],
+            '31_60' => ['label' => '31-60 Days', 'count' => 0, 'amount' => 0.0],
+            '61_90' => ['label' => '61-90 Days', 'count' => 0, 'amount' => 0.0],
+            '91_plus' => ['label' => '91+ Days', 'count' => 0, 'amount' => 0.0],
+        ];
+
+        foreach ($rows as $row) {
+            $bucket = (string) ($row['age_bucket'] ?? 'current');
+            if (!array_key_exists($bucket, $summary)) {
+                continue;
+            }
+
+            $summary[$bucket]['count']++;
+            $summary[$bucket]['amount'] += (float) ($row['overdue_amount'] ?? 0);
+        }
+
+        foreach ($summary as $bucket => $meta) {
+            $summary[$bucket]['amount'] = round((float) $meta['amount'], 2);
+        }
+
+        return $summary;
     }
 
     protected function paginateReportItems(Request $request, iterable $items, int $defaultPerPage = 25): LengthAwarePaginator

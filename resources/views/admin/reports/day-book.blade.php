@@ -67,14 +67,6 @@
 
     <div class="report-filter-card">
         <form method="GET" action="{{ route('admin.reports.day-book') }}" class="row g-3 align-items-end">
-            <div class="col-lg-2 col-md-6">
-                <label class="form-label">From Date</label>
-                <input type="date" name="date_from" class="form-control" value="{{ $dateFrom }}">
-            </div>
-            <div class="col-lg-2 col-md-6">
-                <label class="form-label">To Date</label>
-                <input type="date" name="date_to" class="form-control" value="{{ $dateTo }}">
-            </div>
             <div class="col-lg-3 col-md-6">
                 <label class="form-label">Financial Year</label>
                 <select name="financial_year_id" class="form-select">
@@ -84,6 +76,14 @@
                         </option>
                     @endforeach
                 </select>
+            </div>
+            <div class="col-lg-2 col-md-6">
+                <label class="form-label">From Date</label>
+                <input type="date" name="date_from" class="form-control" value="{{ $dateFrom }}">
+            </div>
+            <div class="col-lg-2 col-md-6">
+                <label class="form-label">To Date</label>
+                <input type="date" name="date_to" class="form-control" value="{{ $dateTo }}">
             </div>
             <div class="col-lg-auto col-md-12 report-filter-actions">
                 <button type="submit" class="btn btn-primary">
