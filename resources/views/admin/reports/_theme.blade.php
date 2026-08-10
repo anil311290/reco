@@ -3,60 +3,37 @@
         <style>
             .reports-shell {
                 display: grid;
-                gap: 1.5rem;
+                gap: 0.9rem;
             }
 
             .report-hero {
                 position: relative;
                 overflow: hidden;
-                border: 1px solid rgba(115, 103, 240, 0.14);
-                border-radius: 24px;
-                padding: 1.5rem;
-                background:
-                    radial-gradient(circle at top right, rgba(115, 103, 240, 0.22), transparent 32%),
-                    linear-gradient(135deg, #ffffff 0%, #f6f6ff 48%, #eef4ff 100%);
-                box-shadow: 0 18px 50px rgba(31, 41, 55, 0.08);
+                border: 1px solid rgba(31, 41, 55, 0.08);
+                border-radius: 14px;
+                padding: 0.85rem 1rem;
+                background: #ffffff;
+                box-shadow: 0 6px 16px rgba(15, 23, 42, 0.06);
             }
 
             .report-hero::after {
-                content: '';
-                position: absolute;
-                inset: auto -40px -40px auto;
-                width: 180px;
-                height: 180px;
-                border-radius: 50%;
-                background: rgba(115, 103, 240, 0.08);
-                filter: blur(8px);
+                display: none;
             }
 
             .report-eyebrow {
-                display: inline-flex;
-                align-items: center;
-                gap: 0.45rem;
-                padding: 0.45rem 0.8rem;
-                border-radius: 999px;
-                background: rgba(115, 103, 240, 0.1);
-                color: #5b53d6;
-                font-size: 0.78rem;
-                font-weight: 700;
-                letter-spacing: 0.04em;
-                text-transform: uppercase;
+                display: none;
             }
 
             .report-title {
-                margin: 0.9rem 0 0.35rem;
-                font-size: clamp(1.65rem, 2vw, 2.25rem);
+                margin: 0;
+                font-size: clamp(1.15rem, 1.6vw, 1.45rem);
                 line-height: 1.1;
-                font-weight: 800;
+                font-weight: 700;
                 color: #23263a;
             }
 
             .report-subtitle {
-                margin: 0;
-                max-width: 720px;
-                color: #70758d;
-                font-size: 0.98rem;
-                line-height: 1.65;
+                display: none;
             }
 
             .report-toolbar {
@@ -171,7 +148,7 @@
             }
 
             .report-filter-card {
-                padding: 1.15rem;
+                padding: 0.85rem;
             }
 
             .report-filter-card .form-label {
@@ -240,7 +217,7 @@
             }
 
             .report-stats-grid {
-                display: grid;
+                display: none;
                 gap: 1rem;
                 grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
                 margin: 10px 0;
@@ -298,7 +275,7 @@
                 justify-content: space-between;
                 align-items: center;
                 gap: 1rem;
-                padding: 1rem 1.2rem;
+                padding: 0.78rem 0.95rem;
                 border-bottom: 1px solid rgba(31, 41, 55, 0.06);
                 background: linear-gradient(180deg, rgba(248, 250, 252, 0.95), rgba(255, 255, 255, 0.95));
             }
@@ -314,7 +291,7 @@
             }
 
             .report-panel-body {
-                padding: 1.1rem 1.2rem 1.2rem;
+                padding: 0.85rem 0.95rem;
             }
 
             .report-panel-body.report-panel-body--flush {
@@ -342,7 +319,7 @@
                 display: grid;
                 place-items: center;
                 gap: 0.75rem;
-                min-height: 240px;
+                min-height: 140px;
                 text-align: center;
                 color: #7c8298;
             }
@@ -566,7 +543,7 @@
             }
 
             .report-kpi-bar {
-                display: flex;
+                display: none;
                 flex-wrap: wrap;
                 gap: 0.75rem;
             }
