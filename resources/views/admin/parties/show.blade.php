@@ -54,6 +54,15 @@
         color: #212529;
         font-weight: 500;
     }
+    .mip-invoice-table-wrapper {
+        max-height: 320px;
+        overflow-y: auto;
+    }
+    .mip-invoice-table-wrapper thead th {
+        position: sticky;
+        top: 0;
+        z-index: 1;
+    }
 </style>
 
 <div class="row mb-4">
@@ -248,26 +257,45 @@
                         </div>
                     </div>
 
-                    <div class="table-responsive">
-                        <table class="table table-sm align-middle">
+                    <div class="d-flex justify-content-between align-items-center gap-2 mb-2">
+                        <div class="flex-grow-1" style="max-width: 320px;">
+                            <input type="text" class="form-control form-control-sm" id="mip_invoice_search"
+                                   placeholder="Search invoice #..." autocomplete="off">
+                        </div>
+                        <small class="text-muted">{{ $outstandingInvoices->count() }} outstanding invoice(s)</small>
+                    </div>
+
+                    <div class="table-responsive mip-invoice-table-wrapper">
+                        <table class="table table-sm align-middle mb-0">
                             <thead class="table-light">
                                 <tr>
                                     <th style="width:2.5rem;"><input type="checkbox" id="mip_select_all" class="form-check-input"></th>
                                     <th>Invoice #</th>
-                                    <th>Date</th>
+                                    <th>Invoice Date</th>
+                                    <th>Due Date</th>
                                     <th class="text-end">Balance Due</th>
                                     <th class="text-end" style="width:11rem;">Allocate Amount</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 @foreach($outstandingInvoices as $inv)
-                                <tr>
+                                @php
+                                    $isOverdue = $inv->due_date && $inv->due_date->isPast();
+                                    $overdueDays = $isOverdue ? $inv->due_date->diffInDays(now()) : 0;
+                                @endphp
+                                <tr class="mip-invoice-row" data-invoice-number="{{ strtolower($inv->invoice_number) }}">
                                     <td>
                                         <input type="checkbox" class="form-check-input mip-invoice-check" value="{{ $inv->id }}"
                                                data-balance="{{ $inv->balance_due }}">
                                     </td>
                                     <td>{{ $inv->invoice_number }}</td>
                                     <td>{{ $inv->invoice_date?->format('d-M-Y') }}</td>
+                                    <td>
+                                        {{ $inv->due_date?->format('d-M-Y') ?? '—' }}
+                                        @if($isOverdue)
+                                        <span class="badge bg-danger-subtle text-danger ms-1">{{ $overdueDays }}d overdue</span>
+                                        @endif
+                                    </td>
                                     <td class="text-end">₹{{ number_format($inv->balance_due, 2) }}</td>
                                     <td class="text-end">
                                         <input type="number" class="form-control form-control-sm text-end mip-invoice-amount"
@@ -278,6 +306,7 @@
                                 @endforeach
                             </tbody>
                         </table>
+                        <div class="mip-invoice-empty text-center text-muted py-3" style="display:none;">No invoices match your search.</div>
                     </div>
                     <div class="text-end fw-semibold">
                         Total Allocated: ₹<span id="mip_total_allocated">0.00</span>
@@ -315,7 +344,23 @@ $('.mip-invoice-check').on('change', function () {
 $('.mip-invoice-amount').on('input', mipRecalculateTotal);
 
 $('#mip_select_all').on('change', function () {
-    $('.mip-invoice-check').prop('checked', this.checked).trigger('change');
+    $('.mip-invoice-row:not(.d-none) .mip-invoice-check').prop('checked', this.checked).trigger('change');
+});
+
+$('#mip_invoice_search').on('input', function () {
+    const term = $(this).val().trim().toLowerCase();
+    let visibleCount = 0;
+
+    $('.mip-invoice-row').each(function () {
+        const matches = !term || $(this).data('invoice-number').toString().includes(term);
+        $(this).toggleClass('d-none', !matches);
+        if (matches) {
+            visibleCount++;
+        }
+    });
+
+    $('.mip-invoice-empty').toggle(visibleCount === 0);
+    $('#mip_select_all').prop('checked', false);
 });
 
 $('#multiInvoicePaymentForm').on('submit', function (e) {

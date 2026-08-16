@@ -15,6 +15,15 @@
 
 @section('title', 'Create ' . $voucherLabel . ' Voucher')
 
+@push('styles')
+<style>
+    .pr-bill-wise-list {
+        max-height: 220px;
+        overflow-y: auto;
+    }
+</style>
+@endpush
+
 @section('content')
 <div class="row mb-4">
     <div class="col-md-6">
@@ -108,7 +117,9 @@
                                     <small class="fw-semibold"><i class="bi bi-receipt me-1"></i>Bill-wise Details (optional — settle against outstanding invoices)</small>
                                     <small class="text-muted pr-bill-wise-summary"></small>
                                 </div>
+                                <input type="text" class="form-control form-control-sm mb-2 pr-bill-search" placeholder="Search invoice #..." style="max-width:260px;" autocomplete="off">
                                 <div class="pr-bill-wise-list small text-muted"></div>
+                                <div class="pr-bill-wise-empty text-muted small mt-1" style="display:none;">No invoices match your search.</div>
                             </div>
                         </div>
                     </div>
@@ -479,7 +490,9 @@ $(document).ready(function() {
                                 <small class="fw-semibold"><i class="bi bi-receipt me-1"></i>Bill-wise Details (optional — settle against outstanding invoices)</small>
                                 <small class="text-muted pr-bill-wise-summary"></small>
                             </div>
+                            <input type="text" class="form-control form-control-sm mb-2 pr-bill-search" placeholder="Search invoice #..." style="max-width:260px;" autocomplete="off">
                             <div class="pr-bill-wise-list small text-muted"></div>
+                            <div class="pr-bill-wise-empty text-muted small mt-1" style="display:none;">No invoices match your search.</div>
                         </div>
                     </div>
                 </div>
@@ -540,12 +553,15 @@ $(document).ready(function() {
 
         function billWiseRowHtml(rowIndex, invoice) {
             const balanceDue = parseFloat(invoice.balance_due) || 0;
+            const overdueBadge = invoice.is_overdue
+                ? `<span class="badge bg-danger-subtle text-danger ms-1">${invoice.overdue_days}d overdue</span>`
+                : '';
             return `
-                <div class="row g-2 align-items-center mb-1 pr-bill-row">
+                <div class="row g-2 align-items-center mb-1 pr-bill-row" data-invoice-number="${String(invoice.invoice_number || '').toLowerCase()}">
                     <div class="col-auto">
                         <input type="checkbox" class="form-check-input pr-bill-check" name="payment_rows[${rowIndex}][invoice_allocations][${invoice.id}][invoice_id]" value="${invoice.id}" data-invoice-id="${invoice.id}">
                     </div>
-                    <div class="col-3">${invoice.invoice_number}<br><span class="text-muted">${invoice.invoice_date || ''}</span></div>
+                    <div class="col-3">${invoice.invoice_number}<br><span class="text-muted">Due: ${invoice.due_date || '—'}</span>${overdueBadge}</div>
                     <div class="col-2 text-end">₹${balanceDue.toFixed(2)}</div>
                     <div class="col-3">
                         <input type="number" class="form-control form-control-sm pr-bill-amount" name="payment_rows[${rowIndex}][invoice_allocations][${invoice.id}][amount]" step="0.01" min="0.01" max="${balanceDue}" value="${balanceDue.toFixed(2)}" disabled>
@@ -572,6 +588,11 @@ $(document).ready(function() {
             const rowIndex = $row.data('index');
             const $wrapper = $row.find('.pr-bill-wise-wrapper');
             const $list = $row.find('.pr-bill-wise-list');
+            const $search = $row.find('.pr-bill-search');
+            const $empty = $row.find('.pr-bill-wise-empty');
+
+            $search.val('').hide();
+            $empty.hide();
 
             if (!partyId) {
                 $wrapper.hide();
@@ -596,6 +617,7 @@ $(document).ready(function() {
                     let html = '';
                     invoices.forEach((inv) => { html += billWiseRowHtml(rowIndex, inv); });
                     $list.html(html);
+                    $search.toggle(invoices.length > 8);
                     updateBillWiseSummary($row);
                 },
                 error: function() {
@@ -603,6 +625,22 @@ $(document).ready(function() {
                 }
             });
         }
+
+        $(document).on('input', '.pr-bill-search', function() {
+            const $row = $(this).closest('.payment-receipt-row');
+            const term = $(this).val().trim().toLowerCase();
+            let visibleCount = 0;
+
+            $row.find('.pr-bill-row').each(function() {
+                const matches = !term || $(this).data('invoice-number').toString().includes(term);
+                $(this).toggle(matches);
+                if (matches) {
+                    visibleCount++;
+                }
+            });
+
+            $row.find('.pr-bill-wise-empty').toggle(visibleCount === 0);
+        });
 
         $(document).on('change', '.pr-bill-check', function() {
             const $billRow = $(this).closest('.pr-bill-row');

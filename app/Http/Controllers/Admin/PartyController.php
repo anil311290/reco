@@ -70,6 +70,7 @@ class PartyController extends Controller
                 ->where('party_id', $party->id)
                 ->whereNotIn('status', ['paid', 'cancelled'])
                 ->where('balance_due', '>', 0)
+                ->orderBy('due_date')
                 ->orderBy('invoice_date')
                 ->get(['id', 'invoice_number', 'invoice_date', 'due_date', 'total', 'balance_due']);
         } elseif ($party->type === 'creditor') {
@@ -77,6 +78,7 @@ class PartyController extends Controller
                 ->where('party_id', $party->id)
                 ->whereNotIn('status', ['paid', 'cancelled'])
                 ->where('balance_due', '>', 0)
+                ->orderBy('due_date')
                 ->orderBy('invoice_date')
                 ->get(['id', 'invoice_number', 'invoice_date', 'due_date', 'total', 'balance_due']);
         }
@@ -159,14 +161,32 @@ class PartyController extends Controller
                 ->where('party_id', $partyModel->id)
                 ->whereNotIn('status', ['paid', 'cancelled'])
                 ->where('balance_due', '>', 0)
+                ->orderBy('due_date')
                 ->orderBy('invoice_date')
                 ->get(['id', 'invoice_number', 'invoice_date', 'due_date', 'total', 'balance_due'])
             : PurchaseInvoice::where('company_id', $partyModel->company_id)
                 ->where('party_id', $partyModel->id)
                 ->whereNotIn('status', ['paid', 'cancelled'])
                 ->where('balance_due', '>', 0)
+                ->orderBy('due_date')
                 ->orderBy('invoice_date')
                 ->get(['id', 'invoice_number', 'invoice_date', 'due_date', 'total', 'balance_due']);
+
+        $today = now()->toDateString();
+        $invoices = $invoices->map(function ($invoice) use ($today) {
+            $isOverdue = $invoice->due_date && $invoice->due_date->toDateString() < $today;
+
+            return [
+                'id' => $invoice->id,
+                'invoice_number' => $invoice->invoice_number,
+                'invoice_date' => $invoice->invoice_date?->format('d-M-Y'),
+                'due_date' => $invoice->due_date?->format('d-M-Y'),
+                'total' => (float) $invoice->total,
+                'balance_due' => (float) $invoice->balance_due,
+                'is_overdue' => $isOverdue,
+                'overdue_days' => $isOverdue ? (int) $invoice->due_date->diffInDays(now()) : 0,
+            ];
+        })->values();
 
         return ResponseHelper::success($invoices);
     }
