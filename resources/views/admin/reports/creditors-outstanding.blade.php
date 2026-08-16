@@ -38,6 +38,13 @@
         color: #a16207;
         font-weight: 600;
     }
+
+    .report-filter-card .custom-age-input {
+        min-height: 38px;
+        height: 38px;
+        padding: 0.35rem 0.5rem;
+        font-size: 0.85rem;
+    }
 </style>
 @endpush
 
@@ -58,10 +65,15 @@
         </div>
     </div>
     <div class="report-filter-card">
+        <div class="report-filter-head">
+            <span class="report-filter-head-title"><i class="bi bi-funnel"></i> Filters</span>
+            <a href="{{ route('admin.reports.creditors-outstanding') }}" class="report-filter-reset"><i class="bi bi-arrow-counterclockwise"></i> Reset</a>
+            <button type="button" class="report-filter-toggle" aria-expanded="false" aria-label="Toggle filters"><i class="bi bi-chevron-down"></i></button>
+        </div>
         <form method="GET" action="{{ route('admin.reports.creditors-outstanding') }}" class="row g-3 align-items-end">
-            <div class="col-lg-4 col-md-6">
+            <div class="col-12 col-md-5 col-lg-3">
                 <label class="form-label">Financial Year</label>
-                <select name="financial_year_id" class="form-select">
+                <select name="financial_year_id" class="form-select" data-searchable="false">
                     @foreach($financialYears as $fy)
                         <option value="{{ $fy->id }}" {{ (string) ($financialYearId ?? '') === (string) $fy->id ? 'selected' : '' }}>
                             {{ $fy->name }}
@@ -69,41 +81,49 @@
                     @endforeach
                 </select>
             </div>
-            <div class="col-lg-2 col-md-3">
+            <div class="col-6 col-md-3 col-lg-2">
                 <label class="form-label">From Date</label>
                 <input type="date" name="date_from" class="form-control" value="{{ $dateFrom ?? '' }}">
             </div>
-            <div class="col-lg-2 col-md-3">
+            <div class="col-6 col-md-3 col-lg-2">
                 <label class="form-label">To Date</label>
                 <input type="date" name="date_to" class="form-control" value="{{ $dateTo ?? '' }}">
             </div>
-            <div class="col-lg-2 col-md-3">
+            <div class="col-6 col-md-3 col-lg-2">
                 <label class="form-label">Overdue Status</label>
-                <select name="overdue_status" class="form-select">
+                <select name="overdue_status" class="form-select" data-searchable="false">
                     <option value="all" {{ ($report['filters']['overdue_status'] ?? 'all') === 'all' ? 'selected' : '' }}>All</option>
-                    <option value="overdue" {{ ($report['filters']['overdue_status'] ?? '') === 'overdue' ? 'selected' : '' }}>Overdue Only</option>
-                    <option value="current" {{ ($report['filters']['overdue_status'] ?? '') === 'current' ? 'selected' : '' }}>Current Only</option>
+                    <option value="due" {{ ($report['filters']['overdue_status'] ?? '') === 'due' ? 'selected' : '' }}>Due</option>
+                    <option value="not_due" {{ ($report['filters']['overdue_status'] ?? '') === 'not_due' ? 'selected' : '' }}>Not Due</option>
                 </select>
             </div>
-            <div class="col-lg-2 col-md-3">
+            <div class="col-6 col-md-3 col-lg-2">
                 <label class="form-label">Aging Bucket</label>
-                <select name="age_bucket" class="form-select">
+                <select name="age_bucket" id="age-bucket-select" class="form-select" data-searchable="false">
                     <option value="all" {{ ($report['filters']['age_bucket'] ?? 'all') === 'all' ? 'selected' : '' }}>All Buckets</option>
                     <option value="current" {{ ($report['filters']['age_bucket'] ?? '') === 'current' ? 'selected' : '' }}>Current</option>
                     <option value="1_30" {{ ($report['filters']['age_bucket'] ?? '') === '1_30' ? 'selected' : '' }}>1-30 Days</option>
                     <option value="31_60" {{ ($report['filters']['age_bucket'] ?? '') === '31_60' ? 'selected' : '' }}>31-60 Days</option>
                     <option value="61_90" {{ ($report['filters']['age_bucket'] ?? '') === '61_90' ? 'selected' : '' }}>61-90 Days</option>
                     <option value="91_plus" {{ ($report['filters']['age_bucket'] ?? '') === '91_plus' ? 'selected' : '' }}>91+ Days</option>
+                    <option value="custom" {{ ($report['filters']['age_bucket'] ?? '') === 'custom' ? 'selected' : '' }}>Custom Range</option>
                 </select>
+                <div id="custom-age-range" class="custom-age-range">
+                    <input type="number" name="age_min" class="form-control custom-age-input" placeholder="Min" min="0" value="{{ $report['filters']['age_min'] ?? '' }}">
+                    <input type="number" name="age_max" class="form-control custom-age-input" placeholder="Max" min="0" value="{{ $report['filters']['age_max'] ?? '' }}">
+                </div>
             </div>
-            <div class="col-lg-auto col-md-12 report-filter-actions">
+            <div class="col-12 col-lg-auto report-filter-actions">
                 <button type="submit" class="btn btn-primary"><i class="bi bi-funnel me-1"></i>Filter</button>
-                <a href="{{ route('admin.export.excel', ['type' => 'creditors', 'financial_year_id' => $financialYearId, 'date_from' => $dateFrom, 'date_to' => $dateTo, 'overdue_status' => $report['filters']['overdue_status'] ?? 'all', 'age_bucket' => $report['filters']['age_bucket'] ?? 'all']) }}" class="btn btn-outline-success report-btn-export">
-                    <i class="bi bi-file-earmark-spreadsheet"></i>Excel
-                </a>
-                <a href="{{ route('admin.export.creditors-outstanding.pdf', ['financial_year_id' => $financialYearId, 'date_from' => $dateFrom, 'date_to' => $dateTo, 'overdue_status' => $report['filters']['overdue_status'] ?? 'all', 'age_bucket' => $report['filters']['age_bucket'] ?? 'all']) }}" class="btn btn-outline-danger report-btn-export">
-                    <i class="bi bi-file-earmark-pdf"></i>PDF
-                </a>
+                <div class="btn-group report-export-dropdown">
+                    <button type="button" class="btn report-btn-export-neutral dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+                        <i class="bi bi-download"></i>Export
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-end">
+                        <li><a class="dropdown-item" href="{{ route('admin.export.excel', ['type' => 'creditors', 'financial_year_id' => $financialYearId, 'date_from' => $dateFrom, 'date_to' => $dateTo, 'overdue_status' => $report['filters']['overdue_status'] ?? 'all', 'age_bucket' => $report['filters']['age_bucket'] ?? 'all', 'age_min' => $report['filters']['age_min'] ?? '', 'age_max' => $report['filters']['age_max'] ?? '']) }}"><i class="bi bi-file-earmark-spreadsheet text-success me-2"></i>Excel</a></li>
+                        <li><a class="dropdown-item" href="{{ route('admin.export.creditors-outstanding.pdf', ['financial_year_id' => $financialYearId, 'date_from' => $dateFrom, 'date_to' => $dateTo, 'overdue_status' => $report['filters']['overdue_status'] ?? 'all', 'age_bucket' => $report['filters']['age_bucket'] ?? 'all', 'age_min' => $report['filters']['age_min'] ?? '', 'age_max' => $report['filters']['age_max'] ?? '']) }}"><i class="bi bi-file-earmark-pdf text-danger me-2"></i>PDF</a></li>
+                    </ul>
+                </div>
             </div>
         </form>
     </div>
@@ -117,9 +137,9 @@
             <p class="report-stat-note">Open payables across all creditors.</p>
         </div>
         <div class="report-stat report-stat--info">
-            <p class="report-stat-label">Creditors Count</p>
+            <p class="report-stat-label">Invoices</p>
             <h3 class="report-stat-value">{{ $creditors->total() }}</h3>
-            <p class="report-stat-note">Suppliers with outstanding balances.</p>
+            <p class="report-stat-note">Outstanding invoices from all creditors.</p>
         </div>
     </div>
 
@@ -127,7 +147,7 @@
         @foreach(($report['aging_summary'] ?? []) as $bucket)
             <div class="aging-bucket-card">
                 <p class="label">{{ $bucket['label'] }}</p>
-                <p class="count">{{ $bucket['count'] }} Parties</p>
+                <p class="count">{{ $bucket['count'] }} Invoices</p>
                 <p class="amount">₹{{ number_format((float) $bucket['amount'], 2) }}</p>
             </div>
         @endforeach
@@ -137,7 +157,6 @@
         <div class="report-panel-header">
             <h6 class="report-panel-title"><i class="bi bi-person-lines-fill text-warning"></i>Outstanding Creditors</h6>
             <span class="report-pill report-pill--info">@istDate($dateFrom) to @istDate($dateTo)</span>
-            <span class="report-pill report-pill--warning">₹{{ number_format($report['total'], 2) }}</span>
         </div>
         <div class="report-panel-body report-panel-body--flush">
             <div class="report-table-tools">
@@ -147,6 +166,8 @@
                     <input type="hidden" name="date_to" value="{{ $dateTo ?? '' }}">
                     <input type="hidden" name="overdue_status" value="{{ $report['filters']['overdue_status'] ?? 'all' }}">
                     <input type="hidden" name="age_bucket" value="{{ $report['filters']['age_bucket'] ?? 'all' }}">
+                    <input type="hidden" name="age_min" value="{{ $report['filters']['age_min'] ?? '' }}">
+                    <input type="hidden" name="age_max" value="{{ $report['filters']['age_max'] ?? '' }}">
                     <label for="creditors-per-page" class="report-rows-label">Rows Per Page</label>
                     <select id="creditors-per-page" name="per_page" class="form-select form-select-sm report-rows-select" onchange="this.form.submit()">
                         @foreach([10, 25, 50, 100] as $size)
@@ -159,20 +180,27 @@
                 <thead>
                     <tr>
                         <th>#</th>
+                        <th>Invoice No</th>
                         <th>Party</th>
-                        <th>Mobile</th>
-                        <th>Email</th>
-                        <th>Oldest Due Date</th>
-                        <th>Overdue By</th>
-                        <th class="text-end">Overdue (₹)</th>
+                        <th>Invoice Date</th>
+                        <th>Due Date</th>
+                        <th class="text-end">Billed Days</th>
+                        <th class="text-end">Due Days</th>
+                        <th class="text-end">Amount (₹)</th>
+                        <th class="text-end">Paid (₹)</th>
                         <th class="text-end">Balance (₹) Cr</th>
-                        <th class="text-center">History</th>
                     </tr>
                 </thead>
                 <tbody>
                     @forelse($creditors as $item)
                     <tr>
                         <td>{{ ($creditors->firstItem() ?? 1) + $loop->index }}</td>
+                        <td>
+                            <a href="{{ route('admin.purchase-invoices.show', $item['invoice_id']) }}" class="report-detail-link" title="View invoice">
+                                {{ $item['invoice_number'] }}
+                            </a>
+                            <span class="text-muted small">/ {{ $item['party']->party_code }}</span>
+                        </td>
                         <td class="fw-semibold">
                             @permission('parties.view')
                                 <a href="{{ route('admin.parties.show', $item['party']->id) }}" class="report-detail-link" title="View party history">
@@ -182,32 +210,33 @@
                                 {{ $item['party']->name }}
                             @endpermission
                         </td>
-                        <td>{{ $item['party']->mobile ?? '-' }}</td>
-                        <td>{{ $item['party']->email ?? '-' }}</td>
-                        <td>{{ !empty($item['oldest_due_date']) ? \Carbon\Carbon::parse($item['oldest_due_date'])->format('d/m/Y') : '-' }}</td>
-                        <td>
-                            @if(($item['overdue_days'] ?? 0) > 0)
-                                <span class="text-danger fw-semibold">{{ $item['overdue_label'] }}</span>
+                        <td>{{ !empty($item['invoice_date']) ? \Carbon\Carbon::parse($item['invoice_date'])->format('d/m/Y') : '-' }}</td>
+                        <td>{{ !empty($item['due_date']) ? \Carbon\Carbon::parse($item['due_date'])->format('d/m/Y') : '-' }}</td>
+                        <td class="text-end" title="Days since billed date">{{ $item['billed_days'] ?? '-' }}</td>
+                        <td class="text-end" title="Days since due date (negative = not yet due)">
+                            @if(($item['due_days'] ?? null) === null)
+                                <span class="text-muted">-</span>
+                            @elseif($item['due_days'] > 0)
+                                <span class="text-danger fw-semibold">{{ $item['due_days'] }}</span>
+                            @elseif($item['due_days'] === 0)
+                                <span class="text-warning fw-semibold">0</span>
                             @else
-                                <span class="text-success">Current</span>
+                                <span class="text-success">{{ $item['due_days'] }}</span>
                             @endif
                         </td>
-                        <td class="text-end">₹{{ number_format((float) ($item['overdue_amount'] ?? 0), 2) }}</td>
+                        <td class="text-end">₹{{ number_format((float) ($item['invoice_total'] ?? 0), 2) }}</td>
+                        <td class="text-end">₹{{ number_format((float) ($item['amount_paid'] ?? 0), 2) }}</td>
                         <td class="text-end fw-bold text-warning">₹{{ number_format($item['balance'], 2) }}</td>
-                        <td class="text-center">
-                            <a href="{{ route('admin.parties.show', $item['party']->id) }}" class="btn btn-sm btn-outline-primary" title="View party history">History</a>
-                        </td>
                     </tr>
                     @empty
-                    <tr><td colspan="9" class="text-muted text-center py-4">No outstanding payables</td></tr>
+                    <tr><td colspan="10" class="text-muted text-center py-4">No outstanding payables</td></tr>
                     @endforelse
                 </tbody>
                 @if($creditors->count() > 0)
                 <tfoot>
                     <tr>
-                        <td colspan="7">Total Outstanding</td>
+                        <td colspan="9">Total Outstanding</td>
                         <td class="text-end fw-bold">₹{{ number_format($report['total'], 2) }}</td>
-                        <td></td>
                     </tr>
                 </tfoot>
                 @endif
@@ -220,4 +249,20 @@
         </div>
     </div>
 </div>
+@push('scripts')
+<script>
+    $(function () {
+        const $select = $('#age-bucket-select');
+        const $range = $('#custom-age-range');
+        if (!$select.length || !$range.length) return;
+
+        const toggle = () => {
+            $range.toggleClass('is-visible', $select.val() === 'custom');
+        };
+
+        $(document).on('change', '#age-bucket-select', toggle);
+        toggle();
+    });
+</script>
+@endpush
 @endsection

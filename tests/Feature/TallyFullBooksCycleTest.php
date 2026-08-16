@@ -377,9 +377,12 @@ class TallyFullBooksCycleTest extends TestCase
         );
         $this->assertEqualsWithDelta(600.0, (float) $bs['equity']['net_profit'], 0.01);
 
-        // --- Outstanding ---
+        // --- Outstanding (invoice level) ---
+        // Sales invoice balance_due = 400 (600 received bill-wise against it).
+        // The standalone 100 advance credits the party ledger but is not applied
+        // to the invoice, so invoice-level outstanding stays at 400.
         $debtors = $reportService->getDebtorsOutstanding($company->id);
-        $this->assertEqualsWithDelta(300.0, (float) $debtors['total'], 0.01);
+        $this->assertEqualsWithDelta(400.0, (float) $debtors['total'], 0.01);
         $this->assertTrue(
             collect($debtors['debtors'])->contains(fn (array $row) => $row['party']->id === $customer->id)
         );

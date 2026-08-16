@@ -140,7 +140,7 @@ class ExportController extends Controller
     public function debtorsOutstandingPdf(Request $request): Response
     {
         $companyId = $this->getCompanyId($request);
-        $filters = $request->only(['overdue_status', 'age_bucket']);
+        $filters = $request->only(['overdue_status', 'age_bucket', 'age_min', 'age_max']);
 
         $pdf = $this->exportService->exportDebtorsOutstandingPdf(
             $companyId,
@@ -161,7 +161,7 @@ class ExportController extends Controller
     public function creditorsOutstandingPdf(Request $request): Response
     {
         $companyId = $this->getCompanyId($request);
-        $filters = $request->only(['overdue_status', 'age_bucket']);
+        $filters = $request->only(['overdue_status', 'age_bucket', 'age_min', 'age_max']);
 
         $pdf = $this->exportService->exportCreditorsOutstandingPdf(
             $companyId,
@@ -182,7 +182,7 @@ class ExportController extends Controller
     public function agingSummaryPdf(Request $request): Response
     {
         $companyId = $this->getCompanyId($request);
-        $filters = $request->only(['overdue_status', 'age_bucket']);
+        $filters = $request->only(['overdue_status', 'age_bucket', 'age_min', 'age_max']);
 
         $pdf = $this->exportService->exportAgingSummaryPdf(
             $companyId,

@@ -101,7 +101,7 @@ class ReportController extends Controller
     public function dayBook(Request $request)
     {
         $companyId = auth()->user()->company_id;
-        $context = $this->resolveReportContext($request, $companyId, true);
+        $context = $this->resolveReportContext($request, $companyId);
         $financialYearId = $context['financialYearId'];
         $dateFrom = $context['dateFrom'];
         $dateTo = $context['dateTo'];
@@ -150,19 +150,24 @@ class ReportController extends Controller
 
         $accounts = Account::where('company_id', $companyId)
             ->where('is_active', true)
+            ->where('account_code', '!=', Account::CODE_SUSPENSE)
             ->orderBy('account_code')
             ->get();
 
         $report = null;
 
         if ($accountId && $accountId !== 'all') {
-            $report = $this->ledgerService->getAccountLedger(
-                (int) $accountId,
-                $companyId,
-                $financialYearId,
-                $dateFrom,
-                $dateTo
-            );
+            $selectedAccount = $accounts->firstWhere('id', (int) $accountId);
+
+            if ($selectedAccount) {
+                $report = $this->ledgerService->getAccountLedger(
+                    (int) $accountId,
+                    $companyId,
+                    $financialYearId,
+                    $dateFrom,
+                    $dateTo
+                );
+            }
         }
 
         $entries = $report
@@ -180,7 +185,7 @@ class ReportController extends Controller
         $dateFrom = $context['dateFrom'];
         $dateTo = $context['dateTo'];
         $financialYears = $context['financialYears'];
-        $filters = $request->only(['overdue_status', 'age_bucket']);
+        $filters = $request->only(['overdue_status', 'age_bucket', 'age_min', 'age_max']);
 
         $report = $this->reportService->getDebtorsOutstanding($companyId, $financialYearId, $dateFrom, $dateTo, $filters);
         $report['aging_summary'] = $this->summarizeAgingBuckets($report['debtors'] ?? []);
@@ -225,7 +230,7 @@ class ReportController extends Controller
         $dateFrom = $context['dateFrom'];
         $dateTo = $context['dateTo'];
         $financialYears = $context['financialYears'];
-        $filters = $request->only(['overdue_status', 'age_bucket']);
+        $filters = $request->only(['overdue_status', 'age_bucket', 'age_min', 'age_max']);
 
         $report = $this->reportService->getCreditorsOutstanding($companyId, $financialYearId, $dateFrom, $dateTo, $filters);
         $report['aging_summary'] = $this->summarizeAgingBuckets($report['creditors'] ?? []);
@@ -242,7 +247,7 @@ class ReportController extends Controller
         $dateFrom = $context['dateFrom'];
         $dateTo = $context['dateTo'];
         $financialYears = $context['financialYears'];
-        $filters = $request->only(['overdue_status', 'age_bucket']);
+        $filters = $request->only(['overdue_status', 'age_bucket', 'age_min', 'age_max']);
 
         $debtorsReport = $this->reportService->getDebtorsOutstanding($companyId, $financialYearId, $dateFrom, $dateTo, $filters);
         $creditorsReport = $this->reportService->getCreditorsOutstanding($companyId, $financialYearId, $dateFrom, $dateTo, $filters);

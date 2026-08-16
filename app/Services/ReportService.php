@@ -327,6 +327,10 @@ class ReportService
         $serial = 0;
 
         foreach ($vouchers as $voucher) {
+            if (str_starts_with((string) $voucher->narration, '[OB:')) {
+                continue;
+            }
+
             $lines = $voucher->lines
                 ->sortBy([
                     ['sort_order', 'asc'],
@@ -412,6 +416,10 @@ class ReportService
         $serial = 0;
 
         foreach ($vouchers as $voucher) {
+            if (str_starts_with((string) $voucher->narration, '[OB:')) {
+                continue;
+            }
+
             $lines = $voucher->lines
                 ->sortBy([
                     ['sort_order', 'asc'],
@@ -725,67 +733,19 @@ class ReportService
     {
         $financialYearId = $financialYearId ?: FinancialYear::getCurrent($companyId)?->id;
         $filterMeta = $this->normalizeOutstandingFilters($dateTo, $filters);
-        $agingByParty = $this->buildPartyAgingMap(
+        [$debtors, $total] = $this->buildOutstandingInvoiceRows(
             SalesInvoice::class,
+            'debtor',
             $companyId,
             $financialYearId,
             $dateFrom,
             $dateTo,
-            $filterMeta['as_of_date']
+            $filterMeta
         );
 
-        $debtors = Party::where('company_id', $companyId)
-            ->where('type', 'debtor')
-            ->orderBy('name')
-            ->get();
-
-        $outstanding = [];
-        $totalOutstanding = 0;
-
-        foreach ($debtors as $debtor) {
-            if (!$financialYearId) {
-                continue;
-            }
-
-            $ledger = $this->ledgerService->getPartyLedger(
-                (int) $debtor->id,
-                $companyId,
-                $financialYearId,
-                $dateFrom,
-                $dateTo
-            );
-
-            // Receivable = net debit balance tagged to this party in AR
-            $amount = $ledger['closing_type'] === 'debit'
-                ? (float) $ledger['closing_balance']
-                : -1 * (float) $ledger['closing_balance'];
-
-            $aging = $agingByParty[(int) $debtor->id] ?? $this->defaultAgingData();
-
-            if (!$this->matchesOutstandingFilters($aging, $filterMeta)) {
-                continue;
-            }
-
-            if ($amount > 0.01) {
-                $outstanding[] = [
-                    'party' => $debtor,
-                    'account_id' => $debtor->account_id,
-                    'debit' => $amount,
-                    'credit' => 0,
-                    'balance' => $amount,
-                    'oldest_due_date' => $aging['oldest_due_date'],
-                    'overdue_days' => $aging['overdue_days'],
-                    'overdue_label' => $aging['overdue_label'],
-                    'overdue_amount' => $aging['overdue_amount'],
-                    'age_bucket' => $aging['age_bucket'],
-                ];
-                $totalOutstanding += $amount;
-            }
-        }
-
         return [
-            'debtors' => $outstanding,
-            'total' => $totalOutstanding,
+            'debtors' => $debtors,
+            'total' => $total,
             'date_from' => $dateFrom,
             'date_to' => $dateTo,
             'financial_year_id' => $financialYearId,
@@ -794,7 +754,7 @@ class ReportService
     }
 
     /**
-     * Payables outstanding from party-linked account balances.
+     * Payables outstanding, invoice level.
      */
     public function getCreditorsOutstanding(
         int $companyId,
@@ -806,67 +766,19 @@ class ReportService
     {
         $financialYearId = $financialYearId ?: FinancialYear::getCurrent($companyId)?->id;
         $filterMeta = $this->normalizeOutstandingFilters($dateTo, $filters);
-        $agingByParty = $this->buildPartyAgingMap(
+        [$creditors, $total] = $this->buildOutstandingInvoiceRows(
             PurchaseInvoice::class,
+            'creditor',
             $companyId,
             $financialYearId,
             $dateFrom,
             $dateTo,
-            $filterMeta['as_of_date']
+            $filterMeta
         );
 
-        $creditors = Party::where('company_id', $companyId)
-            ->where('type', 'creditor')
-            ->orderBy('name')
-            ->get();
-
-        $outstanding = [];
-        $totalOutstanding = 0;
-
-        foreach ($creditors as $creditor) {
-            if (!$financialYearId) {
-                continue;
-            }
-
-            $ledger = $this->ledgerService->getPartyLedger(
-                (int) $creditor->id,
-                $companyId,
-                $financialYearId,
-                $dateFrom,
-                $dateTo
-            );
-
-            // Payable = net credit balance tagged to this party in AP
-            $amount = $ledger['closing_type'] === 'credit'
-                ? (float) $ledger['closing_balance']
-                : -1 * (float) $ledger['closing_balance'];
-
-            $aging = $agingByParty[(int) $creditor->id] ?? $this->defaultAgingData();
-
-            if (!$this->matchesOutstandingFilters($aging, $filterMeta)) {
-                continue;
-            }
-
-            if ($amount > 0.01) {
-                $outstanding[] = [
-                    'party' => $creditor,
-                    'account_id' => $creditor->account_id,
-                    'debit' => 0,
-                    'credit' => $amount,
-                    'balance' => $amount,
-                    'oldest_due_date' => $aging['oldest_due_date'],
-                    'overdue_days' => $aging['overdue_days'],
-                    'overdue_label' => $aging['overdue_label'],
-                    'overdue_amount' => $aging['overdue_amount'],
-                    'age_bucket' => $aging['age_bucket'],
-                ];
-                $totalOutstanding += $amount;
-            }
-        }
-
         return [
-            'creditors' => $outstanding,
-            'total' => $totalOutstanding,
+            'creditors' => $creditors,
+            'total' => $total,
             'date_from' => $dateFrom,
             'date_to' => $dateTo,
             'financial_year_id' => $financialYearId,
@@ -874,40 +786,32 @@ class ReportService
         ];
     }
 
-    private function normalizeOutstandingFilters(?string $dateTo, array $filters): array
-    {
-        $overdueStatus = (string) ($filters['overdue_status'] ?? 'all');
-        if (!in_array($overdueStatus, ['all', 'overdue', 'current'], true)) {
-            $overdueStatus = 'all';
-        }
-
-        $ageBucket = (string) ($filters['age_bucket'] ?? 'all');
-        if (!in_array($ageBucket, ['all', 'current', '1_30', '31_60', '61_90', '91_plus'], true)) {
-            $ageBucket = 'all';
-        }
-
-        $asOfDate = $dateTo ? Carbon::parse($dateTo)->startOfDay() : now()->startOfDay();
-
-        return [
-            'overdue_status' => $overdueStatus,
-            'age_bucket' => $ageBucket,
-            'as_of_date' => $asOfDate->toDateString(),
-        ];
-    }
-
-    private function buildPartyAgingMap(
+    /**
+     * Build invoice-level outstanding rows for a party type (AR = Sales, AP = Purchase).
+     * Each row represents a single outstanding invoice.
+     *
+     * @return array{0: array, 1: float}
+     */
+    private function buildOutstandingInvoiceRows(
         string $invoiceModel,
+        string $partyType,
         int $companyId,
         ?int $financialYearId,
         ?string $dateFrom,
         ?string $dateTo,
-        string $asOfDate
-    ): array {
+        array $filterMeta
+    ): array
+    {
+        $asOf = Carbon::parse($filterMeta['as_of_date'])->startOfDay();
+
         $query = $invoiceModel::query()
-            ->select(['party_id', 'due_date', 'balance_due'])
+            ->with('party')
             ->where('company_id', $companyId)
             ->whereNotIn('status', ['paid', 'cancelled'])
-            ->where('balance_due', '>', 0);
+            ->where('balance_due', '>', 0)
+            ->whereHas('party', function ($q) use ($partyType) {
+                $q->where('type', $partyType);
+            });
 
         if ($financialYearId) {
             $query->where('financial_year_id', $financialYearId);
@@ -921,50 +825,142 @@ class ReportService
             $query->whereDate('invoice_date', '<=', $dateTo);
         }
 
-        $asOf = Carbon::parse($asOfDate)->startOfDay();
-        $rows = $query->get();
+        $invoices = $query->orderBy('due_date')->orderBy('invoice_date')->get();
 
-        $grouped = [];
+        $rows = [];
+        $total = 0.0;
 
-        foreach ($rows as $row) {
-            $partyId = (int) $row->party_id;
-            if (!isset($grouped[$partyId])) {
-                $grouped[$partyId] = $this->defaultAgingData();
+        foreach ($invoices as $invoice) {
+            $invoiceDate = $invoice->invoice_date ? Carbon::parse($invoice->invoice_date)->startOfDay() : null;
+            $dueDate = $invoice->due_date ? Carbon::parse($invoice->due_date)->startOfDay() : null;
+            $isDue = $dueDate !== null && $dueDate->lte($asOf);
+            $overdueDays = ($dueDate !== null && $dueDate->lt($asOf)) ? (int) $dueDate->diffInDays($asOf) : 0;
+            $balance = (float) $invoice->balance_due;
+
+            $billedDays = $invoiceDate ? (int) $invoiceDate->diffInDays($asOf) : null;
+
+            $dueDays = null;
+            if ($dueDate !== null) {
+                $dueDays = (int) $dueDate->diffInDays($asOf);
             }
 
-            $dueDate = $row->due_date ? Carbon::parse($row->due_date)->startOfDay() : null;
-            $balanceDue = (float) $row->balance_due;
+            $aging = [
+                'oldest_due_date' => $dueDate?->toDateString(),
+                'overdue_days' => $overdueDays,
+                'overdue_amount' => $overdueDays > 0 ? round($balance, 2) : 0.0,
+                'age_bucket' => $this->resolveAgeBucket($overdueDays),
+                'overdue_status' => $isDue ? 'due' : 'not_due',
+                'overdue_label' => $overdueDays > 0
+                    ? ($overdueDays . ' days late')
+                    : ($isDue ? 'Due Today' : 'Not Due'),
+                'billed_days' => $billedDays,
+                'due_days' => $dueDays,
+            ];
 
-            if ($dueDate && ($grouped[$partyId]['oldest_due_date'] === null || $dueDate->lt(Carbon::parse($grouped[$partyId]['oldest_due_date'])))) {
-                $grouped[$partyId]['oldest_due_date'] = $dueDate->toDateString();
+            if (!$this->matchesOutstandingFilters($aging, $filterMeta)) {
+                continue;
             }
 
-            if ($dueDate && $dueDate->lt($asOf)) {
-                $days = $dueDate->diffInDays($asOf);
-                $grouped[$partyId]['overdue_days'] = max($grouped[$partyId]['overdue_days'], $days);
-                $grouped[$partyId]['overdue_amount'] += $balanceDue;
-            }
+            // NEW: Fetch settlement details for this invoice
+            $settlements = $this->getInvoiceSettlementsForRow($partyType === 'debtor' ? 'sales' : 'purchase', $invoice->id);
+
+            $rows[] = [
+                'invoice' => $invoice,
+                'party' => $invoice->party,
+                'account_id' => $invoice->account_id,
+                'invoice_id' => $invoice->id,
+                'invoice_number' => (string) $invoice->invoice_number,
+                'invoice_date' => $invoice->invoice_date?->toDateString(),
+                'due_date' => $dueDate?->toDateString(),
+                'invoice_total' => (float) $invoice->total,
+                'amount_paid' => (float) $invoice->amount_paid,
+                'debit' => $partyType === 'debtor' ? $balance : 0,
+                'credit' => $partyType === 'creditor' ? $balance : 0,
+                'balance' => $balance,
+                'settlements' => $settlements, // NEW: Payment/Receipt details
+                ...$aging,
+            ];
+
+            $total += $balance;
         }
 
-        foreach ($grouped as $partyId => $aging) {
-            $grouped[$partyId]['overdue_amount'] = round((float) $aging['overdue_amount'], 2);
-            $grouped[$partyId]['age_bucket'] = $this->resolveAgeBucket((int) $aging['overdue_days']);
-            $grouped[$partyId]['overdue_label'] = (int) $aging['overdue_days'] > 0
-                ? ((int) $aging['overdue_days'] . ' days late')
-                : 'Current';
-        }
-
-        return $grouped;
+        return [$rows, round($total, 2)];
     }
 
-    private function defaultAgingData(): array
+    /**
+     * Get invoice settlements (payments/receipts) for report row display.
+     * Returns array of payments that have settled this invoice.
+     *
+     * @param string $invoiceType 'sales' or 'purchase'
+     * @param int $invoiceId
+     * @return array
+     */
+    private function getInvoiceSettlementsForRow(string $invoiceType, int $invoiceId): array
     {
+        $mappingClass = 'App\Models\PaymentInvoiceMapping';
+        if (!class_exists($mappingClass)) {
+            return [];
+        }
+
+        $mappingModel = $mappingClass;
+        $mappings = $mappingModel::where('invoice_type', $invoiceType)
+            ->where('invoice_id', $invoiceId)
+            ->where('status', '!=', 'reversed')
+            ->with('paymentVoucher')
+            ->orderBy('created_at', 'asc')
+            ->get();
+
+        $settlements = [];
+        foreach ($mappings as $mapping) {
+            $settlements[] = [
+                'voucher_number' => $mapping->paymentVoucher?->voucher_number ?? 'N/A',
+                'voucher_date' => $mapping->paymentVoucher?->voucher_date?->toDateString(),
+                'voucher_type' => $mapping->paymentVoucher?->voucher_type,
+                'amount_settled' => (float) $mapping->amount_settled,
+                'status' => $mapping->status,
+            ];
+        }
+
+        return $settlements;
+    }
+
+    private function normalizeOutstandingFilters(?string $dateTo, array $filters): array
+    {
+        $overdueStatus = (string) ($filters['overdue_status'] ?? 'all');
+        if (!in_array($overdueStatus, ['all', 'due', 'not_due'], true)) {
+            $overdueStatus = 'all';
+        }
+
+        $ageBucket = (string) ($filters['age_bucket'] ?? 'all');
+        if (!in_array($ageBucket, ['all', 'current', '1_30', '31_60', '61_90', '91_plus', 'custom'], true)) {
+            $ageBucket = 'all';
+        }
+
+        $ageMin = null;
+        $ageMax = null;
+
+        if ($ageBucket === 'custom') {
+            if (isset($filters['age_min']) && $filters['age_min'] !== '') {
+                $ageMin = max(0, (int) $filters['age_min']);
+            }
+
+            if (isset($filters['age_max']) && $filters['age_max'] !== '') {
+                $ageMax = max(0, (int) $filters['age_max']);
+            }
+
+            if ($ageMin === null && $ageMax === null) {
+                $ageBucket = 'all';
+            }
+        }
+
+        $asOfDate = now()->startOfDay();
+
         return [
-            'oldest_due_date' => null,
-            'overdue_days' => 0,
-            'overdue_amount' => 0.0,
-            'age_bucket' => 'current',
-            'overdue_label' => 'Current',
+            'overdue_status' => $overdueStatus,
+            'age_bucket' => $ageBucket,
+            'age_min' => $ageMin,
+            'age_max' => $ageMax,
+            'as_of_date' => $asOfDate->toDateString(),
         ];
     }
 
@@ -993,13 +989,14 @@ class ReportService
     {
         $hasOverdue = (int) ($aging['overdue_days'] ?? 0) > 0;
         $overdueStatus = (string) ($filters['overdue_status'] ?? 'all');
+        $rowStatus = (string) ($aging['overdue_status'] ?? 'not_due');
         $ageBucket = (string) ($filters['age_bucket'] ?? 'all');
 
-        if ($overdueStatus === 'overdue' && !$hasOverdue) {
+        if ($overdueStatus === 'due' && $rowStatus !== 'due') {
             return false;
         }
 
-        if ($overdueStatus === 'current' && $hasOverdue) {
+        if ($overdueStatus === 'not_due' && $rowStatus !== 'not_due') {
             return false;
         }
 
@@ -1009,6 +1006,22 @@ class ReportService
 
         if ($ageBucket === 'current') {
             return !$hasOverdue;
+        }
+
+        if ($ageBucket === 'custom') {
+            $days = (int) ($aging['overdue_days'] ?? 0);
+            $min = $filters['age_min'] ?? null;
+            $max = $filters['age_max'] ?? null;
+
+            if ($min !== null && $days < (int) $min) {
+                return false;
+            }
+
+            if ($max !== null && $days > (int) $max) {
+                return false;
+            }
+
+            return true;
         }
 
         return ($aging['age_bucket'] ?? 'current') === $ageBucket;
@@ -1025,10 +1038,28 @@ class ReportService
     /**
      * Get settlement details for a specific invoice.
      * Shows all payments/receipts that settled this invoice.
+     *
+     * @param string $invoiceType 'sales' or 'purchase'
+     * @param int $invoiceId
+     * @return array
      */
     public function getInvoiceSettlementDetails(string $invoiceType, int $invoiceId): array
     {
-        $mappings = \App\Models\PaymentInvoiceMapping::where('invoice_type', $invoiceType)
+        $mappingClass = 'App\Models\PaymentInvoiceMapping';
+        if (!class_exists($mappingClass)) {
+            return [
+                'invoice_type' => $invoiceType,
+                'invoice_id' => $invoiceId,
+                'settlements' => [],
+                'total_allocated' => 0.0,
+                'total_settled' => 0.0,
+                'outstanding' => 0.0,
+                'message' => 'Settlement tracking not yet enabled',
+            ];
+        }
+
+        $mappingModel = $mappingClass;
+        $mappings = $mappingModel::where('invoice_type', $invoiceType)
             ->where('invoice_id', $invoiceId)
             ->where('status', '!=', 'reversed')
             ->with('paymentVoucher')
@@ -1071,9 +1102,23 @@ class ReportService
     /**
      * Get settlement details for a specific payment/receipt voucher.
      * Shows all invoices settled by this payment.
+     *
+     * @param int $voucherId
+     * @return array
      */
     public function getPaymentSettlementDetails(int $voucherId): array
     {
+        $mappingClass = 'App\Models\PaymentInvoiceMapping';
+        if (!class_exists($mappingClass)) {
+            return [
+                'voucher_id' => $voucherId,
+                'invoices_settled' => [],
+                'total_allocated' => 0.0,
+                'total_settled' => 0.0,
+                'message' => 'Settlement tracking not yet enabled',
+            ];
+        }
+
         $voucher = Voucher::find($voucherId);
         if (!$voucher) {
             return [
@@ -1085,7 +1130,8 @@ class ReportService
             ];
         }
 
-        $mappings = \App\Models\PaymentInvoiceMapping::where('payment_voucher_id', $voucherId)
+        $mappingModel = $mappingClass;
+        $mappings = $mappingModel::where('payment_voucher_id', $voucherId)
             ->where('status', '!=', 'reversed')
             ->orderBy('created_at', 'asc')
             ->get();
@@ -1098,15 +1144,26 @@ class ReportService
             $totalAllocated += (float) $mapping->amount_allocated;
             $totalSettled += (float) $mapping->amount_settled;
 
-            $invoice = $mapping->getInvoice();
+            // Get invoice details based on type
+            if ($mapping->invoice_type === 'sales') {
+                $invoice = SalesInvoice::find($mapping->invoice_id);
+                $invoiceNumber = $invoice?->invoice_number ?? 'N/A';
+                $invoiceDate = $invoice?->invoice_date?->toDateString();
+                $partyName = $invoice?->party?->party_name ?? 'N/A';
+            } else {
+                $invoice = PurchaseInvoice::find($mapping->invoice_id);
+                $invoiceNumber = $invoice?->invoice_number ?? 'N/A';
+                $invoiceDate = $invoice?->invoice_date?->toDateString();
+                $partyName = $invoice?->party?->party_name ?? 'N/A';
+            }
 
             $invoicesSettled[] = [
                 'mapping_id' => $mapping->id,
                 'invoice_type' => $mapping->invoice_type,
                 'invoice_id' => $mapping->invoice_id,
-                'invoice_number' => $invoice?->invoice_number ?? 'N/A',
-                'invoice_date' => $invoice?->invoice_date?->toDateString(),
-                'party_name' => $invoice?->party?->name ?? 'N/A',
+                'invoice_number' => $invoiceNumber,
+                'invoice_date' => $invoiceDate,
+                'party_name' => $partyName,
                 'invoice_original_balance' => (float) $mapping->invoice_original_balance,
                 'amount_allocated' => (float) $mapping->amount_allocated,
                 'amount_settled' => (float) $mapping->amount_settled,
@@ -1121,7 +1178,7 @@ class ReportService
             'voucher_number' => $voucher->voucher_number,
             'voucher_date' => $voucher->voucher_date?->toDateString(),
             'voucher_type' => $voucher->voucher_type,
-            'party_name' => $voucher->party?->name ?? 'N/A',
+            'party_name' => $voucher->party?->party_name ?? 'N/A',
             'invoices_settled' => $invoicesSettled,
             'total_allocated' => round($totalAllocated, 2),
             'total_settled' => round($totalSettled, 2),
@@ -1133,7 +1190,11 @@ class ReportService
      * Get comprehensive settlement audit report.
      * Shows all payment-invoice mappings within a date range and company.
      *
+     * @param int $companyId
+     * @param Carbon|null $dateFrom
+     * @param Carbon|null $dateTo
      * @param array $filters ['status' => 'pending|partial|full|reversed|all', 'type' => 'sales|purchase|all']
+     * @return array
      */
     public function getSettlementAuditReport(
         int $companyId,
@@ -1142,18 +1203,41 @@ class ReportService
         array $filters = []
     ): array
     {
-        $query = \App\Models\PaymentInvoiceMapping::where('company_id', $companyId);
+        $mappingClass = 'App\Models\PaymentInvoiceMapping';
+        if (!class_exists($mappingClass)) {
+            return [
+                'company_id' => $companyId,
+                'date_from' => $dateFrom?->toDateString(),
+                'date_to' => $dateTo?->toDateString(),
+                'mappings' => [],
+                'summary' => [
+                    'total_mappings' => 0,
+                    'total_allocated' => 0.0,
+                    'total_settled' => 0.0,
+                    'total_outstanding' => 0.0,
+                    'by_status' => [],
+                    'by_type' => [],
+                ],
+                'message' => 'Settlement tracking not yet enabled',
+            ];
+        }
 
+        $mappingModel = $mappingClass;
+        $query = $mappingModel::where('company_id', $companyId);
+
+        // Filter by status
         $statusFilter = $filters['status'] ?? 'all';
         if ($statusFilter !== 'all') {
             $query->where('status', $statusFilter);
         }
 
+        // Filter by invoice type
         $typeFilter = $filters['type'] ?? 'all';
         if ($typeFilter !== 'all') {
             $query->where('invoice_type', $typeFilter);
         }
 
+        // Filter by date range
         if ($dateFrom) {
             $query->whereDate('created_at', '>=', $dateFrom->toDateString());
         }
@@ -1176,10 +1260,22 @@ class ReportService
             $totalAllocated += (float) $mapping->amount_allocated;
             $totalSettled += (float) $mapping->amount_settled;
 
-            $byStatus[$mapping->status] = ($byStatus[$mapping->status] ?? 0) + 1;
-            $byType[$mapping->invoice_type] = ($byType[$mapping->invoice_type] ?? 0) + 1;
+            // Count by status
+            $status = $mapping->status;
+            $byStatus[$status] = ($byStatus[$status] ?? 0) + 1;
 
-            $invoice = $mapping->getInvoice();
+            // Count by type
+            $type = $mapping->invoice_type;
+            $byType[$type] = ($byType[$type] ?? 0) + 1;
+
+            // Get invoice and party details
+            if ($mapping->invoice_type === 'sales') {
+                $invoice = SalesInvoice::find($mapping->invoice_id);
+                $partyName = $invoice?->party?->party_name ?? 'Unknown';
+            } else {
+                $invoice = PurchaseInvoice::find($mapping->invoice_id);
+                $partyName = $invoice?->party?->party_name ?? 'Unknown';
+            }
 
             $mappingRows[] = [
                 'id' => $mapping->id,
@@ -1190,12 +1286,13 @@ class ReportService
                 'invoice_id' => $mapping->invoice_id,
                 'invoice_number' => $invoice?->invoice_number ?? 'N/A',
                 'invoice_date' => $invoice?->invoice_date?->toDateString(),
-                'party_name' => $invoice?->party?->name ?? 'Unknown',
+                'party_name' => $partyName,
                 'amount_allocated' => (float) $mapping->amount_allocated,
                 'amount_settled' => (float) $mapping->amount_settled,
                 'outstanding' => (float) $mapping->getOutstandingAmount(),
                 'status' => $mapping->status,
                 'created_at' => $mapping->created_at?->toDateString(),
+                'created_by_user' => optional($mapping->createdByUser)->name ?? 'N/A',
                 'notes' => $mapping->notes,
             ];
         }

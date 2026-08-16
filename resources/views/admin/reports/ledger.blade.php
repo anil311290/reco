@@ -94,6 +94,11 @@
     </div>
 
     <div class="report-filter-card">
+        <div class="report-filter-head">
+            <span class="report-filter-head-title"><i class="bi bi-funnel"></i> Filters</span>
+            <a href="{{ route('admin.reports.ledger') }}" class="report-filter-reset"><i class="bi bi-arrow-counterclockwise"></i> Reset</a>
+            <button type="button" class="report-filter-toggle" aria-expanded="false" aria-label="Toggle filters"><i class="bi bi-chevron-down"></i></button>
+        </div>
         <form method="GET" action="{{ route('admin.reports.ledger') }}" class="row g-3 align-items-end">
             <div class="col-lg-4 col-md-6">
                 <label class="form-label">Account</label>
@@ -129,12 +134,15 @@
                     <i class="bi bi-funnel me-1"></i>Filter
                 </button>
                 @if(!empty($accountId))
-                    <a href="{{ route('admin.export.excel', ['type' => 'ledger', 'account_id' => $accountId, 'financial_year_id' => $financialYearId, 'date_from' => $dateFrom, 'date_to' => $dateTo]) }}" class="btn btn-outline-success report-btn-export">
-                        <i class="bi bi-file-earmark-spreadsheet"></i>Excel
-                    </a>
-                    <a href="{{ route('admin.export.ledger.pdf', ['account_id' => $accountId, 'financial_year_id' => $financialYearId, 'date_from' => $dateFrom, 'date_to' => $dateTo]) }}" class="btn btn-outline-danger report-btn-export">
-                        <i class="bi bi-file-earmark-pdf"></i>PDF
-                    </a>
+                    <div class="btn-group report-export-dropdown">
+                        <button type="button" class="btn report-btn-export-neutral dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+                            <i class="bi bi-download"></i>Export
+                        </button>
+                        <ul class="dropdown-menu dropdown-menu-end">
+                            <li><a class="dropdown-item" href="{{ route('admin.export.excel', ['type' => 'ledger', 'account_id' => $accountId, 'financial_year_id' => $financialYearId, 'date_from' => $dateFrom, 'date_to' => $dateTo]) }}"><i class="bi bi-file-earmark-spreadsheet text-success me-2"></i>Excel</a></li>
+                            <li><a class="dropdown-item" href="{{ route('admin.export.ledger.pdf', ['account_id' => $accountId, 'financial_year_id' => $financialYearId, 'date_from' => $dateFrom, 'date_to' => $dateTo]) }}"><i class="bi bi-file-earmark-pdf text-danger me-2"></i>PDF</a></li>
+                        </ul>
+                    </div>
                 @endif
             </div>
         </form>
@@ -174,7 +182,6 @@
             <h6 class="report-panel-title"><i class="bi bi-list-columns-reverse text-primary"></i>Ledger Entries</h6>
             <div class="ledger-header-pills">
                 <span class="report-pill report-pill--info">@istDate($dateFrom) to @istDate($dateTo)</span>
-                <span class="report-pill report-pill--info">Dr ₹{{ number_format($report['total_debit'], 2) }} | Cr ₹{{ number_format($report['total_credit'], 2) }}</span>
             </div>
         </div>
         <div class="report-panel-body report-panel-body--flush">
@@ -207,17 +214,6 @@
                         </tr>
                     </thead>
                     <tbody>
-                        @if($entries->onFirstPage())
-                        <tr class="report-row-emphasis">
-                            <td colspan="4" class="fw-semibold">Opening Balance</td>
-                            <td class="text-end ledger-amount-col">-</td>
-                            <td class="text-end ledger-amount-col">-</td>
-                            <td class="text-end fw-bold ledger-amount-col">
-                                ₹{{ number_format($report['opening_balance']['balance'], 2) }} @drCr($report['opening_balance']['type'])
-                            </td>
-                            <td class="text-center ledger-actions-col"></td>
-                        </tr>
-                        @endif
                         @forelse($entries as $entry)
                         <tr>
                             <td class="ledger-date-col">@istDate($entry->transaction_date)</td>

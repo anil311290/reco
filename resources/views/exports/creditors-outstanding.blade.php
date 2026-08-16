@@ -24,34 +24,38 @@
         <thead>
         <tr>
             <th>#</th>
+            <th>Invoice No</th>
             <th>Party</th>
-            <th>Mobile</th>
-            <th>Email</th>
-            <th>Oldest Due Date</th>
-            <th>Overdue By</th>
-            <th class="text-right">Overdue (₹)</th>
-            <th class="text-right">Balance (₹) Cr</th>
+            <th>Invoice Date</th>
+            <th>Due Date</th>
+            <th class="text-right">Billed Days</th>
+            <th class="text-right">Due Days</th>
+            <th class="text-right">Amount (₹)</th>
+            <th class="text-right">Paid (₹)</th>
+            <th class="text-right">Balance (₹)</th>
         </tr>
         </thead>
         <tbody>
         @forelse($report['creditors'] as $index => $item)
             <tr>
                 <td>{{ $index + 1 }}</td>
+                <td>{{ ($item['invoice_number'] ?? '-') . ' / ' . ($item['party']->party_code ?? '-') }}</td>
                 <td>{{ $item['party']->name }}</td>
-                <td>{{ $item['party']->mobile ?? '-' }}</td>
-                <td>{{ $item['party']->email ?? '-' }}</td>
-                <td>{{ !empty($item['oldest_due_date']) ? \Carbon\Carbon::parse($item['oldest_due_date'])->format('d/m/Y') : '-' }}</td>
-                <td>{{ $item['overdue_label'] ?? 'Current' }}</td>
-                <td class="text-right">{{ number_format((float) ($item['overdue_amount'] ?? 0), 2) }}</td>
+                <td>{{ !empty($item['invoice_date']) ? \Carbon\Carbon::parse($item['invoice_date'])->format('d/m/Y') : '-' }}</td>
+                <td>{{ !empty($item['due_date']) ? \Carbon\Carbon::parse($item['due_date'])->format('d/m/Y') : '-' }}</td>
+                <td class="text-right">{{ $item['billed_days'] ?? 0 }}</td>
+                <td class="text-right">{{ $item['due_days'] ?? 0 }}</td>
+                <td class="text-right">{{ number_format((float) ($item['invoice_total'] ?? 0), 2) }}</td>
+                <td class="text-right">{{ number_format((float) ($item['amount_paid'] ?? 0), 2) }}</td>
                 <td class="text-right">{{ number_format($item['balance'], 2) }}</td>
             </tr>
         @empty
-            <tr><td colspan="8">No outstanding payables</td></tr>
+            <tr><td colspan="10">No outstanding payables</td></tr>
         @endforelse
         </tbody>
         <tfoot>
             <tr>
-                <td colspan="7">Total Outstanding</td>
+                <td colspan="9">Total Outstanding</td>
                 <td class="text-right">₹{{ number_format($report['total'], 2) }}</td>
             </tr>
         </tfoot>

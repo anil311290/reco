@@ -167,7 +167,7 @@ class ReportApiController extends Controller
      */
     public function invoiceSettlementDetails(Request $request): JsonResponse
     {
-        $invoiceType = $request->input('invoice_type');
+        $invoiceType = $request->input('invoice_type'); // 'sales' or 'purchase'
         $invoiceId = $request->input('invoice_id');
 
         if (!$invoiceType || !$invoiceId) {

@@ -41,11 +41,12 @@
         <tr>
             <th>#</th>
             <th>Type</th>
+            <th>Invoice No</th>
             <th>Party</th>
-            <th>Mobile</th>
-            <th>Oldest Due Date</th>
-            <th>Overdue By</th>
-            <th class="text-right">Overdue (₹)</th>
+            <th>Invoice Date</th>
+            <th>Due Date</th>
+            <th class="text-right">Billed Days</th>
+            <th class="text-right">Due Days</th>
             <th class="text-right">Balance (₹)</th>
         </tr>
         </thead>
@@ -54,15 +55,16 @@
             <tr>
                 <td>{{ $index + 1 }}</td>
                 <td>{{ $item['type'] ?? '-' }}</td>
+                <td>{{ ($item['invoice_number'] ?? '-') . ' / ' . ($item['party_code'] ?? '-') }}</td>
                 <td>{{ $item['party'] ?? '-' }}</td>
-                <td>{{ $item['mobile'] ?? '-' }}</td>
-                <td>{{ !empty($item['oldest_due_date']) && $item['oldest_due_date'] !== '-' ? \Carbon\Carbon::parse($item['oldest_due_date'])->format('d/m/Y') : '-' }}</td>
-                <td>{{ ((int) ($item['overdue_days'] ?? 0)) > 0 ? ((int) ($item['overdue_days'] ?? 0) . ' days late') : 'Current' }}</td>
-                <td class="text-right">{{ number_format((float) ($item['overdue_amount'] ?? 0), 2) }}</td>
+                <td>{{ !empty($item['invoice_date']) && $item['invoice_date'] !== '-' ? \Carbon\Carbon::parse($item['invoice_date'])->format('d/m/Y') : '-' }}</td>
+                <td>{{ !empty($item['due_date']) && $item['due_date'] !== '-' ? \Carbon\Carbon::parse($item['due_date'])->format('d/m/Y') : '-' }}</td>
+                <td class="text-right">{{ $item['billed_days'] ?? 0 }}</td>
+                <td class="text-right">{{ $item['due_days'] ?? 0 }}</td>
                 <td class="text-right">{{ number_format((float) ($item['balance'] ?? 0), 2) }}</td>
             </tr>
         @empty
-            <tr><td colspan="8">No aging records found</td></tr>
+            <tr><td colspan="9">No aging records found</td></tr>
         @endforelse
         </tbody>
     </table>

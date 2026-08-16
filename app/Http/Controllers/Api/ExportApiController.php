@@ -182,7 +182,7 @@ class ExportApiController extends Controller
                 $request->filled('financial_year_id') ? (int) $request->input('financial_year_id') : null,
                 $request->input('date_from'),
                 $request->input('date_to'),
-                $request->only(['overdue_status', 'age_bucket'])
+                $request->only(['overdue_status', 'age_bucket', 'age_min', 'age_max'])
             );
 
             return $this->storePdfResponse($pdf, 'debtors-outstanding-' . date('Y-m-d') . '.pdf');
@@ -206,7 +206,7 @@ class ExportApiController extends Controller
                 $request->filled('financial_year_id') ? (int) $request->input('financial_year_id') : null,
                 $request->input('date_from'),
                 $request->input('date_to'),
-                $request->only(['overdue_status', 'age_bucket'])
+                $request->only(['overdue_status', 'age_bucket', 'age_min', 'age_max'])
             );
 
             return $this->storePdfResponse($pdf, 'creditors-outstanding-' . date('Y-m-d') . '.pdf');

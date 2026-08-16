@@ -326,15 +326,15 @@ class ExportService
                 )['debtors'])
                     ->map(function ($item) {
                         return [
-                            'party' => $item['party']->name ?? '-',
-                            'mobile' => $item['party']->mobile ?? '-',
-                            'email' => $item['party']->email ?? '-',
-                            'oldest_due_date' => $item['oldest_due_date'] ?? '-',
-                            'overdue_days' => $item['overdue_days'] ?? 0,
-                            'overdue_amount' => $item['overdue_amount'] ?? 0,
-                            'debit' => $item['debit'] ?? 0,
-                            'credit' => $item['credit'] ?? 0,
-                            'balance' => $item['balance'] ?? 0,
+                            'Invoice No' => ($item['invoice_number'] ?? '-') . ' / ' . ($item['party']->party_code ?? '-'),
+                            'Party' => $item['party']->name ?? '-',
+                            'Invoice Date' => !empty($item['invoice_date']) ? \Carbon\Carbon::parse($item['invoice_date'])->format('d/m/Y') : '-',
+                            'Due Date' => !empty($item['due_date']) ? \Carbon\Carbon::parse($item['due_date'])->format('d/m/Y') : '-',
+                            'Billed Days' => $item['billed_days'] ?? 0,
+                            'Due Days' => $item['due_days'] ?? 0,
+                            'Amount' => $item['invoice_total'] ?? 0,
+                            'Paid' => $item['amount_paid'] ?? 0,
+                            'Balance' => $item['balance'] ?? 0,
                         ];
                     })
                     ->values()
@@ -351,15 +351,15 @@ class ExportService
                 )['creditors'])
                     ->map(function ($item) {
                         return [
-                            'party' => $item['party']->name ?? '-',
-                            'mobile' => $item['party']->mobile ?? '-',
-                            'email' => $item['party']->email ?? '-',
-                            'oldest_due_date' => $item['oldest_due_date'] ?? '-',
-                            'overdue_days' => $item['overdue_days'] ?? 0,
-                            'overdue_amount' => $item['overdue_amount'] ?? 0,
-                            'debit' => $item['debit'] ?? 0,
-                            'credit' => $item['credit'] ?? 0,
-                            'balance' => $item['balance'] ?? 0,
+                            'Invoice No' => ($item['invoice_number'] ?? '-') . ' / ' . ($item['party']->party_code ?? '-'),
+                            'Party' => $item['party']->name ?? '-',
+                            'Invoice Date' => !empty($item['invoice_date']) ? \Carbon\Carbon::parse($item['invoice_date'])->format('d/m/Y') : '-',
+                            'Due Date' => !empty($item['due_date']) ? \Carbon\Carbon::parse($item['due_date'])->format('d/m/Y') : '-',
+                            'Billed Days' => $item['billed_days'] ?? 0,
+                            'Due Days' => $item['due_days'] ?? 0,
+                            'Amount' => $item['invoice_total'] ?? 0,
+                            'Paid' => $item['amount_paid'] ?? 0,
+                            'Balance' => $item['balance'] ?? 0,
                         ];
                     })
                     ->values()
@@ -578,15 +578,15 @@ class ExportService
                 )['debtors'])
                     ->map(function ($item) {
                         return [
-                            'party' => $item['party']->name ?? '-',
-                            'mobile' => $item['party']->mobile ?? '-',
-                            'email' => $item['party']->email ?? '-',
-                            'oldest_due_date' => $item['oldest_due_date'] ?? '-',
-                            'overdue_days' => $item['overdue_days'] ?? 0,
-                            'overdue_amount' => $item['overdue_amount'] ?? 0,
-                            'debit' => $item['debit'] ?? 0,
-                            'credit' => $item['credit'] ?? 0,
-                            'balance' => $item['balance'] ?? 0,
+                            'Invoice No' => ($item['invoice_number'] ?? '-') . ' / ' . ($item['party']->party_code ?? '-'),
+                            'Party' => $item['party']->name ?? '-',
+                            'Invoice Date' => !empty($item['invoice_date']) ? \Carbon\Carbon::parse($item['invoice_date'])->format('d/m/Y') : '-',
+                            'Due Date' => !empty($item['due_date']) ? \Carbon\Carbon::parse($item['due_date'])->format('d/m/Y') : '-',
+                            'Billed Days' => $item['billed_days'] ?? 0,
+                            'Due Days' => $item['due_days'] ?? 0,
+                            'Amount' => $item['invoice_total'] ?? 0,
+                            'Paid' => $item['amount_paid'] ?? 0,
+                            'Balance' => $item['balance'] ?? 0,
                         ];
                     })
                     ->values()
@@ -603,15 +603,15 @@ class ExportService
                 )['creditors'])
                     ->map(function ($item) {
                         return [
-                            'party' => $item['party']->name ?? '-',
-                            'mobile' => $item['party']->mobile ?? '-',
-                            'email' => $item['party']->email ?? '-',
-                            'oldest_due_date' => $item['oldest_due_date'] ?? '-',
-                            'overdue_days' => $item['overdue_days'] ?? 0,
-                            'overdue_amount' => $item['overdue_amount'] ?? 0,
-                            'debit' => $item['debit'] ?? 0,
-                            'credit' => $item['credit'] ?? 0,
-                            'balance' => $item['balance'] ?? 0,
+                            'Invoice No' => ($item['invoice_number'] ?? '-') . ' / ' . ($item['party']->party_code ?? '-'),
+                            'Party' => $item['party']->name ?? '-',
+                            'Invoice Date' => !empty($item['invoice_date']) ? \Carbon\Carbon::parse($item['invoice_date'])->format('d/m/Y') : '-',
+                            'Due Date' => !empty($item['due_date']) ? \Carbon\Carbon::parse($item['due_date'])->format('d/m/Y') : '-',
+                            'Billed Days' => $item['billed_days'] ?? 0,
+                            'Due Days' => $item['due_days'] ?? 0,
+                            'Amount' => $item['invoice_total'] ?? 0,
+                            'Paid' => $item['amount_paid'] ?? 0,
+                            'Balance' => $item['balance'] ?? 0,
                         ];
                     })
                     ->values()
@@ -781,31 +781,33 @@ class ExportService
             ->map(function (array $item) {
                 return [
                     'type' => 'Receivable',
+                    'invoice_number' => $item['invoice_number'] ?? '-',
+                    'party_code' => $item['party']->party_code ?? '-',
                     'party' => $item['party']->name ?? '-',
-                    'mobile' => $item['party']->mobile ?? '-',
-                    'email' => $item['party']->email ?? '-',
-                    'oldest_due_date' => $item['oldest_due_date'] ?? '-',
-                    'overdue_days' => $item['overdue_days'] ?? 0,
-                    'overdue_amount' => $item['overdue_amount'] ?? 0,
+                    'invoice_date' => $item['invoice_date'] ?? '-',
+                    'due_date' => $item['due_date'] ?? '-',
+                    'billed_days' => $item['billed_days'] ?? 0,
+                    'due_days' => $item['due_days'] ?? 0,
                     'balance' => $item['balance'] ?? 0,
                 ];
             })
             ->merge(
                 collect($creditors)->map(function (array $item) {
-                    return [
-                        'type' => 'Payable',
-                        'party' => $item['party']->name ?? '-',
-                        'mobile' => $item['party']->mobile ?? '-',
-                        'email' => $item['party']->email ?? '-',
-                        'oldest_due_date' => $item['oldest_due_date'] ?? '-',
-                        'overdue_days' => $item['overdue_days'] ?? 0,
-                        'overdue_amount' => $item['overdue_amount'] ?? 0,
-                        'balance' => $item['balance'] ?? 0,
-                    ];
+                return [
+                    'type' => 'Payable',
+                    'invoice_number' => $item['invoice_number'] ?? '-',
+                    'party_code' => $item['party']->party_code ?? '-',
+                    'party' => $item['party']->name ?? '-',
+                    'invoice_date' => $item['invoice_date'] ?? '-',
+                    'due_date' => $item['due_date'] ?? '-',
+                    'billed_days' => $item['billed_days'] ?? 0,
+                    'due_days' => $item['due_days'] ?? 0,
+                    'balance' => $item['balance'] ?? 0,
+                ];
                 })
             )
             ->sort(function (array $a, array $b) {
-                $daysCompare = (int) ($b['overdue_days'] ?? 0) <=> (int) ($a['overdue_days'] ?? 0);
+                $daysCompare = (int) ($b['due_days'] ?? 0) <=> (int) ($a['due_days'] ?? 0);
                 if ($daysCompare !== 0) {
                     return $daysCompare;
                 }

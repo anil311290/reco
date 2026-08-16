@@ -60,6 +60,7 @@ class AdminPagesSmokeTest extends TestCase
             '/admin/reports/balance-sheet',
             '/admin/reports/debtors-outstanding',
             '/admin/reports/creditors-outstanding',
+            '/admin/reports/aging-summary',
             '/admin/audit-logs',
         ];
 
