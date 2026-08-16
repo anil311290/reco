@@ -99,7 +99,9 @@
         </thead>
         <tbody>
             @forelse($ledger['rows'] as $row)
-                @php($entry = $row['entry'])
+                @php
+                    $entry = $row['entry'];
+                @endphp
                 <tr>
                     <td>{{ \App\Helpers\DateHelper::formatDate($entry->transaction_date) }}</td>
                     <td>{{ $entry->voucher?->voucher_number ?: '—' }}</td>
