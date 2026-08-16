@@ -18,19 +18,22 @@ class PurchaseInvoiceService
     protected PeriodLockService $periodLockService;
     protected LedgerService $ledgerService;
     protected ItemService $itemService;
+    protected PaymentInvoiceMappingService $paymentMappingService;
 
     public function __construct(
         VoucherService $voucherService,
         InvoiceAccountingService $invoiceAccountingService,
         PeriodLockService $periodLockService,
         LedgerService $ledgerService,
-        ItemService $itemService
+        ItemService $itemService,
+        PaymentInvoiceMappingService $paymentMappingService
     ) {
         $this->voucherService = $voucherService;
         $this->invoiceAccountingService = $invoiceAccountingService;
         $this->periodLockService = $periodLockService;
         $this->ledgerService = $ledgerService;
         $this->itemService = $itemService;
+        $this->paymentMappingService = $paymentMappingService;
     }
 
     /**
@@ -325,6 +328,31 @@ class PurchaseInvoiceService
                     ],
                 ],
             ]);
+
+            // NEW: Create payment-invoice mapping
+            $paymentVoucher = Voucher::query()
+                ->where('purchase_invoice_id', $invoice->id)
+                ->where('voucher_type', 'payment')
+                ->where('status', 'posted')
+                ->latest('id')
+                ->first();
+
+            if ($paymentVoucher) {
+                // Check if mappings provided (for multi-invoice payments in future)
+                $mappings = $paymentData['mappings'] ?? null;
+
+                if ($mappings && is_array($mappings)) {
+                    // Multi-invoice mapping (future feature)
+                    $this->paymentMappingService->createExplicitMappings($paymentVoucher->id, $mappings);
+                } else {
+                    // Single invoice mapping (current behavior)
+                    $this->paymentMappingService->autoMapPayment(
+                        $paymentVoucher->id,
+                        'purchase',
+                        [['invoice_id' => $invoice->id, 'amount' => $amount, 'invoice_type' => 'purchase']]
+                    );
+                }
+            }
 
             $invoice->recordPayment($amount);
 

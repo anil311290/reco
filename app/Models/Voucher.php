@@ -78,6 +78,24 @@ class Voucher extends Model
     }
 
     /**
+     * Get the payment-invoice mappings for this voucher (receipt/payment).
+     */
+    public function paymentInvoiceMappings()
+    {
+        return $this->hasMany(PaymentInvoiceMapping::class, 'payment_voucher_id');
+    }
+
+    /**
+     * Get invoices settled by this payment/receipt voucher (excludes reversed mappings).
+     */
+    public function getMappedInvoices()
+    {
+        return $this->paymentInvoiceMappings()
+            ->where('status', '!=', 'reversed')
+            ->get();
+    }
+
+    /**
      * Get the voucher lines.
      */
     public function lines()

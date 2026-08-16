@@ -1021,4 +1021,202 @@ class ReportService
             ->orderBy('account_code')
             ->get();
     }
+
+    /**
+     * Get settlement details for a specific invoice.
+     * Shows all payments/receipts that settled this invoice.
+     */
+    public function getInvoiceSettlementDetails(string $invoiceType, int $invoiceId): array
+    {
+        $mappings = \App\Models\PaymentInvoiceMapping::where('invoice_type', $invoiceType)
+            ->where('invoice_id', $invoiceId)
+            ->where('status', '!=', 'reversed')
+            ->with('paymentVoucher')
+            ->orderBy('created_at', 'asc')
+            ->get();
+
+        $totalAllocated = 0.0;
+        $totalSettled = 0.0;
+        $settlements = [];
+
+        foreach ($mappings as $mapping) {
+            $totalAllocated += (float) $mapping->amount_allocated;
+            $totalSettled += (float) $mapping->amount_settled;
+
+            $settlements[] = [
+                'mapping_id' => $mapping->id,
+                'payment_voucher_id' => $mapping->payment_voucher_id,
+                'voucher_number' => $mapping->paymentVoucher?->voucher_number ?? 'N/A',
+                'voucher_date' => $mapping->paymentVoucher?->voucher_date?->toDateString(),
+                'voucher_type' => $mapping->paymentVoucher?->voucher_type,
+                'amount_allocated' => (float) $mapping->amount_allocated,
+                'amount_settled' => (float) $mapping->amount_settled,
+                'outstanding' => (float) $mapping->getOutstandingAmount(),
+                'status' => $mapping->status,
+                'created_at' => $mapping->created_at?->toDateTimeString(),
+                'notes' => $mapping->notes,
+            ];
+        }
+
+        return [
+            'invoice_type' => $invoiceType,
+            'invoice_id' => $invoiceId,
+            'settlements' => $settlements,
+            'total_allocated' => round($totalAllocated, 2),
+            'total_settled' => round($totalSettled, 2),
+            'outstanding' => round($totalAllocated - $totalSettled, 2),
+        ];
+    }
+
+    /**
+     * Get settlement details for a specific payment/receipt voucher.
+     * Shows all invoices settled by this payment.
+     */
+    public function getPaymentSettlementDetails(int $voucherId): array
+    {
+        $voucher = Voucher::find($voucherId);
+        if (!$voucher) {
+            return [
+                'voucher_id' => $voucherId,
+                'invoices_settled' => [],
+                'total_allocated' => 0.0,
+                'total_settled' => 0.0,
+                'message' => 'Voucher not found',
+            ];
+        }
+
+        $mappings = \App\Models\PaymentInvoiceMapping::where('payment_voucher_id', $voucherId)
+            ->where('status', '!=', 'reversed')
+            ->orderBy('created_at', 'asc')
+            ->get();
+
+        $totalAllocated = 0.0;
+        $totalSettled = 0.0;
+        $invoicesSettled = [];
+
+        foreach ($mappings as $mapping) {
+            $totalAllocated += (float) $mapping->amount_allocated;
+            $totalSettled += (float) $mapping->amount_settled;
+
+            $invoice = $mapping->getInvoice();
+
+            $invoicesSettled[] = [
+                'mapping_id' => $mapping->id,
+                'invoice_type' => $mapping->invoice_type,
+                'invoice_id' => $mapping->invoice_id,
+                'invoice_number' => $invoice?->invoice_number ?? 'N/A',
+                'invoice_date' => $invoice?->invoice_date?->toDateString(),
+                'party_name' => $invoice?->party?->name ?? 'N/A',
+                'invoice_original_balance' => (float) $mapping->invoice_original_balance,
+                'amount_allocated' => (float) $mapping->amount_allocated,
+                'amount_settled' => (float) $mapping->amount_settled,
+                'outstanding' => (float) $mapping->getOutstandingAmount(),
+                'status' => $mapping->status,
+                'notes' => $mapping->notes,
+            ];
+        }
+
+        return [
+            'voucher_id' => $voucherId,
+            'voucher_number' => $voucher->voucher_number,
+            'voucher_date' => $voucher->voucher_date?->toDateString(),
+            'voucher_type' => $voucher->voucher_type,
+            'party_name' => $voucher->party?->name ?? 'N/A',
+            'invoices_settled' => $invoicesSettled,
+            'total_allocated' => round($totalAllocated, 2),
+            'total_settled' => round($totalSettled, 2),
+            'outstanding' => round($totalAllocated - $totalSettled, 2),
+        ];
+    }
+
+    /**
+     * Get comprehensive settlement audit report.
+     * Shows all payment-invoice mappings within a date range and company.
+     *
+     * @param array $filters ['status' => 'pending|partial|full|reversed|all', 'type' => 'sales|purchase|all']
+     */
+    public function getSettlementAuditReport(
+        int $companyId,
+        ?Carbon $dateFrom = null,
+        ?Carbon $dateTo = null,
+        array $filters = []
+    ): array
+    {
+        $query = \App\Models\PaymentInvoiceMapping::where('company_id', $companyId);
+
+        $statusFilter = $filters['status'] ?? 'all';
+        if ($statusFilter !== 'all') {
+            $query->where('status', $statusFilter);
+        }
+
+        $typeFilter = $filters['type'] ?? 'all';
+        if ($typeFilter !== 'all') {
+            $query->where('invoice_type', $typeFilter);
+        }
+
+        if ($dateFrom) {
+            $query->whereDate('created_at', '>=', $dateFrom->toDateString());
+        }
+        if ($dateTo) {
+            $query->whereDate('created_at', '<=', $dateTo->toDateString());
+        }
+
+        $mappings = $query
+            ->with('paymentVoucher')
+            ->orderBy('created_at', 'desc')
+            ->get();
+
+        $totalAllocated = 0.0;
+        $totalSettled = 0.0;
+        $byStatus = [];
+        $byType = [];
+        $mappingRows = [];
+
+        foreach ($mappings as $mapping) {
+            $totalAllocated += (float) $mapping->amount_allocated;
+            $totalSettled += (float) $mapping->amount_settled;
+
+            $byStatus[$mapping->status] = ($byStatus[$mapping->status] ?? 0) + 1;
+            $byType[$mapping->invoice_type] = ($byType[$mapping->invoice_type] ?? 0) + 1;
+
+            $invoice = $mapping->getInvoice();
+
+            $mappingRows[] = [
+                'id' => $mapping->id,
+                'uuid' => $mapping->uuid,
+                'payment_voucher_number' => $mapping->paymentVoucher?->voucher_number ?? 'N/A',
+                'payment_date' => $mapping->paymentVoucher?->voucher_date?->toDateString(),
+                'invoice_type' => $mapping->invoice_type,
+                'invoice_id' => $mapping->invoice_id,
+                'invoice_number' => $invoice?->invoice_number ?? 'N/A',
+                'invoice_date' => $invoice?->invoice_date?->toDateString(),
+                'party_name' => $invoice?->party?->name ?? 'Unknown',
+                'amount_allocated' => (float) $mapping->amount_allocated,
+                'amount_settled' => (float) $mapping->amount_settled,
+                'outstanding' => (float) $mapping->getOutstandingAmount(),
+                'status' => $mapping->status,
+                'created_at' => $mapping->created_at?->toDateString(),
+                'notes' => $mapping->notes,
+            ];
+        }
+
+        return [
+            'company_id' => $companyId,
+            'date_from' => $dateFrom?->toDateString(),
+            'date_to' => $dateTo?->toDateString(),
+            'filters_applied' => [
+                'status' => $statusFilter,
+                'type' => $typeFilter,
+            ],
+            'mappings' => $mappingRows,
+            'summary' => [
+                'total_mappings' => count($mappings),
+                'total_allocated' => round($totalAllocated, 2),
+                'total_settled' => round($totalSettled, 2),
+                'total_outstanding' => round($totalAllocated - $totalSettled, 2),
+                'by_status' => $byStatus,
+                'by_type' => $byType,
+            ],
+        ];
+    }
 }

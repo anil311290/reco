@@ -185,4 +185,55 @@
         </div>
     </div>
 </div>
+
+@if(in_array($voucher->voucher_type, ['receipt', 'payment'], true))
+    @php $mappedInvoices = $voucher->getMappedInvoices(); @endphp
+    @if($mappedInvoices->isNotEmpty())
+    <div class="row g-4 mt-1">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header"><h6 class="mb-0"><i class="bi bi-link-45deg me-1"></i>Invoices Settled by this {{ $voucherLabel }}</h6></div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-sm mb-0 voucher-lines-table">
+                            <thead>
+                                <tr>
+                                    <th>Invoice No</th>
+                                    <th>Type</th>
+                                    <th class="text-end">Allocated (&#8377;)</th>
+                                    <th class="text-end">Settled (&#8377;)</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach($mappedInvoices as $mapping)
+                                @php $mappedInvoice = $mapping->getInvoice(); @endphp
+                                <tr>
+                                    <td>
+                                        @if($mappedInvoice && $mapping->invoice_type === 'sales')
+                                        <a href="{{ route('admin.sales-invoices.show', $mappedInvoice->id) }}">{{ $mappedInvoice->invoice_number }}</a>
+                                        @elseif($mappedInvoice)
+                                        <a href="{{ route('admin.purchase-invoices.show', $mappedInvoice->id) }}">{{ $mappedInvoice->invoice_number }}</a>
+                                        @else
+                                        N/A
+                                        @endif
+                                    </td>
+                                    <td>{{ ucfirst($mapping->invoice_type) }}</td>
+                                    <td class="text-end tabular-nums">₹{{ number_format((float) $mapping->amount_allocated, 2) }}</td>
+                                    <td class="text-end tabular-nums">₹{{ number_format((float) $mapping->amount_settled, 2) }}</td>
+                                    <td>
+                                        @php $mappingColors = ['pending'=>'secondary','partial'=>'warning','full'=>'success','reversed'=>'dark']; @endphp
+                                        <span class="badge bg-{{ $mappingColors[$mapping->status] ?? 'secondary' }}">{{ ucfirst($mapping->status) }}</span>
+                                    </td>
+                                </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    @endif
+@endif
 @endsection

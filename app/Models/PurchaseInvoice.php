@@ -90,6 +90,26 @@ class PurchaseInvoice extends Model
     }
 
     /**
+     * Get payment-invoice mappings that settle this invoice.
+     */
+    public function paymentMappings()
+    {
+        return $this->hasMany(PaymentInvoiceMapping::class, 'invoice_id')
+            ->where('invoice_type', 'purchase');
+    }
+
+    /**
+     * Get active settlement details (payments) for this invoice.
+     */
+    public function getSettlementDetails()
+    {
+        return $this->paymentMappings()
+            ->where('status', '!=', 'reversed')
+            ->with('paymentVoucher')
+            ->get();
+    }
+
+    /**
      * Calculate totals from line items.
      */
     public function calculateTotals(): void

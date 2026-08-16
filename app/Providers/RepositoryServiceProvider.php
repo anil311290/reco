@@ -12,6 +12,7 @@ use App\Interfaces\LedgerPartyHistoryRepositoryInterface;
 use App\Interfaces\AccountRepositoryInterface;
 use App\Interfaces\SalesInvoiceRepositoryInterface;
 use App\Interfaces\PurchaseInvoiceRepositoryInterface;
+use App\Interfaces\PaymentInvoiceMappingRepositoryInterface;
 use App\Repositories\UserRepository;
 use App\Repositories\RoleRepository;
 use App\Repositories\PermissionRepository;
@@ -22,6 +23,7 @@ use App\Repositories\LedgerPartyHistoryRepository;
 use App\Repositories\AccountRepository;
 use App\Repositories\SalesInvoiceRepository;
 use App\Repositories\PurchaseInvoiceRepository;
+use App\Repositories\PaymentInvoiceMappingRepository;
 use Illuminate\Support\ServiceProvider;
 
 class RepositoryServiceProvider extends ServiceProvider
@@ -41,6 +43,7 @@ class RepositoryServiceProvider extends ServiceProvider
         $this->app->bind(AccountRepositoryInterface::class, AccountRepository::class);
         $this->app->bind(SalesInvoiceRepositoryInterface::class, SalesInvoiceRepository::class);
         $this->app->bind(PurchaseInvoiceRepositoryInterface::class, PurchaseInvoiceRepository::class);
+        $this->app->bind(PaymentInvoiceMappingRepositoryInterface::class, PaymentInvoiceMappingRepository::class);
     }
 
     /**

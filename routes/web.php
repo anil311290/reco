@@ -306,6 +306,7 @@ Route::prefix('admin')->name('admin.')->group(function () {
             Route::get('reports/debtors-outstanding', [ReportController::class, 'debtorsOutstanding'])->name('reports.debtors-outstanding');
             Route::get('reports/creditors-outstanding', [ReportController::class, 'creditorsOutstanding'])->name('reports.creditors-outstanding');
             Route::get('reports/aging-summary', [ReportController::class, 'agingSummary'])->name('reports.aging-summary');
+            Route::get('reports/settlement-audit', [ReportController::class, 'settlementAudit'])->name('reports.settlement-audit');
             // Legacy: thin Cash Flow removed — Receipt & Payment replaces it
             Route::redirect('reports/cash-flow', '/admin/reports/receipt-payment')->name('reports.cash-flow');
             Route::get('ledgers/{ledger}/history', [LedgerHistoryController::class, 'show'])

@@ -36,12 +36,14 @@ class VoucherServiceTest extends TestCase
         $ledgerService->expects($this->once())->method('generateForVoucher')->with($voucher);
 
         $periodLockService = $this->createMock(\App\Services\PeriodLockService::class);
+        $paymentMappingService = $this->createMock(\App\Services\PaymentInvoiceMappingService::class);
 
         $service = new VoucherService(
             $voucherRepo,
             $voucherLineRepo,
             $ledgerService,
-            $periodLockService
+            $periodLockService,
+            $paymentMappingService
         );
 
         $result = $service->post(123);

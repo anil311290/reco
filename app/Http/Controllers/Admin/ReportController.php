@@ -189,6 +189,34 @@ class ReportController extends Controller
         return view('admin.reports.debtors-outstanding', compact('report', 'debtors', 'financialYearId', 'dateFrom', 'dateTo', 'financialYears'));
     }
 
+    /**
+     * Settlement Audit Report - payment-to-invoice mapping trail.
+     */
+    public function settlementAudit(Request $request)
+    {
+        $companyId = auth()->user()->company_id;
+        $context = $this->resolveReportContext($request, $companyId);
+        $financialYearId = $context['financialYearId'];
+        $dateFrom = $context['dateFrom'];
+        $dateTo = $context['dateTo'];
+        $financialYears = $context['financialYears'];
+
+        $filters = [
+            'status' => $request->input('status', 'all'),
+            'type' => $request->input('type', 'all'),
+        ];
+
+        $report = $this->reportService->getSettlementAuditReport(
+            $companyId,
+            $dateFrom ? Carbon::parse($dateFrom) : null,
+            $dateTo ? Carbon::parse($dateTo) : null,
+            $filters
+        );
+        $mappings = $this->paginateReportItems($request, $report['mappings'] ?? [], 25);
+
+        return view('admin.reports.settlement-audit', compact('report', 'mappings', 'financialYearId', 'dateFrom', 'dateTo', 'financialYears', 'filters'));
+    }
+
     public function creditorsOutstanding(Request $request)
     {
         $companyId = auth()->user()->company_id;

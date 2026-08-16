@@ -76,6 +76,12 @@
             <p class="report-feature-text">Combined receivable/payable aging with overdue days and bucket-wise analysis.</p>
             <a href="{{ route('admin.reports.aging-summary') }}" class="btn btn-outline-primary"><i class="bi bi-eye me-2"></i>Open</a>
         </div>
+        <div class="report-feature-card" style="--report-icon-start:#0d9488; --report-icon-end:#5eead4;">
+            <div class="report-feature-icon"><i class="bi bi-link-45deg"></i></div>
+            <h5 class="report-feature-title">Settlement Audit</h5>
+            <p class="report-feature-text">Payment-to-invoice mapping trail — which receipt/payment settled which invoice.</p>
+            <a href="{{ route('admin.reports.settlement-audit') }}" class="btn btn-outline-primary"><i class="bi bi-eye me-2"></i>Open</a>
+        </div>
     </div>
 </div>
 @endsection

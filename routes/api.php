@@ -145,6 +145,11 @@ Route::prefix('v1')->middleware('auth:sanctum')->group(function () {
     Route::get('/reports/debtors-outstanding', [ReportApiController::class, 'debtorsOutstanding']);
     Route::get('/reports/creditors-outstanding', [ReportApiController::class, 'creditorsOutstanding']);
 
+    // Settlement Reports (payment-to-invoice mapping)
+    Route::get('/reports/settlement-audit', [ReportApiController::class, 'settlementAuditReport']);
+    Route::get('/reports/invoice-settlement-details', [ReportApiController::class, 'invoiceSettlementDetails']);
+    Route::get('/reports/payment-settlement-details', [ReportApiController::class, 'paymentSettlementDetails']);
+
     // Settings
     Route::get('/settings', [SettingsApiController::class, 'index']);
     Route::get('/settings/company', [SettingsApiController::class, 'getCompanySettings']);

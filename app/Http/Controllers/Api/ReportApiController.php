@@ -161,4 +161,56 @@ class ReportApiController extends Controller
 
         return ResponseHelper::success($report);
     }
+
+    /**
+     * Get settlement details for a specific invoice
+     */
+    public function invoiceSettlementDetails(Request $request): JsonResponse
+    {
+        $invoiceType = $request->input('invoice_type');
+        $invoiceId = $request->input('invoice_id');
+
+        if (!$invoiceType || !$invoiceId) {
+            return ResponseHelper::error('invoice_type and invoice_id are required');
+        }
+
+        if (!in_array($invoiceType, ['sales', 'purchase'])) {
+            return ResponseHelper::error('invoice_type must be sales or purchase');
+        }
+
+        $report = $this->reportService->getInvoiceSettlementDetails($invoiceType, $invoiceId);
+
+        return ResponseHelper::success($report);
+    }
+
+    /**
+     * Get settlement details for a specific payment/receipt voucher
+     */
+    public function paymentSettlementDetails(Request $request): JsonResponse
+    {
+        $voucherId = $request->input('voucher_id');
+
+        if (!$voucherId) {
+            return ResponseHelper::error('voucher_id is required');
+        }
+
+        $report = $this->reportService->getPaymentSettlementDetails($voucherId);
+
+        return ResponseHelper::success($report);
+    }
+
+    /**
+     * Get settlement audit report with filters
+     */
+    public function settlementAuditReport(Request $request): JsonResponse
+    {
+        $companyId = $request->user()->company_id;
+        $dateFrom = $request->input('date_from') ? \Carbon\Carbon::parse($request->input('date_from')) : null;
+        $dateTo = $request->input('date_to') ? \Carbon\Carbon::parse($request->input('date_to')) : null;
+        $filters = $request->input('filters', []);
+
+        $report = $this->reportService->getSettlementAuditReport($companyId, $dateFrom, $dateTo, $filters);
+
+        return ResponseHelper::success($report);
+    }
 }

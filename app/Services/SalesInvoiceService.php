@@ -24,6 +24,7 @@ class SalesInvoiceService
     protected InvoiceAccountingService $invoiceAccountingService;
     protected PeriodLockService $periodLockService;
     protected ItemService $itemService;
+    protected PaymentInvoiceMappingService $paymentMappingService;
 
     public function __construct(
         VoucherService $voucherService,
@@ -32,7 +33,8 @@ class SalesInvoiceService
         SettingsService $settingsService,
         InvoiceAccountingService $invoiceAccountingService,
         PeriodLockService $periodLockService,
-        ItemService $itemService
+        ItemService $itemService,
+        PaymentInvoiceMappingService $paymentMappingService
     ) {
         $this->voucherService = $voucherService;
         $this->salesInvoiceRepository = $salesInvoiceRepository;
@@ -41,6 +43,7 @@ class SalesInvoiceService
         $this->invoiceAccountingService = $invoiceAccountingService;
         $this->periodLockService = $periodLockService;
         $this->itemService = $itemService;
+        $this->paymentMappingService = $paymentMappingService;
     }
 
     /**
@@ -459,6 +462,31 @@ class SalesInvoiceService
                     ],
                 ],
             ]);
+
+            // NEW: Create payment-invoice mapping
+            $receiptVoucher = Voucher::query()
+                ->where('sales_invoice_id', $invoice->id)
+                ->where('voucher_type', 'receipt')
+                ->where('status', 'posted')
+                ->latest('id')
+                ->first();
+
+            if ($receiptVoucher) {
+                // Check if mappings provided (for multi-invoice payments in future)
+                $mappings = $paymentData['mappings'] ?? null;
+
+                if ($mappings && is_array($mappings)) {
+                    // Multi-invoice mapping (future feature)
+                    $this->paymentMappingService->createExplicitMappings($receiptVoucher->id, $mappings);
+                } else {
+                    // Single invoice mapping (current behavior)
+                    $this->paymentMappingService->autoMapPayment(
+                        $receiptVoucher->id,
+                        'sales',
+                        [['invoice_id' => $invoice->id, 'amount' => $amount, 'invoice_type' => 'sales']]
+                    );
+                }
+            }
 
             $invoice->recordPayment($amount);
 

@@ -17,17 +17,20 @@ class VoucherService
     protected VoucherLineRepositoryInterface $voucherLineRepository;
     protected LedgerService $ledgerService;
     protected PeriodLockService $periodLockService;
+    protected PaymentInvoiceMappingService $paymentMappingService;
 
     public function __construct(
         VoucherRepositoryInterface $voucherRepository,
         VoucherLineRepositoryInterface $voucherLineRepository,
         LedgerService $ledgerService,
-        PeriodLockService $periodLockService
+        PeriodLockService $periodLockService,
+        PaymentInvoiceMappingService $paymentMappingService
     ) {
         $this->voucherRepository = $voucherRepository;
         $this->voucherLineRepository = $voucherLineRepository;
         $this->ledgerService = $ledgerService;
         $this->periodLockService = $periodLockService;
+        $this->paymentMappingService = $paymentMappingService;
     }
     /**
      * Get all vouchers with filters
@@ -367,6 +370,10 @@ class VoucherService
             $voucher->financial_year_id ? (int) $voucher->financial_year_id : null
         );
 
+        if (in_array($voucher->voucher_type, ['receipt', 'payment'], true)) {
+            $this->paymentMappingService->reverseAllMappings($voucher->id);
+        }
+
         $result = $voucher->cancel();
 
         if ($result) {
@@ -385,6 +392,12 @@ class VoucherService
     {
         if (!in_array($voucher->voucher_type, ['receipt', 'payment'], true)) {
             return;
+        }
+
+        // NEW: Recalculate invoice balance from all active payment-invoice mappings first.
+        $mappings = $voucher->paymentInvoiceMappings()->where('status', '!=', 'reversed')->get();
+        foreach ($mappings as $mapping) {
+            $this->updateInvoiceBalanceFromMapping($mapping);
         }
 
         $amount = round((float) $voucher->total_debit, 2);
@@ -420,6 +433,29 @@ class VoucherService
                 ]);
             }
         }
+    }
+
+    /**
+     * Recalculate an invoice's paid/balance amounts from its active payment mappings
+     * after a settlement mapping has been reversed.
+     */
+    private function updateInvoiceBalanceFromMapping(\App\Models\PaymentInvoiceMapping $mapping): void
+    {
+        $invoice = $mapping->getInvoice();
+        if (!$invoice) {
+            return;
+        }
+
+        $paid = (float) $invoice->paymentMappings()->where('status', '!=', 'reversed')->sum('amount_settled');
+        $due = max(0, round((float) $invoice->total - $paid, 2));
+        $defaultStatus = $mapping->invoice_type === 'sales' ? 'sent' : 'verified';
+        $status = $paid <= 0 ? $defaultStatus : ($due <= 0 ? 'paid' : 'partial');
+
+        $invoice->update([
+            'amount_paid' => round($paid, 2),
+            'balance_due' => $due,
+            'status' => $status,
+        ]);
     }
 
     /**

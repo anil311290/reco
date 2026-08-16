@@ -111,6 +111,46 @@
                 </div>
             </div>
         </div>
+
+        @php $settlements = $invoice->getSettlementDetails(); @endphp
+        @if($settlements->isNotEmpty())
+        <div class="card mt-4">
+            <div class="card-header"><h6 class="mb-0"><i class="bi bi-clock-history me-1"></i>Settlement History</h6></div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-sm mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Receipt #</th>
+                                <th>Date</th>
+                                <th class="text-end">Amount Settled</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach($settlements as $settlement)
+                            <tr>
+                                <td>
+                                    @if($settlement->paymentVoucher)
+                                    <a href="{{ route('admin.vouchers.show', $settlement->paymentVoucher->id) }}">{{ $settlement->paymentVoucher->voucher_number }}</a>
+                                    @else
+                                    N/A
+                                    @endif
+                                </td>
+                                <td>{{ $settlement->paymentVoucher?->voucher_date?->format('d-M-Y') ?? '-' }}</td>
+                                <td class="text-end">₹{{ number_format((float) $settlement->amount_settled, 2) }}</td>
+                                <td>
+                                    @php $settlementColors = ['pending'=>'secondary','partial'=>'warning','full'=>'success','reversed'=>'dark']; @endphp
+                                    <span class="badge bg-{{ $settlementColors[$settlement->status] ?? 'secondary' }}">{{ ucfirst($settlement->status) }}</span>
+                                </td>
+                            </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        @endif
     </div>
 
     <div class="col-md-4">
