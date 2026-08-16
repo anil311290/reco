@@ -494,12 +494,6 @@
                                     <span>Payables</span>
                                 </a>
                             </li>
-                            <li class="nav-item">
-                                <a class="nav-link {{ request()->routeIs('admin.reports.aging-summary') ? 'active' : '' }}" href="{{ route('admin.reports.aging-summary') }}">
-                                    <i class="bi bi-hourglass-split"></i>
-                                    <span>Aging Summary</span>
-                                </a>
-                            </li>
                         </ul>
                     </div>
                 </li>

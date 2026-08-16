@@ -1149,12 +1149,12 @@ class ReportService
                 $invoice = SalesInvoice::find($mapping->invoice_id);
                 $invoiceNumber = $invoice?->invoice_number ?? 'N/A';
                 $invoiceDate = $invoice?->invoice_date?->toDateString();
-                $partyName = $invoice?->party?->party_name ?? 'N/A';
+                $partyName = $invoice?->party?->name ?? 'N/A';
             } else {
                 $invoice = PurchaseInvoice::find($mapping->invoice_id);
                 $invoiceNumber = $invoice?->invoice_number ?? 'N/A';
                 $invoiceDate = $invoice?->invoice_date?->toDateString();
-                $partyName = $invoice?->party?->party_name ?? 'N/A';
+                $partyName = $invoice?->party?->name ?? 'N/A';
             }
 
             $invoicesSettled[] = [
@@ -1178,7 +1178,7 @@ class ReportService
             'voucher_number' => $voucher->voucher_number,
             'voucher_date' => $voucher->voucher_date?->toDateString(),
             'voucher_type' => $voucher->voucher_type,
-            'party_name' => $voucher->party?->party_name ?? 'N/A',
+            'party_name' => $voucher->party?->name ?? 'N/A',
             'invoices_settled' => $invoicesSettled,
             'total_allocated' => round($totalAllocated, 2),
             'total_settled' => round($totalSettled, 2),
@@ -1271,10 +1271,10 @@ class ReportService
             // Get invoice and party details
             if ($mapping->invoice_type === 'sales') {
                 $invoice = SalesInvoice::find($mapping->invoice_id);
-                $partyName = $invoice?->party?->party_name ?? 'Unknown';
+                $partyName = $invoice?->party?->name ?? 'Unknown';
             } else {
                 $invoice = PurchaseInvoice::find($mapping->invoice_id);
-                $partyName = $invoice?->party?->party_name ?? 'Unknown';
+                $partyName = $invoice?->party?->name ?? 'Unknown';
             }
 
             $mappingRows[] = [

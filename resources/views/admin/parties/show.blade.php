@@ -171,7 +171,9 @@
                 </thead>
                 <tbody>
                     @forelse($ledger['rows'] as $row)
-                        @php($entry = $row['entry'])
+                        @php
+                            $entry = $row['entry'];
+                        @endphp
                         <tr>
                             <td class="text-muted">@istDate($entry->transaction_date)</td>
                             <td>
