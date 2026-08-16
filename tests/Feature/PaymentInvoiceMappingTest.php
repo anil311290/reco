@@ -6,6 +6,7 @@ use App\Models\Account;
 use App\Models\Company;
 use App\Models\FinancialYear;
 use App\Models\PaymentInvoiceMapping;
+use App\Models\User;
 use App\Models\Voucher;
 use App\Services\PartyService;
 use App\Services\PurchaseInvoiceService;
@@ -281,6 +282,80 @@ class PaymentInvoiceMappingTest extends TestCase
 
         $mapping = PaymentInvoiceMapping::where('payment_voucher_id', $voucher->id)->firstOrFail();
         $this->assertEquals('CHQ-9911', $mapping->reference_number);
+        $this->assertEquals('full', $mapping->status);
+        $this->assertEquals(100.0, (float) $mapping->amount_settled);
+
+        $invoice->refresh();
+        $this->assertEquals(0.0, (float) $invoice->balance_due);
+        $this->assertEquals('paid', $invoice->status);
+    }
+
+    public function test_http_receipt_voucher_with_bill_wise_allocation_creates_mapping(): void
+    {
+        $this->seed();
+        $user = User::where('email', 'superadmin@reco.app')->firstOrFail();
+        $companyId = $user->company_id;
+        $fy = FinancialYear::getCurrent($companyId);
+
+        $cash = Account::factory()->create([
+            'company_id' => $companyId,
+            'financial_year_id' => $fy->id,
+            'account_type' => 'asset',
+            'is_cash_bank_od' => true,
+            'opening_balance' => 0,
+            'balance_type' => 'debit',
+        ]);
+
+        $debtor = app(PartyService::class)->create([
+            'uuid' => (string) Str::uuid(),
+            'company_id' => $companyId,
+            'financial_year_id' => $fy->id,
+            'name' => 'HTTP Test Customer',
+            'type' => 'debtor',
+            'opening_balance' => 0,
+            'is_active' => true,
+        ]);
+
+        $salesService = app(SalesInvoiceService::class);
+        $invoice = $salesService->create([
+            'uuid' => (string) Str::uuid(),
+            'company_id' => $companyId,
+            'financial_year_id' => $fy->id,
+            'party_id' => $debtor->id,
+            'invoice_number' => 'INV-HTTP001',
+            'invoice_date' => now()->toDateString(),
+            'due_date' => now()->addDays(10)->toDateString(),
+            'status' => 'draft',
+        ], [
+            ['description' => 'Widget', 'quantity' => 1, 'unit_price' => 100, 'discount_percentage' => 0, 'tax_amount' => 0],
+        ]);
+        $salesService->generateVoucher($invoice);
+
+        $response = $this->actingAs($user)->postJson(route('admin.vouchers.store'), [
+            'voucher_type' => 'receipt',
+            'voucher_date' => now()->toDateString(),
+            'cash_bank_account_id' => $cash->id,
+            'payment_rows' => [
+                [
+                    'account_id' => 'party:' . $debtor->id,
+                    'amount' => 100,
+                    'invoice_allocations' => [
+                        $invoice->id => [
+                            'invoice_id' => $invoice->id,
+                            'amount' => 100,
+                            'reference_number' => 'HTTP-REF-1',
+                        ],
+                    ],
+                ],
+            ],
+        ]);
+
+        $response->assertOk();
+
+        $voucher = Voucher::where('voucher_type', 'receipt')->where('party_id', $debtor->id)->latest('id')->firstOrFail();
+        $mapping = PaymentInvoiceMapping::where('payment_voucher_id', $voucher->id)->firstOrFail();
+
+        $this->assertEquals('HTTP-REF-1', $mapping->reference_number);
         $this->assertEquals('full', $mapping->status);
         $this->assertEquals(100.0, (float) $mapping->amount_settled);
 

@@ -41,6 +41,14 @@ trait ValidatesVoucherPayload
             'adjustment_rows.*.amount' => 'required_if:voucher_type,journal,adjustment|numeric|gt:0',
             'adjustment_rows.*.description' => 'nullable|string|max:255',
 
+            // Computed by prepareVoucherPayload() from payment_rows.*.invoice_allocations; needs its
+            // own rule entries or FormRequest::validated() silently drops the merged key.
+            'invoice_settlements' => 'nullable|array',
+            'invoice_settlements.*.invoice_id' => 'nullable|integer',
+            'invoice_settlements.*.amount' => 'nullable|numeric|min:0',
+            'invoice_settlements.*.invoice_type' => 'nullable|string',
+            'invoice_settlements.*.reference_number' => 'nullable|string|max:100',
+
             'lines' => 'required|array|min:1',
             'lines.*.account_id' => ['required', $companyAccount],
             'lines.*.party_id' => ['nullable', $companyParty],

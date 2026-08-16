@@ -257,6 +257,12 @@ class VoucherService
             );
         }
 
+        if (isset($data['lines']) && $voucher->paymentInvoiceMappings()->where('status', '!=', 'reversed')->exists()) {
+            throw new \Exception(
+                'This voucher has bill-wise invoice settlements. Cancel it and record a new payment instead of editing amounts.'
+            );
+        }
+
         try {
             DB::beginTransaction();
             $wasPosted = $voucher->status === 'posted';

@@ -10,6 +10,11 @@
         'adjustment' => 'Adjustment',
     ];
     $voucherLabel = $voucherLabels[$voucher->voucher_type] ?? ucfirst($voucher->voucher_type);
+    $isStandaloneBookVoucher = in_array($voucher->voucher_type, ['payment', 'receipt', 'journal', 'adjustment'], true)
+        && !$voucher->sales_invoice_id
+        && !$voucher->purchase_invoice_id;
+    $canEditVoucher = $voucher->status === 'draft'
+        || ($voucher->status === 'posted' && $isStandaloneBookVoucher);
 @endphp
 
 @section('title', $voucherLabel . ' Voucher')
@@ -72,7 +77,7 @@
         <a href="{{ route('admin.vouchers.type', $voucher->voucher_type) }}" class="btn btn-secondary">
             <i class="bi bi-arrow-left me-2"></i>Back to Vouchers
         </a>
-        @if($voucher->status === 'draft')
+        @if($canEditVoucher)
         <a href="{{ route('admin.vouchers.edit', $voucher->id) }}" class="btn btn-primary ms-2">
             <i class="bi bi-pencil me-2"></i>Edit Voucher
         </a>

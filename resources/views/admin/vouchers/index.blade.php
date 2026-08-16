@@ -218,7 +218,19 @@ $(document).ready(function() {
                         </button>
                     `;
                 }
-                
+
+                const isStandaloneBookVoucher = ['payment', 'receipt', 'journal', 'adjustment'].includes(data.voucher_type)
+                    && !data.sales_invoice_id
+                    && !data.purchase_invoice_id;
+
+                if (data.status === 'posted' && isStandaloneBookVoucher) {
+                    actions += `
+                        <a href="/admin/vouchers/${data.id}/edit" class="btn btn-outline-primary" title="Edit">
+                            <i class="bi bi-pencil"></i>
+                        </a>
+                    `;
+                }
+
                 if (data.status === 'posted') {
                     actions += `
                         <button class="btn btn-outline-warning cancel-btn" data-id="${data.id}" title="Cancel">
