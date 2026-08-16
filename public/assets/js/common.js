@@ -236,10 +236,12 @@ function initSearchableSelects(scope) {
         });
 
         // Keep keyboard search reliable, especially after dynamic row inserts.
+        // preventScroll avoids a focus-triggered scroll/reflow that shifts the results
+        // list right as the user clicks, causing the first option click to be missed.
         $select.on('select2:open', function() {
             const searchField = document.querySelector('.select2-container--open .select2-search__field');
             if (searchField) {
-                searchField.focus();
+                searchField.focus({ preventScroll: true });
             }
         });
     });
