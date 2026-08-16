@@ -4,8 +4,13 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\PartyRequest;
+use App\Models\PurchaseInvoice;
+use App\Models\SalesInvoice;
+use App\Services\AccountService;
 use App\Services\LedgerService;
 use App\Services\PartyService;
+use App\Services\PurchaseInvoiceService;
+use App\Services\SalesInvoiceService;
 use App\Helpers\ResponseHelper;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -14,11 +19,22 @@ class PartyController extends Controller
 {
     protected PartyService $partyService;
     protected LedgerService $ledgerService;
+    protected AccountService $accountService;
+    protected SalesInvoiceService $salesInvoiceService;
+    protected PurchaseInvoiceService $purchaseInvoiceService;
 
-    public function __construct(PartyService $partyService, LedgerService $ledgerService)
-    {
+    public function __construct(
+        PartyService $partyService,
+        LedgerService $ledgerService,
+        AccountService $accountService,
+        SalesInvoiceService $salesInvoiceService,
+        PurchaseInvoiceService $purchaseInvoiceService
+    ) {
         $this->partyService = $partyService;
         $this->ledgerService = $ledgerService;
+        $this->accountService = $accountService;
+        $this->salesInvoiceService = $salesInvoiceService;
+        $this->purchaseInvoiceService = $purchaseInvoiceService;
     }
 
     /**
@@ -33,12 +49,13 @@ class PartyController extends Controller
             return ResponseHelper::notFound('Party not found');
         }
 
+        $companyId = $request->user()->company_id;
         $financialYearId = $request->user()->company->currentFinancialYear?->id;
         $perPage = (int) $request->input('per_page', 15);
 
         $ledger = $this->ledgerService->getPartyLedger(
             $id,
-            $request->user()->company_id,
+            $companyId,
             $financialYearId,
             $request->input('date_from'),
             $request->input('date_to'),
@@ -47,7 +64,80 @@ class PartyController extends Controller
 
         $party = $partyModel;
 
-        return view('admin.parties.show', compact('party', 'ledger'));
+        $outstandingInvoices = collect();
+        if ($party->type === 'debtor') {
+            $outstandingInvoices = SalesInvoice::where('company_id', $companyId)
+                ->where('party_id', $party->id)
+                ->whereNotIn('status', ['paid', 'cancelled'])
+                ->where('balance_due', '>', 0)
+                ->orderBy('invoice_date')
+                ->get(['id', 'invoice_number', 'invoice_date', 'due_date', 'total', 'balance_due']);
+        } elseif ($party->type === 'creditor') {
+            $outstandingInvoices = PurchaseInvoice::where('company_id', $companyId)
+                ->where('party_id', $party->id)
+                ->whereNotIn('status', ['paid', 'cancelled'])
+                ->where('balance_due', '>', 0)
+                ->orderBy('invoice_date')
+                ->get(['id', 'invoice_number', 'invoice_date', 'due_date', 'total', 'balance_due']);
+        }
+
+        $cashBankAccounts = $this->accountService->getCashBankAccountsForMode($companyId, $financialYearId);
+
+        return view('admin.parties.show', compact('party', 'ledger', 'outstandingInvoices', 'cashBankAccounts'));
+    }
+
+    /**
+     * Record one payment/receipt allocated across multiple outstanding invoices of this party.
+     */
+    public function recordPayment(Request $request, int $party): JsonResponse
+    {
+        $partyModel = $this->partyService->getById($party);
+
+        if (!$partyModel || $partyModel->company_id !== $request->user()->company_id) {
+            return ResponseHelper::notFound('Party not found');
+        }
+
+        $validated = $request->validate([
+            'cash_bank_account_id' => ['required', 'integer'],
+            'payment_date' => ['required', 'date'],
+            'allocations' => ['required', 'array', 'min:1'],
+            'allocations.*.invoice_id' => ['required', 'integer'],
+            'allocations.*.amount' => ['required', 'numeric', 'gt:0'],
+        ]);
+
+        $meta = [
+            'company_id' => $partyModel->company_id,
+            'created_by' => $request->user()->id,
+            'created_by_ip' => $request->ip(),
+        ];
+
+        try {
+            if ($partyModel->type === 'debtor') {
+                $result = $this->salesInvoiceService->recordMultiInvoicePayment(
+                    $partyModel->id,
+                    $validated['allocations'],
+                    (int) $validated['cash_bank_account_id'],
+                    $validated['payment_date'],
+                    $meta
+                );
+            } elseif ($partyModel->type === 'creditor') {
+                $result = $this->purchaseInvoiceService->recordMultiInvoicePayment(
+                    $partyModel->id,
+                    $validated['allocations'],
+                    (int) $validated['cash_bank_account_id'],
+                    $validated['payment_date'],
+                    $meta
+                );
+            } else {
+                return ResponseHelper::error('Party must be a debtor or creditor to record payment.');
+            }
+        } catch (\RuntimeException $e) {
+            return ResponseHelper::error($e->getMessage());
+        }
+
+        return ResponseHelper::success([
+            'voucher_number' => $result['voucher']->voucher_number,
+        ], 'Payment recorded against ' . $result['invoices']->count() . ' invoice(s).');
     }
 
     /**

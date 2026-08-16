@@ -253,6 +253,9 @@ Route::prefix('admin')->name('admin.')->group(function () {
             Route::get('parties/{party}', [PartyController::class, 'show'])
                 ->name('parties.show')
                 ->whereNumber('party');
+            Route::post('parties/{party}/record-payment', [PartyController::class, 'recordPayment'])
+                ->name('parties.record-payment')
+                ->whereNumber('party');
         });
 
         /*

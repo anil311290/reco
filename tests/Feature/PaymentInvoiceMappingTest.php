@@ -175,6 +175,65 @@ class PaymentInvoiceMappingTest extends TestCase
         $this->assertEquals(100.0, $audit['summary']['total_settled']);
     }
 
+    public function test_multi_invoice_payment_splits_one_receipt_across_two_sales_invoices(): void
+    {
+        [$company, $fy, $cash, $debtor] = $this->seedCompanyWithCashAndDebtor();
+
+        $salesService = app(SalesInvoiceService::class);
+        $invoiceOne = $salesService->create([
+            'uuid' => (string) Str::uuid(),
+            'company_id' => $company->id,
+            'financial_year_id' => $fy->id,
+            'party_id' => $debtor->id,
+            'invoice_number' => 'INV-200001',
+            'invoice_date' => '2026-07-10',
+            'due_date' => '2026-07-20',
+            'status' => 'draft',
+        ], [
+            ['description' => 'Widget A', 'quantity' => 1, 'unit_price' => 100, 'discount_percentage' => 0, 'tax_amount' => 0],
+        ]);
+        $salesService->generateVoucher($invoiceOne);
+
+        $invoiceTwo = $salesService->create([
+            'uuid' => (string) Str::uuid(),
+            'company_id' => $company->id,
+            'financial_year_id' => $fy->id,
+            'party_id' => $debtor->id,
+            'invoice_number' => 'INV-200002',
+            'invoice_date' => '2026-07-11',
+            'due_date' => '2026-07-21',
+            'status' => 'draft',
+        ], [
+            ['description' => 'Widget B', 'quantity' => 1, 'unit_price' => 50, 'discount_percentage' => 0, 'tax_amount' => 0],
+        ]);
+        $salesService->generateVoucher($invoiceTwo);
+
+        $result = $salesService->recordMultiInvoicePayment(
+            $debtor->id,
+            [
+                ['invoice_id' => $invoiceOne->id, 'amount' => 60],
+                ['invoice_id' => $invoiceTwo->id, 'amount' => 50],
+            ],
+            $cash->id,
+            '2026-07-12',
+            ['company_id' => $company->id]
+        );
+
+        $this->assertEquals(110.0, (float) $result['voucher']->total_debit);
+        $this->assertCount(2, $result['invoices']);
+
+        $invoiceOne->refresh();
+        $invoiceTwo->refresh();
+        $this->assertEquals(40.0, (float) $invoiceOne->balance_due);
+        $this->assertEquals('partial', $invoiceOne->status);
+        $this->assertEquals(0.0, (float) $invoiceTwo->balance_due);
+        $this->assertEquals('paid', $invoiceTwo->status);
+
+        $mappings = PaymentInvoiceMapping::where('payment_voucher_id', $result['voucher']->id)->get();
+        $this->assertCount(2, $mappings);
+        $this->assertEquals(110.0, (float) $mappings->sum('amount_settled'));
+    }
+
     private function seedCompanyWithCashAndDebtor(): array
     {
         $company = Company::factory()->create();

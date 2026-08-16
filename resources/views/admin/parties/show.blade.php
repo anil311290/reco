@@ -65,6 +65,11 @@
         <a href="{{ route('admin.parties.index') }}" class="btn btn-secondary">
             <i class="bi bi-arrow-left me-2"></i>Back to Parties
         </a>
+        @if(in_array($party->type, ['debtor', 'creditor'], true) && $outstandingInvoices->isNotEmpty())
+        <button type="button" class="btn btn-success ms-2" data-bs-toggle="modal" data-bs-target="#multiInvoicePaymentModal">
+            <i class="bi bi-cash-stack me-2"></i>Record Payment
+        </button>
+        @endif
         @permission('parties.edit')
         <a href="{{ route('admin.parties.edit', $party->id) }}" class="btn btn-primary ms-2">
             <i class="bi bi-pencil me-2"></i>Edit Party
@@ -216,4 +221,138 @@
         @endif
     </div>
 </div>
+
+@if(in_array($party->type, ['debtor', 'creditor'], true) && $outstandingInvoices->isNotEmpty())
+<div class="modal fade" id="multiInvoicePaymentModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">{{ $party->type === 'debtor' ? 'Record Receipt' : 'Record Payment' }} &mdash; {{ $party->name }}</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="multiInvoicePaymentForm">
+                <div class="modal-body">
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label">{{ $party->type === 'debtor' ? 'Received In' : 'Paid From' }} <span class="text-danger">*</span></label>
+                            <select class="form-select" id="mip_cash_bank_account_id" name="cash_bank_account_id" required>
+                                <option value="">Select Cash / Bank</option>
+                                @foreach($cashBankAccounts as $option)
+                                <option value="{{ $option['id'] }}">{{ $option['text'] }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Date <span class="text-danger">*</span></label>
+                            <input type="date" class="form-control" id="mip_payment_date" name="payment_date" value="{{ date('Y-m-d') }}" required>
+                        </div>
+                    </div>
+
+                    <div class="table-responsive">
+                        <table class="table table-sm align-middle">
+                            <thead class="table-light">
+                                <tr>
+                                    <th style="width:2.5rem;"><input type="checkbox" id="mip_select_all" class="form-check-input"></th>
+                                    <th>Invoice #</th>
+                                    <th>Date</th>
+                                    <th class="text-end">Balance Due</th>
+                                    <th class="text-end" style="width:11rem;">Allocate Amount</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach($outstandingInvoices as $inv)
+                                <tr>
+                                    <td>
+                                        <input type="checkbox" class="form-check-input mip-invoice-check" value="{{ $inv->id }}"
+                                               data-balance="{{ $inv->balance_due }}">
+                                    </td>
+                                    <td>{{ $inv->invoice_number }}</td>
+                                    <td>{{ $inv->invoice_date?->format('d-M-Y') }}</td>
+                                    <td class="text-end">₹{{ number_format($inv->balance_due, 2) }}</td>
+                                    <td class="text-end">
+                                        <input type="number" class="form-control form-control-sm text-end mip-invoice-amount"
+                                               data-invoice-id="{{ $inv->id }}" step="0.01" min="0" max="{{ $inv->balance_due }}"
+                                               value="{{ $inv->balance_due }}" disabled>
+                                    </td>
+                                </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="text-end fw-semibold">
+                        Total Allocated: ₹<span id="mip_total_allocated">0.00</span>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-success">Record Payment</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+@endif
 @endsection
+
+@if(in_array($party->type, ['debtor', 'creditor'], true) && $outstandingInvoices->isNotEmpty())
+@section('scripts')
+<script>
+function mipRecalculateTotal() {
+    let total = 0;
+    $('.mip-invoice-check:checked').each(function () {
+        const amount = parseFloat($('.mip-invoice-amount[data-invoice-id="' + $(this).val() + '"]').val()) || 0;
+        total += amount;
+    });
+    $('#mip_total_allocated').text(total.toFixed(2));
+}
+
+$('.mip-invoice-check').on('change', function () {
+    const $amountInput = $('.mip-invoice-amount[data-invoice-id="' + $(this).val() + '"]');
+    $amountInput.prop('disabled', !this.checked);
+    mipRecalculateTotal();
+});
+
+$('.mip-invoice-amount').on('input', mipRecalculateTotal);
+
+$('#mip_select_all').on('change', function () {
+    $('.mip-invoice-check').prop('checked', this.checked).trigger('change');
+});
+
+$('#multiInvoicePaymentForm').on('submit', function (e) {
+    e.preventDefault();
+
+    const allocations = [];
+    $('.mip-invoice-check:checked').each(function () {
+        const invoiceId = $(this).val();
+        const amount = parseFloat($('.mip-invoice-amount[data-invoice-id="' + invoiceId + '"]').val()) || 0;
+        if (amount > 0) {
+            allocations.push({ invoice_id: invoiceId, amount: amount });
+        }
+    });
+
+    if (!allocations.length) {
+        toastr.error('Select at least one invoice and enter an allocation amount.');
+        return;
+    }
+
+    $.ajax({
+        url: '{{ route("admin.parties.record-payment", $party->id) }}',
+        type: 'POST',
+        data: {
+            cash_bank_account_id: $('#mip_cash_bank_account_id').val(),
+            payment_date: $('#mip_payment_date').val(),
+            allocations: allocations,
+        },
+        headers: { 'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content') },
+        success: function (r) {
+            toastr.success(r.message);
+            setTimeout(() => window.location.reload(), 1000);
+        },
+        error: function (xhr) {
+            toastr.error(xhr.responseJSON?.message || 'Error recording payment');
+        }
+    });
+});
+</script>
+@endsection
+@endif

@@ -495,6 +495,134 @@ class SalesInvoiceService
     }
 
     /**
+     * Record one receipt against multiple sales invoices of the same party (Tally-style bill allocation).
+     *
+     * @param  array<int, array{invoice_id:int,amount:float}>  $allocations
+     */
+    public function recordMultiInvoicePayment(
+        int $partyId,
+        array $allocations,
+        int $cashBankAccountId,
+        string $paymentDate,
+        array $meta = []
+    ): array {
+        return DB::transaction(function () use ($partyId, $allocations, $cashBankAccountId, $paymentDate, $meta) {
+            if (empty($allocations)) {
+                throw new \RuntimeException('Select at least one invoice to record payment against.');
+            }
+
+            $companyId = (int) ($meta['company_id'] ?? auth()->user()->company_id);
+            $invoiceIds = array_column($allocations, 'invoice_id');
+
+            $invoices = SalesInvoice::query()
+                ->whereIn('id', $invoiceIds)
+                ->where('party_id', $partyId)
+                ->where('company_id', $companyId)
+                ->with('party.account')
+                ->lockForUpdate()
+                ->get()
+                ->keyBy('id');
+
+            if ($invoices->count() !== count(array_unique($invoiceIds))) {
+                throw new \RuntimeException('One or more selected invoices were not found for this party.');
+            }
+
+            $totalAmount = 0.0;
+            foreach ($allocations as $allocation) {
+                $invoice = $invoices->get((int) $allocation['invoice_id']);
+                $amount = round((float) ($allocation['amount'] ?? 0), 2);
+
+                if ($invoice->status === 'cancelled') {
+                    throw new \RuntimeException("Invoice #{$invoice->invoice_number} is cancelled.");
+                }
+                if ($amount <= 0) {
+                    throw new \RuntimeException("Allocation amount for Invoice #{$invoice->invoice_number} must be greater than zero.");
+                }
+                if ($amount > round((float) $invoice->balance_due, 2) + 0.009) {
+                    throw new \RuntimeException("Allocation for Invoice #{$invoice->invoice_number} exceeds its balance due.");
+                }
+
+                $totalAmount += $amount;
+            }
+
+            $totalAmount = round($totalAmount, 2);
+            if ($totalAmount <= 0) {
+                throw new \RuntimeException('Total payment amount must be greater than zero.');
+            }
+
+            $firstInvoice = $invoices->first();
+            $settlementFy = $this->periodLockService->assertWritable($companyId, $paymentDate);
+
+            $cashBank = \App\Models\Account::query()
+                ->where('company_id', $companyId)
+                ->where('id', $cashBankAccountId)
+                ->where('is_active', true)
+                ->first();
+
+            if (!$cashBank || !$cashBank->isCashBankOd()) {
+                throw new \RuntimeException('Select a valid Cash / Bank / OD account.');
+            }
+
+            $partyAccountId = $firstInvoice->party?->account_id
+                ?: \App\Models\Account::query()
+                ->where('company_id', $companyId)
+                ->where('account_code', \App\Models\Account::CODE_AR)
+                ->value('id');
+            if (!$partyAccountId) {
+                throw new \RuntimeException('Accounts Receivable control account is missing.');
+            }
+
+            $invoiceNumbers = $invoices->pluck('invoice_number')->implode(', ');
+
+            $receipt = $this->voucherService->create([
+                'uuid' => (string) \Illuminate\Support\Str::uuid(),
+                'company_id' => $companyId,
+                'financial_year_id' => $settlementFy->id,
+                'party_id' => $partyId,
+                'voucher_type' => 'receipt',
+                'voucher_date' => $paymentDate,
+                'narration' => "Receipt against Sales Invoices #{$invoiceNumbers}",
+                'created_by' => $meta['created_by'] ?? auth()->id(),
+                'created_by_ip' => $meta['created_by_ip'] ?? request()->ip(),
+                'lines' => [
+                    [
+                        'account_id' => $cashBank->id,
+                        'debit' => $totalAmount,
+                        'credit' => 0,
+                        'description' => "Received against Invoices #{$invoiceNumbers}",
+                    ],
+                    [
+                        'account_id' => (int) $partyAccountId,
+                        'party_id' => $partyId,
+                        'debit' => 0,
+                        'credit' => $totalAmount,
+                        'description' => "Receipt against Invoices #{$invoiceNumbers}",
+                    ],
+                ],
+            ]);
+
+            $mappings = array_map(fn (array $allocation) => [
+                'invoice_id' => (int) $allocation['invoice_id'],
+                'amount' => round((float) $allocation['amount'], 2),
+                'invoice_type' => 'sales',
+            ], $allocations);
+            $this->paymentMappingService->createExplicitMappings($receipt->id, $mappings);
+
+            $updatedInvoices = collect();
+            foreach ($allocations as $allocation) {
+                $invoice = $invoices->get((int) $allocation['invoice_id']);
+                $invoice->recordPayment(round((float) $allocation['amount'], 2));
+                $updatedInvoices->push($invoice->fresh());
+            }
+
+            return [
+                'voucher' => $receipt->fresh(['party', 'lines.account']),
+                'invoices' => $updatedInvoices,
+            ];
+        });
+    }
+
+    /**
      * Cancel a sales invoice: reverse settlements, cancel posting voucher, restore stock.
      */
     public function cancel(int $id): SalesInvoice
