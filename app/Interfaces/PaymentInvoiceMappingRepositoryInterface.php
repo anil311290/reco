@@ -13,7 +13,8 @@ interface PaymentInvoiceMappingRepositoryInterface
         int $paymentVoucherId,
         string $invoiceType,
         int $invoiceId,
-        float $amountAllocated
+        float $amountAllocated,
+        ?string $referenceNumber = null
     ): PaymentInvoiceMapping;
 
     /**

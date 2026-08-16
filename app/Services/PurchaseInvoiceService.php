@@ -482,6 +482,7 @@ class PurchaseInvoiceService
                 'invoice_id' => (int) $allocation['invoice_id'],
                 'amount' => round((float) $allocation['amount'], 2),
                 'invoice_type' => 'purchase',
+                'reference_number' => $allocation['reference_number'] ?? null,
             ], $allocations);
             $this->paymentMappingService->createExplicitMappings($payment->id, $mappings);
 

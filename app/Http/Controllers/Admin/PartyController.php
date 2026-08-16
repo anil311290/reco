@@ -103,6 +103,7 @@ class PartyController extends Controller
             'allocations' => ['required', 'array', 'min:1'],
             'allocations.*.invoice_id' => ['required', 'integer'],
             'allocations.*.amount' => ['required', 'numeric', 'gt:0'],
+            'allocations.*.reference_number' => ['nullable', 'string', 'max:100'],
         ]);
 
         $meta = [
@@ -138,6 +139,36 @@ class PartyController extends Controller
         return ResponseHelper::success([
             'voucher_number' => $result['voucher']->voucher_number,
         ], 'Payment recorded against ' . $result['invoices']->count() . ' invoice(s).');
+    }
+
+    /**
+     * Outstanding invoices for a party (used by Payment/Receipt voucher bill-wise allocation).
+     */
+    public function outstandingInvoices(Request $request, int $party): JsonResponse
+    {
+        $partyModel = $this->partyService->getById($party);
+
+        if (!$partyModel || $partyModel->company_id !== $request->user()->company_id) {
+            return ResponseHelper::notFound('Party not found');
+        }
+
+        $invoiceType = $request->input('invoice_type', $partyModel->type === 'debtor' ? 'sales' : 'purchase');
+
+        $invoices = $invoiceType === 'sales'
+            ? SalesInvoice::where('company_id', $partyModel->company_id)
+                ->where('party_id', $partyModel->id)
+                ->whereNotIn('status', ['paid', 'cancelled'])
+                ->where('balance_due', '>', 0)
+                ->orderBy('invoice_date')
+                ->get(['id', 'invoice_number', 'invoice_date', 'due_date', 'total', 'balance_due'])
+            : PurchaseInvoice::where('company_id', $partyModel->company_id)
+                ->where('party_id', $partyModel->id)
+                ->whereNotIn('status', ['paid', 'cancelled'])
+                ->where('balance_due', '>', 0)
+                ->orderBy('invoice_date')
+                ->get(['id', 'invoice_number', 'invoice_date', 'due_date', 'total', 'balance_due']);
+
+        return ResponseHelper::success($invoices);
     }
 
     /**

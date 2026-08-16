@@ -19,6 +19,7 @@ class PaymentInvoiceMapping extends Model
         'payment_voucher_id',
         'invoice_type',
         'invoice_id',
+        'reference_number',
         'invoice_original_balance',
         'amount_allocated',
         'amount_settled',

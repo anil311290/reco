@@ -234,6 +234,61 @@ class PaymentInvoiceMappingTest extends TestCase
         $this->assertEquals(110.0, (float) $mappings->sum('amount_settled'));
     }
 
+    public function test_generic_receipt_voucher_with_bill_wise_allocation_creates_mapping_with_reference_number(): void
+    {
+        [$company, $fy, $cash, $debtor] = $this->seedCompanyWithCashAndDebtor();
+
+        $salesService = app(SalesInvoiceService::class);
+        $invoice = $salesService->create([
+            'uuid' => (string) Str::uuid(),
+            'company_id' => $company->id,
+            'financial_year_id' => $fy->id,
+            'party_id' => $debtor->id,
+            'invoice_number' => 'INV-300001',
+            'invoice_date' => '2026-07-10',
+            'due_date' => '2026-07-20',
+            'status' => 'draft',
+        ], [
+            ['description' => 'Widget', 'quantity' => 1, 'unit_price' => 100, 'discount_percentage' => 0, 'tax_amount' => 0],
+        ]);
+        $salesService->generateVoucher($invoice);
+
+        $arAccountId = Account::where('company_id', $company->id)
+            ->where('account_code', Account::CODE_AR)
+            ->value('id');
+
+        $voucher = app(VoucherService::class)->create([
+            'uuid' => (string) Str::uuid(),
+            'company_id' => $company->id,
+            'financial_year_id' => $fy->id,
+            'party_id' => $debtor->id,
+            'voucher_type' => 'receipt',
+            'voucher_date' => '2026-07-12',
+            'narration' => 'Receipt via Payments/Receipts module',
+            'lines' => [
+                ['account_id' => $cash->id, 'party_id' => null, 'debit' => 100, 'credit' => 0],
+                ['account_id' => (int) $arAccountId, 'party_id' => $debtor->id, 'debit' => 0, 'credit' => 100],
+            ],
+            'invoice_settlements' => [
+                [
+                    'invoice_id' => $invoice->id,
+                    'amount' => 100,
+                    'invoice_type' => 'sales',
+                    'reference_number' => 'CHQ-9911',
+                ],
+            ],
+        ]);
+
+        $mapping = PaymentInvoiceMapping::where('payment_voucher_id', $voucher->id)->firstOrFail();
+        $this->assertEquals('CHQ-9911', $mapping->reference_number);
+        $this->assertEquals('full', $mapping->status);
+        $this->assertEquals(100.0, (float) $mapping->amount_settled);
+
+        $invoice->refresh();
+        $this->assertEquals(0.0, (float) $invoice->balance_due);
+        $this->assertEquals('paid', $invoice->status);
+    }
+
     private function seedCompanyWithCashAndDebtor(): array
     {
         $company = Company::factory()->create();

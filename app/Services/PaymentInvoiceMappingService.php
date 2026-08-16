@@ -50,13 +50,15 @@ class PaymentInvoiceMappingService
             $invoiceId = (int) ($mapping['invoice_id'] ?? 0);
             $amount = (float) ($mapping['amount'] ?? 0);
             $invoiceType = $mapping['invoice_type'] ?? 'sales';
+            $referenceNumber = $mapping['reference_number'] ?? null;
 
             if ($invoiceId && $amount > 0) {
                 $createdMapping = $this->repository->createMapping(
                     $paymentVoucherId,
                     $invoiceType,
                     $invoiceId,
-                    $amount
+                    $amount,
+                    $referenceNumber
                 );
                 $createdMapping = $this->repository->updateMappingSettlement($createdMapping, $amount);
                 $createdMappings->push($createdMapping);

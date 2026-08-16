@@ -102,6 +102,15 @@
                                 <i class="bi bi-trash"></i>
                             </button>
                         </div>
+                        <div class="col-12 pr-bill-wise-wrapper" style="display:none;">
+                            <div class="border rounded p-2 mt-1 bg-light">
+                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                    <small class="fw-semibold"><i class="bi bi-receipt me-1"></i>Bill-wise Details (optional — settle against outstanding invoices)</small>
+                                    <small class="text-muted pr-bill-wise-summary"></small>
+                                </div>
+                                <div class="pr-bill-wise-list small text-muted"></div>
+                            </div>
+                        </div>
                     </div>
                 </div>
                 <div class="mb-3">
@@ -464,6 +473,15 @@ $(document).ready(function() {
                             <i class="bi bi-trash"></i>
                         </button>
                     </div>
+                    <div class="col-12 pr-bill-wise-wrapper" style="display:none;">
+                        <div class="border rounded p-2 mt-1 bg-light">
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <small class="fw-semibold"><i class="bi bi-receipt me-1"></i>Bill-wise Details (optional — settle against outstanding invoices)</small>
+                                <small class="text-muted pr-bill-wise-summary"></small>
+                            </div>
+                            <div class="pr-bill-wise-list small text-muted"></div>
+                        </div>
+                    </div>
                 </div>
             `);
         }
@@ -520,6 +538,83 @@ $(document).ready(function() {
             $hint.text(`Party balance: ₹${balance.toFixed(2)} ${suffix}`);
         }
 
+        function billWiseRowHtml(rowIndex, invoice) {
+            const balanceDue = parseFloat(invoice.balance_due) || 0;
+            return `
+                <div class="row g-2 align-items-center mb-1 pr-bill-row">
+                    <div class="col-auto">
+                        <input type="checkbox" class="form-check-input pr-bill-check" name="payment_rows[${rowIndex}][invoice_allocations][${invoice.id}][invoice_id]" value="${invoice.id}" data-invoice-id="${invoice.id}">
+                    </div>
+                    <div class="col-3">${invoice.invoice_number}<br><span class="text-muted">${invoice.invoice_date || ''}</span></div>
+                    <div class="col-2 text-end">₹${balanceDue.toFixed(2)}</div>
+                    <div class="col-3">
+                        <input type="number" class="form-control form-control-sm pr-bill-amount" name="payment_rows[${rowIndex}][invoice_allocations][${invoice.id}][amount]" step="0.01" min="0.01" max="${balanceDue}" value="${balanceDue.toFixed(2)}" disabled>
+                    </div>
+                    <div class="col-4">
+                        <input type="text" class="form-control form-control-sm pr-bill-ref" name="payment_rows[${rowIndex}][invoice_allocations][${invoice.id}][reference_number]" placeholder="Ref / Cheque No." maxlength="100" disabled>
+                    </div>
+                </div>
+            `;
+        }
+
+        function updateBillWiseSummary($row) {
+            let allocated = 0;
+            $row.find('.pr-bill-check:checked').each(function() {
+                allocated += parseFloat($(this).closest('.pr-bill-row').find('.pr-bill-amount').val()) || 0;
+            });
+            const rowAmount = parseFloat($row.find('.pr-amount').val()) || 0;
+            const $summary = $row.find('.pr-bill-wise-summary');
+            $summary.text(`Allocated: ₹${allocated.toFixed(2)} / ₹${rowAmount.toFixed(2)}`);
+            $summary.toggleClass('text-danger', allocated > rowAmount + 0.009).toggleClass('text-muted', allocated <= rowAmount + 0.009);
+        }
+
+        function loadBillWiseInvoices($row, partyId) {
+            const rowIndex = $row.data('index');
+            const $wrapper = $row.find('.pr-bill-wise-wrapper');
+            const $list = $row.find('.pr-bill-wise-list');
+
+            if (!partyId) {
+                $wrapper.hide();
+                $list.html('');
+                return;
+            }
+
+            $wrapper.show();
+            $list.html('<span class="text-muted">Loading invoices…</span>');
+
+            $.ajax({
+                url: `/admin/parties/${partyId}/outstanding-invoices`,
+                type: 'GET',
+                data: { invoice_type: voucherType === 'receipt' ? 'sales' : 'purchase' },
+                success: function(r) {
+                    const invoices = (r && r.data) || [];
+                    if (!invoices.length) {
+                        $list.html('<span class="text-muted">No outstanding invoices for this party.</span>');
+                        updateBillWiseSummary($row);
+                        return;
+                    }
+                    let html = '';
+                    invoices.forEach((inv) => { html += billWiseRowHtml(rowIndex, inv); });
+                    $list.html(html);
+                    updateBillWiseSummary($row);
+                },
+                error: function() {
+                    $list.html('<span class="text-danger">Could not load outstanding invoices.</span>');
+                }
+            });
+        }
+
+        $(document).on('change', '.pr-bill-check', function() {
+            const $billRow = $(this).closest('.pr-bill-row');
+            const $row = $(this).closest('.payment-receipt-row');
+            $billRow.find('.pr-bill-amount, .pr-bill-ref').prop('disabled', !this.checked);
+            updateBillWiseSummary($row);
+        });
+
+        $(document).on('input', '.pr-bill-amount', function() {
+            updateBillWiseSummary($(this).closest('.payment-receipt-row'));
+        });
+
         $('#addPaymentReceiptRow').on('click', function() {
             const row = buildPaymentReceiptRow(paymentReceiptRowIndex);
             $('#paymentReceiptRows').append(row);
@@ -543,6 +638,7 @@ $(document).ready(function() {
         $(document).on('input', '.payment-receipt-row .pr-amount', function() {
             calculateTotals();
             updateCashBankBalanceHint();
+            updateBillWiseSummary($(this).closest('.payment-receipt-row'));
         });
 
         $(document).on('change', '.pr-particular', function() {
@@ -564,6 +660,9 @@ $(document).ready(function() {
 
             refreshParticularsAvailability();
             updateParticularBalanceHint($select);
+
+            const partyId = value.startsWith('party:') ? value.substring(6) : null;
+            loadBillWiseInvoices($select.closest('.payment-receipt-row'), partyId);
         });
 
         $('#cash_bank_account_id').on('change', updateCashBankBalanceHint);

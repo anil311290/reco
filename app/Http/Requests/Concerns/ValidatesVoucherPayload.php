@@ -4,6 +4,8 @@ namespace App\Http\Requests\Concerns;
 
 use App\Models\Account;
 use App\Models\Party;
+use App\Models\PurchaseInvoice;
+use App\Models\SalesInvoice;
 use App\Services\LedgerService;
 use Illuminate\Validation\Rule;
 
@@ -28,6 +30,10 @@ trait ValidatesVoucherPayload
             'payment_rows.*.account_id' => ['required_if:voucher_type,payment,receipt', 'string'],
             'payment_rows.*.amount' => 'required_if:voucher_type,payment,receipt|numeric|gt:0',
             'payment_rows.*.description' => 'nullable|string|max:255',
+            'payment_rows.*.invoice_allocations' => 'nullable|array',
+            'payment_rows.*.invoice_allocations.*.invoice_id' => 'nullable|integer',
+            'payment_rows.*.invoice_allocations.*.amount' => 'nullable|numeric|min:0',
+            'payment_rows.*.invoice_allocations.*.reference_number' => 'nullable|string|max:100',
 
             'adjustment_rows' => 'required_if:voucher_type,journal,adjustment|array|min:2',
             'adjustment_rows.*.account_id' => ['required_if:voucher_type,journal,adjustment', 'string'],
@@ -77,6 +83,7 @@ trait ValidatesVoucherPayload
             $this->merge([
                 'lines' => $this->normalizePaymentReceiptRows($rows, $cashBankAccountId, $voucherType),
                 'party_id' => $this->input('party_id') ?: $this->resolvePartyIdFromPaymentRows($rows),
+                'invoice_settlements' => $this->buildInvoiceSettlements($rows, $voucherType),
             ]);
             return;
         }
@@ -151,6 +158,18 @@ trait ValidatesVoucherPayload
                     );
                 } else {
                     $seenParticulars[] = $token;
+                }
+
+                $allocations = (array) ($row['invoice_allocations'] ?? []);
+                if (!empty($allocations)) {
+                    $this->validateInvoiceAllocations(
+                        $validator,
+                        $index,
+                        $resolved['party_id'],
+                        (float) ($row['amount'] ?? 0),
+                        $allocations,
+                        $voucherType === 'receipt' ? 'sales' : 'purchase'
+                    );
                 }
             }
 
@@ -236,6 +255,98 @@ trait ValidatesVoucherPayload
                 'Insufficient balance in ' . $cashBank->account_name . '. Available: ₹' . number_format($available, 2)
             );
         }
+    }
+
+    /**
+     * Validate that bill-wise invoice allocations belong to the row's party, don't
+     * exceed the invoice balance due, and don't exceed the row's particulars amount.
+     */
+    protected function validateInvoiceAllocations(
+        $validator,
+        int $rowIndex,
+        ?int $partyId,
+        float $rowAmount,
+        array $allocations,
+        string $invoiceType
+    ): void {
+        if (!$partyId) {
+            $validator->errors()->add(
+                "payment_rows.{$rowIndex}.invoice_allocations",
+                'Bill-wise allocation requires a party particular.'
+            );
+            return;
+        }
+
+        $companyId = $this->user()?->company_id;
+        $invoiceModel = $invoiceType === 'sales' ? SalesInvoice::class : PurchaseInvoice::class;
+
+        $totalAllocated = 0.0;
+        foreach ($allocations as $allocation) {
+            $invoiceId = (int) ($allocation['invoice_id'] ?? 0);
+            $amount = (float) ($allocation['amount'] ?? 0);
+
+            if ($invoiceId <= 0 || $amount <= 0) {
+                continue;
+            }
+
+            $invoice = $invoiceModel::where('company_id', $companyId)
+                ->where('party_id', $partyId)
+                ->find($invoiceId);
+
+            if (!$invoice) {
+                $validator->errors()->add(
+                    "payment_rows.{$rowIndex}.invoice_allocations",
+                    "Invoice #{$invoiceId} does not belong to the selected party."
+                );
+                continue;
+            }
+
+            if ($amount > round((float) $invoice->balance_due, 2) + 0.009) {
+                $validator->errors()->add(
+                    "payment_rows.{$rowIndex}.invoice_allocations",
+                    "Allocation for Invoice #{$invoice->invoice_number} exceeds its balance due."
+                );
+            }
+
+            $totalAllocated += $amount;
+        }
+
+        if ($totalAllocated > round($rowAmount, 2) + 0.009) {
+            $validator->errors()->add(
+                "payment_rows.{$rowIndex}.invoice_allocations",
+                'Total invoice allocation cannot exceed the particulars amount.'
+            );
+        }
+    }
+
+    /**
+     * Flatten each row's invoice_allocations into a single settlements list for the
+     * payment-invoice mapping service to consume after the voucher is created.
+     */
+    protected function buildInvoiceSettlements(array $rows, string $voucherType): array
+    {
+        $invoiceType = $voucherType === 'receipt' ? 'sales' : 'purchase';
+        $settlements = [];
+
+        foreach ($rows as $row) {
+            foreach ((array) ($row['invoice_allocations'] ?? []) as $allocation) {
+                $invoiceId = (int) ($allocation['invoice_id'] ?? 0);
+                $amount = (float) ($allocation['amount'] ?? 0);
+
+                if ($invoiceId <= 0 || $amount <= 0) {
+                    continue;
+                }
+
+                $settlements[] = [
+                    'invoice_id' => $invoiceId,
+                    'amount' => round($amount, 2),
+                    'invoice_type' => $invoiceType,
+                    'reference_number' => $allocation['reference_number'] ?? null,
+                ];
+            }
+        }
+
+        return $settlements;
     }
 
     protected function resolvePartyIdFromPaymentRows(array $rows): ?int

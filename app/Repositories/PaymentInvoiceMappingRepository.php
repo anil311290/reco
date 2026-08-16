@@ -17,7 +17,8 @@ class PaymentInvoiceMappingRepository implements PaymentInvoiceMappingRepository
         int $paymentVoucherId,
         string $invoiceType,
         int $invoiceId,
-        float $amountAllocated
+        float $amountAllocated,
+        ?string $referenceNumber = null
     ): PaymentInvoiceMapping {
         // Validate invoice exists and has sufficient balance
         $invoice = $this->getInvoiceModel($invoiceType, $invoiceId);
@@ -55,6 +56,7 @@ class PaymentInvoiceMappingRepository implements PaymentInvoiceMappingRepository
             'amount_allocated' => $amountAllocated,
             'amount_settled' => 0,
             'status' => 'pending',
+            'reference_number' => $referenceNumber,
             'created_by' => auth()->id(),
             'created_by_ip' => request()->ip(),
         ]);

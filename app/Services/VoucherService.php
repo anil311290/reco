@@ -159,12 +159,14 @@ class VoucherService
             $data['total_credit'] = round($totalCredit, 2);
 
             $lines = $data['lines'] ?? [];
+            $invoiceSettlements = $data['invoice_settlements'] ?? [];
             unset(
                 $data['lines'],
                 $data['payment_rows'],
                 $data['adjustment_rows'],
                 $data['payment_mode'],
-                $data['cash_bank_account_id']
+                $data['cash_bank_account_id'],
+                $data['invoice_settlements']
             );
 
             // Payment / Receipt / Adjustment: CA style — post immediately so
@@ -192,12 +194,43 @@ class VoucherService
                 $this->ledgerService->generateForVoucher($voucher);
             }
 
+            if ($voucher->status === 'posted' && !empty($invoiceSettlements)) {
+                $this->applyInvoiceSettlements($voucher, $invoiceSettlements);
+            }
+
             DB::commit();
 
             return $voucher->fresh(['party', 'lines.account']);
         } catch (\Exception $e) {
             DB::rollBack();
             throw $e;
+        }
+    }
+
+    /**
+     * Bill-wise allocate a freshly posted payment/receipt voucher against selected invoices
+     * (Tally-style "Agst Ref"): creates the mapping and updates each invoice's paid/balance.
+     *
+     * @param  array<int, array{invoice_id:int,amount:float,invoice_type:string,reference_number?:?string}>  $settlements
+     */
+    protected function applyInvoiceSettlements(Voucher $voucher, array $settlements): void
+    {
+        $this->paymentMappingService->createExplicitMappings($voucher->id, $settlements);
+
+        foreach ($settlements as $settlement) {
+            $invoiceType = $settlement['invoice_type'] ?? 'sales';
+            $invoiceId = (int) ($settlement['invoice_id'] ?? 0);
+            $amount = round((float) ($settlement['amount'] ?? 0), 2);
+
+            if (!$invoiceId || $amount <= 0) {
+                continue;
+            }
+
+            $invoice = $invoiceType === 'sales'
+                ? \App\Models\SalesInvoice::find($invoiceId)
+                : \App\Models\PurchaseInvoice::find($invoiceId);
+
+            $invoice?->recordPayment($amount);
         }
     }
 
