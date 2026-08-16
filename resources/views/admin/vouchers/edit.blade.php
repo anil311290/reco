@@ -38,7 +38,7 @@
 
             $amount = (float) $line->debit > 0 ? (float) $line->debit : (float) $line->credit;
             $paymentRows[] = [
-                'account_id' => $line->account_id,
+                'account_id' => $line->party_id ? "party:{$line->party_id}" : $line->account_id,
                 'amount' => $amount > 0 ? $amount : '',
             ];
         }
@@ -48,13 +48,13 @@
         foreach ($voucher->lines as $line) {
             if ((float) $line->debit > 0) {
                 $adjustmentRows[] = [
-                    'account_id' => $line->account_id,
+                    'account_id' => $line->party_id ? "party:{$line->party_id}" : $line->account_id,
                     'entry_type' => 'debit',
                     'amount' => $line->debit,
                 ];
             } elseif ((float) $line->credit > 0) {
                 $adjustmentRows[] = [
-                    'account_id' => $line->account_id,
+                    'account_id' => $line->party_id ? "party:{$line->party_id}" : $line->account_id,
                     'entry_type' => 'credit',
                     'amount' => $line->credit,
                 ];
