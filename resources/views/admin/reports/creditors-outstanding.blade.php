@@ -13,10 +13,42 @@
     }
 
     .aging-bucket-card {
+        display: block;
         border: 1px solid rgba(31, 41, 55, 0.08);
         border-radius: 16px;
         padding: 0.85rem 0.95rem;
         background: #ffffff;
+        text-decoration: none;
+        cursor: pointer;
+        transition: border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
+    }
+
+    .aging-bucket-card:hover {
+        border-color: rgba(161, 98, 7, 0.35);
+        box-shadow: 0 6px 16px rgba(31, 41, 55, 0.08);
+        transform: translateY(-1px);
+    }
+
+    .aging-bucket-card.is-active {
+        border-color: #a16207;
+        background: rgba(161, 98, 7, 0.06);
+        box-shadow: 0 0 0 1px #a16207 inset;
+    }
+
+    .aging-bucket-card.is-active .label {
+        color: #a16207;
+    }
+
+    .party-wise-filter-tools {
+        width: 100%;
+    }
+
+    .party-wise-filter-tools .form-label {
+        font-size: 0.78rem;
+        font-weight: 600;
+        color: #7c8298;
+        text-transform: uppercase;
+        letter-spacing: 0.03em;
     }
 
     .aging-bucket-card .label {
@@ -144,20 +176,40 @@
     </div>
 
     <div class="aging-bucket-grid">
-        @foreach(($report['aging_summary'] ?? []) as $bucket)
-            <div class="aging-bucket-card">
+        @php $activeBucket = $report['filters']['age_bucket'] ?? 'all'; @endphp
+        @foreach(($report['aging_summary'] ?? []) as $bucketKey => $bucket)
+            <a href="{{ route('admin.reports.creditors-outstanding', array_filter([
+                'financial_year_id' => $financialYearId,
+                'date_from' => $dateFrom,
+                'date_to' => $dateTo,
+                'overdue_status' => $report['filters']['overdue_status'] ?? 'all',
+                'age_bucket' => $bucketKey,
+            ])) }}" class="aging-bucket-card {{ $activeBucket === $bucketKey ? 'is-active' : '' }}">
                 <p class="label">{{ $bucket['label'] }}</p>
                 <p class="count">{{ $bucket['count'] }} Invoices</p>
                 <p class="amount">₹{{ number_format((float) $bucket['amount'], 2) }}</p>
-            </div>
+            </a>
         @endforeach
     </div>
 
     <div class="report-panel">
-        <div class="report-panel-header">
-            <h6 class="report-panel-title"><i class="bi bi-person-lines-fill text-warning"></i>Outstanding Creditors</h6>
+        <div class="report-panel-header report-panel-header--tabs">
+            <ul class="nav nav-tabs report-tabs" id="creditorsTabs" role="tablist">
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link active" id="invoice-wise-tab" data-bs-toggle="tab" data-bs-target="#invoice-wise-pane" type="button" role="tab" aria-controls="invoice-wise-pane" aria-selected="true">
+                        <i class="bi bi-receipt me-1"></i>Invoice Wise Summary
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="party-wise-tab" data-bs-toggle="tab" data-bs-target="#party-wise-pane" type="button" role="tab" aria-controls="party-wise-pane" aria-selected="false">
+                        <i class="bi bi-person-lines-fill me-1"></i>Party Wise Summary
+                    </button>
+                </li>
+            </ul>
             <span class="report-pill report-pill--info">@istDate($dateFrom) to @istDate($dateTo)</span>
         </div>
+        <div class="tab-content" id="creditorsTabsContent">
+        <div class="tab-pane fade show active" id="invoice-wise-pane" role="tabpanel" aria-labelledby="invoice-wise-tab">
         <div class="report-panel-body report-panel-body--flush">
             <div class="report-table-tools">
                 <form method="GET" action="{{ route('admin.reports.creditors-outstanding') }}" class="report-rows-form">
@@ -173,6 +225,7 @@
                         @foreach([10, 25, 50, 100] as $size)
                             <option value="{{ $size }}" {{ (int) request('per_page', 10) === $size ? 'selected' : '' }}>{{ $size }}</option>
                         @endforeach
+                        <option value="all" {{ strtolower((string) request('per_page', 10)) === 'all' ? 'selected' : '' }}>All</option>
                     </select>
                 </form>
             </div>
@@ -247,6 +300,117 @@
                 </div>
             @endif
         </div>
+        </div>
+
+        <div class="tab-pane fade" id="party-wise-pane" role="tabpanel" aria-labelledby="party-wise-tab">
+        <div class="report-panel-body report-panel-body--flush">
+            <div class="report-table-tools party-wise-filter-tools">
+                <form method="GET" action="{{ route('admin.reports.creditors-outstanding') }}#party-wise-pane" class="row g-2 align-items-end w-100">
+                    <input type="hidden" name="financial_year_id" value="{{ $financialYearId ?? '' }}">
+                    <input type="hidden" name="date_from" value="{{ $dateFrom ?? '' }}">
+                    <input type="hidden" name="date_to" value="{{ $dateTo ?? '' }}">
+                    <input type="hidden" name="overdue_status" value="{{ $report['filters']['overdue_status'] ?? 'all' }}">
+                    <input type="hidden" name="age_bucket" value="{{ $report['filters']['age_bucket'] ?? 'all' }}">
+                    <input type="hidden" name="age_min" value="{{ $report['filters']['age_min'] ?? '' }}">
+                    <input type="hidden" name="age_max" value="{{ $report['filters']['age_max'] ?? '' }}">
+                    <div class="col-12 col-md-6 col-lg-4">
+                        <label for="creditors-party-filter" class="form-label">Party</label>
+                        <select id="creditors-party-filter" name="party_id" class="form-select">
+                            <option value="">All Parties</option>
+                            @foreach($parties as $party)
+                                <option value="{{ $party['id'] }}" {{ (string) ($partyId ?? '') === (string) $party['id'] ? 'selected' : '' }}>{{ $party['text'] }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div class="col-auto">
+                        <label for="creditors-party-per-page" class="form-label">Rows Per Page</label>
+                        <select id="creditors-party-per-page" name="party_per_page" class="form-select form-select-sm report-rows-select" onchange="this.form.submit()">
+                            @foreach([10, 25, 50, 100] as $size)
+                                <option value="{{ $size }}" {{ (int) request('party_per_page', 10) === $size ? 'selected' : '' }}>{{ $size }}</option>
+                            @endforeach
+                            <option value="all" {{ strtolower((string) request('party_per_page', 10)) === 'all' ? 'selected' : '' }}>All</option>
+                        </select>
+                    </div>
+                    <div class="col-auto">
+                        <button type="submit" class="btn btn-primary"><i class="bi bi-funnel me-1"></i>Filter</button>
+                    </div>
+                    @if(!empty($partyId))
+                    <div class="col-auto">
+                        <a href="{{ route('admin.reports.creditors-outstanding', array_filter([
+                            'financial_year_id' => $financialYearId,
+                            'date_from' => $dateFrom,
+                            'date_to' => $dateTo,
+                            'overdue_status' => $report['filters']['overdue_status'] ?? 'all',
+                            'age_bucket' => $report['filters']['age_bucket'] ?? 'all',
+                            'age_min' => $report['filters']['age_min'] ?? '',
+                            'age_max' => $report['filters']['age_max'] ?? '',
+                        ])) }}#party-wise-pane" class="btn btn-outline-secondary"><i class="bi bi-x-circle me-1"></i>Clear Party</a>
+                    </div>
+                    @endif
+                </form>
+            </div>
+            <table class="table report-table table-hover mb-0">
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>Party</th>
+                        <th class="text-end">Invoices</th>
+                        <th class="text-end">Amount (₹)</th>
+                        <th class="text-end">Paid (₹)</th>
+                        <th class="text-end">Balance (₹) Cr</th>
+                        <th class="text-end">Max Due Days</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @forelse($partyWise as $item)
+                    <tr>
+                        <td>{{ ($partyWise->firstItem() ?? 1) + $loop->index }}</td>
+                        <td class="fw-semibold">
+                            @permission('parties.view')
+                                <a href="{{ route('admin.parties.show', $item['party']->id) }}" class="report-detail-link" title="View party history">
+                                    {{ $item['party']->name }}
+                                </a>
+                            @else
+                                {{ $item['party']->name }}
+                            @endpermission
+                            <span class="text-muted small">/ {{ $item['party']->party_code }}</span>
+                        </td>
+                        <td class="text-end">{{ $item['invoice_count'] }}</td>
+                        <td class="text-end">₹{{ number_format($item['invoice_total'], 2) }}</td>
+                        <td class="text-end">₹{{ number_format($item['amount_paid'], 2) }}</td>
+                        <td class="text-end fw-bold text-warning">₹{{ number_format($item['balance'], 2) }}</td>
+                        <td class="text-end">
+                            @if($item['max_due_days'] === null)
+                                <span class="text-muted">-</span>
+                            @elseif($item['max_due_days'] > 0)
+                                <span class="text-danger fw-semibold">{{ $item['max_due_days'] }}</span>
+                            @else
+                                <span class="text-success">{{ $item['max_due_days'] }}</span>
+                            @endif
+                        </td>
+                    </tr>
+                    @empty
+                    <tr><td colspan="7" class="text-muted text-center py-4">No outstanding payables</td></tr>
+                    @endforelse
+                </tbody>
+                @if($partyWise->count() > 0)
+                <tfoot>
+                    <tr>
+                        <td colspan="5">Total Outstanding</td>
+                        <td class="text-end fw-bold">₹{{ number_format($report['total'], 2) }}</td>
+                        <td></td>
+                    </tr>
+                </tfoot>
+                @endif
+            </table>
+            @if($partyWise->hasPages())
+                <div class="report-pagination">
+                    {{ $partyWise->onEachSide(1)->links('pagination::bootstrap-5') }}
+                </div>
+            @endif
+        </div>
+        </div>
+        </div>
     </div>
 </div>
 @push('scripts')
@@ -262,6 +426,27 @@
 
         $(document).on('change', '#age-bucket-select', toggle);
         toggle();
+
+        // Select2 miscalculates width inside a hidden tab pane; fix on show.
+        document.querySelectorAll('#creditorsTabs button[data-bs-toggle="tab"]').forEach((tabEl) => {
+            tabEl.addEventListener('shown.bs.tab', function (e) {
+                const $pane = $($(e.target).data('bs-target'));
+                $pane.find('select').each(function () {
+                    if ($(this).hasClass('select2-hidden-accessible')) {
+                        $(this).select2('destroy');
+                    }
+                });
+                initSearchableSelects($pane);
+            });
+        });
+
+        // Re-open the Party Wise Summary tab after a filter/clear round trip.
+        if (window.location.hash === '#party-wise-pane') {
+            const partyTabEl = document.getElementById('party-wise-tab');
+            if (partyTabEl && window.bootstrap) {
+                new bootstrap.Tab(partyTabEl).show();
+            }
+        }
     });
 </script>
 @endpush

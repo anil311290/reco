@@ -21,7 +21,7 @@
     @endphp
     <div id="builtPayload"></div>
     <div class="row g-4">
-        <div class="col-lg-9 col-md-8">
+        <div class="col-md-9">
             <div class="card mb-4">
                 <div class="card-header"><h5 class="mb-0">Invoice Details</h5></div>
                 <div class="card-body">
@@ -113,7 +113,7 @@
                             </thead>
                             <tbody id="linesBody">
                                 <tr class="line-row" data-kind="">
-                                    <td>
+                                    <td style="overflow: hidden;">
                                         <select class="form-select form-select-sm particular-select w-100" data-searchable="true" data-placeholder="Search item / service">
                                             <option value="">Select Item / Service</option>
                                             <optgroup label="Goods">
@@ -127,7 +127,7 @@
                                                 @endforeach
                                             </optgroup>
                                         </select>
-                                        <input type="text" class="form-control form-control-sm mt-1 bg-light description-input" placeholder="Description" readonly>
+                                        <input type="text" class="form-control form-control-sm mt-1 bg-light description-input" placeholder="Description" readonly style="font-size: 0.75rem;">
                                     </td>
                                     <td><input type="number" class="form-control form-control-sm qty-input" value="1" min="0.001" step="0.001"></td>
                                     <td><input type="number" class="form-control form-control-sm price-input" value="0" min="0" step="0.01"></td>
@@ -150,28 +150,28 @@
             </div>
         </div>
 
-        <div class="col-lg-3 col-md-4">
+        <div class="col-md-3">
             <div class="card sticky-top" style="top:1rem">
                 <div class="card-header"><h5 class="mb-0">Summary</h5></div>
-                <div class="card-body">
+                <div class="card-body p-2">
+                    <div class="d-flex justify-content-between mb-1">
+                        <span style="font-size: 0.9rem;">Subtotal:</span>
+                        <strong id="subtotal" style="font-size: 0.9rem;">₹0.00</strong>
+                    </div>
+                    <div class="d-flex justify-content-between mb-1">
+                        <span style="font-size: 0.9rem;">Discount:</span>
+                        <span class="text-danger" id="discountAmount" style="font-size: 0.9rem;">-₹0.00</span>
+                    </div>
+                    <div class="d-flex justify-content-between mb-1">
+                        <span style="font-size: 0.9rem;">Tax:</span>
+                        <span id="taxAmount" style="font-size: 0.9rem;">₹0.00</span>
+                    </div>
+                    <hr style="margin: 0.5rem 0;">
                     <div class="d-flex justify-content-between mb-2">
-                        <span>Subtotal:</span>
-                        <strong id="subtotal">₹0.00</strong>
+                        <span class="fw-bold" style="font-size: 1rem;">Total:</span>
+                        <span class="fw-bold text-primary" id="totalAmount" style="font-size: 1rem;">₹0.00</span>
                     </div>
-                    <div class="d-flex justify-content-between mb-2">
-                        <span>Discount:</span>
-                        <span class="text-danger" id="discountAmount">-₹0.00</span>
-                    </div>
-                    <div class="d-flex justify-content-between mb-2">
-                        <span>Tax:</span>
-                        <span id="taxAmount">₹0.00</span>
-                    </div>
-                    <hr>
-                    <div class="d-flex justify-content-between mb-3">
-                        <span class="fs-5 fw-bold">Total:</span>
-                        <span class="fs-5 fw-bold text-primary" id="totalAmount">₹0.00</span>
-                    </div>
-                    <button type="submit" class="btn btn-primary w-100">
+                    <button type="submit" class="btn btn-primary w-100" style="padding: 0.375rem;">
                         <i class="bi bi-check-circle me-2"></i>Create Invoice
                     </button>
                 </div>
@@ -233,12 +233,12 @@ function applyParticularSelection(row) {
         row.find('.qty-input').prop('readonly', false).removeClass('bg-light');
         row.find('.disc-input').prop('readonly', false).removeClass('bg-light');
         row.find('.price-input').val(price).prop('readonly', false).removeClass('bg-light');
-        row.find('.tax-select').val(taxId);
+        row.find('.tax-select').val(taxId).trigger('change');
     } else {
         row.find('.qty-input').val(1).prop('readonly', false).removeClass('bg-light');
         row.find('.disc-input').val(0).prop('readonly', false).removeClass('bg-light');
         row.find('.price-input').val(0).prop('readonly', false).removeClass('bg-light');
-        row.find('.tax-select').val('');
+        row.find('.tax-select').val('').trigger('change');
     }
 
     calculateLineTotal(row);

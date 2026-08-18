@@ -585,6 +585,46 @@
                 color: #23263a;
             }
 
+            .report-section-title {
+                display: flex;
+                align-items: center;
+                gap: 0.4rem;
+                font-size: 1.05rem;
+                font-weight: 700;
+                color: #23263a;
+            }
+
+            .report-panel-header--tabs {
+                flex-wrap: wrap;
+                row-gap: 0.5rem;
+            }
+
+            .report-tabs {
+                border-bottom: none;
+                gap: 0.35rem;
+                flex-wrap: wrap;
+            }
+
+            .report-tabs .nav-link {
+                border: 1px solid transparent;
+                border-radius: 10px;
+                padding: 0.4rem 0.85rem;
+                font-size: 0.88rem;
+                font-weight: 600;
+                color: #6b7280;
+            }
+
+            .report-tabs .nav-link:hover {
+                color: #23263a;
+                background: rgba(31, 41, 55, 0.04);
+            }
+
+            .report-tabs .nav-link.active {
+                color: #fff;
+                background: var(--report-accent, #7367f0);
+                border-color: transparent;
+            }
+
             .report-panel-body {
                 padding: 0.85rem 0.95rem;
             }
@@ -905,6 +945,7 @@
             body.dark-mode .report-title,
             body.dark-mode .report-subtitle,
             body.dark-mode .report-panel-title,
+            body.dark-mode .report-section-title,
             body.dark-mode .report-stat-label,
             body.dark-mode .report-stat-value,
             body.dark-mode .report-pill,
@@ -982,6 +1023,15 @@
             body.dark-mode .report-panel-header {
                 background: rgba(255, 255, 255, 0.04);
                 border-color: rgba(148, 163, 184, 0.12);
+            }
+
+            body.dark-mode .report-tabs .nav-link {
+                color: #9ca3af;
+            }
+
+            body.dark-mode .report-tabs .nav-link:hover {
+                color: #e5e7eb;
+                background: rgba(148, 163, 184, 0.1);
             }
 
             body.dark-mode .report-pill {

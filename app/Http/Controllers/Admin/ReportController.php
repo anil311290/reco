@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Services\ReportService;
 use App\Services\LedgerService;
+use App\Services\PartyService;
 use App\Models\Account;
 use App\Models\FinancialYear;
 use Illuminate\Http\Request;
@@ -16,11 +17,13 @@ class ReportController extends Controller
 {
     protected ReportService $reportService;
     protected LedgerService $ledgerService;
+    protected PartyService $partyService;
 
-    public function __construct(ReportService $reportService, LedgerService $ledgerService)
+    public function __construct(ReportService $reportService, LedgerService $ledgerService, PartyService $partyService)
     {
         $this->reportService = $reportService;
         $this->ledgerService = $ledgerService;
+        $this->partyService = $partyService;
     }
 
     public function index()
@@ -93,7 +96,7 @@ class ReportController extends Controller
         }
 
         $report = $this->reportService->getTrialBalance($companyId, $financialYearId, $dateFrom, $dateTo);
-        $accounts = $this->paginateReportItems($request, $report['accounts'] ?? [], 10);
+        $accounts = collect($report['accounts'] ?? []);
 
         return view('admin.reports.trial-balance', compact('report', 'accounts', 'financialYears', 'financialYearId', 'dateFrom', 'dateTo'));
     }
@@ -191,7 +194,12 @@ class ReportController extends Controller
         $report['aging_summary'] = $this->summarizeAgingBuckets($report['debtors'] ?? []);
         $debtors = $this->paginateReportItems($request, $report['debtors'] ?? [], 10);
 
-        return view('admin.reports.debtors-outstanding', compact('report', 'debtors', 'financialYearId', 'dateFrom', 'dateTo', 'financialYears'));
+        $partyId = $request->input('party_id');
+        $partyWiseRows = $this->summarizePartyWise($report['debtors'] ?? [], $partyId);
+        $partyWise = $this->paginateReportItems($request, $partyWiseRows, 10, 'party_page', 'party_per_page');
+        $parties = $this->partyService->getForDropdown($companyId, 'debtor');
+
+        return view('admin.reports.debtors-outstanding', compact('report', 'debtors', 'financialYearId', 'dateFrom', 'dateTo', 'financialYears', 'partyWise', 'parties', 'partyId'));
     }
 
     /**
@@ -236,7 +244,12 @@ class ReportController extends Controller
         $report['aging_summary'] = $this->summarizeAgingBuckets($report['creditors'] ?? []);
         $creditors = $this->paginateReportItems($request, $report['creditors'] ?? [], 10);
 
-        return view('admin.reports.creditors-outstanding', compact('report', 'creditors', 'financialYearId', 'dateFrom', 'dateTo', 'financialYears'));
+        $partyId = $request->input('party_id');
+        $partyWiseRows = $this->summarizePartyWise($report['creditors'] ?? [], $partyId);
+        $partyWise = $this->paginateReportItems($request, $partyWiseRows, 10, 'party_page', 'party_per_page');
+        $parties = $this->partyService->getForDropdown($companyId, 'creditor');
+
+        return view('admin.reports.creditors-outstanding', compact('report', 'creditors', 'financialYearId', 'dateFrom', 'dateTo', 'financialYears', 'partyWise', 'parties', 'partyId'));
     }
 
     public function agingSummary(Request $request)
@@ -319,15 +332,75 @@ class ReportController extends Controller
         return $summary;
     }
 
-    protected function paginateReportItems(Request $request, iterable $items, int $defaultPerPage = 25): LengthAwarePaginator
+    /**
+     * Aggregate invoice-wise outstanding rows into one row per party.
+     *
+     * @param  array<int, array<string, mixed>>  $rows
+     * @return array<int, array<string, mixed>>
+     */
+    private function summarizePartyWise(iterable $rows, $partyId = null): array
     {
+        $groups = [];
+
+        foreach ($rows as $row) {
+            $party = $row['party'] ?? null;
+            if (!$party) {
+                continue;
+            }
+
+            if ($partyId && (string) $party->id !== (string) $partyId) {
+                continue;
+            }
+
+            if (!isset($groups[$party->id])) {
+                $groups[$party->id] = [
+                    'party' => $party,
+                    'invoice_count' => 0,
+                    'invoice_total' => 0.0,
+                    'amount_paid' => 0.0,
+                    'balance' => 0.0,
+                    'max_due_days' => null,
+                ];
+            }
+
+            $groups[$party->id]['invoice_count']++;
+            $groups[$party->id]['invoice_total'] += (float) ($row['invoice_total'] ?? 0);
+            $groups[$party->id]['amount_paid'] += (float) ($row['amount_paid'] ?? 0);
+            $groups[$party->id]['balance'] += (float) ($row['balance'] ?? 0);
+
+            $dueDays = $row['due_days'] ?? null;
+            if ($dueDays !== null && ($groups[$party->id]['max_due_days'] === null || $dueDays > $groups[$party->id]['max_due_days'])) {
+                $groups[$party->id]['max_due_days'] = $dueDays;
+            }
+        }
+
+        $result = array_values($groups);
+
+        foreach ($result as &$row) {
+            $row['invoice_total'] = round($row['invoice_total'], 2);
+            $row['amount_paid'] = round($row['amount_paid'], 2);
+            $row['balance'] = round($row['balance'], 2);
+        }
+        unset($row);
+
+        usort($result, fn ($a, $b) => $b['balance'] <=> $a['balance']);
+
+        return $result;
+    }
+
+    protected function paginateReportItems(Request $request, iterable $items, int $defaultPerPage = 25, string $pageName = 'page', ?string $perPageName = null): LengthAwarePaginator
+    {
+        $perPageName = $perPageName ?? 'per_page';
         $collection = $items instanceof Collection
             ? $items->values()
             : collect($items)->values();
 
-        $requestedPerPage = (int) $request->input('per_page', $defaultPerPage);
-        $perPage = max(10, min($requestedPerPage, 200));
-        $currentPage = LengthAwarePaginator::resolveCurrentPage();
+        $rawPerPage = $request->input($perPageName, $defaultPerPage);
+        $showAll = strtolower((string) $rawPerPage) === 'all';
+        $totalCount = $collection->count();
+
+        $perPage = $showAll ? max(1, $totalCount) : max(10, min((int) $rawPerPage, 200));
+        $currentPage = $showAll ? 1 : LengthAwarePaginator::resolveCurrentPage($pageName);
 
         $currentItems = $collection
             ->forPage($currentPage, $perPage)
@@ -335,12 +408,13 @@ class ReportController extends Controller
 
         return new LengthAwarePaginator(
             $currentItems,
-            $collection->count(),
+            $totalCount,
             $perPage,
             $currentPage,
             [
                 'path' => $request->url(),
                 'query' => $request->query(),
+                'pageName' => $pageName,
             ]
         );
     }

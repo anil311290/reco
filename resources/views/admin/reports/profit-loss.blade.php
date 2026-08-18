@@ -78,70 +78,89 @@
         </div>
     </div>
 @else
-    <div class="row g-4">
-        <div class="col-xl-6">
-            <div class="report-panel h-100">
-                <div class="report-panel-header">
-                    <h6 class="report-panel-title"><i class="bi bi-arrow-down-circle text-success"></i>Income</h6>
-                    <span class="report-pill report-pill--info">@istDate($dateFrom) to @istDate($dateTo)</span>
-                </div>
-                <div class="report-panel-body report-panel-body--flush">
-                    <table class="table report-table table-hover mb-0">
-                        <tbody>
-                            @forelse($report['income']['accounts'] as $item)
-                            <tr>
-                                <td>
-                                    <a href="{{ route('admin.reports.ledger', ['account_id' => $item['account']->id]) }}" class="report-detail-link" title="View ledger">
-                                        {{ $item['account']->account_name }}
-                                    </a>
-                                </td>
-                                <td class="text-end fw-semibold text-success">₹{{ number_format($item['amount'], 2) }}</td>
-                            </tr>
-                            @empty
-                            <tr><td class="text-muted text-center py-3">No income recorded</td></tr>
-                            @endforelse
-                        </tbody>
-                        <tfoot>
-                            <tr>
-                                <td>Total Income</td>
-                                <td class="text-end fw-bold text-success">₹{{ number_format($report['income']['total'], 2) }}</td>
-                            </tr>
-                        </tfoot>
-                    </table>
-                </div>
-            </div>
-        </div>
+    @php
+        $expenseAccounts = $report['expense']['accounts'] ?? [];
+        $incomeAccounts = $report['income']['accounts'] ?? [];
+        $isProfit = $report['is_profit'];
+        $balancingAmount = abs($report['net_profit']);
 
-        <div class="col-xl-6">
-            <div class="report-panel h-100">
-                <div class="report-panel-header">
-                    <h6 class="report-panel-title"><i class="bi bi-arrow-up-circle text-danger"></i>Expenses</h6>
-                    <span class="report-pill report-pill--info">@istDate($dateFrom) to @istDate($dateTo)</span>
-                </div>
-                <div class="report-panel-body report-panel-body--flush">
-                    <table class="table report-table table-hover mb-0">
-                        <tbody>
-                            @forelse($report['expense']['accounts'] as $item)
-                            <tr>
-                                <td>
-                                    <a href="{{ route('admin.reports.ledger', ['account_id' => $item['account']->id]) }}" class="report-detail-link" title="View ledger">
-                                        {{ $item['account']->account_name }}
-                                    </a>
-                                </td>
-                                <td class="text-end fw-semibold text-danger">₹{{ number_format($item['amount'], 2) }}</td>
-                            </tr>
-                            @empty
-                            <tr><td class="text-muted text-center py-3">No expenses recorded</td></tr>
-                            @endforelse
-                        </tbody>
-                        <tfoot>
-                            <tr>
-                                <td>Total Expenses</td>
-                                <td class="text-end fw-bold text-danger">₹{{ number_format($report['expense']['total'], 2) }}</td>
-                            </tr>
-                        </tfoot>
-                    </table>
-                </div>
+        // Balancing figure always goes on the smaller side so both totals tally equal.
+        if ($isProfit) {
+            $expenseAccounts[] = ['account' => null, 'label' => 'Net Profit', 'amount' => $balancingAmount];
+        } else {
+            $incomeAccounts[] = ['account' => null, 'label' => 'Net Loss', 'amount' => $balancingAmount];
+        }
+
+        $totalExpense = collect($expenseAccounts)->sum('amount');
+        $totalIncome = collect($incomeAccounts)->sum('amount');
+        $plRowCount = max(count($expenseAccounts), count($incomeAccounts));
+    @endphp
+
+    <div class="report-panel">
+        <div class="report-panel-header">
+            <h6 class="report-panel-title"><i class="bi bi-journal-text text-primary"></i>Profit &amp; Loss Account</h6>
+            <span class="report-pill report-pill--info">@istDate($dateFrom) to @istDate($dateTo)</span>
+            <span class="report-pill {{ $isProfit ? 'report-pill--success' : 'report-pill--danger' }}">
+                <i class="bi {{ $isProfit ? 'bi-check-circle' : 'bi-exclamation-circle' }}"></i>
+                {{ $isProfit ? 'Profitable' : 'Loss Position' }}
+            </span>
+        </div>
+        <div class="report-panel-body report-panel-body--flush">
+            <div class="table-responsive">
+                <table class="table report-table table-hover mb-0">
+                    <thead>
+                        <tr>
+                            <th colspan="2" class="text-danger">Expenses</th>
+                            <th colspan="2" class="text-success">Income</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @if($plRowCount === 0)
+                            <tr><td colspan="4" class="text-muted text-center py-3">No income or expenses recorded</td></tr>
+                        @else
+                            @for ($i = 0; $i < $plRowCount; $i++)
+                                @php
+                                    $expenseRow = $expenseAccounts[$i] ?? null;
+                                    $incomeRow = $incomeAccounts[$i] ?? null;
+                                @endphp
+                                <tr>
+                                    <td>
+                                        @if($expenseRow && !empty($expenseRow['account']))
+                                            <a href="{{ route('admin.reports.ledger', ['account_id' => $expenseRow['account']->id]) }}" class="report-detail-link" title="View ledger">
+                                                {{ $expenseRow['account']->account_name }}
+                                            </a>
+                                        @elseif($expenseRow)
+                                            <span class="fw-bold text-success">{{ $expenseRow['label'] }}</span>
+                                        @endif
+                                    </td>
+                                    <td class="text-end {{ $expenseRow && empty($expenseRow['account']) ? 'fw-bold text-success' : 'fw-semibold text-danger' }}">
+                                        {{ $expenseRow ? '₹' . number_format($expenseRow['amount'], 2) : '' }}
+                                    </td>
+                                    <td>
+                                        @if($incomeRow && !empty($incomeRow['account']))
+                                            <a href="{{ route('admin.reports.ledger', ['account_id' => $incomeRow['account']->id]) }}" class="report-detail-link" title="View ledger">
+                                                {{ $incomeRow['account']->account_name }}
+                                            </a>
+                                        @elseif($incomeRow)
+                                            <span class="fw-bold text-danger">{{ $incomeRow['label'] }}</span>
+                                        @endif
+                                    </td>
+                                    <td class="text-end {{ $incomeRow && empty($incomeRow['account']) ? 'fw-bold text-danger' : 'fw-semibold text-success' }}">
+                                        {{ $incomeRow ? '₹' . number_format($incomeRow['amount'], 2) : '' }}
+                                    </td>
+                                </tr>
+                            @endfor
+                        @endif
+                    </tbody>
+                    <tfoot>
+                        <tr>
+                            <td class="fw-bold">Total</td>
+                            <td class="text-end fw-bold">₹{{ number_format($totalExpense, 2) }}</td>
+                            <td class="fw-bold">Total</td>
+                            <td class="text-end fw-bold">₹{{ number_format($totalIncome, 2) }}</td>
+                        </tr>
+                    </tfoot>
+                </table>
             </div>
         </div>
     </div>
@@ -149,10 +168,10 @@
     <div class="report-panel">
         <div class="report-panel-body">
             <div class="report-kpi-bar">
-                <span class="report-kpi-chip"><i class="bi bi-calculator"></i>Net {{ $report['is_profit'] ? 'Profit' : 'Loss' }}: {{ $report['is_profit'] ? '+' : '-' }}₹{{ number_format(abs($report['net_profit']), 2) }}</span>
-                <span class="report-pill {{ $report['is_profit'] ? 'report-pill--success' : 'report-pill--danger' }}">
-                    <i class="bi {{ $report['is_profit'] ? 'bi-check-circle' : 'bi-exclamation-circle' }}"></i>
-                    {{ $report['is_profit'] ? 'Profitable' : 'Loss Position' }}
+                <span class="report-kpi-chip"><i class="bi bi-calculator"></i>Net {{ $isProfit ? 'Profit' : 'Loss' }}: {{ $isProfit ? '+' : '-' }}₹{{ number_format($balancingAmount, 2) }}</span>
+                <span class="report-pill {{ $isProfit ? 'report-pill--success' : 'report-pill--danger' }}">
+                    <i class="bi {{ $isProfit ? 'bi-check-circle' : 'bi-exclamation-circle' }}"></i>
+                    {{ $isProfit ? 'Profitable' : 'Loss Position' }}
                 </span>
             </div>
         </div>

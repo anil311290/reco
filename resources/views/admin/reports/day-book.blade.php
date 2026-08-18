@@ -146,6 +146,7 @@
                         @foreach([10, 25, 40, 50, 100] as $size)
                             <option value="{{ $size }}" {{ (int) request('per_page', 10) === $size ? 'selected' : '' }}>{{ $size }}</option>
                         @endforeach
+                        <option value="all" {{ strtolower((string) request('per_page', 10)) === 'all' ? 'selected' : '' }}>All</option>
                     </select>
                 </form>
             </div>

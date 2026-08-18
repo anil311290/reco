@@ -240,9 +240,19 @@ function initSearchableSelects(scope) {
         // list right as the user clicks, causing the first option click to be missed.
         $select.on('select2:open', function() {
             const searchField = document.querySelector('.select2-container--open .select2-search__field');
-            if (searchField) {
-                searchField.focus({ preventScroll: true });
+            if (!searchField) {
+                return;
             }
+
+            const focusSearchField = () => {
+                searchField.focus({ preventScroll: true });
+                try {
+                    searchField.setSelectionRange(searchField.value.length, searchField.value.length);
+                } catch (e) {}
+            };
+
+            requestAnimationFrame(focusSearchField);
+            setTimeout(focusSearchField, 0);
         });
     });
 }

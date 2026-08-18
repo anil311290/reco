@@ -108,19 +108,6 @@
                 </span>
             </div>
             <div class="report-panel-body report-panel-body--flush">
-                <div class="report-table-tools">
-                    <form method="GET" action="{{ route('admin.reports.trial-balance') }}" class="report-rows-form">
-                        <input type="hidden" name="financial_year_id" value="{{ $financialYearId ?? '' }}">
-                        <input type="hidden" name="date_from" value="{{ $dateFrom ?? '' }}">
-                        <input type="hidden" name="date_to" value="{{ $dateTo ?? '' }}">
-                        <label for="trial-balance-per-page" class="report-rows-label">Rows Per Page</label>
-                        <select id="trial-balance-per-page" name="per_page" class="form-select form-select-sm report-rows-select" onchange="this.form.submit()">
-                            @foreach([10, 25, 30, 50, 100] as $size)
-                                <option value="{{ $size }}" {{ (int) request('per_page', 10) === $size ? 'selected' : '' }}>{{ $size }}</option>
-                            @endforeach
-                        </select>
-                    </form>
-                </div>
                 <div class="table-responsive">
                     <table class="table report-table table-hover mb-0">
                         <thead>
@@ -171,11 +158,6 @@
                         </tfoot>
                     </table>
                 </div>
-                @if($accounts->hasPages())
-                    <div class="report-pagination">
-                        {{ $accounts->onEachSide(1)->links('pagination::bootstrap-5') }}
-                    </div>
-                @endif
             </div>
         </div>
     @endif

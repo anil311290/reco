@@ -95,82 +95,81 @@
             </div>
         </div>
 
-        <div class="row g-4">
-            <div class="col-xl-6">
-                <div class="report-panel h-100">
-                    <div class="report-panel-header">
-                        <h6 class="report-panel-title"><i class="bi bi-arrow-down-circle text-success"></i>Receipts</h6>
-                        <span class="report-pill report-pill--info">@istDate($dateFrom) to @istDate($dateTo)</span>
-                    </div>
-                    <div class="report-panel-body report-panel-body--flush">
-                        <table class="table report-table table-hover mb-0">
-                            <tbody>
-                                @forelse($report['receipts']['rows'] as $row)
-                                <tr>
-                                    <td>
-                                        @if($row['account'])
-                                            <a href="{{ route('admin.reports.ledger', ['account_id' => $row['account']->id]) }}" class="report-detail-link" title="View ledger">
-                                                {{ $row['label'] }}
-                                            </a>
-                                        @else
-                                            {{ $row['label'] }}
-                                        @endif
-                                    </td>
-                                    <td class="text-end fw-semibold text-success">₹{{ number_format($row['amount'], 2) }}</td>
-                                </tr>
-                                @empty
-                                <tr><td colspan="2" class="text-muted text-center py-3">No receipts in this period</td></tr>
-                                @endforelse
-                            </tbody>
-                            <tfoot>
-                                <tr>
-                                    <td>Total</td>
-                                    <td class="text-end fw-bold text-success">₹{{ number_format($report['receipts_side_total'], 2) }}</td>
-                                </tr>
-                            </tfoot>
-                        </table>
-                    </div>
-                </div>
+        <div class="report-panel">
+            <div class="report-panel-header">
+                <h6 class="report-panel-title"><i class="bi bi-arrow-left-right text-primary"></i>Receipts &amp; Payments Account</h6>
+                <span class="report-pill report-pill--info">@istDate($dateFrom) to @istDate($dateTo)</span>
+                <span class="report-pill {{ $report['is_balanced'] ? 'report-pill--success' : 'report-pill--danger' }}">
+                    <i class="bi {{ $report['is_balanced'] ? 'bi-check-circle' : 'bi-exclamation-circle' }}"></i>
+                    {{ $report['is_balanced'] ? 'Balanced' : 'Not balanced' }}
+                </span>
             </div>
+            <div class="report-panel-body report-panel-body--flush">
+                @php
+                    $receiptRows = $report['receipts']['rows'] ?? [];
+                    $paymentRows = $report['payments']['rows'] ?? [];
 
-            <div class="col-xl-6">
-                <div class="report-panel h-100">
-                    <div class="report-panel-header">
-                        <h6 class="report-panel-title"><i class="bi bi-arrow-up-circle text-danger"></i>Payments</h6>
-                        <span class="report-pill report-pill--info">@istDate($dateFrom) to @istDate($dateTo)</span>
-                    </div>
-                    <div class="report-panel-body report-panel-body--flush">
-                        <table class="table report-table table-hover mb-0">
-                            <tbody>
-                                @forelse($report['payments']['rows'] as $row)
-                                <tr>
-                                    <td>
-                                        @if($row['account'])
-                                            <a href="{{ route('admin.reports.ledger', ['account_id' => $row['account']->id]) }}" class="report-detail-link" title="View ledger">
-                                                {{ $row['label'] }}
-                                            </a>
-                                        @else
-                                            {{ $row['label'] }}
-                                        @endif
-                                    </td>
-                                    <td class="text-end fw-semibold text-danger">₹{{ number_format($row['amount'], 2) }}</td>
-                                </tr>
-                                @empty
-                                <tr><td colspan="2" class="text-muted text-center py-3">No payments in this period</td></tr>
-                                @endforelse
-                                <tr class="report-row-emphasis">
-                                    <td class="fw-semibold">Closing Balance c/f</td>
-                                    <td class="text-end fw-bold">₹{{ number_format($report['closing_total'], 2) }}</td>
-                                </tr>
-                            </tbody>
-                            <tfoot>
-                                <tr>
-                                    <td>Total</td>
-                                    <td class="text-end fw-bold text-danger">₹{{ number_format($report['payments_side_total'], 2) }}</td>
-                                </tr>
-                            </tfoot>
-                        </table>
-                    </div>
+                    // Show opening/closing balances as the first/last rows so both sides tally.
+                    array_unshift($receiptRows, ['account' => null, 'label' => 'Opening Balance b/f', 'amount' => $report['opening_total']]);
+                    $paymentRows[] = ['account' => null, 'label' => 'Closing Balance c/f', 'amount' => $report['closing_total']];
+
+                    $rpRowCount = max(count($receiptRows), count($paymentRows));
+                @endphp
+                <div class="table-responsive">
+                    <table class="table report-table table-hover mb-0">
+                        <thead>
+                            <tr>
+                                <th colspan="2" class="text-success">Receipts</th>
+                                <th colspan="2" class="text-danger">Payments</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @if($rpRowCount === 0)
+                                <tr><td colspan="4" class="text-muted text-center py-3">No receipts or payments in this period</td></tr>
+                            @else
+                                @for ($i = 0; $i < $rpRowCount; $i++)
+                                    @php
+                                        $receiptRow = $receiptRows[$i] ?? null;
+                                        $paymentRow = $paymentRows[$i] ?? null;
+                                    @endphp
+                                    <tr>
+                                        <td>
+                                            @if($receiptRow && !empty($receiptRow['account']))
+                                                <a href="{{ route('admin.reports.ledger', ['account_id' => $receiptRow['account']->id]) }}" class="report-detail-link" title="View ledger">
+                                                    {{ $receiptRow['label'] }}
+                                                </a>
+                                            @elseif($receiptRow)
+                                                <span class="{{ empty($receiptRow['account']) ? 'fst-italic fw-semibold' : '' }}">{{ $receiptRow['label'] }}</span>
+                                            @endif
+                                        </td>
+                                        <td class="text-end {{ $receiptRow && empty($receiptRow['account']) ? 'fw-bold' : 'fw-semibold text-success' }}">
+                                            {{ $receiptRow ? '₹' . number_format($receiptRow['amount'], 2) : '' }}
+                                        </td>
+                                        <td>
+                                            @if($paymentRow && !empty($paymentRow['account']))
+                                                <a href="{{ route('admin.reports.ledger', ['account_id' => $paymentRow['account']->id]) }}" class="report-detail-link" title="View ledger">
+                                                    {{ $paymentRow['label'] }}
+                                                </a>
+                                            @elseif($paymentRow)
+                                                <span class="{{ empty($paymentRow['account']) ? 'fst-italic fw-semibold' : '' }}">{{ $paymentRow['label'] }}</span>
+                                            @endif
+                                        </td>
+                                        <td class="text-end {{ $paymentRow && empty($paymentRow['account']) ? 'fw-bold' : 'fw-semibold text-danger' }}">
+                                            {{ $paymentRow ? '₹' . number_format($paymentRow['amount'], 2) : '' }}
+                                        </td>
+                                    </tr>
+                                @endfor
+                            @endif
+                        </tbody>
+                        <tfoot>
+                            <tr>
+                                <td class="fw-bold">Total</td>
+                                <td class="text-end fw-bold">₹{{ number_format($report['receipts_side_total'], 2) }}</td>
+                                <td class="fw-bold">Total</td>
+                                <td class="text-end fw-bold">₹{{ number_format($report['payments_side_total'], 2) }}</td>
+                            </tr>
+                        </tfoot>
+                    </table>
                 </div>
             </div>
         </div>

@@ -23,7 +23,7 @@
     @endphp
     <div id="builtPayload"></div>
     <div class="row g-4">
-        <div class="col-md-8">
+        <div class="col-md-9">
             <div class="card mb-4">
                 <div class="card-header"><h5 class="mb-0">Invoice Details</h5></div>
                 <div class="card-body">
@@ -129,7 +129,7 @@
         </div>
 
         <!-- Summary -->
-        <div class="col-md-4">
+        <div class="col-md-3">
             <div class="card sticky-top" style="top:1rem">
                 <div class="card-header"><h5 class="mb-0">Summary</h5></div>
                 <div class="card-body">
@@ -293,7 +293,7 @@ $(document).on('change', '.item-select', function() {
 
     row.find('.description-input').val(hasItem ? (option.attr('data-description') || '') : '');
     row.find('.price-input').val(hasItem ? (option.data('price') || 0) : 0);
-    row.find('.tax-select').val(hasItem ? (option.data('tax') || '') : '');
+    row.find('.tax-select').val(hasItem ? (option.data('tax') || '') : '').trigger('change');
 
     calculateLineTotal(row);
     ensureTrailingEmptyRow(row);

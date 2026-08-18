@@ -91,6 +91,21 @@
             <span class="report-pill report-pill--info">@istDate($dateFrom) to @istDate($dateTo)</span>
         </div>
         <div class="report-panel-body report-panel-body--flush">
+            <div class="report-table-tools">
+                <form method="GET" action="{{ route('admin.reports.settlement-audit') }}" class="report-rows-form">
+                    <input type="hidden" name="date_from" value="{{ $dateFrom ?? '' }}">
+                    <input type="hidden" name="date_to" value="{{ $dateTo ?? '' }}">
+                    <input type="hidden" name="status" value="{{ $filters['status'] ?? 'all' }}">
+                    <input type="hidden" name="type" value="{{ $filters['type'] ?? 'all' }}">
+                    <label for="settlement-per-page" class="report-rows-label">Rows Per Page</label>
+                    <select id="settlement-per-page" name="per_page" class="form-select form-select-sm report-rows-select" onchange="this.form.submit()">
+                        @foreach([10, 25, 50, 100] as $size)
+                            <option value="{{ $size }}" {{ (int) request('per_page', 25) === $size ? 'selected' : '' }}>{{ $size }}</option>
+                        @endforeach
+                        <option value="all" {{ strtolower((string) request('per_page', 25)) === 'all' ? 'selected' : '' }}>All</option>
+                    </select>
+                </form>
+            </div>
             <table class="table report-table table-hover mb-0">
                 <thead>
                     <tr>

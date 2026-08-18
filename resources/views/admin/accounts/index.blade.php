@@ -72,9 +72,7 @@
                         <th>Code</th>
                         <th>Name</th>
                         <th>Type</th>
-                        <th>Balance Type</th>
                         <th>Is Cash/Bank/OD</th>
-                        <th>Balance</th>
                         <th>Status</th>
                         <th>Actions</th>
                     </tr>
@@ -116,17 +114,6 @@ $(document).ready(function() {
             }
         },
         {
-            data: 'balance_type',
-            name: 'balance_type',
-            render: function(data) {
-                const balanceType = data === 'credit' ? 'credit' : 'debit';
-                const badgeClass = balanceType === 'credit' ? 'bg-danger' : 'bg-success';
-                const label = balanceType === 'credit' ? 'Credit (CR)' : 'Debit (DR)';
-
-                return `<span class="badge ${badgeClass}">${label}</span>`;
-            }
-        },
-        {
             data: 'is_cash_bank_od',
             name: 'is_cash_bank_od',
             render: function(data, type, row) {
@@ -137,13 +124,6 @@ $(document).ready(function() {
                 return data
                     ? '<span class="badge bg-success">Yes</span>'
                     : '<span class="badge bg-secondary">No</span>';
-            }
-        },
-        { 
-            data: 'opening_balance',
-            name: 'opening_balance',
-            render: function(data) {
-                return formatCurrency(data || 0);
             }
         },
         {

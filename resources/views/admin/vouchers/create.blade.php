@@ -645,7 +645,20 @@ $(document).ready(function() {
         $(document).on('change', '.pr-bill-check', function() {
             const $billRow = $(this).closest('.pr-bill-row');
             const $row = $(this).closest('.payment-receipt-row');
-            $billRow.find('.pr-bill-amount, .pr-bill-ref').prop('disabled', !this.checked);
+            const $billAmount = $billRow.find('.pr-bill-amount');
+            $billAmount.add($billRow.find('.pr-bill-ref')).prop('disabled', !this.checked);
+
+            // When checked, replace the invoice's due amount with the entered particulars
+            // amount if it is less than the due amount, so the user doesn't retype it.
+            if (this.checked) {
+                const invoiceDue = parseFloat($billAmount.attr('max')) || 0;
+                const enteredAmount = parseFloat($row.find('.pr-amount').val()) || 0;
+
+                if (enteredAmount > 0 && enteredAmount < invoiceDue) {
+                    $billAmount.val(enteredAmount.toFixed(2));
+                }
+            }
+
             updateBillWiseSummary($row);
         });
 
