@@ -113,6 +113,15 @@
                     @endforeach
                 </select>
             </div>
+            <div class="col-12 col-md-5 col-lg-3">
+                <label class="form-label">Party</label>
+                <select name="party_id" class="form-select">
+                    <option value="">All Parties</option>
+                    @foreach($parties as $party)
+                        <option value="{{ $party['id'] }}" {{ (string) ($partyId ?? '') === (string) $party['id'] ? 'selected' : '' }}>{{ $party['text'] }}</option>
+                    @endforeach
+                </select>
+            </div>
             <div class="col-6 col-md-3 col-lg-2">
                 <label class="form-label">From Date</label>
                 <input type="date" name="date_from" class="form-control" value="{{ $dateFrom ?? '' }}">
@@ -184,6 +193,7 @@
                 'date_to' => $dateTo,
                 'overdue_status' => $report['filters']['overdue_status'] ?? 'all',
                 'age_bucket' => $bucketKey,
+                'party_id' => $partyId ?? '',
             ])) }}" class="aging-bucket-card {{ $activeBucket === $bucketKey ? 'is-active' : '' }}">
                 <p class="label">{{ $bucket['label'] }}</p>
                 <p class="count">{{ $bucket['count'] }} Invoices</p>
@@ -220,6 +230,7 @@
                     <input type="hidden" name="age_bucket" value="{{ $report['filters']['age_bucket'] ?? 'all' }}">
                     <input type="hidden" name="age_min" value="{{ $report['filters']['age_min'] ?? '' }}">
                     <input type="hidden" name="age_max" value="{{ $report['filters']['age_max'] ?? '' }}">
+                    <input type="hidden" name="party_id" value="{{ $partyId ?? '' }}">
                     <label for="debtors-per-page" class="report-rows-label">Rows Per Page</label>
                     <select id="debtors-per-page" name="per_page" class="form-select form-select-sm report-rows-select" onchange="this.form.submit()">
                         @foreach([10, 25, 50, 100] as $size)
@@ -304,8 +315,8 @@
 
         <div class="tab-pane fade" id="party-wise-pane" role="tabpanel" aria-labelledby="party-wise-tab">
         <div class="report-panel-body report-panel-body--flush">
-            <div class="report-table-tools party-wise-filter-tools">
-                <form method="GET" action="{{ route('admin.reports.debtors-outstanding') }}#party-wise-pane" class="row g-2 align-items-end w-100">
+            <div class="report-table-tools">
+                <form method="GET" action="{{ route('admin.reports.debtors-outstanding') }}#party-wise-pane" class="report-rows-form">
                     <input type="hidden" name="financial_year_id" value="{{ $financialYearId ?? '' }}">
                     <input type="hidden" name="date_from" value="{{ $dateFrom ?? '' }}">
                     <input type="hidden" name="date_to" value="{{ $dateTo ?? '' }}">
@@ -313,40 +324,14 @@
                     <input type="hidden" name="age_bucket" value="{{ $report['filters']['age_bucket'] ?? 'all' }}">
                     <input type="hidden" name="age_min" value="{{ $report['filters']['age_min'] ?? '' }}">
                     <input type="hidden" name="age_max" value="{{ $report['filters']['age_max'] ?? '' }}">
-                    <div class="col-12 col-md-6 col-lg-4">
-                        <label for="debtors-party-filter" class="form-label">Party</label>
-                        <select id="debtors-party-filter" name="party_id" class="form-select">
-                            <option value="">All Parties</option>
-                            @foreach($parties as $party)
-                                <option value="{{ $party['id'] }}" {{ (string) ($partyId ?? '') === (string) $party['id'] ? 'selected' : '' }}>{{ $party['text'] }}</option>
-                            @endforeach
-                        </select>
-                    </div>
-                    <div class="col-auto">
-                        <label for="debtors-party-per-page" class="form-label">Rows Per Page</label>
-                        <select id="debtors-party-per-page" name="party_per_page" class="form-select form-select-sm report-rows-select" onchange="this.form.submit()">
-                            @foreach([10, 25, 50, 100] as $size)
-                                <option value="{{ $size }}" {{ (int) request('party_per_page', 10) === $size ? 'selected' : '' }}>{{ $size }}</option>
-                            @endforeach
-                            <option value="all" {{ strtolower((string) request('party_per_page', 10)) === 'all' ? 'selected' : '' }}>All</option>
-                        </select>
-                    </div>
-                    <div class="col-auto">
-                        <button type="submit" class="btn btn-primary"><i class="bi bi-funnel me-1"></i>Filter</button>
-                    </div>
-                    @if(!empty($partyId))
-                    <div class="col-auto">
-                        <a href="{{ route('admin.reports.debtors-outstanding', array_filter([
-                            'financial_year_id' => $financialYearId,
-                            'date_from' => $dateFrom,
-                            'date_to' => $dateTo,
-                            'overdue_status' => $report['filters']['overdue_status'] ?? 'all',
-                            'age_bucket' => $report['filters']['age_bucket'] ?? 'all',
-                            'age_min' => $report['filters']['age_min'] ?? '',
-                            'age_max' => $report['filters']['age_max'] ?? '',
-                        ])) }}#party-wise-pane" class="btn btn-outline-secondary"><i class="bi bi-x-circle me-1"></i>Clear Party</a>
-                    </div>
-                    @endif
+                    <input type="hidden" name="party_id" value="{{ $partyId ?? '' }}">
+                    <label for="debtors-party-per-page" class="report-rows-label">Rows Per Page</label>
+                    <select id="debtors-party-per-page" name="party_per_page" class="form-select form-select-sm report-rows-select" onchange="this.form.submit()">
+                        @foreach([10, 25, 50, 100] as $size)
+                            <option value="{{ $size }}" {{ (int) request('party_per_page', 10) === $size ? 'selected' : '' }}>{{ $size }}</option>
+                        @endforeach
+                        <option value="all" {{ strtolower((string) request('party_per_page', 10)) === 'all' ? 'selected' : '' }}>All</option>
+                    </select>
                 </form>
             </div>
             <table class="table report-table table-hover mb-0">

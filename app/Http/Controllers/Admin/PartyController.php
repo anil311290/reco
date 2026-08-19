@@ -184,7 +184,7 @@ class PartyController extends Controller
                 'total' => (float) $invoice->total,
                 'balance_due' => (float) $invoice->balance_due,
                 'is_overdue' => $isOverdue,
-                'overdue_days' => $isOverdue ? (int) $invoice->due_date->diffInDays(now()) : 0,
+                'overdue_days' => $isOverdue ? (int) $invoice->due_date->diffInDays(now()->startOfDay(), true) : 0,
             ];
         })->values();
 

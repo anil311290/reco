@@ -191,10 +191,17 @@ class ReportController extends Controller
         $filters = $request->only(['overdue_status', 'age_bucket', 'age_min', 'age_max']);
 
         $report = $this->reportService->getDebtorsOutstanding($companyId, $financialYearId, $dateFrom, $dateTo, $filters);
+
+        $partyId = $request->input('party_id');
+        if ($partyId) {
+            $report['debtors'] = array_values(array_filter($report['debtors'] ?? [], function (array $item) use ($partyId) {
+                return $item['party'] && (string) $item['party']->id === (string) $partyId;
+            }));
+        }
+
         $report['aging_summary'] = $this->summarizeAgingBuckets($report['debtors'] ?? []);
         $debtors = $this->paginateReportItems($request, $report['debtors'] ?? [], 10);
 
-        $partyId = $request->input('party_id');
         $partyWiseRows = $this->summarizePartyWise($report['debtors'] ?? [], $partyId);
         $partyWise = $this->paginateReportItems($request, $partyWiseRows, 10, 'party_page', 'party_per_page');
         $parties = $this->partyService->getForDropdown($companyId, 'debtor');
@@ -241,10 +248,17 @@ class ReportController extends Controller
         $filters = $request->only(['overdue_status', 'age_bucket', 'age_min', 'age_max']);
 
         $report = $this->reportService->getCreditorsOutstanding($companyId, $financialYearId, $dateFrom, $dateTo, $filters);
+
+        $partyId = $request->input('party_id');
+        if ($partyId) {
+            $report['creditors'] = array_values(array_filter($report['creditors'] ?? [], function (array $item) use ($partyId) {
+                return $item['party'] && (string) $item['party']->id === (string) $partyId;
+            }));
+        }
+
         $report['aging_summary'] = $this->summarizeAgingBuckets($report['creditors'] ?? []);
         $creditors = $this->paginateReportItems($request, $report['creditors'] ?? [], 10);
 
-        $partyId = $request->input('party_id');
         $partyWiseRows = $this->summarizePartyWise($report['creditors'] ?? [], $partyId);
         $partyWise = $this->paginateReportItems($request, $partyWiseRows, 10, 'party_page', 'party_per_page');
         $parties = $this->partyService->getForDropdown($companyId, 'creditor');

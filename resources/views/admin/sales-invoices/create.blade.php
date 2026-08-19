@@ -171,9 +171,13 @@
                         <span class="fw-bold" style="font-size: 1rem;">Total:</span>
                         <span class="fw-bold text-primary" id="totalAmount" style="font-size: 1rem;">₹0.00</span>
                     </div>
-                    <button type="submit" class="btn btn-primary w-100" style="padding: 0.375rem;">
+                    <button type="submit" class="btn btn-primary w-100 mb-2" id="createInvoiceBtn" style="padding: 0.375rem;">
                         <i class="bi bi-check-circle me-2"></i>Create Invoice
                     </button>
+                    <button type="submit" class="btn btn-outline-secondary w-100" id="saveAsDraftBtn" style="padding: 0.375rem;">
+                        <i class="bi bi-save me-2"></i>Save as Draft
+                    </button>
+                    <input type="hidden" name="save_as_draft" id="save_as_draft_flag" value="0">
                 </div>
             </div>
         </div>
@@ -425,6 +429,14 @@ ajaxFormSubmit(
 
 $('#addLine').on('click', function() {
     addLineRow();
+});
+
+$('#saveAsDraftBtn').on('click', function() {
+    $('#save_as_draft_flag').val('1');
+});
+
+$('#createInvoiceBtn').on('click', function() {
+    $('#save_as_draft_flag').val('0');
 });
 
 $(document).on('click', '.remove-line', function() {

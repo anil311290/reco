@@ -109,7 +109,10 @@ $(document).ready(function() {
             }},
             { data: null, orderable: false, render: function(data) {
                 let buttons = `<a href="/admin/sales-invoices/${data.id}" class="btn btn-sm btn-outline-info"><i class="bi bi-eye"></i></a>`;
-                if (data.status !== 'cancelled' && data.status !== 'paid') {
+                if (data.status === 'draft') {
+                    buttons += ` <button type="button" class="btn btn-sm btn-outline-primary post-invoice-btn" data-id="${data.id}" title="Post Invoice"><i class="bi bi-send-check"></i></button>`;
+                }
+                if (data.status !== 'cancelled' && data.status !== 'paid' && data.status !== 'draft') {
                     buttons += ` <a href="/admin/sales-invoices/${data.id}?open_payment=1" class="btn btn-sm btn-outline-success" title="Record Payment"><i class="bi bi-cash"></i></a>`;
                 }
                 if (data.status !== 'cancelled' && data.status !== 'paid' && data.status !== 'partial') {
@@ -119,6 +122,34 @@ $(document).ready(function() {
             }}
         ],
         order: [[1, 'desc']]
+    });
+
+    $('#invoicesTable').on('click', '.post-invoice-btn', function() {
+        const id = $(this).data('id');
+        Swal.fire({
+            title: 'Post this invoice?',
+            text: 'This will generate the accounting voucher and post it to the ledger.',
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonColor: '#0d6efd',
+            confirmButtonText: 'Yes, post it'
+        }).then((result) => {
+            if (!result.isConfirmed) {
+                return;
+            }
+            $.ajax({
+                url: `/admin/sales-invoices/${id}/post`,
+                type: 'POST',
+                headers: { 'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content') },
+                success: function(r) {
+                    toastr.success(r.message);
+                    table.ajax.reload(null, false);
+                },
+                error: function(xhr) {
+                    toastr.error(xhr.responseJSON?.message || 'Error posting invoice');
+                }
+            });
+        });
     });
 
     $('#filterForm').on('submit', function(e) { e.preventDefault(); table.ajax.reload(); });

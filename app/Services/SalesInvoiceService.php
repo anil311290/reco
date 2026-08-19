@@ -55,7 +55,11 @@ class SalesInvoiceService
             ->where('company_id', $companyId);
 
         if (isset($filters['status'])) {
-            $query->where('status', $filters['status']);
+            if ($filters['status'] === 'overdue') {
+                $query->whereNotIn('status', ['paid', 'cancelled'])->where('due_date', '<', now());
+            } else {
+                $query->where('status', $filters['status']);
+            }
         }
         if (isset($filters['party_id'])) {
             $query->where('party_id', $filters['party_id']);
@@ -87,7 +91,11 @@ class SalesInvoiceService
             ->where('company_id', $companyId);
 
         if (isset($filters['status'])) {
-            $query->where('status', $filters['status']);
+            if ($filters['status'] === 'overdue') {
+                $query->whereNotIn('status', ['paid', 'cancelled'])->where('due_date', '<', now());
+            } else {
+                $query->where('status', $filters['status']);
+            }
         }
         if (isset($filters['search'])) {
             $query->where(function ($q) use ($filters) {

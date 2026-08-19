@@ -215,6 +215,17 @@
                         </tr>
                     </thead>
                     <tbody>
+                        @if($entries->currentPage() === 1)
+                        <tr class="report-row-emphasis">
+                            <td class="ledger-date-col">-</td>
+                            <td class="ledger-voucher-col">-</td>
+                            <td colspan="2" class="fw-semibold">Opening Balance b/f</td>
+                            <td class="text-end ledger-amount-col">-</td>
+                            <td class="text-end ledger-amount-col">-</td>
+                            <td class="text-end fw-bold ledger-amount-col">₹{{ number_format($report['opening_balance']['balance'], 2) }} @drCr($report['opening_balance']['type'])</td>
+                            <td class="ledger-actions-col"></td>
+                        </tr>
+                        @endif
                         @forelse($entries as $entry)
                         <tr>
                             <td class="ledger-date-col">@istDate($entry->transaction_date)</td>

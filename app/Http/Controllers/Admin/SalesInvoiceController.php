@@ -194,12 +194,43 @@ class SalesInvoiceController extends Controller
 
             $invoice = $this->salesInvoiceService->create($data, $validated['lines'], $validated['service_lines'] ?? []);
 
+            if ($request->boolean('save_as_draft')) {
+                return ResponseHelper::success($invoice, 'Sales invoice saved as draft');
+            }
+
             $voucher = $this->salesInvoiceService->generateVoucher($invoice);
             if (!$voucher) {
                 throw new \RuntimeException('Sales invoice created but voucher/journal posting failed. Please check account mappings.');
             }
 
             return ResponseHelper::success($invoice, 'Sales invoice created successfully');
+        } catch (\Exception $e) {
+            return ResponseHelper::error($e->getMessage());
+        }
+    }
+
+    /**
+     * Post a draft invoice to the ledger (generates the accounting voucher).
+     */
+    public function post(int $id): JsonResponse
+    {
+        try {
+            $invoice = $this->salesInvoiceService->getById($id);
+
+            if (!$invoice || $invoice->company_id !== auth()->user()->company_id) {
+                return ResponseHelper::notFound('Sales invoice not found');
+            }
+
+            if ($invoice->status !== 'draft') {
+                return ResponseHelper::error('Only draft invoices can be posted');
+            }
+
+            $voucher = $this->salesInvoiceService->generateVoucher($invoice);
+            if (!$voucher) {
+                throw new \RuntimeException('Voucher/journal posting failed. Please check account mappings.');
+            }
+
+            return ResponseHelper::success($invoice->fresh(), 'Sales invoice posted successfully');
         } catch (\Exception $e) {
             return ResponseHelper::error($e->getMessage());
         }
@@ -322,6 +353,14 @@ class SalesInvoiceController extends Controller
             ];
 
             $invoice = $this->salesInvoiceService->updateWithLines($id, $data, $validated['lines'], $validated['service_lines'] ?? []);
+
+            if ($invoice->status === 'draft' && !$request->boolean('save_as_draft')) {
+                $voucher = $this->salesInvoiceService->generateVoucher($invoice);
+                if (!$voucher) {
+                    throw new \RuntimeException('Sales invoice updated but voucher/journal posting failed. Please check account mappings.');
+                }
+            }
+
             return ResponseHelper::success($invoice, 'Sales invoice updated successfully');
         } catch (\Exception $e) {
             return ResponseHelper::error($e->getMessage());

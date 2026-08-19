@@ -98,129 +98,87 @@
         </div>
     </div>
 
-    <div class="row g-4">
-        <div class="col-xl-6">
-            <h5 class="report-section-title mb-3"><i class="bi bi-shield-exclamation text-danger me-1"></i>Liabilities</h5>
-            <div class="report-panel mb-4">
-                <div class="report-panel-header">
-                    <h6 class="report-panel-title"><i class="bi bi-stars text-success"></i>Equity</h6>
-                    <span class="report-pill report-pill--info">@istDate($dateFrom) to @istDate($dateTo)</span>
-                </div>
-                <div class="report-panel-body report-panel-body--flush">
-                    <table class="table report-table table-hover mb-0">
-                        <tbody>
-                            @forelse($report['equity']['accounts'] as $item)
-                            <tr>
-                                <td>
-                                    <a href="{{ route('admin.reports.ledger', ['account_id' => $item['account']->id]) }}" class="report-detail-link" title="View ledger">
-                                        {{ $item['account']->account_name }}
-                                    </a>
-                                </td>
-                                <td class="text-end fw-semibold">₹{{ number_format($item['amount'], 2) }}</td>
-                            </tr>
-                            @empty
-                            <tr><td class="text-muted text-center py-3">No equity accounts found</td></tr>
-                            @endforelse
-                            <tr>
-                                <td>Net Profit/Loss</td>
-                                <td class="text-end fw-semibold {{ $report['equity']['net_profit'] >= 0 ? 'text-success' : 'text-danger' }}">
-                                    {{ $report['equity']['net_profit'] >= 0 ? '+' : '' }}₹{{ number_format($report['equity']['net_profit'], 2) }}
-                                </td>
-                            </tr>
-                        </tbody>
-                        <tfoot>
-                            <tr>
-                                <td>Total Equity</td>
-                                <td class="text-end fw-bold">₹{{ number_format($report['equity']['total'], 2) }}</td>
-                            </tr>
-                        </tfoot>
-                    </table>
-                </div>
-            </div>
+    @php
+        $liabilityRows = [];
+        foreach ($report['equity']['accounts'] as $item) {
+            $liabilityRows[] = ['account' => $item['account'], 'label' => $item['account']->account_name, 'amount' => $item['amount']];
+        }
+        $liabilityRows[] = ['account' => null, 'label' => 'Net Profit / Loss', 'amount' => $report['equity']['net_profit']];
+        foreach ($report['liabilities']['accounts'] as $item) {
+            $liabilityRows[] = ['account' => $item['account'], 'label' => $item['account']->account_name, 'amount' => $item['amount']];
+        }
 
-            <div class="report-panel">
-                <div class="report-panel-header">
-                    <h6 class="report-panel-title"><i class="bi bi-shield-exclamation text-danger"></i>Other Liabilities</h6>
-                    <span class="report-pill report-pill--info">@istDate($dateFrom) to @istDate($dateTo)</span>
-                </div>
-                <div class="report-panel-body report-panel-body--flush">
-                    <table class="table report-table table-hover mb-0">
-                        <tbody>
-                            @forelse($report['liabilities']['accounts'] as $item)
-                            <tr>
-                                <td>
-                                    <a href="{{ route('admin.reports.ledger', ['account_id' => $item['account']->id]) }}" class="report-detail-link" title="View ledger">
-                                        {{ $item['account']->account_name }}
-                                    </a>
-                                </td>
-                                <td class="text-end fw-semibold">₹{{ number_format($item['amount'], 2) }}</td>
-                            </tr>
-                            @empty
-                            <tr><td class="text-muted text-center py-3">No liability accounts found</td></tr>
-                            @endforelse
-                        </tbody>
-                        <tfoot>
-                            <tr>
-                                <td>Total Other Liabilities</td>
-                                <td class="text-end fw-bold">₹{{ number_format($report['liabilities']['total'], 2) }}</td>
-                            </tr>
-                        </tfoot>
-                    </table>
-                </div>
-            </div>
+        $assetRows = [];
+        foreach ($report['assets']['accounts'] as $item) {
+            $assetRows[] = ['account' => $item['account'], 'label' => $item['account']->account_name, 'amount' => $item['amount']];
+        }
 
-            <div class="report-panel mt-4">
-                <div class="report-panel-body">
-                    <div class="report-kpi-bar">
-                        <span class="report-kpi-chip"><i class="bi bi-calculator"></i>Total Liabilities + Equity: ₹{{ number_format($report['total_liabilities_equity'], 2) }}</span>
-                    </div>
-                </div>
-            </div>
+        $bsRowCount = max(count($liabilityRows), count($assetRows));
+    @endphp
+
+    <div class="report-panel">
+        <div class="report-panel-header">
+            <h6 class="report-panel-title"><i class="bi bi-columns-gap text-primary"></i>Balance Sheet</h6>
+            <span class="report-pill report-pill--info">@istDate($dateFrom) to @istDate($dateTo)</span>
+            <span class="report-pill {{ $report['is_balanced'] ? 'report-pill--success' : 'report-pill--danger' }}">
+                <i class="bi {{ $report['is_balanced'] ? 'bi-check-circle' : 'bi-x-circle' }}"></i>
+                {{ $report['is_balanced'] ? 'Balanced' : 'Not Balanced' }}
+            </span>
         </div>
-
-        <div class="col-xl-6">
-            <h5 class="report-section-title mb-3"><i class="bi bi-box-seam text-primary me-1"></i>Assets</h5>
-            <div class="report-panel h-100">
-                <div class="report-panel-header">
-                    <h6 class="report-panel-title"><i class="bi bi-box-seam text-primary"></i>Assets</h6>
-                    <span class="report-pill report-pill--info">@istDate($dateFrom) to @istDate($dateTo)</span>
-                </div>
-                <div class="report-panel-body report-panel-body--flush">
-                    <table class="table report-table table-hover">
-                        <tbody>
-                            @forelse($report['assets']['accounts'] as $item)
-                            <tr>
-                                <td>
-                                    <a href="{{ route('admin.reports.ledger', ['account_id' => $item['account']->id]) }}" class="report-detail-link" title="View ledger">
-                                        {{ $item['account']->account_name }}
-                                    </a>
-                                </td>
-                                <td class="text-end fw-semibold">₹{{ number_format($item['amount'], 2) }}</td>
-                            </tr>
-                            @empty
-                            <tr><td class="text-muted text-center py-3">No asset accounts found</td></tr>
-                            @endforelse
-                        </tbody>
-                        <tfoot>
-                            <tr>
-                                <td>Total Assets</td>
-                                <td class="text-end fw-bold">₹{{ number_format($report['assets']['total'], 2) }}</td>
-                            </tr>
-                        </tfoot>
-                    </table>
-                </div>
-            </div>
-
-            <div class="report-panel mt-4">
-                <div class="report-panel-body">
-                    <div class="report-kpi-bar">
-                        <span class="report-kpi-chip"><i class="bi bi-calculator"></i>Total Assets: ₹{{ number_format($report['assets']['total'], 2) }}</span>
-                        <span class="report-pill {{ $report['is_balanced'] ? 'report-pill--success' : 'report-pill--danger' }}">
-                            <i class="bi {{ $report['is_balanced'] ? 'bi-check-circle' : 'bi-x-circle' }}"></i>
-                            {{ $report['is_balanced'] ? 'Balanced' : 'Not Balanced' }}
-                        </span>
-                    </div>
-                </div>
+        <div class="report-panel-body report-panel-body--flush">
+            <div class="table-responsive">
+                <table class="table report-table table-hover mb-0">
+                    <thead>
+                        <tr>
+                            <th colspan="2" class="text-danger">Liabilities</th>
+                            <th colspan="2" class="text-primary">Assets</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @if($bsRowCount === 0)
+                            <tr><td colspan="4" class="text-muted text-center py-3">No liabilities, equity, or assets recorded</td></tr>
+                        @else
+                            @for ($i = 0; $i < $bsRowCount; $i++)
+                                @php
+                                    $liabilityRow = $liabilityRows[$i] ?? null;
+                                    $assetRow = $assetRows[$i] ?? null;
+                                @endphp
+                                <tr>
+                                    <td>
+                                        @if($liabilityRow && !empty($liabilityRow['account']))
+                                            <a href="{{ route('admin.reports.ledger', ['account_id' => $liabilityRow['account']->id]) }}" class="report-detail-link" title="View ledger">
+                                                {{ $liabilityRow['label'] }}
+                                            </a>
+                                        @elseif($liabilityRow)
+                                            <span class="fw-bold">{{ $liabilityRow['label'] }}</span>
+                                        @endif
+                                    </td>
+                                    <td class="text-end {{ $liabilityRow && empty($liabilityRow['account']) ? 'fw-bold' : 'fw-semibold' }}">
+                                        {{ $liabilityRow ? '₹' . number_format($liabilityRow['amount'], 2) : '' }}
+                                    </td>
+                                    <td>
+                                        @if($assetRow && !empty($assetRow['account']))
+                                            <a href="{{ route('admin.reports.ledger', ['account_id' => $assetRow['account']->id]) }}" class="report-detail-link" title="View ledger">
+                                                {{ $assetRow['label'] }}
+                                            </a>
+                                        @endif
+                                    </td>
+                                    <td class="text-end fw-semibold">
+                                        {{ $assetRow ? '₹' . number_format($assetRow['amount'], 2) : '' }}
+                                    </td>
+                                </tr>
+                            @endfor
+                        @endif
+                    </tbody>
+                    <tfoot>
+                        <tr>
+                            <td class="fw-bold">Total Liabilities</td>
+                            <td class="text-end fw-bold">₹{{ number_format($report['total_liabilities_equity'], 2) }}</td>
+                            <td class="fw-bold">Total Assets</td>
+                            <td class="text-end fw-bold">₹{{ number_format($report['assets']['total'], 2) }}</td>
+                        </tr>
+                    </tfoot>
+                </table>
             </div>
         </div>
     </div>

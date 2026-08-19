@@ -115,9 +115,10 @@
                                 <th>Account Code</th>
                                 <th>Particulars</th>
                                 <th>Type</th>
+                                <th class="text-end">Opening Balance (₹)</th>
                                 <th class="text-end">Debit (₹)</th>
                                 <th class="text-end">Credit (₹)</th>
-                                <th class="text-end">Balance (₹)</th>
+                                <th class="text-end">Closing Balance (₹)</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -130,8 +131,15 @@
                                     </a>
                                 </td>
                                 <td><span class="report-pill report-pill--info">{{ ucfirst($item['account']->account_type) }}</span></td>
-                                <td class="text-end fw-semibold text-primary">{{ ($item['debit'] ?? 0) > 0 ? '₹' . number_format($item['debit'], 2) : '-' }}</td>
-                                <td class="text-end fw-semibold text-danger">{{ ($item['credit'] ?? 0) > 0 ? '₹' . number_format($item['credit'], 2) : '-' }}</td>
+                                <td class="text-end">
+                                    @if(($item['opening_balance'] ?? 0) > 0)
+                                        ₹{{ number_format($item['opening_balance'], 2) }} @drCr($item['opening_type'])
+                                    @else
+                                        -
+                                    @endif
+                                </td>
+                                <td class="text-end fw-semibold text-primary">{{ ($item['transaction_debit'] ?? 0) > 0 ? '₹' . number_format($item['transaction_debit'], 2) : '-' }}</td>
+                                <td class="text-end fw-semibold text-danger">{{ ($item['transaction_credit'] ?? 0) > 0 ? '₹' . number_format($item['transaction_credit'], 2) : '-' }}</td>
                                 <td class="text-end fw-bold">
                                     @if(($item['debit'] ?? 0) > 0)
                                         ₹{{ number_format($item['debit'], 2) }} DR
@@ -143,14 +151,20 @@
                                 </td>
                             </tr>
                             @empty
-                            <tr><td colspan="6" class="text-muted text-center py-3">No accounts found</td></tr>
+                            <tr><td colspan="7" class="text-muted text-center py-3">No accounts found</td></tr>
                             @endforelse
                         </tbody>
                         <tfoot>
+                            @php
+                                $openingNet = $report['total_opening_debit'] - $report['total_opening_credit'];
+                            @endphp
                             <tr>
                                 <td colspan="3">Total</td>
-                                <td class="text-end fw-bold">₹{{ number_format($report['total_debit'], 2) }}</td>
-                                <td class="text-end fw-bold">₹{{ number_format($report['total_credit'], 2) }}</td>
+                                <td class="text-end fw-bold">
+                                    ₹{{ number_format(abs($openingNet), 2) }} {{ $openingNet >= 0 ? 'DR' : 'CR' }}
+                                </td>
+                                <td class="text-end fw-bold">₹{{ number_format($report['total_transaction_debit'], 2) }}</td>
+                                <td class="text-end fw-bold">₹{{ number_format($report['total_transaction_credit'], 2) }}</td>
                                 <td class="text-end fw-bold">
                                     {{ $report['is_balanced'] ? 'Balanced' : '₹' . number_format(abs($report['total_debit'] - $report['total_credit']), 2) }}
                                 </td>

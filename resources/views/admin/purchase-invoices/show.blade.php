@@ -11,7 +11,12 @@
         <a href="{{ route('admin.purchase-invoices.index') }}" class="btn btn-outline-secondary me-2">
             <i class="bi bi-arrow-left me-1"></i>Back
         </a>
-        @if($invoice->status !== 'cancelled' && !$invoice->isPaid())
+        @if($invoice->status === 'draft')
+        <button type="button" class="btn btn-primary me-2" id="postInvoiceBtn">
+            <i class="bi bi-send-check me-1"></i>Post Invoice
+        </button>
+        @endif
+        @if($invoice->status !== 'cancelled' && $invoice->status !== 'draft' && !$invoice->isPaid())
         <button class="btn btn-success me-2" data-bs-toggle="modal" data-bs-target="#paymentModal">
             <i class="bi bi-cash me-1"></i>Record Payment
         </button>
@@ -168,7 +173,7 @@
     </div>
 </div>
 
-@if($invoice->status !== 'cancelled' && !$invoice->isPaid())
+@if($invoice->status !== 'cancelled' && $invoice->status !== 'draft' && !$invoice->isPaid())
 <div class="modal fade" id="paymentModal" tabindex="-1">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
@@ -251,6 +256,33 @@ $('#paymentForm').on('submit', function(e) {
         error: function(xhr) {
             toastr.error(xhr.responseJSON?.message || 'Error recording payment');
         }
+    });
+});
+
+$('#postInvoiceBtn').on('click', function() {
+    Swal.fire({
+        title: 'Post this invoice?',
+        text: 'This will generate the accounting voucher and post it to the ledger.',
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonColor: '#0d6efd',
+        confirmButtonText: 'Yes, post it'
+    }).then((result) => {
+        if (!result.isConfirmed) {
+            return;
+        }
+        $.ajax({
+            url: '{{ route("admin.purchase-invoices.post", $invoice->id) }}',
+            type: 'POST',
+            headers: { 'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content') },
+            success: function(r) {
+                toastr.success(r.message);
+                setTimeout(() => location.reload(), 800);
+            },
+            error: function(xhr) {
+                toastr.error(xhr.responseJSON?.message || 'Error posting invoice');
+            }
+        });
     });
 });
 

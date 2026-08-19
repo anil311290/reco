@@ -172,6 +172,10 @@ class PurchaseInvoiceController extends Controller
 
             $invoice = $this->purchaseInvoiceService->create($data, $validated['lines']);
 
+            if ($request->boolean('save_as_draft')) {
+                return ResponseHelper::success($invoice, 'Purchase invoice saved as draft');
+            }
+
             $voucher = $this->purchaseInvoiceService->generateVoucher($invoice);
             if (!$voucher) {
                 throw new \RuntimeException('Purchase invoice created but accounting posting failed. Please check account mappings.');
@@ -180,6 +184,33 @@ class PurchaseInvoiceController extends Controller
             return ResponseHelper::success($invoice, 'Purchase invoice created successfully');
         } catch (ValidationException $e) {
             throw $e;
+        } catch (\Exception $e) {
+            return ResponseHelper::error($e->getMessage());
+        }
+    }
+
+    /**
+     * Post a draft invoice to the ledger (generates the accounting voucher).
+     */
+    public function post(int $id): JsonResponse
+    {
+        try {
+            $invoice = $this->purchaseInvoiceService->getById($id);
+
+            if (!$invoice || $invoice->company_id !== auth()->user()->company_id) {
+                return ResponseHelper::notFound('Purchase invoice not found');
+            }
+
+            if ($invoice->status !== 'draft') {
+                return ResponseHelper::error('Only draft invoices can be posted');
+            }
+
+            $voucher = $this->purchaseInvoiceService->generateVoucher($invoice);
+            if (!$voucher) {
+                throw new \RuntimeException('Voucher/journal posting failed. Please check account mappings.');
+            }
+
+            return ResponseHelper::success($invoice->fresh(), 'Purchase invoice posted successfully');
         } catch (\Exception $e) {
             return ResponseHelper::error($e->getMessage());
         }
@@ -280,6 +311,14 @@ class PurchaseInvoiceController extends Controller
             ];
 
             $invoice = $this->purchaseInvoiceService->updateWithLines($id, $data, $validated['lines']);
+
+            if ($invoice->status === 'draft' && !$request->boolean('save_as_draft')) {
+                $voucher = $this->purchaseInvoiceService->generateVoucher($invoice);
+                if (!$voucher) {
+                    throw new \RuntimeException('Purchase invoice updated but accounting posting failed. Please check account mappings.');
+                }
+            }
+
             return ResponseHelper::success($invoice, 'Purchase invoice updated successfully');
         } catch (ValidationException $e) {
             throw $e;
