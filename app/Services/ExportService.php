@@ -51,12 +51,11 @@ class ExportService
     public function exportBalanceSheetPdf(
         int $companyId,
         int $financialYearId,
-        ?string $dateFrom = null,
-        ?string $dateTo = null
+        ?string $asOfDate = null
     ): string
     {
-        $report = $this->reportService->getBalanceSheet($companyId, $financialYearId, $dateFrom, $dateTo);
-        $exportMeta = $this->buildExportMeta($companyId, 'balance-sheet', [], $financialYearId, $dateFrom, $dateTo);
+        $report = $this->reportService->getBalanceSheet($companyId, $financialYearId, $asOfDate);
+        $exportMeta = $this->buildExportMeta($companyId, 'balance-sheet', [], $financialYearId, null, $asOfDate);
 
         $pdf = Pdf::loadView('exports.balance-sheet', compact('report', 'exportMeta'));
 
@@ -153,13 +152,12 @@ class ExportService
     public function exportDebtorsOutstandingPdf(
         int $companyId,
         ?int $financialYearId = null,
-        ?string $dateFrom = null,
-        ?string $dateTo = null,
+        ?string $asOfDate = null,
         array $filters = []
     ): string
     {
-        $report = $this->reportService->getDebtorsOutstanding($companyId, $financialYearId, $dateFrom, $dateTo, $filters);
-        $exportMeta = $this->buildExportMeta($companyId, 'debtors-outstanding', $filters, $financialYearId, $dateFrom, $dateTo);
+        $report = $this->reportService->getDebtorsOutstanding($companyId, $financialYearId, $asOfDate, $filters);
+        $exportMeta = $this->buildExportMeta($companyId, 'debtors-outstanding', $filters, $financialYearId, null, $asOfDate);
 
         $pdf = Pdf::loadView('exports.debtors-outstanding', compact('report', 'exportMeta'));
 
@@ -172,13 +170,12 @@ class ExportService
     public function exportCreditorsOutstandingPdf(
         int $companyId,
         ?int $financialYearId = null,
-        ?string $dateFrom = null,
-        ?string $dateTo = null,
+        ?string $asOfDate = null,
         array $filters = []
     ): string
     {
-        $report = $this->reportService->getCreditorsOutstanding($companyId, $financialYearId, $dateFrom, $dateTo, $filters);
-        $exportMeta = $this->buildExportMeta($companyId, 'creditors-outstanding', $filters, $financialYearId, $dateFrom, $dateTo);
+        $report = $this->reportService->getCreditorsOutstanding($companyId, $financialYearId, $asOfDate, $filters);
+        $exportMeta = $this->buildExportMeta($companyId, 'creditors-outstanding', $filters, $financialYearId, null, $asOfDate);
 
         $pdf = Pdf::loadView('exports.creditors-outstanding', compact('report', 'exportMeta'));
 
@@ -196,8 +193,8 @@ class ExportService
         array $filters = []
     ): string
     {
-        $debtors = $this->reportService->getDebtorsOutstanding($companyId, $financialYearId, $dateFrom, $dateTo, $filters);
-        $creditors = $this->reportService->getCreditorsOutstanding($companyId, $financialYearId, $dateFrom, $dateTo, $filters);
+        $debtors = $this->reportService->getDebtorsOutstanding($companyId, $financialYearId, $dateTo, $filters);
+        $creditors = $this->reportService->getCreditorsOutstanding($companyId, $financialYearId, $dateTo, $filters);
 
         $rows = $this->buildAgingSummaryRows($debtors['debtors'] ?? [], $creditors['creditors'] ?? []);
         $summary = [
@@ -320,8 +317,7 @@ class ExportService
                 $data = collect($this->reportService->getDebtorsOutstanding(
                     $companyId,
                     isset($filters['financial_year_id']) ? (int) $filters['financial_year_id'] : null,
-                    $filters['date_from'] ?? null,
-                    $filters['date_to'] ?? null,
+                    $filters['as_of_date'] ?? $filters['date_to'] ?? null,
                     $filters
                 )['debtors'])
                     ->map(function ($item) {
@@ -345,8 +341,7 @@ class ExportService
                 $data = collect($this->reportService->getCreditorsOutstanding(
                     $companyId,
                     isset($filters['financial_year_id']) ? (int) $filters['financial_year_id'] : null,
-                    $filters['date_from'] ?? null,
-                    $filters['date_to'] ?? null,
+                    $filters['as_of_date'] ?? $filters['date_to'] ?? null,
                     $filters
                 )['creditors'])
                     ->map(function ($item) {
@@ -370,15 +365,13 @@ class ExportService
                 $debtors = $this->reportService->getDebtorsOutstanding(
                     $companyId,
                     isset($filters['financial_year_id']) ? (int) $filters['financial_year_id'] : null,
-                    $filters['date_from'] ?? null,
-                    $filters['date_to'] ?? null,
+                    $filters['as_of_date'] ?? $filters['date_to'] ?? null,
                     $filters
                 );
                 $creditors = $this->reportService->getCreditorsOutstanding(
                     $companyId,
                     isset($filters['financial_year_id']) ? (int) $filters['financial_year_id'] : null,
-                    $filters['date_from'] ?? null,
-                    $filters['date_to'] ?? null,
+                    $filters['as_of_date'] ?? $filters['date_to'] ?? null,
                     $filters
                 );
                 $data = $this->buildAgingSummaryRows($debtors['debtors'] ?? [], $creditors['creditors'] ?? []);
@@ -406,8 +399,7 @@ class ExportService
                 $balanceSheet = $this->reportService->getBalanceSheet(
                     $companyId,
                     (int) ($filters['financial_year_id'] ?? FinancialYear::getCurrent($companyId)?->id),
-                    $filters['date_from'] ?? null,
-                    $filters['date_to'] ?? null
+                    $filters['as_of_date'] ?? $filters['date_to'] ?? null
                 );
                 $data = [
                     ['section' => 'Total Assets', 'amount' => $balanceSheet['assets']['total']],
@@ -541,8 +533,7 @@ class ExportService
                 $balanceSheet = $this->reportService->getBalanceSheet(
                     $companyId,
                     (int) ($filters['financial_year_id'] ?? FinancialYear::getCurrent($companyId)?->id),
-                    $filters['date_from'] ?? null,
-                    $filters['date_to'] ?? null
+                    $filters['as_of_date'] ?? $filters['date_to'] ?? null
                 );
                 $data = [
                     ['section' => 'Total Assets', 'amount' => $balanceSheet['assets']['total']],
@@ -572,8 +563,7 @@ class ExportService
                 $data = collect($this->reportService->getDebtorsOutstanding(
                     $companyId,
                     isset($filters['financial_year_id']) ? (int) $filters['financial_year_id'] : null,
-                    $filters['date_from'] ?? null,
-                    $filters['date_to'] ?? null,
+                    $filters['as_of_date'] ?? $filters['date_to'] ?? null,
                     $filters
                 )['debtors'])
                     ->map(function ($item) {
@@ -597,8 +587,7 @@ class ExportService
                 $data = collect($this->reportService->getCreditorsOutstanding(
                     $companyId,
                     isset($filters['financial_year_id']) ? (int) $filters['financial_year_id'] : null,
-                    $filters['date_from'] ?? null,
-                    $filters['date_to'] ?? null,
+                    $filters['as_of_date'] ?? $filters['date_to'] ?? null,
                     $filters
                 )['creditors'])
                     ->map(function ($item) {
@@ -622,15 +611,13 @@ class ExportService
                 $debtors = $this->reportService->getDebtorsOutstanding(
                     $companyId,
                     isset($filters['financial_year_id']) ? (int) $filters['financial_year_id'] : null,
-                    $filters['date_from'] ?? null,
-                    $filters['date_to'] ?? null,
+                    $filters['as_of_date'] ?? $filters['date_to'] ?? null,
                     $filters
                 );
                 $creditors = $this->reportService->getCreditorsOutstanding(
                     $companyId,
                     isset($filters['financial_year_id']) ? (int) $filters['financial_year_id'] : null,
-                    $filters['date_from'] ?? null,
-                    $filters['date_to'] ?? null,
+                    $filters['as_of_date'] ?? $filters['date_to'] ?? null,
                     $filters
                 );
                 $data = $this->buildAgingSummaryRows($debtors['debtors'] ?? [], $creditors['creditors'] ?? []);

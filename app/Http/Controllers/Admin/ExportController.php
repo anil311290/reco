@@ -46,14 +46,13 @@ class ExportController extends Controller
     {
         $companyId = $this->getCompanyId($request);
         $financialYearId = $request->input('financial_year_id') ?? FinancialYear::getCurrent($companyId)?->id;
-        $dateFrom = $request->input('date_from');
-        $dateTo = $request->input('date_to');
+        $asOfDate = $request->input('as_of_date') ?? $request->input('date_to');
 
         if (!$financialYearId) {
             return back()->with('error', 'No active financial year found');
         }
 
-        $pdf = $this->exportService->exportBalanceSheetPdf($companyId, (int) $financialYearId, $dateFrom, $dateTo);
+        $pdf = $this->exportService->exportBalanceSheetPdf($companyId, (int) $financialYearId, $asOfDate);
 
         return response($pdf)
             ->header('Content-Type', 'application/pdf')
@@ -140,13 +139,12 @@ class ExportController extends Controller
     public function debtorsOutstandingPdf(Request $request): Response
     {
         $companyId = $this->getCompanyId($request);
-        $filters = $request->only(['overdue_status', 'age_bucket', 'age_min', 'age_max']);
+        $filters = $request->only(['overdue_status', 'age_bucket', 'age_min', 'age_max', 'basis']);
 
         $pdf = $this->exportService->exportDebtorsOutstandingPdf(
             $companyId,
             $request->filled('financial_year_id') ? (int) $request->input('financial_year_id') : null,
-            $request->input('date_from'),
-            $request->input('date_to'),
+            $request->input('as_of_date') ?? $request->input('date_to'),
             $filters
         );
 
@@ -161,13 +159,12 @@ class ExportController extends Controller
     public function creditorsOutstandingPdf(Request $request): Response
     {
         $companyId = $this->getCompanyId($request);
-        $filters = $request->only(['overdue_status', 'age_bucket', 'age_min', 'age_max']);
+        $filters = $request->only(['overdue_status', 'age_bucket', 'age_min', 'age_max', 'basis']);
 
         $pdf = $this->exportService->exportCreditorsOutstandingPdf(
             $companyId,
             $request->filled('financial_year_id') ? (int) $request->input('financial_year_id') : null,
-            $request->input('date_from'),
-            $request->input('date_to'),
+            $request->input('as_of_date') ?? $request->input('date_to'),
             $filters
         );
 

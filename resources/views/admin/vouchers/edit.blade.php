@@ -113,6 +113,16 @@
                     <textarea class="form-control" id="narration" name="narration" rows="2"
                               placeholder="Brief description">{{ old('narration', $voucher->narration) }}</textarea>
                 </div>
+
+                @if($isPaymentReceipt)
+                <div class="col-md-4 mb-3">
+                    <label for="reference_number" class="form-label">Reference / Advance ID</label>
+                    <input type="text" class="form-control" id="reference_number" name="reference_number"
+                           maxlength="100" placeholder="e.g. cheque no. or advance reference"
+                           value="{{ old('reference_number', $voucher->reference_number) }}">
+                    <small class="text-muted d-block mt-1">Use this when this {{ $voucher->voucher_type }} is not being mapped to any invoice below.</small>
+                </div>
+                @endif
             </div>
 
             <hr>

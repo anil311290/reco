@@ -132,6 +132,12 @@
                     <div class="label">Narration</div>
                     <div class="value fw-normal">{{ $voucher->narration ?: '—' }}</div>
                 </div>
+                @if(in_array($voucher->voucher_type, ['payment', 'receipt'], true))
+                <div class="detail-row">
+                    <div class="label">Reference / Advance ID</div>
+                    <div class="value fw-normal">{{ $voucher->reference_number ?: '—' }}</div>
+                </div>
+                @endif
             </div>
         </div>
     </div>

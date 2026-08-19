@@ -10,7 +10,9 @@ use App\Services\AccountService;
 use App\Services\LedgerService;
 use App\Services\PartyService;
 use App\Services\PurchaseInvoiceService;
+use App\Services\ReportService;
 use App\Services\SalesInvoiceService;
+use App\Services\VoucherService;
 use App\Helpers\ResponseHelper;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -22,19 +24,25 @@ class PartyController extends Controller
     protected AccountService $accountService;
     protected SalesInvoiceService $salesInvoiceService;
     protected PurchaseInvoiceService $purchaseInvoiceService;
+    protected ReportService $reportService;
+    protected VoucherService $voucherService;
 
     public function __construct(
         PartyService $partyService,
         LedgerService $ledgerService,
         AccountService $accountService,
         SalesInvoiceService $salesInvoiceService,
-        PurchaseInvoiceService $purchaseInvoiceService
+        PurchaseInvoiceService $purchaseInvoiceService,
+        ReportService $reportService,
+        VoucherService $voucherService
     ) {
         $this->partyService = $partyService;
         $this->ledgerService = $ledgerService;
         $this->accountService = $accountService;
         $this->salesInvoiceService = $salesInvoiceService;
         $this->purchaseInvoiceService = $purchaseInvoiceService;
+        $this->reportService = $reportService;
+        $this->voucherService = $voucherService;
     }
 
     /**
@@ -189,6 +197,105 @@ class PartyController extends Controller
         })->values();
 
         return ResponseHelper::success($invoices);
+    }
+
+    /**
+     * Apply a party's unbilled/advance amount against one of their open invoices.
+     * Creates a self-offsetting journal voucher (net zero ledger impact) carrying an
+     * invoice settlement, reusing the existing bill-wise allocation machinery.
+     */
+    public function applyUnbilledAmount(Request $request, int $party): JsonResponse
+    {
+        $partyModel = $this->partyService->getById($party);
+
+        if (!$partyModel || $partyModel->company_id !== $request->user()->company_id) {
+            return ResponseHelper::notFound('Party not found');
+        }
+
+        if (!in_array($partyModel->type, ['debtor', 'creditor'], true)) {
+            return ResponseHelper::error('Party must be a debtor or creditor.');
+        }
+
+        $validated = $request->validate([
+            'invoice_id' => ['required', 'integer'],
+            'amount' => ['required', 'numeric', 'gt:0'],
+        ]);
+
+        $invoiceType = $partyModel->type === 'debtor' ? 'sales' : 'purchase';
+        $invoice = $invoiceType === 'sales'
+            ? SalesInvoice::find($validated['invoice_id'])
+            : PurchaseInvoice::find($validated['invoice_id']);
+
+        if (!$invoice || $invoice->company_id !== $partyModel->company_id || (int) $invoice->party_id !== $partyModel->id) {
+            return ResponseHelper::notFound('Invoice not found for this party.');
+        }
+
+        if ((float) $invoice->balance_due <= 0 || in_array($invoice->status, ['paid', 'cancelled'], true)) {
+            return ResponseHelper::error('This invoice has no outstanding balance to apply against.');
+        }
+
+        $companyId = $partyModel->company_id;
+        $financialYearId = $request->user()->company->currentFinancialYear?->id;
+
+        // Recompute the party's open invoice balance total and unbilled amount fresh at
+        // submit time so the same advance can never be applied more than once.
+        $openBalanceTotal = (float) ($invoiceType === 'sales' ? SalesInvoice::query() : PurchaseInvoice::query())
+            ->where('company_id', $companyId)
+            ->where('party_id', $partyModel->id)
+            ->whereNotIn('status', ['paid', 'cancelled'])
+            ->where('balance_due', '>', 0)
+            ->sum('balance_due');
+
+        $unbilled = $this->reportService->getPartyUnbilledAmount(
+            $companyId,
+            $partyModel->id,
+            $partyModel->type,
+            $openBalanceTotal,
+            $financialYearId ? (int) $financialYearId : null
+        );
+
+        $amount = round((float) $validated['amount'], 2);
+
+        if ($amount > $unbilled + 0.01) {
+            return ResponseHelper::error('Amount exceeds the available unbilled amount of \u20b9' . number_format($unbilled, 2) . '.');
+        }
+
+        if ($amount > (float) $invoice->balance_due + 0.01) {
+            return ResponseHelper::error('Amount exceeds the invoice balance due.');
+        }
+
+        if (!$partyModel->account_id) {
+            return ResponseHelper::error('This party has no linked ledger account.');
+        }
+
+        try {
+            $voucher = $this->voucherService->create([
+                'company_id' => $companyId,
+                'financial_year_id' => $financialYearId,
+                'party_id' => $partyModel->id,
+                'voucher_type' => 'journal',
+                'voucher_date' => now()->toDateString(),
+                'narration' => "Unbilled/advance amount applied to Invoice #{$invoice->invoice_number}",
+                'lines' => [
+                    ['account_id' => $partyModel->account_id, 'party_id' => $partyModel->id, 'debit' => $amount, 'credit' => 0],
+                    ['account_id' => $partyModel->account_id, 'party_id' => $partyModel->id, 'debit' => 0, 'credit' => $amount],
+                ],
+                'invoice_settlements' => [[
+                    'invoice_id' => $invoice->id,
+                    'amount' => $amount,
+                    'invoice_type' => $invoiceType,
+                ]],
+                'created_by' => $request->user()->id,
+                'created_by_ip' => $request->ip(),
+            ]);
+        } catch (\Exception $e) {
+            return ResponseHelper::error($e->getMessage());
+        }
+
+        return ResponseHelper::success(
+            ['voucher_number' => $voucher->voucher_number],
+            'Unbilled amount applied to invoice successfully.'
+        );
     }
 
     /**

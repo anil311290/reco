@@ -108,13 +108,12 @@ class ReportService
     }
 
     /**
-     * Get Balance Sheet report
+     * Get Balance Sheet report as of a single point-in-time date.
      */
     public function getBalanceSheet(
         int $companyId,
         int $financialYearId,
-        ?string $dateFrom = null,
-        ?string $dateTo = null
+        ?string $asOfDate = null
     ): array
     {
         $assetDetails = [];
@@ -124,8 +123,8 @@ class ReportService
                 (int) $account->id,
                 $companyId,
                 $financialYearId,
-                $dateFrom,
-                $dateTo
+                null,
+                $asOfDate
             );
             $closing = $ledger['closing_balance'];
             $amount = $closing['type'] === 'debit' ? $closing['balance'] : -$closing['balance'];
@@ -142,8 +141,8 @@ class ReportService
                 (int) $account->id,
                 $companyId,
                 $financialYearId,
-                $dateFrom,
-                $dateTo
+                null,
+                $asOfDate
             );
             $closing = $ledger['closing_balance'];
             $amount = $closing['type'] === 'credit' ? $closing['balance'] : -$closing['balance'];
@@ -160,8 +159,8 @@ class ReportService
                 (int) $account->id,
                 $companyId,
                 $financialYearId,
-                $dateFrom,
-                $dateTo
+                null,
+                $asOfDate
             );
             $closing = $ledger['closing_balance'];
             $amount = $closing['type'] === 'credit' ? $closing['balance'] : -$closing['balance'];
@@ -171,7 +170,9 @@ class ReportService
             }
         }
 
-        $profitLoss = $this->getProfitLoss($companyId, $financialYearId, $dateFrom, $dateTo);
+        // Net profit must span the full FY-to-date (not a partial window) so
+        // it stays consistent with the cumulative asset/liability closing balances.
+        $profitLoss = $this->getProfitLoss($companyId, $financialYearId, null, $asOfDate);
         $totalEquity += $profitLoss['net_profit'];
 
         return [
@@ -190,8 +191,7 @@ class ReportService
             ],
             'total_liabilities_equity' => $totalLiabilities + $totalEquity,
             'is_balanced' => abs($totalAssets - ($totalLiabilities + $totalEquity)) < 0.01,
-            'date_from' => $dateFrom,
-            'date_to' => $dateTo,
+            'as_of_date' => $asOfDate,
         ];
     }
 
@@ -721,33 +721,72 @@ class ReportService
     }
 
     /**
+     * Net ledger balance for a party (debit - credit) as of a given date.
+     * Positive = net debit balance, negative = net credit balance.
+     */
+    public function getPartyNetLedgerBalance(int $companyId, int $partyId, ?int $financialYearId, ?string $asOfDate): float
+    {
+        $asOf = $asOfDate ?: now()->toDateString();
+
+        $row = Ledger::query()
+            ->where('company_id', $companyId)
+            ->where('party_id', $partyId)
+            ->when($financialYearId, fn ($q) => $q->where('financial_year_id', $financialYearId))
+            ->whereDate('transaction_date', '<=', $asOf)
+            ->selectRaw('COALESCE(SUM(debit), 0) as debit_total, COALESCE(SUM(credit), 0) as credit_total')
+            ->first();
+
+        return round((float) ($row->debit_total ?? 0) - (float) ($row->credit_total ?? 0), 2);
+    }
+
+    /**
+     * Unbilled/advance amount for a party: money received (or paid, for creditors)
+     * that has not yet been allocated to any specific invoice.
+     *
+     * Derived as: sum of that party's currently open invoice balances minus their
+     * net ledger balance (in the party-type-normal direction). Any shortfall means
+     * cash was received/paid beyond what open invoices account for — i.e. an advance.
+     */
+    public function getPartyUnbilledAmount(
+        int $companyId,
+        int $partyId,
+        string $partyType,
+        float $openInvoiceBalanceTotal,
+        ?int $financialYearId = null,
+        ?string $asOfDate = null
+    ): float {
+        $net = $this->getPartyNetLedgerBalance($companyId, $partyId, $financialYearId, $asOfDate);
+        $normalizedNet = $partyType === 'debtor' ? $net : -$net;
+
+        $unbilled = round($openInvoiceBalanceTotal - $normalizedNet, 2);
+
+        return $unbilled > 0.01 ? $unbilled : 0.0;
+    }
+
+    /**
      * Receivables outstanding from party-linked account balances.
      */
     public function getDebtorsOutstanding(
         int $companyId,
         ?int $financialYearId = null,
-        ?string $dateFrom = null,
-        ?string $dateTo = null,
+        ?string $asOfDate = null,
         array $filters = []
     ): array
     {
         $financialYearId = $financialYearId ?: FinancialYear::getCurrent($companyId)?->id;
-        $filterMeta = $this->normalizeOutstandingFilters($dateTo, $filters);
+        $filterMeta = $this->normalizeOutstandingFilters($asOfDate, $filters);
         [$debtors, $total] = $this->buildOutstandingInvoiceRows(
             SalesInvoice::class,
             'debtor',
             $companyId,
             $financialYearId,
-            $dateFrom,
-            $dateTo,
             $filterMeta
         );
 
         return [
             'debtors' => $debtors,
             'total' => $total,
-            'date_from' => $dateFrom,
-            'date_to' => $dateTo,
+            'as_of_date' => $filterMeta['as_of_date'],
             'financial_year_id' => $financialYearId,
             'filters' => $filterMeta,
         ];
@@ -759,28 +798,24 @@ class ReportService
     public function getCreditorsOutstanding(
         int $companyId,
         ?int $financialYearId = null,
-        ?string $dateFrom = null,
-        ?string $dateTo = null,
+        ?string $asOfDate = null,
         array $filters = []
     ): array
     {
         $financialYearId = $financialYearId ?: FinancialYear::getCurrent($companyId)?->id;
-        $filterMeta = $this->normalizeOutstandingFilters($dateTo, $filters);
+        $filterMeta = $this->normalizeOutstandingFilters($asOfDate, $filters);
         [$creditors, $total] = $this->buildOutstandingInvoiceRows(
             PurchaseInvoice::class,
             'creditor',
             $companyId,
             $financialYearId,
-            $dateFrom,
-            $dateTo,
             $filterMeta
         );
 
         return [
             'creditors' => $creditors,
             'total' => $total,
-            'date_from' => $dateFrom,
-            'date_to' => $dateTo,
+            'as_of_date' => $filterMeta['as_of_date'],
             'financial_year_id' => $financialYearId,
             'filters' => $filterMeta,
         ];
@@ -788,7 +823,7 @@ class ReportService
 
     /**
      * Build invoice-level outstanding rows for a party type (AR = Sales, AP = Purchase).
-     * Each row represents a single outstanding invoice.
+     * Each row represents a single outstanding invoice, evaluated as of a single date.
      *
      * @return array{0: array, 1: float}
      */
@@ -797,32 +832,24 @@ class ReportService
         string $partyType,
         int $companyId,
         ?int $financialYearId,
-        ?string $dateFrom,
-        ?string $dateTo,
         array $filterMeta
     ): array
     {
         $asOf = Carbon::parse($filterMeta['as_of_date'])->startOfDay();
+        $basis = $filterMeta['basis'] ?? 'due';
 
         $query = $invoiceModel::query()
             ->with('party')
             ->where('company_id', $companyId)
             ->whereNotIn('status', ['paid', 'cancelled'])
             ->where('balance_due', '>', 0)
+            ->whereDate('invoice_date', '<=', $asOf->toDateString())
             ->whereHas('party', function ($q) use ($partyType) {
                 $q->where('type', $partyType);
             });
 
         if ($financialYearId) {
             $query->where('financial_year_id', $financialYearId);
-        }
-
-        if ($dateFrom) {
-            $query->whereDate('invoice_date', '>=', $dateFrom);
-        }
-
-        if ($dateTo) {
-            $query->whereDate('invoice_date', '<=', $dateTo);
         }
 
         $invoices = $query->orderBy('due_date')->orderBy('invoice_date')->get();
@@ -837,18 +864,23 @@ class ReportService
             $overdueDays = ($dueDate !== null && $dueDate->lt($asOf)) ? (int) $dueDate->diffInDays($asOf) : 0;
             $balance = (float) $invoice->balance_due;
 
-            $billedDays = $invoiceDate ? (int) $invoiceDate->diffInDays($asOf) : null;
+            $billedDays = $invoiceDate ? (int) $invoiceDate->diffInDays($asOf) : 0;
 
             $dueDays = null;
             if ($dueDate !== null) {
                 $dueDays = (int) $dueDate->diffInDays($asOf);
             }
 
+            // Bucket basis follows the selected toggle: Billed Days (since invoice date)
+            // or Due Days (days past the due date, the traditional overdue-aging basis).
+            $basisDays = $basis === 'billed' ? $billedDays : $overdueDays;
+
             $aging = [
                 'oldest_due_date' => $dueDate?->toDateString(),
                 'overdue_days' => $overdueDays,
                 'overdue_amount' => $overdueDays > 0 ? round($balance, 2) : 0.0,
-                'age_bucket' => $this->resolveAgeBucket($overdueDays),
+                'basis_days' => $basisDays,
+                'age_bucket' => $this->resolveAgeBucket($basisDays),
                 'overdue_status' => $isDue ? 'due' : 'not_due',
                 'overdue_label' => $overdueDays > 0
                     ? ($overdueDays . ' days late')
@@ -924,7 +956,7 @@ class ReportService
         return $settlements;
     }
 
-    private function normalizeOutstandingFilters(?string $dateTo, array $filters): array
+    private function normalizeOutstandingFilters(?string $asOfDate, array $filters): array
     {
         $overdueStatus = (string) ($filters['overdue_status'] ?? 'all');
         if (!in_array($overdueStatus, ['all', 'due', 'not_due'], true)) {
@@ -934,6 +966,11 @@ class ReportService
         $ageBucket = (string) ($filters['age_bucket'] ?? 'all');
         if (!in_array($ageBucket, ['all', 'current', '1_30', '31_60', '61_90', '91_plus', 'custom'], true)) {
             $ageBucket = 'all';
+        }
+
+        $basis = (string) ($filters['basis'] ?? 'due');
+        if (!in_array($basis, ['billed', 'due'], true)) {
+            $basis = 'due';
         }
 
         $ageMin = null;
@@ -953,14 +990,15 @@ class ReportService
             }
         }
 
-        $asOfDate = now()->startOfDay();
+        $asOf = $asOfDate ? Carbon::parse($asOfDate)->startOfDay() : now()->startOfDay();
 
         return [
             'overdue_status' => $overdueStatus,
             'age_bucket' => $ageBucket,
             'age_min' => $ageMin,
             'age_max' => $ageMax,
-            'as_of_date' => $asOfDate->toDateString(),
+            'basis' => $basis,
+            'as_of_date' => $asOf->toDateString(),
         ];
     }
 
@@ -987,10 +1025,10 @@ class ReportService
 
     private function matchesOutstandingFilters(array $aging, array $filters): bool
     {
-        $hasOverdue = (int) ($aging['overdue_days'] ?? 0) > 0;
         $overdueStatus = (string) ($filters['overdue_status'] ?? 'all');
         $rowStatus = (string) ($aging['overdue_status'] ?? 'not_due');
         $ageBucket = (string) ($filters['age_bucket'] ?? 'all');
+        $basisDays = (int) ($aging['basis_days'] ?? $aging['overdue_days'] ?? 0);
 
         if ($overdueStatus === 'due' && $rowStatus !== 'due') {
             return false;
@@ -1005,19 +1043,18 @@ class ReportService
         }
 
         if ($ageBucket === 'current') {
-            return !$hasOverdue;
+            return $basisDays <= 0;
         }
 
         if ($ageBucket === 'custom') {
-            $days = (int) ($aging['overdue_days'] ?? 0);
             $min = $filters['age_min'] ?? null;
             $max = $filters['age_max'] ?? null;
 
-            if ($min !== null && $days < (int) $min) {
+            if ($min !== null && $basisDays < (int) $min) {
                 return false;
             }
 
-            if ($max !== null && $days > (int) $max) {
+            if ($max !== null && $basisDays > (int) $max) {
                 return false;
             }
 

@@ -26,6 +26,7 @@ class Voucher extends Model
         'voucher_type',
         'voucher_date',
         'narration',
+        'reference_number',
         'total_debit',
         'total_credit',
         'status',

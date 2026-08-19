@@ -25,6 +25,7 @@ trait ValidatesVoucherPayload
             'party_id' => ['nullable', $companyParty],
             'cash_bank_account_id' => ['required_if:voucher_type,payment,receipt', 'nullable', $companyAccount],
             'narration' => 'nullable|string|max:500',
+            'reference_number' => 'nullable|string|max:100',
 
             'payment_rows' => 'required_if:voucher_type,payment,receipt|array|min:1',
             'payment_rows.*.account_id' => ['required_if:voucher_type,payment,receipt', 'string'],

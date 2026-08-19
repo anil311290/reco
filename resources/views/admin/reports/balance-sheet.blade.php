@@ -40,13 +40,9 @@
                     @endforeach
                 </select>
             </div>
-            <div class="col-lg-2 col-md-6">
-                <label class="form-label">From Date</label>
-                <input type="date" name="date_from" class="form-control" value="{{ $dateFrom ?? '' }}">
-            </div>
-            <div class="col-lg-2 col-md-6">
-                <label class="form-label">To Date</label>
-                <input type="date" name="date_to" class="form-control" value="{{ $dateTo ?? '' }}">
+            <div class="col-lg-3 col-md-6">
+                <label class="form-label">As of Date</label>
+                <input type="date" name="as_of_date" class="form-control" value="{{ $asOfDate ?? '' }}">
             </div>
             <div class="col-lg-auto col-md-12 report-filter-actions">
                 <button type="submit" class="btn btn-primary">
@@ -58,8 +54,8 @@
                             <i class="bi bi-download"></i>Export
                         </button>
                         <ul class="dropdown-menu dropdown-menu-end">
-                            <li><a class="dropdown-item" href="{{ route('admin.export.excel', ['type' => 'balance-sheet', 'financial_year_id' => $financialYearId, 'date_from' => $dateFrom, 'date_to' => $dateTo]) }}"><i class="bi bi-file-earmark-spreadsheet text-success me-2"></i>Excel</a></li>
-                            <li><a class="dropdown-item" href="{{ route('admin.export.balance-sheet.pdf', ['financial_year_id' => $financialYearId, 'date_from' => $dateFrom, 'date_to' => $dateTo]) }}"><i class="bi bi-file-earmark-pdf text-danger me-2"></i>PDF</a></li>
+                            <li><a class="dropdown-item" href="{{ route('admin.export.excel', ['type' => 'balance-sheet', 'financial_year_id' => $financialYearId, 'as_of_date' => $asOfDate]) }}"><i class="bi bi-file-earmark-spreadsheet text-success me-2"></i>Excel</a></li>
+                            <li><a class="dropdown-item" href="{{ route('admin.export.balance-sheet.pdf', ['financial_year_id' => $financialYearId, 'as_of_date' => $asOfDate]) }}"><i class="bi bi-file-earmark-pdf text-danger me-2"></i>PDF</a></li>
                         </ul>
                     </div>
                 @endif
@@ -119,11 +115,11 @@
     <div class="report-panel">
         <div class="report-panel-header">
             <h6 class="report-panel-title"><i class="bi bi-columns-gap text-primary"></i>Balance Sheet</h6>
-            <span class="report-pill report-pill--info">@istDate($dateFrom) to @istDate($dateTo)</span>
-            <span class="report-pill {{ $report['is_balanced'] ? 'report-pill--success' : 'report-pill--danger' }}">
+            <span class="report-pill report-pill--info">As of @istDate($asOfDate)</span>
+           <!-- <span class="report-pill {{ $report['is_balanced'] ? 'report-pill--success' : 'report-pill--danger' }}">
                 <i class="bi {{ $report['is_balanced'] ? 'bi-check-circle' : 'bi-x-circle' }}"></i>
                 {{ $report['is_balanced'] ? 'Balanced' : 'Not Balanced' }}
-            </span>
+            </span> -->
         </div>
         <div class="report-panel-body report-panel-body--flush">
             <div class="table-responsive">

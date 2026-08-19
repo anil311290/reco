@@ -123,12 +123,8 @@
                 </select>
             </div>
             <div class="col-6 col-md-3 col-lg-2">
-                <label class="form-label">From Date</label>
-                <input type="date" name="date_from" class="form-control" value="{{ $dateFrom ?? '' }}">
-            </div>
-            <div class="col-6 col-md-3 col-lg-2">
-                <label class="form-label">To Date</label>
-                <input type="date" name="date_to" class="form-control" value="{{ $dateTo ?? '' }}">
+                <label class="form-label">As of Date</label>
+                <input type="date" name="as_of_date" class="form-control" value="{{ $asOfDate ?? '' }}">
             </div>
             <div class="col-6 col-md-3 col-lg-2">
                 <label class="form-label">Overdue Status</label>
@@ -154,6 +150,13 @@
                     <input type="number" name="age_max" class="form-control custom-age-input" placeholder="Max" min="0" value="{{ $report['filters']['age_max'] ?? '' }}">
                 </div>
             </div>
+            <div class="col-6 col-md-3 col-lg-2">
+                <label class="form-label">Bucket Basis</label>
+                <select name="basis" class="form-select" data-searchable="false">
+                    <option value="due" {{ ($report['filters']['basis'] ?? 'due') === 'due' ? 'selected' : '' }}>Due Days</option>
+                    <option value="billed" {{ ($report['filters']['basis'] ?? 'due') === 'billed' ? 'selected' : '' }}>Billed Days</option>
+                </select>
+            </div>
             <div class="col-12 col-lg-auto report-filter-actions">
                 <button type="submit" class="btn btn-primary"><i class="bi bi-funnel me-1"></i>Filter</button>
                 <div class="btn-group report-export-dropdown">
@@ -161,8 +164,8 @@
                         <i class="bi bi-download"></i>Export
                     </button>
                     <ul class="dropdown-menu dropdown-menu-end">
-                        <li><a class="dropdown-item" href="{{ route('admin.export.excel', ['type' => 'creditors', 'financial_year_id' => $financialYearId, 'date_from' => $dateFrom, 'date_to' => $dateTo, 'overdue_status' => $report['filters']['overdue_status'] ?? 'all', 'age_bucket' => $report['filters']['age_bucket'] ?? 'all', 'age_min' => $report['filters']['age_min'] ?? '', 'age_max' => $report['filters']['age_max'] ?? '']) }}"><i class="bi bi-file-earmark-spreadsheet text-success me-2"></i>Excel</a></li>
-                        <li><a class="dropdown-item" href="{{ route('admin.export.creditors-outstanding.pdf', ['financial_year_id' => $financialYearId, 'date_from' => $dateFrom, 'date_to' => $dateTo, 'overdue_status' => $report['filters']['overdue_status'] ?? 'all', 'age_bucket' => $report['filters']['age_bucket'] ?? 'all', 'age_min' => $report['filters']['age_min'] ?? '', 'age_max' => $report['filters']['age_max'] ?? '']) }}"><i class="bi bi-file-earmark-pdf text-danger me-2"></i>PDF</a></li>
+                        <li><a class="dropdown-item" href="{{ route('admin.export.excel', ['type' => 'creditors', 'financial_year_id' => $financialYearId, 'as_of_date' => $asOfDate, 'overdue_status' => $report['filters']['overdue_status'] ?? 'all', 'age_bucket' => $report['filters']['age_bucket'] ?? 'all', 'age_min' => $report['filters']['age_min'] ?? '', 'age_max' => $report['filters']['age_max'] ?? '', 'basis' => $report['filters']['basis'] ?? 'due']) }}"><i class="bi bi-file-earmark-spreadsheet text-success me-2"></i>Excel</a></li>
+                        <li><a class="dropdown-item" href="{{ route('admin.export.creditors-outstanding.pdf', ['financial_year_id' => $financialYearId, 'as_of_date' => $asOfDate, 'overdue_status' => $report['filters']['overdue_status'] ?? 'all', 'age_bucket' => $report['filters']['age_bucket'] ?? 'all', 'age_min' => $report['filters']['age_min'] ?? '', 'age_max' => $report['filters']['age_max'] ?? '', 'basis' => $report['filters']['basis'] ?? 'due']) }}"><i class="bi bi-file-earmark-pdf text-danger me-2"></i>PDF</a></li>
                     </ul>
                 </div>
             </div>
@@ -184,16 +187,19 @@
         </div>
     </div>
 
+    {{--
+    Cards section (aging bucket cards) — commented out per request; the underlying
+    data (aging_summary) is still computed above so this can be restored easily.
     <div class="aging-bucket-grid">
         @php $activeBucket = $report['filters']['age_bucket'] ?? 'all'; @endphp
         @foreach(($report['aging_summary'] ?? []) as $bucketKey => $bucket)
             <a href="{{ route('admin.reports.creditors-outstanding', array_filter([
                 'financial_year_id' => $financialYearId,
-                'date_from' => $dateFrom,
-                'date_to' => $dateTo,
+                'as_of_date' => $asOfDate,
                 'overdue_status' => $report['filters']['overdue_status'] ?? 'all',
                 'age_bucket' => $bucketKey,
                 'party_id' => $partyId ?? '',
+                'basis' => $report['filters']['basis'] ?? 'due',
             ])) }}" class="aging-bucket-card {{ $activeBucket === $bucketKey ? 'is-active' : '' }}">
                 <p class="label">{{ $bucket['label'] }}</p>
                 <p class="count">{{ $bucket['count'] }} Invoices</p>
@@ -201,13 +207,14 @@
             </a>
         @endforeach
     </div>
+    --}}
 
     <div class="report-panel">
         <div class="report-panel-header report-panel-header--tabs">
             <ul class="nav nav-tabs report-tabs" id="creditorsTabs" role="tablist">
                 <li class="nav-item" role="presentation">
                     <button class="nav-link active" id="invoice-wise-tab" data-bs-toggle="tab" data-bs-target="#invoice-wise-pane" type="button" role="tab" aria-controls="invoice-wise-pane" aria-selected="true">
-                        <i class="bi bi-receipt me-1"></i>Invoice Wise Summary
+                        <i class="bi bi-receipt me-1"></i>Invoice Wise Details
                     </button>
                 </li>
                 <li class="nav-item" role="presentation">
@@ -216,7 +223,8 @@
                     </button>
                 </li>
             </ul>
-            <span class="report-pill report-pill--info">@istDate($dateFrom) to @istDate($dateTo)</span>
+            <span class="report-pill report-pill--info">As of @istDate($asOfDate)</span>
+            <span class="report-pill report-pill--info"><i class="bi bi-sliders me-1"></i>Bucketed by: {{ ($report['filters']['basis'] ?? 'due') === 'billed' ? 'Billed Days' : 'Due Days' }}</span>
         </div>
         <div class="tab-content" id="creditorsTabsContent">
         <div class="tab-pane fade show active" id="invoice-wise-pane" role="tabpanel" aria-labelledby="invoice-wise-tab">
@@ -224,12 +232,12 @@
             <div class="report-table-tools">
                 <form method="GET" action="{{ route('admin.reports.creditors-outstanding') }}" class="report-rows-form">
                     <input type="hidden" name="financial_year_id" value="{{ $financialYearId ?? '' }}">
-                    <input type="hidden" name="date_from" value="{{ $dateFrom ?? '' }}">
-                    <input type="hidden" name="date_to" value="{{ $dateTo ?? '' }}">
+                    <input type="hidden" name="as_of_date" value="{{ $asOfDate ?? '' }}">
                     <input type="hidden" name="overdue_status" value="{{ $report['filters']['overdue_status'] ?? 'all' }}">
                     <input type="hidden" name="age_bucket" value="{{ $report['filters']['age_bucket'] ?? 'all' }}">
                     <input type="hidden" name="age_min" value="{{ $report['filters']['age_min'] ?? '' }}">
                     <input type="hidden" name="age_max" value="{{ $report['filters']['age_max'] ?? '' }}">
+                    <input type="hidden" name="basis" value="{{ $report['filters']['basis'] ?? 'due' }}">
                     <input type="hidden" name="party_id" value="{{ $partyId ?? '' }}">
                     <label for="creditors-per-page" class="report-rows-label">Rows Per Page</label>
                     <select id="creditors-per-page" name="per_page" class="form-select form-select-sm report-rows-select" onchange="this.form.submit()">
@@ -318,12 +326,12 @@
             <div class="report-table-tools">
                 <form method="GET" action="{{ route('admin.reports.creditors-outstanding') }}#party-wise-pane" class="report-rows-form">
                     <input type="hidden" name="financial_year_id" value="{{ $financialYearId ?? '' }}">
-                    <input type="hidden" name="date_from" value="{{ $dateFrom ?? '' }}">
-                    <input type="hidden" name="date_to" value="{{ $dateTo ?? '' }}">
+                    <input type="hidden" name="as_of_date" value="{{ $asOfDate ?? '' }}">
                     <input type="hidden" name="overdue_status" value="{{ $report['filters']['overdue_status'] ?? 'all' }}">
                     <input type="hidden" name="age_bucket" value="{{ $report['filters']['age_bucket'] ?? 'all' }}">
                     <input type="hidden" name="age_min" value="{{ $report['filters']['age_min'] ?? '' }}">
                     <input type="hidden" name="age_max" value="{{ $report['filters']['age_max'] ?? '' }}">
+                    <input type="hidden" name="basis" value="{{ $report['filters']['basis'] ?? 'due' }}">
                     <input type="hidden" name="party_id" value="{{ $partyId ?? '' }}">
                     <label for="creditors-party-per-page" class="report-rows-label">Rows Per Page</label>
                     <select id="creditors-party-per-page" name="party_per_page" class="form-select form-select-sm report-rows-select" onchange="this.form.submit()">
@@ -343,7 +351,9 @@
                         <th class="text-end">Amount (₹)</th>
                         <th class="text-end">Paid (₹)</th>
                         <th class="text-end">Balance (₹) Cr</th>
+                        <th class="text-end">Unbilled (₹)</th>
                         <th class="text-end">Max Due Days</th>
+                        <th></th>
                     </tr>
                 </thead>
                 <tbody>
@@ -365,6 +375,13 @@
                         <td class="text-end">₹{{ number_format($item['amount_paid'], 2) }}</td>
                         <td class="text-end fw-bold text-warning">₹{{ number_format($item['balance'], 2) }}</td>
                         <td class="text-end">
+                            @if(($item['unbilled_amount'] ?? 0) > 0)
+                                <span class="fw-semibold text-success">₹{{ number_format($item['unbilled_amount'], 2) }}</span>
+                            @else
+                                <span class="text-muted">-</span>
+                            @endif
+                        </td>
+                        <td class="text-end">
                             @if($item['max_due_days'] === null)
                                 <span class="text-muted">-</span>
                             @elseif($item['max_due_days'] > 0)
@@ -373,9 +390,20 @@
                                 <span class="text-success">{{ $item['max_due_days'] }}</span>
                             @endif
                         </td>
+                        <td>
+                            @if(($item['unbilled_amount'] ?? 0) > 0)
+                                <button type="button" class="btn btn-sm btn-outline-success apply-unbilled-btn"
+                                        data-party-id="{{ $item['party']->id }}"
+                                        data-party-name="{{ $item['party']->name }}"
+                                        data-invoice-type="purchase"
+                                        data-unbilled="{{ $item['unbilled_amount'] }}">
+                                    <i class="bi bi-arrow-repeat me-1"></i>Apply
+                                </button>
+                            @endif
+                        </td>
                     </tr>
                     @empty
-                    <tr><td colspan="7" class="text-muted text-center py-4">No outstanding payables</td></tr>
+                    <tr><td colspan="9" class="text-muted text-center py-4">No outstanding payables</td></tr>
                     @endforelse
                 </tbody>
                 @if($partyWise->count() > 0)
@@ -383,7 +411,7 @@
                     <tr>
                         <td colspan="5">Total Outstanding</td>
                         <td class="text-end fw-bold">₹{{ number_format($report['total'], 2) }}</td>
-                        <td></td>
+                        <td colspan="3"></td>
                     </tr>
                 </tfoot>
                 @endif
@@ -395,6 +423,35 @@
             @endif
         </div>
         </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="applyUnbilledModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Apply Unbilled Amount</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p class="mb-2">Party: <strong id="applyUnbilledPartyName"></strong></p>
+                <p class="text-muted small mb-3">Available unbilled amount: ₹<span id="applyUnbilledAvailable"></span></p>
+                <div class="mb-3">
+                    <label class="form-label">Invoice</label>
+                    <select id="applyUnbilledInvoice" class="form-select">
+                        <option value="">Loading invoices…</option>
+                    </select>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Amount to Apply</label>
+                    <input type="number" id="applyUnbilledAmount" class="form-control" step="0.01" min="0.01">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-success" id="applyUnbilledSubmit">Apply</button>
+            </div>
         </div>
     </div>
 </div>
@@ -432,6 +489,82 @@
                 new bootstrap.Tab(partyTabEl).show();
             }
         }
+
+        const applyUnbilledModalEl = document.getElementById('applyUnbilledModal');
+        const applyUnbilledModal = applyUnbilledModalEl ? new bootstrap.Modal(applyUnbilledModalEl) : null;
+        let applyUnbilledContext = null;
+
+        $(document).on('click', '.apply-unbilled-btn', function () {
+            const $btn = $(this);
+            applyUnbilledContext = {
+                partyId: $btn.data('party-id'),
+                invoiceType: $btn.data('invoice-type'),
+                unbilled: parseFloat($btn.data('unbilled')) || 0,
+            };
+
+            $('#applyUnbilledPartyName').text($btn.data('party-name'));
+            $('#applyUnbilledAvailable').text(applyUnbilledContext.unbilled.toFixed(2));
+            $('#applyUnbilledAmount').val(applyUnbilledContext.unbilled.toFixed(2)).attr('max', applyUnbilledContext.unbilled);
+            $('#applyUnbilledInvoice').html('<option value="">Loading invoices…</option>');
+
+            $.get(`/admin/parties/${applyUnbilledContext.partyId}/outstanding-invoices`, { invoice_type: applyUnbilledContext.invoiceType })
+                .done(function (response) {
+                    const invoices = (response && response.data) || [];
+                    if (!invoices.length) {
+                        $('#applyUnbilledInvoice').html('<option value="">No outstanding invoices</option>');
+                        return;
+                    }
+                    let options = '<option value="">Select invoice</option>';
+                    invoices.forEach((inv) => {
+                        options += `<option value="${inv.id}" data-balance="${inv.balance_due}">${inv.invoice_number} — Balance: ₹${inv.balance_due.toFixed(2)}</option>`;
+                    });
+                    $('#applyUnbilledInvoice').html(options);
+                })
+                .fail(function () {
+                    $('#applyUnbilledInvoice').html('<option value="">Could not load invoices</option>');
+                });
+
+            applyUnbilledModal?.show();
+        });
+
+        $(document).on('change', '#applyUnbilledInvoice', function () {
+            const balance = parseFloat($(this).find(':selected').data('balance')) || 0;
+            if (balance > 0 && applyUnbilledContext) {
+                const cap = Math.min(balance, applyUnbilledContext.unbilled);
+                $('#applyUnbilledAmount').val(cap.toFixed(2));
+            }
+        });
+
+        $('#applyUnbilledSubmit').on('click', function () {
+            if (!applyUnbilledContext) return;
+
+            const invoiceId = $('#applyUnbilledInvoice').val();
+            const amount = parseFloat($('#applyUnbilledAmount').val());
+
+            if (!invoiceId) {
+                toastr.error('Please select an invoice.');
+                return;
+            }
+            if (!amount || amount <= 0) {
+                toastr.error('Please enter a valid amount.');
+                return;
+            }
+
+            $.ajax({
+                url: `/admin/parties/${applyUnbilledContext.partyId}/apply-unbilled`,
+                type: 'POST',
+                data: { invoice_id: invoiceId, amount: amount },
+                headers: { 'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content') },
+                success: function (r) {
+                    toastr.success(r.message);
+                    applyUnbilledModal?.hide();
+                    setTimeout(() => window.location.reload(), 800);
+                },
+                error: function (xhr) {
+                    toastr.error(xhr.responseJSON?.message || 'Error applying unbilled amount');
+                }
+            });
+        });
     });
 </script>
 @endpush

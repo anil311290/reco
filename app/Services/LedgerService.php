@@ -480,18 +480,45 @@ class LedgerService
             $query->where('transaction_date', '<=', $dateTo);
         }
 
-        $entries = $query->orderBy('transaction_date', 'asc')
+        $allEntries = $query->orderBy('transaction_date', 'asc')
             ->orderBy('id', 'asc')
             ->get();
 
-        $this->attachContraParticulars($entries);
+        $this->attachContraParticulars($allEntries);
+
+        // Opening-balance rows within the selected range are folded into the
+        // "Opening Balance b/f" figure instead of appearing as transaction rows.
+        $openingRows = $allEntries->where('is_opening_balance', true)->values();
+        $entries = $allEntries->where('is_opening_balance', false)->values();
 
         $openingBalance = $this->getOpeningBalance($accountId, $companyId, $financialYearId, $dateFrom);
+
+        if ($openingRows->isNotEmpty()) {
+            $account = $this->accountRepository->find($accountId);
+            $isDebitNormal = in_array($account->account_type, ['asset', 'expense'], true);
+            $normalSide = $isDebitNormal ? 'debit' : 'credit';
+
+            $normalSigned = $openingBalance['type'] === $normalSide
+                ? (float) $openingBalance['balance']
+                : -(float) $openingBalance['balance'];
+
+            foreach ($openingRows as $openingRow) {
+                $delta = $isDebitNormal
+                    ? ((float) $openingRow->debit - (float) $openingRow->credit)
+                    : ((float) $openingRow->credit - (float) $openingRow->debit);
+                $normalSigned += $delta;
+            }
+
+            $openingBalance = [
+                'balance' => round(abs($normalSigned), 2),
+                'type' => $normalSigned >= 0 ? $normalSide : ($normalSide === 'debit' ? 'credit' : 'debit'),
+            ];
+        }
 
         $totalDebit = round((float) $entries->sum('debit'), 2);
         $totalCredit = round((float) $entries->sum('credit'), 2);
 
-        $lastEntry = $entries->last();
+        $lastEntry = $allEntries->last();
         if ($lastEntry) {
             $closingBalance = (float) $lastEntry->running_balance;
             $closingBalanceType = $lastEntry->balance_type;

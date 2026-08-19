@@ -57,24 +57,22 @@ class ReportController extends Controller
     public function balanceSheet(Request $request)
     {
         $companyId = auth()->user()->company_id;
-        $context = $this->resolveReportContext($request, $companyId);
+        $context = $this->resolveAsOfDateContext($request, $companyId);
         $financialYearId = $context['financialYearId'];
-        $dateFrom = $context['dateFrom'];
-        $dateTo = $context['dateTo'];
+        $asOfDate = $context['asOfDate'];
         $financialYears = $context['financialYears'];
 
         if (!$financialYearId) {
             return view('admin.reports.balance-sheet', [
                 'report' => null,
                 'financialYears' => $financialYears,
-                'dateFrom' => $dateFrom,
-                'dateTo' => $dateTo,
+                'asOfDate' => $asOfDate,
             ]);
         }
 
-        $report = $this->reportService->getBalanceSheet($companyId, $financialYearId, $dateFrom, $dateTo);
+        $report = $this->reportService->getBalanceSheet($companyId, $financialYearId, $asOfDate);
 
-        return view('admin.reports.balance-sheet', compact('report', 'financialYears', 'financialYearId', 'dateFrom', 'dateTo'));
+        return view('admin.reports.balance-sheet', compact('report', 'financialYears', 'financialYearId', 'asOfDate'));
     }
 
     public function trialBalance(Request $request)
@@ -183,14 +181,13 @@ class ReportController extends Controller
     public function debtorsOutstanding(Request $request)
     {
         $companyId = auth()->user()->company_id;
-        $context = $this->resolveReportContext($request, $companyId);
+        $context = $this->resolveAsOfDateContext($request, $companyId);
         $financialYearId = $context['financialYearId'];
-        $dateFrom = $context['dateFrom'];
-        $dateTo = $context['dateTo'];
+        $asOfDate = $context['asOfDate'];
         $financialYears = $context['financialYears'];
-        $filters = $request->only(['overdue_status', 'age_bucket', 'age_min', 'age_max']);
+        $filters = $request->only(['overdue_status', 'age_bucket', 'age_min', 'age_max', 'basis']);
 
-        $report = $this->reportService->getDebtorsOutstanding($companyId, $financialYearId, $dateFrom, $dateTo, $filters);
+        $report = $this->reportService->getDebtorsOutstanding($companyId, $financialYearId, $asOfDate, $filters);
 
         $partyId = $request->input('party_id');
         if ($partyId) {
@@ -202,11 +199,11 @@ class ReportController extends Controller
         $report['aging_summary'] = $this->summarizeAgingBuckets($report['debtors'] ?? []);
         $debtors = $this->paginateReportItems($request, $report['debtors'] ?? [], 10);
 
-        $partyWiseRows = $this->summarizePartyWise($report['debtors'] ?? [], $partyId);
+        $partyWiseRows = $this->summarizePartyWise($report['debtors'] ?? [], $partyId, 'debtor', $companyId, $financialYearId, $asOfDate);
         $partyWise = $this->paginateReportItems($request, $partyWiseRows, 10, 'party_page', 'party_per_page');
         $parties = $this->partyService->getForDropdown($companyId, 'debtor');
 
-        return view('admin.reports.debtors-outstanding', compact('report', 'debtors', 'financialYearId', 'dateFrom', 'dateTo', 'financialYears', 'partyWise', 'parties', 'partyId'));
+        return view('admin.reports.debtors-outstanding', compact('report', 'debtors', 'financialYearId', 'asOfDate', 'financialYears', 'partyWise', 'parties', 'partyId'));
     }
 
     /**
@@ -240,14 +237,13 @@ class ReportController extends Controller
     public function creditorsOutstanding(Request $request)
     {
         $companyId = auth()->user()->company_id;
-        $context = $this->resolveReportContext($request, $companyId);
+        $context = $this->resolveAsOfDateContext($request, $companyId);
         $financialYearId = $context['financialYearId'];
-        $dateFrom = $context['dateFrom'];
-        $dateTo = $context['dateTo'];
+        $asOfDate = $context['asOfDate'];
         $financialYears = $context['financialYears'];
-        $filters = $request->only(['overdue_status', 'age_bucket', 'age_min', 'age_max']);
+        $filters = $request->only(['overdue_status', 'age_bucket', 'age_min', 'age_max', 'basis']);
 
-        $report = $this->reportService->getCreditorsOutstanding($companyId, $financialYearId, $dateFrom, $dateTo, $filters);
+        $report = $this->reportService->getCreditorsOutstanding($companyId, $financialYearId, $asOfDate, $filters);
 
         $partyId = $request->input('party_id');
         if ($partyId) {
@@ -259,11 +255,11 @@ class ReportController extends Controller
         $report['aging_summary'] = $this->summarizeAgingBuckets($report['creditors'] ?? []);
         $creditors = $this->paginateReportItems($request, $report['creditors'] ?? [], 10);
 
-        $partyWiseRows = $this->summarizePartyWise($report['creditors'] ?? [], $partyId);
+        $partyWiseRows = $this->summarizePartyWise($report['creditors'] ?? [], $partyId, 'creditor', $companyId, $financialYearId, $asOfDate);
         $partyWise = $this->paginateReportItems($request, $partyWiseRows, 10, 'party_page', 'party_per_page');
         $parties = $this->partyService->getForDropdown($companyId, 'creditor');
 
-        return view('admin.reports.creditors-outstanding', compact('report', 'creditors', 'financialYearId', 'dateFrom', 'dateTo', 'financialYears', 'partyWise', 'parties', 'partyId'));
+        return view('admin.reports.creditors-outstanding', compact('report', 'creditors', 'financialYearId', 'asOfDate', 'financialYears', 'partyWise', 'parties', 'partyId'));
     }
 
     public function agingSummary(Request $request)
@@ -276,8 +272,8 @@ class ReportController extends Controller
         $financialYears = $context['financialYears'];
         $filters = $request->only(['overdue_status', 'age_bucket', 'age_min', 'age_max']);
 
-        $debtorsReport = $this->reportService->getDebtorsOutstanding($companyId, $financialYearId, $dateFrom, $dateTo, $filters);
-        $creditorsReport = $this->reportService->getCreditorsOutstanding($companyId, $financialYearId, $dateFrom, $dateTo, $filters);
+        $debtorsReport = $this->reportService->getDebtorsOutstanding($companyId, $financialYearId, $dateTo, $filters);
+        $creditorsReport = $this->reportService->getCreditorsOutstanding($companyId, $financialYearId, $dateTo, $filters);
 
         $rows = collect($debtorsReport['debtors'] ?? [])
             ->map(function (array $item) {
@@ -352,7 +348,7 @@ class ReportController extends Controller
      * @param  array<int, array<string, mixed>>  $rows
      * @return array<int, array<string, mixed>>
      */
-    private function summarizePartyWise(iterable $rows, $partyId = null): array
+    private function summarizePartyWise(iterable $rows, $partyId, string $partyType, int $companyId, ?int $financialYearId, ?string $asOfDate): array
     {
         $groups = [];
 
@@ -394,6 +390,14 @@ class ReportController extends Controller
             $row['invoice_total'] = round($row['invoice_total'], 2);
             $row['amount_paid'] = round($row['amount_paid'], 2);
             $row['balance'] = round($row['balance'], 2);
+            $row['unbilled_amount'] = $this->reportService->getPartyUnbilledAmount(
+                $companyId,
+                (int) $row['party']->id,
+                $partyType,
+                $row['balance'],
+                $financialYearId,
+                $asOfDate
+            );
         }
         unset($row);
 
@@ -464,6 +468,29 @@ class ReportController extends Controller
             'financialYearId' => $financialYearId,
             'dateFrom' => $dateFrom,
             'dateTo' => $dateTo,
+        ];
+    }
+
+    /**
+     * Resolve financial-year + single "as of date" context for point-in-time reports
+     * (Balance Sheet, Debtors/Creditors Outstanding).
+     */
+    protected function resolveAsOfDateContext(Request $request, int $companyId): array
+    {
+        $financialYears = FinancialYear::where('company_id', $companyId)
+            ->orderByDesc('start_date')
+            ->get();
+
+        $financialYearId = $request->filled('financial_year_id')
+            ? (int) $request->input('financial_year_id')
+            : FinancialYear::getCurrent($companyId)?->id;
+
+        $asOfDate = $request->input('as_of_date', now()->toDateString());
+
+        return [
+            'financialYears' => $financialYears,
+            'financialYearId' => $financialYearId,
+            'asOfDate' => $asOfDate,
         ];
     }
 }
