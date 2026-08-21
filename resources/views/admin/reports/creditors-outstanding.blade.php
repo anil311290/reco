@@ -367,8 +367,8 @@
                         <td class="text-end">₹{{ number_format($item['amount_paid'], 2) }}</td>
                         <td class="text-end fw-bold text-warning">₹{{ number_format($item['balance'], 2) }}</td>
                         <td class="text-end">
-                            @if(($item['unbilled_amount'] ?? 0) > 0)
-                                <span class="fw-semibold text-success">₹{{ number_format($item['unbilled_amount'], 2) }}</span>
+                            @if(($item['unapplied_amount'] ?? 0) > 0)
+                                <span class="fw-semibold text-success">₹{{ number_format($item['unapplied_amount'], 2) }}</span>
                             @else
                                 <span class="text-muted">-</span>
                             @endif
@@ -383,12 +383,12 @@
                             @endif
                         </td>
                         <td>
-                            @if(($item['opening_balance_available'] ?? 0) > 0 || ($item['unbilled_amount'] ?? 0) > 0)
-                                <button type="button" class="btn btn-sm btn-outline-success apply-unbilled-btn"
+                            @if(($item['opening_balance_available'] ?? 0) > 0 || ($item['unapplied_amount'] ?? 0) > 0)
+                                <button type="button" class="btn btn-sm btn-outline-success apply-unapplied-btn"
                                         data-party-id="{{ $item['party']->id }}"
                                         data-party-name="{{ $item['party']->name }}"
                                         data-invoice-type="purchase"
-                                        data-unbilled="{{ $item['unbilled_amount'] }}"
+                                        data-unapplied="{{ $item['unapplied_amount'] }}"
                                         data-opening-balance="{{ $item['opening_balance_available'] ?? 0 }}">
                                     <i class="bi bi-arrow-repeat me-1"></i>Apply
                                 </button>
@@ -420,7 +420,7 @@
     </div>
 </div>
 
-<div class="modal fade" id="applyUnbilledModal" tabindex="-1" aria-hidden="true">
+<div class="modal fade" id="applyUnappliedModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header">
@@ -428,22 +428,22 @@
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
-                <p class="mb-2">Party: <strong id="applyUnbilledPartyName"></strong></p>
-                <p class="text-muted small mb-3">Available amount to allocate: ₹<span id="applyUnbilledAvailable"></span></p>
+                <p class="mb-2">Party: <strong id="applyUnappliedPartyName"></strong></p>
+                <p class="text-muted small mb-3">Available amount to allocate: ₹<span id="applyUnappliedAvailable"></span></p>
                 <div class="mb-3">
                     <label class="form-label">Invoice</label>
-                    <select id="applyUnbilledInvoice" class="form-select">
+                    <select id="applyUnappliedInvoice" class="form-select">
                         <option value="">Loading invoices…</option>
                     </select>
                 </div>
                 <div class="mb-3">
                     <label class="form-label">Amount to Apply</label>
-                    <input type="number" id="applyUnbilledAmount" class="form-control" step="0.01" min="0.01">
+                    <input type="number" id="applyUnappliedAmount" class="form-control" step="0.01" min="0.01">
                 </div>
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
-                <button type="button" class="btn btn-success" id="applyUnbilledSubmit">Apply</button>
+                <button type="button" class="btn btn-success" id="applyUnappliedSubmit">Apply</button>
             </div>
         </div>
     </div>
@@ -483,64 +483,64 @@
             }
         }
 
-        const applyUnbilledModalEl = document.getElementById('applyUnbilledModal');
-        const applyUnbilledModal = applyUnbilledModalEl ? new bootstrap.Modal(applyUnbilledModalEl) : null;
-        let applyUnbilledContext = null;
+        const applyUnappliedModalEl = document.getElementById('applyUnappliedModal');
+        const applyUnappliedModal = applyUnappliedModalEl ? new bootstrap.Modal(applyUnappliedModalEl) : null;
+        let applyUnappliedContext = null;
 
-        $(document).on('click', '.apply-unbilled-btn', function () {
+        $(document).on('click', '.apply-unapplied-btn', function () {
             const $btn = $(this);
-            applyUnbilledContext = {
+            applyUnappliedContext = {
                 partyId: $btn.data('party-id'),
                 invoiceType: $btn.data('invoice-type'),
-                unbilled: parseFloat($btn.data('unbilled')) || 0,
+                unapplied: parseFloat($btn.data('unapplied')) || 0,
                 openingBalance: parseFloat($btn.data('opening-balance')) || 0,
             };
-            applyUnbilledContext.source = applyUnbilledContext.openingBalance > 0 ? 'opening_balance' : 'unbilled';
-            const available = applyUnbilledContext.source === 'opening_balance'
-                ? applyUnbilledContext.openingBalance
-                : applyUnbilledContext.unbilled;
+            applyUnappliedContext.source = applyUnappliedContext.openingBalance > 0 ? 'opening_balance' : 'unapplied';
+            const available = applyUnappliedContext.source === 'opening_balance'
+                ? applyUnappliedContext.openingBalance
+                : applyUnappliedContext.unapplied;
 
-            $('#applyUnbilledPartyName').text($btn.data('party-name'));
-            $('#applyUnbilledAvailable').text(available.toFixed(2));
-            $('#applyUnbilledAmount').val(available.toFixed(2)).attr('max', available);
-            $('#applyUnbilledInvoice').html('<option value="">Loading invoices…</option>');
+            $('#applyUnappliedPartyName').text($btn.data('party-name'));
+            $('#applyUnappliedAvailable').text(available.toFixed(2));
+            $('#applyUnappliedAmount').val(available.toFixed(2)).attr('max', available);
+            $('#applyUnappliedInvoice').html('<option value="">Loading invoices…</option>');
 
-            $.get(`/admin/parties/${applyUnbilledContext.partyId}/outstanding-invoices`, { invoice_type: applyUnbilledContext.invoiceType })
+            $.get(`/admin/parties/${applyUnappliedContext.partyId}/outstanding-invoices`, { invoice_type: applyUnappliedContext.invoiceType })
                 .done(function (response) {
                     const invoices = (response && response.data) || [];
                     if (!invoices.length) {
-                        $('#applyUnbilledInvoice').html('<option value="">No outstanding invoices</option>');
+                        $('#applyUnappliedInvoice').html('<option value="">No outstanding invoices</option>');
                         return;
                     }
                     let options = '<option value="">Select invoice</option>';
                     invoices.forEach((inv) => {
                         options += `<option value="${inv.id}" data-balance="${inv.balance_due}">${inv.invoice_number} — Balance: ₹${inv.balance_due.toFixed(2)}</option>`;
                     });
-                    $('#applyUnbilledInvoice').html(options);
+                    $('#applyUnappliedInvoice').html(options);
                 })
                 .fail(function () {
-                    $('#applyUnbilledInvoice').html('<option value="">Could not load invoices</option>');
+                    $('#applyUnappliedInvoice').html('<option value="">Could not load invoices</option>');
                 });
 
-            applyUnbilledModal?.show();
+            applyUnappliedModal?.show();
         });
 
-        $(document).on('change', '#applyUnbilledInvoice', function () {
+        $(document).on('change', '#applyUnappliedInvoice', function () {
             const balance = parseFloat($(this).find(':selected').data('balance')) || 0;
-            if (balance > 0 && applyUnbilledContext) {
-                const available = applyUnbilledContext.source === 'opening_balance'
-                    ? applyUnbilledContext.openingBalance
-                    : applyUnbilledContext.unbilled;
+            if (balance > 0 && applyUnappliedContext) {
+                const available = applyUnappliedContext.source === 'opening_balance'
+                    ? applyUnappliedContext.openingBalance
+                    : applyUnappliedContext.unapplied;
                 const cap = Math.min(balance, available);
-                $('#applyUnbilledAmount').val(cap.toFixed(2));
+                $('#applyUnappliedAmount').val(cap.toFixed(2));
             }
         });
 
-        $('#applyUnbilledSubmit').on('click', function () {
-            if (!applyUnbilledContext) return;
+        $('#applyUnappliedSubmit').on('click', function () {
+            if (!applyUnappliedContext) return;
 
-            const invoiceId = $('#applyUnbilledInvoice').val();
-            const amount = parseFloat($('#applyUnbilledAmount').val());
+            const invoiceId = $('#applyUnappliedInvoice').val();
+            const amount = parseFloat($('#applyUnappliedAmount').val());
 
             if (!invoiceId) {
                 toastr.error('Please select an invoice.');
@@ -552,13 +552,13 @@
             }
 
             $.ajax({
-                url: `/admin/parties/${applyUnbilledContext.partyId}/apply-unbilled`,
+                url: `/admin/parties/${applyUnappliedContext.partyId}/apply-unapplied`,
                 type: 'POST',
-                data: { invoice_id: invoiceId, amount: amount, source: applyUnbilledContext.source },
+                data: { invoice_id: invoiceId, amount: amount, source: applyUnappliedContext.source },
                 headers: { 'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content') },
                 success: function (r) {
                     toastr.success(r.message);
-                    applyUnbilledModal?.hide();
+                    applyUnappliedModal?.hide();
                     setTimeout(() => window.location.reload(), 800);
                 },
                 error: function (xhr) {

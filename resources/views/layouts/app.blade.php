@@ -469,6 +469,12 @@
                                     <span>Balance Sheet</span>
                                 </a>
                             </li>
+                            <li class="nav-item">
+                                <a class="nav-link {{ request()->routeIs('admin.reports.stock-register') ? 'active' : '' }}" href="{{ route('admin.reports.stock-register') }}">
+                                    <i class="bi bi-box-seam"></i>
+                                    <span>Stock Register</span>
+                                </a>
+                            </li>
                         </ul>
                     </div>
                 </li>

@@ -64,10 +64,15 @@ class PartyService
             $query->where('type', $filters['type']);
         }
 
+        if (array_key_exists('is_active', $filters) && $filters['is_active'] !== '') {
+            $query->where('is_active', (bool) $filters['is_active']);
+        }
+
         if (isset($filters['search'])) {
             $query->where(function ($q) use ($filters) {
                 $q->where('name', 'like', '%' . $filters['search'] . '%')
-                  ->orWhere('party_code', 'like', '%' . $filters['search'] . '%');
+                  ->orWhere('party_code', 'like', '%' . $filters['search'] . '%')
+                  ->orWhere('mobile', 'like', '%' . $filters['search'] . '%');
             });
         }
 

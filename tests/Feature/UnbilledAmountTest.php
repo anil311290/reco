@@ -14,7 +14,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Str;
 use Tests\TestCase;
 
-class UnbilledAmountTest extends TestCase
+class UnappliedAmountTest extends TestCase
 {
     use RefreshDatabase;
 
@@ -61,7 +61,7 @@ class UnbilledAmountTest extends TestCase
         ]);
 
         $response = $this->actingAs($user)->postJson(
-            "/admin/parties/{$debtor->id}/apply-unbilled",
+            "/admin/parties/{$debtor->id}/apply-unapplied",
             ['invoice_id' => $invoice->id, 'amount' => 1000, 'source' => 'opening_balance']
         );
 
@@ -83,7 +83,7 @@ class UnbilledAmountTest extends TestCase
         ));
     }
 
-    public function test_unbilled_amount_is_detected_and_can_be_applied_to_an_invoice(): void
+    public function test_unapplied_amount_is_detected_and_can_be_applied_to_an_invoice(): void
     {
         $company = Company::factory()->create();
         $fy = FinancialYear::factory()->create([
@@ -143,7 +143,7 @@ class UnbilledAmountTest extends TestCase
         ]);
 
         $reportService = app(ReportService::class);
-        $unbilled = $reportService->getPartyUnbilledAmount(
+        $unapplied = $reportService->getPartyUnappliedAmount(
             $company->id,
             $debtor->id,
             'debtor',
@@ -152,12 +152,12 @@ class UnbilledAmountTest extends TestCase
             '2026-07-31'
         );
 
-        $this->assertEquals(1500.0, $unbilled);
+        $this->assertEquals(1500.0, $unapplied);
 
         $user = User::factory()->create(['company_id' => $company->id, 'role' => 'superadmin', 'status' => 'active']);
 
         $response = $this->actingAs($user)->postJson(
-            "/admin/parties/{$debtor->id}/apply-unbilled",
+            "/admin/parties/{$debtor->id}/apply-unapplied",
             ['invoice_id' => $invoice->id, 'amount' => 1000]
         );
 
@@ -168,7 +168,7 @@ class UnbilledAmountTest extends TestCase
         $this->assertEquals(0.0, (float) $invoice->balance_due);
         $this->assertEquals('paid', $invoice->status);
 
-        $remainingUnbilled = $reportService->getPartyUnbilledAmount(
+        $remainingUnapplied = $reportService->getPartyUnappliedAmount(
             $company->id,
             $debtor->id,
             'debtor',
@@ -177,6 +177,6 @@ class UnbilledAmountTest extends TestCase
             '2026-07-31'
         );
 
-        $this->assertEquals(500.0, $remainingUnbilled);
+        $this->assertEquals(500.0, $remainingUnapplied);
     }
 }

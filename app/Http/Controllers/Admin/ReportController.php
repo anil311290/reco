@@ -10,6 +10,8 @@ use App\Models\Account;
 use App\Models\FinancialYear;
 use App\Models\PurchaseInvoice;
 use App\Models\SalesInvoice;
+use App\Models\Item;
+use App\Services\ItemService;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection;
@@ -20,12 +22,19 @@ class ReportController extends Controller
     protected ReportService $reportService;
     protected LedgerService $ledgerService;
     protected PartyService $partyService;
+    protected ItemService $itemService;
 
-    public function __construct(ReportService $reportService, LedgerService $ledgerService, PartyService $partyService)
+    public function __construct(
+        ReportService $reportService,
+        LedgerService $ledgerService,
+        PartyService $partyService,
+        ItemService $itemService
+    )
     {
         $this->reportService = $reportService;
         $this->ledgerService = $ledgerService;
         $this->partyService = $partyService;
+        $this->itemService = $itemService;
     }
 
     public function index()
@@ -298,6 +307,92 @@ class ReportController extends Controller
         ]);
     }
 
+    public function stockRegister(Request $request)
+    {
+        $companyId = auth()->user()->company_id;
+        $fromDate = $request->input('from_date');
+        $toDate = $request->input('to_date');
+        $selectedItemId = $request->input('item_id');
+
+        $itemsQuery = Item::query()
+            ->where('company_id', $companyId)
+            ->where('type', 'goods')
+            ->where('is_stockable', true)
+            ->orderBy('name');
+
+        if ($selectedItemId) {
+            $itemsQuery->whereKey((int) $selectedItemId);
+        }
+
+        $items = $itemsQuery->get();
+        $rows = [];
+        $closingQuantity = 0.0;
+        $totalIn = 0.0;
+        $totalOut = 0.0;
+
+        foreach ($items as $item) {
+            $history = $this->itemService->getItemHistory(
+                (int) $item->id,
+                (int) $companyId,
+                null,
+                null,
+                0
+            );
+
+            $itemClosingQuantity = 0.0;
+            foreach ($history['rows'] as $movement) {
+                if ($movement['date'] === null || !$toDate || $movement['date'] <= $toDate) {
+                    $itemClosingQuantity = (float) $movement['running_qty'];
+                }
+            }
+            $closingQuantity += $itemClosingQuantity;
+
+            foreach ($history['rows'] as $movement) {
+                if ($movement['date'] !== null && (
+                    ($fromDate && $movement['date'] < $fromDate)
+                    || ($toDate && $movement['date'] > $toDate)
+                )) {
+                    continue;
+                }
+
+                $movement['item'] = $item;
+                $movement['stock_reference'] = $item->name . ' (' . $item->item_code . ')';
+                $movement['uom'] = $item->unit ?: '-';
+                $rows[] = $movement;
+                $totalIn += (float) $movement['qty_in'];
+                $totalOut += (float) $movement['qty_out'];
+            }
+        }
+
+        usort($rows, function (array $left, array $right): int {
+            $dateCompare = strcmp((string) ($left['date'] ?? ''), (string) ($right['date'] ?? ''));
+            if ($dateCompare !== 0) {
+                return $dateCompare;
+            }
+
+            return strcmp((string) $left['stock_reference'], (string) $right['stock_reference']);
+        });
+
+        $stockRows = $this->paginateReportItems($request, $rows, 25, 'stock_page', 'stock_per_page');
+
+        return view('admin.reports.stock-register', [
+            'rows' => $stockRows,
+            'totalMovements' => count($rows),
+            'totalIn' => round($totalIn, 3),
+            'totalOut' => round($totalOut, 3),
+            'closingQuantity' => round($closingQuantity, 3),
+            'items' => Item::query()
+                ->where('company_id', $companyId)
+                ->where('type', 'goods')
+                ->where('is_stockable', true)
+                ->orderBy('name')
+                ->get(),
+            'selectedItemId' => $selectedItemId,
+            'fromDate' => $fromDate,
+            'toDate' => $toDate,
+        ]);
+    }
+
     public function agingSummary(Request $request)
     {
         $companyId = auth()->user()->company_id;
@@ -432,7 +527,7 @@ class ReportController extends Controller
                 $financialYearId,
                 $asOfDate
             );
-            $row['unbilled_amount'] = $this->reportService->getPartyUnbilledAmount(
+            $row['unapplied_amount'] = $this->reportService->getPartyUnappliedAmount(
                 $companyId,
                 (int) $row['party']->id,
                 $partyType,

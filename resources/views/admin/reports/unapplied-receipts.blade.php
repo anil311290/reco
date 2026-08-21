@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Unbilled Payments & Receipts')
+@section('title', 'Unapplied Payments & Receipts')
 
 @include('admin.reports._theme')
 
@@ -45,7 +45,7 @@
         <div class="row g-4 align-items-center">
             <div class="col-lg-8">
                 <span class="report-eyebrow"><i class="bi bi-arrow-repeat"></i> AP / AR Reports</span>
-                <h1 class="report-title">Unbilled Payments &amp; Receipts</h1>
+                <h1 class="report-title">Unapplied Payments &amp; Receipts</h1>
                 <p class="report-subtitle">Review unapplied receipts and payments and apply them to an open bill.</p>
             </div>
             <div class="col-lg-4 text-lg-end">
@@ -73,7 +73,7 @@
     <div class="report-panel">
         <div class="report-panel-header">
             <div>
-                <h5 class="mb-1">Unbilled Payments &amp; Receipts</h5>
+                <h5 class="mb-1">Unapplied Payments &amp; Receipts</h5>
                 <p class="mb-0 text-muted">Posted receipts and payments with a remaining unapplied amount.</p>
             </div>
         </div>
@@ -135,7 +135,7 @@
                                 <span class="text-muted">No open bills for this party</span>
                             @else
                                 <form class="unapplied-allocation-form d-flex gap-2 align-items-center"
-                                      action="{{ route('admin.parties.apply-unbilled', $item['party']->id) }}" method="POST">
+                                      action="{{ route('admin.parties.apply-unapplied', $item['party']->id) }}" method="POST">
                                     @csrf
                                     <input type="hidden" name="source" value="{{ $item['allocation_source'] ?? 'voucher' }}">
                                     <input type="hidden" name="voucher_id" value="{{ $item['voucher_id'] }}">

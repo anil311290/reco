@@ -748,7 +748,7 @@ class ReportService
      * net ledger balance (in the party-type-normal direction). Any shortfall means
      * cash was received/paid beyond what open invoices account for — i.e. an advance.
      */
-    public function getPartyUnbilledAmount(
+    public function getPartyUnappliedAmount(
         int $companyId,
         int $partyId,
         string $partyType,
@@ -759,9 +759,9 @@ class ReportService
         $net = $this->getPartyNetLedgerBalance($companyId, $partyId, $financialYearId, $asOfDate);
         $normalizedNet = $partyType === 'debtor' ? $net : -$net;
 
-        $unbilled = round($openInvoiceBalanceTotal - $normalizedNet, 2);
+        $unapplied = round($openInvoiceBalanceTotal - $normalizedNet, 2);
 
-        return $unbilled > 0.01 ? $unbilled : 0.0;
+        return $unapplied > 0.01 ? $unapplied : 0.0;
     }
 
     /**
@@ -1069,7 +1069,25 @@ class ReportService
 
         foreach ($openingParties as $party) {
             $openingDate = $party->opening_date ? Carbon::parse($party->opening_date)->startOfDay() : null;
-            $openingBalance = round((float) $party->opening_balance, 2);
+            $openingOriginalBalance = round((float) $party->opening_balance, 2);
+            $openingVoucher = Voucher::query()
+                ->where('company_id', $companyId)
+                ->where('voucher_type', 'adjustment')
+                ->where('status', 'posted')
+                ->where('narration', 'like', sprintf('[OB:party:%d]%%', $party->id))
+                ->latest('id')
+                ->first();
+            $openingAllocated = $openingVoucher
+                ? (float) $openingVoucher->paymentInvoiceMappings()
+                    ->where('status', '!=', 'reversed')
+                    ->sum('amount_settled')
+                : 0.0;
+            $openingBalance = round(max(0, $openingOriginalBalance - $openingAllocated), 2);
+
+            if ($openingBalance <= 0.01) {
+                continue;
+            }
+
             $openingDays = $openingDate ? (int) $openingDate->diffInDays($asOf) : 0;
             $openingAging = [
                 'oldest_due_date' => $openingDate?->toDateString(),
@@ -1095,8 +1113,8 @@ class ReportService
                 'invoice_number' => 'OPBAL-' . $party->party_code,
                 'invoice_date' => $party->opening_date?->toDateString(),
                 'due_date' => $party->opening_date?->toDateString(),
-                'invoice_total' => $openingBalance,
-                'amount_paid' => 0.0,
+                'invoice_total' => $openingOriginalBalance,
+                'amount_paid' => round($openingAllocated, 2),
                 'debit' => $partyType === 'debtor' ? $openingBalance : 0,
                 'credit' => $partyType === 'creditor' ? $openingBalance : 0,
                 'balance' => $openingBalance,

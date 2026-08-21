@@ -259,8 +259,8 @@ Route::prefix('admin')->name('admin.')->group(function () {
             Route::get('parties/{party}/outstanding-invoices', [PartyController::class, 'outstandingInvoices'])
                 ->name('parties.outstanding-invoices')
                 ->whereNumber('party');
-            Route::post('parties/{party}/apply-unbilled', [PartyController::class, 'applyUnbilledAmount'])
-                ->name('parties.apply-unbilled')
+            Route::post('parties/{party}/apply-unapplied', [PartyController::class, 'applyUnappliedAmount'])
+                ->name('parties.apply-unapplied')
                 ->whereNumber('party');
         });
 
@@ -312,6 +312,7 @@ Route::prefix('admin')->name('admin.')->group(function () {
             Route::get('reports/profit-loss', [ReportController::class, 'profitLoss'])->name('reports.profit-loss');
             Route::get('reports/receipt-payment', [ReportController::class, 'receiptPayment'])->name('reports.receipt-payment');
             Route::get('reports/balance-sheet', [ReportController::class, 'balanceSheet'])->name('reports.balance-sheet');
+            Route::get('reports/stock-register', [ReportController::class, 'stockRegister'])->name('reports.stock-register');
             Route::get('reports/debtors-outstanding', [ReportController::class, 'debtorsOutstanding'])->name('reports.debtors-outstanding');
             Route::get('reports/creditors-outstanding', [ReportController::class, 'creditorsOutstanding'])->name('reports.creditors-outstanding');
             Route::get('reports/unapplied-receipts', [ReportController::class, 'unappliedReceipts'])->name('reports.unapplied-receipts');

@@ -206,7 +206,7 @@ class PartyController extends Controller
      * Creates a self-offsetting journal voucher (net zero ledger impact) carrying an
      * invoice settlement, reusing the existing bill-wise allocation machinery.
      */
-    public function applyUnbilledAmount(Request $request, int $party): JsonResponse
+    public function applyUnappliedAmount(Request $request, int $party): JsonResponse
     {
         $partyModel = $this->partyService->getById($party);
 
@@ -221,7 +221,7 @@ class PartyController extends Controller
         $validated = $request->validate([
             'invoice_id' => ['required', 'integer'],
             'amount' => ['required', 'numeric', 'gt:0'],
-            'source' => ['nullable', 'in:opening_balance,unbilled,voucher'],
+            'source' => ['nullable', 'in:opening_balance,unapplied,voucher'],
             'voucher_id' => ['nullable', 'integer'],
         ]);
 
@@ -241,7 +241,7 @@ class PartyController extends Controller
         $companyId = $partyModel->company_id;
         $financialYearId = $request->user()->company->currentFinancialYear?->id;
 
-        $source = $validated['source'] ?? 'unbilled';
+        $source = $validated['source'] ?? 'unapplied';
         $availableOpeningBalance = $this->reportService->getPartyOpeningBalanceAvailable(
             $partyModel->company_id,
             $partyModel->id,
@@ -257,7 +257,7 @@ class PartyController extends Controller
             ->where('balance_due', '>', 0)
             ->sum('balance_due');
 
-        $unbilled = $this->reportService->getPartyUnbilledAmount(
+        $unapplied = $this->reportService->getPartyUnappliedAmount(
             $companyId,
             $partyModel->id,
             $partyModel->type,
@@ -312,7 +312,7 @@ class PartyController extends Controller
             );
         }
 
-        $available = $source === 'opening_balance' ? $availableOpeningBalance : $unbilled;
+        $available = $source === 'opening_balance' ? $availableOpeningBalance : $unapplied;
         if ($amount > $available + 0.01) {
             $label = $source === 'opening_balance' ? 'opening balance' : 'unapplied amount';
             return ResponseHelper::error('Amount exceeds the available ' . $label . ' of \u20b9' . number_format($available, 2) . '.');
@@ -395,8 +395,10 @@ class PartyController extends Controller
             if ($request->filled('is_active')) $filters['is_active'] = $request->input('is_active');
             $searchValue = $request->input('search.value', $request->input('search'));
             if (!empty($searchValue)) $filters['search'] = is_array($searchValue) ? ($searchValue['value'] ?? '') : $searchValue;
-            
-            $parties = $this->partyService->getPaginated($filters);
+            $perPage = (int) $request->input('length', 15);
+            $perPage = $perPage > 0 ? min($perPage, 100) : 15;
+
+            $parties = $this->partyService->getPaginated($filters, $perPage);
 
             return response()->json([
                 'data' => $parties->items(),

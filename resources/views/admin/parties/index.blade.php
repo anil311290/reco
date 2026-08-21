@@ -125,8 +125,9 @@ $(document).ready(function() {
         { 
             data: 'opening_balance',
             name: 'opening_balance',
-            render: function(data) {
-                return formatCurrency(data || 0);
+            render: function(data, type, row) {
+                const balanceType = row.opening_balance_type === 'credit' ? 'CR' : 'DR';
+                return `${formatCurrency(data || 0)} <span class="text-muted fw-semibold">${balanceType}</span>`;
             }
         },
         {
@@ -167,7 +168,15 @@ $(document).ready(function() {
                 `;
             }
         }
-    ]);
+    ], {
+        ajax: {
+            data: function(request) {
+                request.search.value = $('#search').val() || '';
+                request.type = $('#type').val() || '';
+                request.is_active = $('#is_active').val() || '';
+            }
+        }
+    });
 
     // Filter form submission
     $('#filterForm').on('submit', function(e) {
