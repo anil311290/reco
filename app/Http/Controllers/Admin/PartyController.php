@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\PartyRequest;
 use App\Models\PurchaseInvoice;
 use App\Models\SalesInvoice;
+use App\Models\Voucher;
 use App\Services\AccountService;
 use App\Services\LedgerService;
 use App\Services\PartyService;
@@ -16,6 +17,7 @@ use App\Services\VoucherService;
 use App\Helpers\ResponseHelper;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class PartyController extends Controller
 {
@@ -200,7 +202,7 @@ class PartyController extends Controller
     }
 
     /**
-     * Apply a party's unbilled/advance amount against one of their open invoices.
+    * Apply a party's unapplied/advance amount against one of their open invoices.
      * Creates a self-offsetting journal voucher (net zero ledger impact) carrying an
      * invoice settlement, reusing the existing bill-wise allocation machinery.
      */
@@ -219,6 +221,8 @@ class PartyController extends Controller
         $validated = $request->validate([
             'invoice_id' => ['required', 'integer'],
             'amount' => ['required', 'numeric', 'gt:0'],
+            'source' => ['nullable', 'in:opening_balance,unbilled,voucher'],
+            'voucher_id' => ['nullable', 'integer'],
         ]);
 
         $invoiceType = $partyModel->type === 'debtor' ? 'sales' : 'purchase';
@@ -237,7 +241,14 @@ class PartyController extends Controller
         $companyId = $partyModel->company_id;
         $financialYearId = $request->user()->company->currentFinancialYear?->id;
 
-        // Recompute the party's open invoice balance total and unbilled amount fresh at
+        $source = $validated['source'] ?? 'unbilled';
+        $availableOpeningBalance = $this->reportService->getPartyOpeningBalanceAvailable(
+            $partyModel->company_id,
+            $partyModel->id,
+            $request->user()->company->currentFinancialYear?->id
+        );
+
+        // Recompute the party's open invoice balance total and unapplied amount fresh at
         // submit time so the same advance can never be applied more than once.
         $openBalanceTotal = (float) ($invoiceType === 'sales' ? SalesInvoice::query() : PurchaseInvoice::query())
             ->where('company_id', $companyId)
@@ -256,8 +267,55 @@ class PartyController extends Controller
 
         $amount = round((float) $validated['amount'], 2);
 
-        if ($amount > $unbilled + 0.01) {
-            return ResponseHelper::error('Amount exceeds the available unbilled amount of \u20b9' . number_format($unbilled, 2) . '.');
+        if ($source === 'voucher') {
+            $sourceVoucher = Voucher::query()
+                ->whereKey((int) ($validated['voucher_id'] ?? 0))
+                ->where('company_id', $companyId)
+                ->where('party_id', $partyModel->id)
+                ->where('status', 'posted')
+                ->whereIn('voucher_type', ['receipt', 'payment'])
+                ->first();
+
+            $expectedVoucherType = $invoiceType === 'sales' ? 'receipt' : 'payment';
+            if (!$sourceVoucher || $sourceVoucher->voucher_type !== $expectedVoucherType) {
+                return ResponseHelper::error('The selected receipt/payment does not belong to this bill type.');
+            }
+
+            $allocated = (float) $sourceVoucher->paymentInvoiceMappings()
+                ->where('status', '!=', 'reversed')
+                ->sum('amount_settled');
+            $available = round((float) $sourceVoucher->total_debit - $allocated, 2);
+
+            if ($amount > $available + 0.01) {
+                return ResponseHelper::error('Amount exceeds the unapplied amount available on this receipt/payment.');
+            }
+
+            if ($amount > (float) $invoice->balance_due + 0.01) {
+                return ResponseHelper::error('Amount exceeds the invoice balance due.');
+            }
+
+            try {
+                DB::transaction(function () use ($sourceVoucher, $invoice, $amount, $invoiceType) {
+                    $this->voucherService->applyInvoiceSettlements($sourceVoucher, [[
+                        'invoice_id' => $invoice->id,
+                        'amount' => $amount,
+                        'invoice_type' => $invoiceType,
+                    ]]);
+                });
+            } catch (\Exception $e) {
+                return ResponseHelper::error($e->getMessage());
+            }
+
+            return ResponseHelper::success(
+                ['voucher_number' => $sourceVoucher->voucher_number],
+                'Receipt/payment applied to invoice successfully.'
+            );
+        }
+
+        $available = $source === 'opening_balance' ? $availableOpeningBalance : $unbilled;
+        if ($amount > $available + 0.01) {
+            $label = $source === 'opening_balance' ? 'opening balance' : 'unapplied amount';
+            return ResponseHelper::error('Amount exceeds the available ' . $label . ' of \u20b9' . number_format($available, 2) . '.');
         }
 
         if ($amount > (float) $invoice->balance_due + 0.01) {
@@ -269,13 +327,40 @@ class PartyController extends Controller
         }
 
         try {
+            if ($source === 'opening_balance') {
+                $openingVoucher = Voucher::query()
+                    ->where('company_id', $companyId)
+                    ->where('voucher_type', 'adjustment')
+                    ->where('status', 'posted')
+                    ->where('narration', 'like', sprintf('[OB:party:%d]%%', $partyModel->id))
+                    ->latest('id')
+                    ->first();
+
+                if (!$openingVoucher) {
+                    return ResponseHelper::error('No opening balance voucher is available for allocation.');
+                }
+
+                DB::transaction(function () use ($openingVoucher, $invoice, $amount, $invoiceType) {
+                    $this->voucherService->applyInvoiceSettlements($openingVoucher, [[
+                        'invoice_id' => $invoice->id,
+                        'amount' => $amount,
+                        'invoice_type' => $invoiceType,
+                    ]]);
+                });
+
+                return ResponseHelper::success(
+                    ['voucher_number' => $openingVoucher->voucher_number],
+                    'Opening balance allocated to invoice successfully.'
+                );
+            }
+
             $voucher = $this->voucherService->create([
                 'company_id' => $companyId,
                 'financial_year_id' => $financialYearId,
                 'party_id' => $partyModel->id,
                 'voucher_type' => 'journal',
                 'voucher_date' => now()->toDateString(),
-                'narration' => "Unbilled/advance amount applied to Invoice #{$invoice->invoice_number}",
+                'narration' => "Unapplied/advance amount applied to Invoice #{$invoice->invoice_number}",
                 'lines' => [
                     ['account_id' => $partyModel->account_id, 'party_id' => $partyModel->id, 'debit' => $amount, 'credit' => 0],
                     ['account_id' => $partyModel->account_id, 'party_id' => $partyModel->id, 'debit' => 0, 'credit' => $amount],
@@ -294,7 +379,7 @@ class PartyController extends Controller
 
         return ResponseHelper::success(
             ['voucher_number' => $voucher->voucher_number],
-            'Unbilled amount applied to invoice successfully.'
+            'Unapplied amount applied to invoice successfully.'
         );
     }
 

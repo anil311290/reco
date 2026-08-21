@@ -18,6 +18,71 @@ class UnbilledAmountTest extends TestCase
 {
     use RefreshDatabase;
 
+    public function test_opening_balance_can_be_allocated_billwise_to_a_sales_invoice(): void
+    {
+        $company = Company::factory()->create();
+        $fy = FinancialYear::factory()->create([
+            'company_id' => $company->id,
+            'start_date' => '2026-04-01',
+            'end_date' => '2027-03-31',
+            'is_current' => true,
+            'is_closed' => false,
+        ]);
+        $debtor = app(PartyService::class)->create([
+            'uuid' => (string) Str::uuid(),
+            'company_id' => $company->id,
+            'financial_year_id' => $fy->id,
+            'name' => 'Opening Balance Customer',
+            'type' => 'debtor',
+            'opening_balance' => 1000,
+            'opening_balance_type' => 'debit',
+            'is_active' => true,
+        ]);
+
+        $salesService = app(SalesInvoiceService::class);
+        $invoice = $salesService->create([
+            'uuid' => (string) Str::uuid(),
+            'company_id' => $company->id,
+            'financial_year_id' => $fy->id,
+            'party_id' => $debtor->id,
+            'invoice_number' => 'INV-OB-001',
+            'invoice_date' => '2026-07-10',
+            'due_date' => '2026-07-20',
+            'status' => 'draft',
+        ], [
+            ['description' => 'Opening bill', 'quantity' => 1, 'unit_price' => 1000, 'discount_percentage' => 0, 'tax_amount' => 0],
+        ]);
+        $salesService->generateVoucher($invoice);
+
+        $user = User::factory()->create([
+            'company_id' => $company->id,
+            'role' => 'superadmin',
+            'status' => 'active',
+        ]);
+
+        $response = $this->actingAs($user)->postJson(
+            "/admin/parties/{$debtor->id}/apply-unbilled",
+            ['invoice_id' => $invoice->id, 'amount' => 1000, 'source' => 'opening_balance']
+        );
+
+        $response->assertOk();
+        $response->assertJson(['success' => true]);
+        $this->assertDatabaseHas('vouchers', [
+            'company_id' => $company->id,
+            'party_id' => $debtor->id,
+            'voucher_type' => 'adjustment',
+        ]);
+
+        $invoice->refresh();
+        $this->assertSame(0.0, (float) $invoice->balance_due);
+        $this->assertSame('paid', $invoice->status);
+        $this->assertSame(0.0, app(ReportService::class)->getPartyOpeningBalanceAvailable(
+            $company->id,
+            $debtor->id,
+            $fy->id
+        ));
+    }
+
     public function test_unbilled_amount_is_detected_and_can_be_applied_to_an_invoice(): void
     {
         $company = Company::factory()->create();

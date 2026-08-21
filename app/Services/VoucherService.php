@@ -213,7 +213,7 @@ class VoucherService
      *
      * @param  array<int, array{invoice_id:int,amount:float,invoice_type:string,reference_number?:?string}>  $settlements
      */
-    protected function applyInvoiceSettlements(Voucher $voucher, array $settlements): void
+    public function applyInvoiceSettlements(Voucher $voucher, array $settlements): void
     {
         $this->paymentMappingService->createExplicitMappings($voucher->id, $settlements);
 

@@ -87,7 +87,7 @@
             </div>
             <div class="col-lg-4">
                 <div class="report-toolbar">
-                    <a href="{{ route('admin.reports.index') }}" class="btn report-btn-soft"><i class="bi bi-arrow-left me-1"></i>Back to Reports</a>
+                    <a href="{{ route('admin.reports.index') }}" class="btn report-btn-soft"><i class="bi bi-arrow-left me-1"></i>Back to Accounting Reports</a>
                 </div>
             </div>
         </div>

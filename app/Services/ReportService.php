@@ -6,6 +6,7 @@ use App\Models\Account;
 use App\Models\FinancialYear;
 use App\Models\Ledger;
 use App\Models\Party;
+use App\Models\PaymentInvoiceMapping;
 use App\Models\PurchaseInvoice;
 use App\Models\SalesInvoice;
 use App\Models\Voucher;
@@ -740,7 +741,7 @@ class ReportService
     }
 
     /**
-     * Unbilled/advance amount for a party: money received (or paid, for creditors)
+    * Unapplied/advance amount for a party: money received (or paid, for creditors)
      * that has not yet been allocated to any specific invoice.
      *
      * Derived as: sum of that party's currently open invoice balances minus their
@@ -764,6 +765,84 @@ class ReportService
     }
 
     /**
+     * Return the portion of a party opening balance that is not allocated to bills.
+     */
+    public function getPartyOpeningBalanceAvailable(
+        int $companyId,
+        int $partyId,
+        ?int $financialYearId = null,
+        ?string $asOfDate = null
+    ): float {
+        $query = Voucher::query()
+            ->where('company_id', $companyId)
+            ->where('voucher_type', 'adjustment')
+            ->where('narration', 'like', sprintf('[OB:party:%d]%%', $partyId))
+            ->where('status', 'posted');
+
+        if ($financialYearId) {
+            $query->where('financial_year_id', $financialYearId);
+        }
+
+        if ($asOfDate) {
+            $query->whereDate('voucher_date', '<=', Carbon::parse($asOfDate)->toDateString());
+        }
+
+        $voucher = $query->latest('id')->first();
+        if (!$voucher) {
+            return 0.0;
+        }
+
+        $allocated = PaymentInvoiceMapping::query()
+            ->where('payment_voucher_id', $voucher->id)
+            ->where('status', '!=', 'reversed')
+            ->sum('amount_settled');
+
+        return round(max(0, (float) $voucher->total_debit - (float) $allocated), 2);
+    }
+
+    /**
+     * List posted receipt/payment vouchers that still have an unapplied balance.
+     */
+    public function getUnappliedReceiptsAndPayments(int $companyId, ?string $asOfDate = null): array
+    {
+        $asOf = Carbon::parse($asOfDate ?: now()->toDateString())->toDateString();
+
+        return Voucher::query()
+            ->with('party')
+            ->where('company_id', $companyId)
+            ->whereIn('voucher_type', ['receipt', 'payment'])
+            ->where('status', 'posted')
+            ->whereNotNull('party_id')
+            ->whereDate('voucher_date', '<=', $asOf)
+            ->orderByDesc('voucher_date')
+            ->orderByDesc('id')
+            ->get()
+            ->map(function (Voucher $voucher) {
+                $allocated = (float) $voucher->paymentInvoiceMappings()
+                    ->where('status', '!=', 'reversed')
+                    ->sum('amount_settled');
+                $unapplied = round((float) $voucher->total_debit - $allocated, 2);
+
+                return [
+                    'voucher' => $voucher,
+                    'party' => $voucher->party,
+                    'voucher_id' => $voucher->id,
+                    'voucher_number' => $voucher->voucher_number,
+                    'voucher_date' => $voucher->voucher_date?->toDateString(),
+                    'voucher_type' => $voucher->voucher_type,
+                    'reference_number' => $voucher->reference_number,
+                    'voucher_amount' => (float) $voucher->total_debit,
+                    'allocated_amount' => round($allocated, 2),
+                    'unapplied_amount' => $unapplied,
+                    'invoice_type' => $voucher->voucher_type === 'receipt' ? 'sales' : 'purchase',
+                ];
+            })
+            ->filter(fn (array $row) => $row['unapplied_amount'] > 0.01)
+            ->values()
+            ->all();
+    }
+
+    /**
      * Receivables outstanding from party-linked account balances.
      */
     public function getDebtorsOutstanding(
@@ -773,7 +852,6 @@ class ReportService
         array $filters = []
     ): array
     {
-        $financialYearId = $financialYearId ?: FinancialYear::getCurrent($companyId)?->id;
         $filterMeta = $this->normalizeOutstandingFilters($asOfDate, $filters);
         [$debtors, $total] = $this->buildOutstandingInvoiceRows(
             SalesInvoice::class,
@@ -802,7 +880,6 @@ class ReportService
         array $filters = []
     ): array
     {
-        $financialYearId = $financialYearId ?: FinancialYear::getCurrent($companyId)?->id;
         $filterMeta = $this->normalizeOutstandingFilters($asOfDate, $filters);
         [$creditors, $total] = $this->buildOutstandingInvoiceRows(
             PurchaseInvoice::class,
@@ -847,10 +924,6 @@ class ReportService
             ->whereHas('party', function ($q) use ($partyType) {
                 $q->where('type', $partyType);
             });
-
-        if ($financialYearId) {
-            $query->where('financial_year_id', $financialYearId);
-        }
 
         $invoices = $query->orderBy('due_date')->orderBy('invoice_date')->get();
 

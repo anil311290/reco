@@ -350,6 +350,7 @@ class LedgerService
         $voucher = app(VoucherService::class)->create([
             'company_id' => $companyId,
             'financial_year_id' => $financialYearId,
+            'party_id' => $partyId,
             'voucher_type' => 'adjustment',
             'voucher_date' => $voucherDate,
             'narration' => $narration,

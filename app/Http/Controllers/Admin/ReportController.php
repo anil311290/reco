@@ -8,6 +8,8 @@ use App\Services\LedgerService;
 use App\Services\PartyService;
 use App\Models\Account;
 use App\Models\FinancialYear;
+use App\Models\PurchaseInvoice;
+use App\Models\SalesInvoice;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection;
@@ -58,7 +60,7 @@ class ReportController extends Controller
     {
         $companyId = auth()->user()->company_id;
         $context = $this->resolveAsOfDateContext($request, $companyId);
-        $financialYearId = $context['financialYearId'];
+        $financialYearId = null;
         $asOfDate = $context['asOfDate'];
         $financialYears = $context['financialYears'];
 
@@ -182,7 +184,7 @@ class ReportController extends Controller
     {
         $companyId = auth()->user()->company_id;
         $context = $this->resolveAsOfDateContext($request, $companyId);
-        $financialYearId = $context['financialYearId'];
+        $financialYearId = null;
         $asOfDate = $context['asOfDate'];
         $financialYears = $context['financialYears'];
         $filters = $request->only(['overdue_status', 'age_bucket', 'age_min', 'age_max', 'basis']);
@@ -238,7 +240,7 @@ class ReportController extends Controller
     {
         $companyId = auth()->user()->company_id;
         $context = $this->resolveAsOfDateContext($request, $companyId);
-        $financialYearId = $context['financialYearId'];
+        $financialYearId = null;
         $asOfDate = $context['asOfDate'];
         $financialYears = $context['financialYears'];
         $filters = $request->only(['overdue_status', 'age_bucket', 'age_min', 'age_max', 'basis']);
@@ -260,6 +262,29 @@ class ReportController extends Controller
         $parties = $this->partyService->getForDropdown($companyId, 'creditor');
 
         return view('admin.reports.creditors-outstanding', compact('report', 'creditors', 'financialYearId', 'asOfDate', 'financialYears', 'partyWise', 'parties', 'partyId'));
+    }
+
+    public function unappliedReceipts(Request $request)
+    {
+        $companyId = auth()->user()->company_id;
+        $asOfDate = $request->input('as_of_date', now()->toDateString());
+        $items = $this->reportService->getUnappliedReceiptsAndPayments($companyId, $asOfDate);
+
+        foreach ($items as &$item) {
+            $invoiceQuery = $item['invoice_type'] === 'sales' ? SalesInvoice::query() : PurchaseInvoice::query();
+            $item['invoices'] = $invoiceQuery
+                ->where('company_id', $companyId)
+                ->where('party_id', $item['party']->id)
+                ->whereNotIn('status', ['paid', 'cancelled'])
+                ->where('balance_due', '>', 0)
+                ->whereDate('invoice_date', '<=', $asOfDate)
+                ->orderBy('due_date')
+                ->orderBy('invoice_date')
+                ->get();
+        }
+        unset($item);
+
+        return view('admin.reports.unapplied-receipts', compact('items', 'asOfDate'));
     }
 
     public function agingSummary(Request $request)
@@ -390,6 +415,12 @@ class ReportController extends Controller
             $row['invoice_total'] = round($row['invoice_total'], 2);
             $row['amount_paid'] = round($row['amount_paid'], 2);
             $row['balance'] = round($row['balance'], 2);
+            $row['opening_balance_available'] = $this->reportService->getPartyOpeningBalanceAvailable(
+                $companyId,
+                (int) $row['party']->id,
+                $financialYearId,
+                $asOfDate
+            );
             $row['unbilled_amount'] = $this->reportService->getPartyUnbilledAmount(
                 $companyId,
                 (int) $row['party']->id,

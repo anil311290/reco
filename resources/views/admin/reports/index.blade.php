@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Reports')
+@section('title', 'Accounting Reports')
 
 @include('admin.reports._theme')
 
@@ -10,7 +10,7 @@
         <div class="row g-4 align-items-center">
             <div class="col-lg-8">
                 <span class="report-eyebrow"><i class="bi bi-bar-chart-line"></i> Books &amp; Statements</span>
-                <h1 class="report-title">Financial Reports</h1>
+                <h1 class="report-title">Accounting Reports</h1>
                 <p class="report-subtitle">Tally-style sequence: books first, then trial balance and statutory statements, then receivables / payables.</p>
             </div>
             <div class="col-lg-4">

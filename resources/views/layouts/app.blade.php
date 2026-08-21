@@ -316,19 +316,6 @@
                     </div>
                 </li>
 
-                <li class="sidebar-section"><span>Configuration</span></li>
-                <li class="nav-item">
-                    <a class="nav-link {{ request()->routeIs('admin.themes.*') ? 'active' : '' }}" href="{{ route('admin.themes.index') }}">
-                        <i class="bi bi-palette"></i>
-                        <span>Theme</span>
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link {{ request()->routeIs('admin.audit-logs.*') ? 'active' : '' }}" href="{{ route('admin.audit-logs.index') }}">
-                        <i class="bi bi-clock-history"></i>
-                        <span>Audit Logs</span>
-                    </a>
-                </li>
                 @else
                 <li class="sidebar-section"><span>Masters</span></li>
                 <!-- Masters -->
@@ -437,14 +424,14 @@
                 @endanyrole
 
                 <li class="sidebar-section"><span>Analytics</span></li>
-                <!-- Reports -->
+                <!-- Accounting Reports -->
                 <li class="nav-item">
-                    <a class="nav-link has-submenu {{ request()->is('admin/reports*') ? 'active' : '' }}" href="#reportsSubmenu" data-bs-toggle="collapse">
+                    <a class="nav-link has-submenu {{ request()->is('admin/reports*') && !request()->routeIs('admin.reports.debtors-outstanding', 'admin.reports.creditors-outstanding', 'admin.reports.unapplied-receipts') ? 'active' : '' }}" href="#reportsSubmenu" data-bs-toggle="collapse">
                         <i class="bi bi-file-earmark-bar-graph"></i>
-                        <span>Reports</span>
+                        <span>Accounting Reports</span>
                         <i class="bi bi-chevron-down ms-auto"></i>
                     </a>
-                    <div class="collapse {{ request()->is('admin/reports*') ? 'show' : '' }}" id="reportsSubmenu">
+                    <div class="collapse {{ request()->is('admin/reports*') && !request()->routeIs('admin.reports.debtors-outstanding', 'admin.reports.creditors-outstanding', 'admin.reports.unapplied-receipts') ? 'show' : '' }}" id="reportsSubmenu">
                         <ul class="nav flex-column">
                             <li class="nav-item">
                                 <a class="nav-link {{ request()->routeIs('admin.reports.day-book') ? 'active' : '' }}" href="{{ route('admin.reports.day-book') }}">
@@ -482,67 +469,41 @@
                                     <span>Balance Sheet</span>
                                 </a>
                             </li>
+                        </ul>
+                    </div>
+                </li>
+
+                <li class="sidebar-section"><span>AP / AR</span></li>
+                <li class="nav-item">
+                    <a class="nav-link has-submenu {{ request()->routeIs('admin.reports.debtors-outstanding', 'admin.reports.creditors-outstanding', 'admin.reports.unapplied-receipts') ? 'active' : '' }}" href="#apArReportsSubmenu" data-bs-toggle="collapse">
+                        <i class="bi bi-people"></i>
+                        <span>AP / AR Reports</span>
+                        <i class="bi bi-chevron-down ms-auto"></i>
+                    </a>
+                    <div class="collapse {{ request()->routeIs('admin.reports.debtors-outstanding', 'admin.reports.creditors-outstanding', 'admin.reports.unapplied-receipts') ? 'show' : '' }}" id="apArReportsSubmenu">
+                        <ul class="nav flex-column">
                             <li class="nav-item">
                                 <a class="nav-link {{ request()->routeIs('admin.reports.debtors-outstanding') ? 'active' : '' }}" href="{{ route('admin.reports.debtors-outstanding') }}">
-                                    <i class="bi bi-people"></i>
+                                    <i class="bi bi-arrow-down-left-circle"></i>
                                     <span>Receivables</span>
                                 </a>
                             </li>
                             <li class="nav-item">
                                 <a class="nav-link {{ request()->routeIs('admin.reports.creditors-outstanding') ? 'active' : '' }}" href="{{ route('admin.reports.creditors-outstanding') }}">
-                                    <i class="bi bi-people-fill"></i>
+                                    <i class="bi bi-arrow-up-right-circle"></i>
                                     <span>Payables</span>
                                 </a>
                             </li>
+                            <li class="nav-item">
+                                <a class="nav-link {{ request()->routeIs('admin.reports.unapplied-receipts') ? 'active' : '' }}" href="{{ route('admin.reports.unapplied-receipts') }}">
+                                    <i class="bi bi-arrow-repeat"></i>
+                                    <span>Unapplied Receipts</span>
+                                </a>
+                            </li>
                         </ul>
                     </div>
                 </li>
 
-                <li class="sidebar-section"><span>Configuration</span></li>
-                @permission('audit-logs.view')
-                <li class="nav-item">
-                    <a class="nav-link {{ request()->routeIs('admin.audit-logs.*') ? 'active' : '' }}" href="{{ route('admin.audit-logs.index') }}">
-                        <i class="bi bi-clock-history"></i>
-                        <span>Audit Logs</span>
-                    </a>
-                </li>
-                @endpermission
-
-                <li class="nav-item">
-                    <a class="nav-link {{ request()->routeIs('admin.support-tickets.*') ? 'active' : '' }}" href="{{ route('admin.support-tickets.index') }}">
-                        <i class="bi bi-headset"></i>
-                        <span>Help & Support</span>
-                    </a>
-                </li>
-
-                <!-- Settings -->
-                <li class="nav-item">
-                    <a class="nav-link has-submenu {{ request()->is('admin/settings*') || request()->is('admin/financial-years*') || request()->is('admin/themes*') || request()->is('admin/subscriptions*') ? 'active' : '' }}" href="#settingsSubmenu" data-bs-toggle="collapse">
-                        <i class="bi bi-gear"></i>
-                        <span>Settings</span>
-                        <i class="bi bi-chevron-down ms-auto"></i>
-                    </a>
-                    <div class="collapse {{ request()->is('admin/settings*') || request()->is('admin/financial-years*') || request()->is('admin/themes*') || request()->is('admin/subscriptions*') ? 'show' : '' }}" id="settingsSubmenu">
-                        <ul class="nav flex-column">
-                            @permission('settings.view')
-                            <li class="nav-item">
-                                <a class="nav-link {{ request()->routeIs('admin.settings.*') ? 'active' : '' }}" href="{{ route('admin.settings.index') }}">
-                                    <i class="bi bi-building"></i>
-                                    <span>Company</span>
-                                </a>
-                            </li>
-                            @endpermission
-                            @permission('financial-years.view')
-                            <li class="nav-item">
-                                <a class="nav-link {{ request()->routeIs('admin.financial-years.*') ? 'active' : '' }}" href="{{ route('admin.financial-years.index') }}">
-                                    <i class="bi bi-calendar-event"></i>
-                                    <span>Financial Years</span>
-                                </a>
-                            </li>
-                            @endpermission
-                        </ul>
-                    </div>
-                </li>
                 @endif
             </ul>
         </div>
@@ -641,10 +602,40 @@
                                         <i class="bi bi-person"></i>
                                         <span>My Profile</span>
                                     </a>
-                                    <a class="dropdown-item" href="{{ $isSuperAdmin ? route('admin.subscription-plans.index') : route('admin.settings.index') }}">
-                                        <i class="bi bi-gear"></i>
-                                        <span>{{ $isSuperAdmin ? 'Platform Settings' : 'Settings' }}</span>
+                                    @if(!$isSuperAdmin)
+                                        @permission('settings.view')
+                                        <a class="dropdown-item" href="{{ route('admin.settings.index') }}">
+                                            <i class="bi bi-building"></i>
+                                            <span>Company Settings</span>
+                                        </a>
+                                        @endpermission
+                                        @permission('financial-years.view')
+                                        <a class="dropdown-item" href="{{ route('admin.financial-years.index') }}">
+                                            <i class="bi bi-calendar-event"></i>
+                                            <span>Financial Years</span>
+                                        </a>
+                                        @endpermission
+                                    @endif
+                                    <a class="dropdown-item" href="{{ route('admin.themes.index') }}">
+                                        <i class="bi bi-palette"></i>
+                                        <span>Theme</span>
                                     </a>
+                                    @permission('audit-logs.view')
+                                    <a class="dropdown-item" href="{{ route('admin.audit-logs.index') }}">
+                                        <i class="bi bi-clock-history"></i>
+                                        <span>Audit Logs</span>
+                                    </a>
+                                    @endpermission
+                                    <a class="dropdown-item" href="{{ route('admin.support-tickets.index') }}">
+                                        <i class="bi bi-headset"></i>
+                                        <span>Help &amp; Support</span>
+                                    </a>
+                                    @if($isSuperAdmin)
+                                    <a class="dropdown-item" href="{{ route('admin.subscription-plans.index') }}">
+                                        <i class="bi bi-gear"></i>
+                                        <span>Platform Settings</span>
+                                    </a>
+                                    @endif
                                     <a class="dropdown-item" href="{{ route('admin.profile') }}#change-password">
                                         <i class="bi bi-key"></i>
                                         <span>Change Password</span>

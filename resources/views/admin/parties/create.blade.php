@@ -54,7 +54,7 @@
                                 </div>
                                 <div class="col-md-4">
                                     <label for="type" class="form-label fw-semibold">Party Type <span class="text-danger">*</span></label>
-                                    <select class="form-select form-select-lg" id="type" name="type" required>
+                                    <select class="form-select" id="type" name="type" required>
                                         <option value="">Select Type</option>
                                         <option value="debtor" {{ old('type') === 'debtor' ? 'selected' : '' }}>Customer</option>
                                         <option value="creditor" {{ old('type') === 'creditor' ? 'selected' : '' }}>Supplier</option>
