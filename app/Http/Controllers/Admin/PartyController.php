@@ -245,7 +245,7 @@ class PartyController extends Controller
         $availableOpeningBalance = $this->reportService->getPartyOpeningBalanceAvailable(
             $partyModel->company_id,
             $partyModel->id,
-            $request->user()->company->currentFinancialYear?->id
+            null
         );
 
         // Recompute the party's open invoice balance total and unapplied amount fresh at

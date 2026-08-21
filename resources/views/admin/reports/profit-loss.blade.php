@@ -50,7 +50,7 @@
             </div>
             <div class="col-lg-auto col-md-12 report-filter-actions">
                 <button type="submit" class="btn btn-primary">
-                    <i class="bi bi-funnel me-1"></i>Filter
+                    <i class="bi bi-funnel me-1"></i>Apply
                 </button>
                 @if(!empty($financialYearId))
                     <div class="btn-group report-export-dropdown">

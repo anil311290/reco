@@ -52,7 +52,7 @@
             </div>
             <div class="col-lg-auto col-md-12 report-filter-actions">
                 <button type="submit" class="btn btn-primary">
-                    <i class="bi bi-funnel me-1"></i>Filter
+                    <i class="bi bi-funnel me-1"></i>Apply
                 </button>
                 @if(!empty($financialYearId))
                     <div class="btn-group report-export-dropdown">
@@ -126,9 +126,13 @@
                             <tr>
                                 <td class="fw-semibold">{{ $item['account']->account_code }}</td>
                                 <td>
-                                    <a href="{{ route('admin.reports.ledger', ['account_id' => $item['account']->id]) }}" class="report-detail-link" title="View ledger">
-                                        {{ $item['account']->account_name }}
-                                    </a>
+                                    @if((string) $item['account']->account_code === \App\Models\Account::CODE_SUSPENSE)
+                                        <span class="fw-semibold">Opening balance difference</span>
+                                    @else
+                                        <a href="{{ route('admin.reports.ledger', ['account_id' => $item['account']->id]) }}" class="report-detail-link" title="View ledger">
+                                            {{ $item['account']->account_name }}
+                                        </a>
+                                    @endif
                                 </td>
                                 <td><span class="report-pill report-pill--info">{{ ucfirst($item['account']->account_type) }}</span></td>
                                 <td class="text-end">

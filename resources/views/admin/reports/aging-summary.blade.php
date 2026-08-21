@@ -145,7 +145,7 @@
                 </div>
             </div>
             <div class="col-12 col-lg-auto report-filter-actions">
-                <button type="submit" class="btn btn-primary"><i class="bi bi-funnel me-1"></i>Filter</button>
+                <button type="submit" class="btn btn-primary"><i class="bi bi-funnel me-1"></i>Apply</button>
                 <div class="btn-group report-export-dropdown">
                     <button type="button" class="btn report-btn-export-neutral dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
                         <i class="bi bi-download"></i>Export

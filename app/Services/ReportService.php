@@ -803,20 +803,28 @@ class ReportService
     /**
      * List posted receipt/payment vouchers that still have an unapplied balance.
      */
-    public function getUnappliedReceiptsAndPayments(int $companyId, ?string $asOfDate = null): array
+    public function getUnappliedReceiptsAndPayments(
+        int $companyId,
+        ?string $fromDate = null,
+        ?string $toDate = null
+    ): array
     {
-        $asOf = Carbon::parse($asOfDate ?: now()->toDateString())->toDateString();
+        $from = $fromDate ? Carbon::parse($fromDate)->toDateString() : null;
+        $to = $toDate ? Carbon::parse($toDate)->toDateString() : null;
 
-        return Voucher::query()
+        $query = Voucher::query()
             ->with('party')
             ->where('company_id', $companyId)
             ->whereIn('voucher_type', ['receipt', 'payment'])
             ->where('status', 'posted')
             ->whereNotNull('party_id')
-            ->whereDate('voucher_date', '<=', $asOf)
+            ->when($from, fn ($q) => $q->whereDate('voucher_date', '>=', $from))
+            ->when($to, fn ($q) => $q->whereDate('voucher_date', '<=', $to))
             ->orderByDesc('voucher_date')
             ->orderByDesc('id')
-            ->get()
+            ->get();
+
+        $items = $query
             ->map(function (Voucher $voucher) {
                 $allocated = (float) $voucher->paymentInvoiceMappings()
                     ->where('status', '!=', 'reversed')
@@ -838,6 +846,66 @@ class ReportService
                 ];
             })
             ->filter(fn (array $row) => $row['unapplied_amount'] > 0.01)
+            ->values()
+            ->all();
+
+        $openingParties = Party::query()
+            ->where('company_id', $companyId)
+            ->where('opening_balance', '>', 0)
+            ->where(function ($query) {
+                $query->where(function ($query) {
+                    $query->where('type', 'debtor')->where('opening_balance_type', 'debit');
+                })->orWhere(function ($query) {
+                    $query->where('type', 'creditor')->where('opening_balance_type', 'credit');
+                });
+            })
+            ->get();
+
+        foreach ($openingParties as $party) {
+            $openingVoucher = Voucher::query()
+                ->where('company_id', $companyId)
+                ->where('voucher_type', 'adjustment')
+                ->where('status', 'posted')
+                ->where('narration', 'like', sprintf('[OB:party:%d]%%', $party->id))
+                ->latest('id')
+                ->first();
+
+            if (!$openingVoucher) {
+                continue;
+            }
+
+            $voucherDate = $openingVoucher->voucher_date?->toDateString();
+            if (($from && $voucherDate < $from) || ($to && $voucherDate > $to)) {
+                continue;
+            }
+
+            $allocated = (float) $openingVoucher->paymentInvoiceMappings()
+                ->where('status', '!=', 'reversed')
+                ->sum('amount_settled');
+            $unapplied = round((float) $openingVoucher->total_debit - $allocated, 2);
+
+            if ($unapplied <= 0.01) {
+                continue;
+            }
+
+            $items[] = [
+                'voucher' => $openingVoucher,
+                'party' => $party,
+                'voucher_id' => $openingVoucher->id,
+                'voucher_number' => 'OPBAL-' . $party->party_code,
+                'voucher_date' => $voucherDate,
+                'voucher_type' => $party->type === 'debtor' ? 'receipt' : 'payment',
+                'reference_number' => 'Opening Balance',
+                'voucher_amount' => (float) $openingVoucher->total_debit,
+                'allocated_amount' => round($allocated, 2),
+                'unapplied_amount' => $unapplied,
+                'invoice_type' => $party->type === 'debtor' ? 'sales' : 'purchase',
+                'allocation_source' => 'opening_balance',
+            ];
+        }
+
+        return collect($items)
+            ->sortByDesc('voucher_date')
             ->values()
             ->all();
     }
@@ -987,6 +1055,57 @@ class ReportService
             ];
 
             $total += $balance;
+        }
+
+        // Party opening balances are billwise receivable/payable items even though
+        // they are stored on the party master rather than in an invoice table.
+        $openingParties = Party::query()
+            ->where('company_id', $companyId)
+            ->where('type', $partyType)
+            ->where('opening_balance', '>', 0)
+            ->where('opening_balance_type', $partyType === 'debtor' ? 'debit' : 'credit')
+            ->whereDate('opening_date', '<=', $asOf->toDateString())
+            ->get();
+
+        foreach ($openingParties as $party) {
+            $openingDate = $party->opening_date ? Carbon::parse($party->opening_date)->startOfDay() : null;
+            $openingBalance = round((float) $party->opening_balance, 2);
+            $openingDays = $openingDate ? (int) $openingDate->diffInDays($asOf) : 0;
+            $openingAging = [
+                'oldest_due_date' => $openingDate?->toDateString(),
+                'overdue_days' => $openingDays,
+                'overdue_amount' => $openingDays > 0 ? $openingBalance : 0.0,
+                'basis_days' => $openingDays,
+                'age_bucket' => $this->resolveAgeBucket($openingDays),
+                'overdue_status' => 'due',
+                'overdue_label' => $openingDays > 0 ? ($openingDays . ' days late') : 'Due Today',
+                'billed_days' => $openingDays,
+                'due_days' => $openingDays,
+            ];
+
+            if (!$this->matchesOutstandingFilters($openingAging, $filterMeta)) {
+                continue;
+            }
+
+            $rows[] = [
+                'invoice' => null,
+                'party' => $party,
+                'account_id' => $party->account_id,
+                'invoice_id' => null,
+                'invoice_number' => 'OPBAL-' . $party->party_code,
+                'invoice_date' => $party->opening_date?->toDateString(),
+                'due_date' => $party->opening_date?->toDateString(),
+                'invoice_total' => $openingBalance,
+                'amount_paid' => 0.0,
+                'debit' => $partyType === 'debtor' ? $openingBalance : 0,
+                'credit' => $partyType === 'creditor' ? $openingBalance : 0,
+                'balance' => $openingBalance,
+                'settlements' => [],
+                'is_opening_balance' => true,
+                ...$openingAging,
+            ];
+
+            $total += $openingBalance;
         }
 
         return [$rows, round($total, 2)];

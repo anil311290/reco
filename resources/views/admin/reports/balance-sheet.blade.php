@@ -46,7 +46,7 @@
             </div>
             <div class="col-lg-auto col-md-12 report-filter-actions">
                 <button type="submit" class="btn btn-primary">
-                    <i class="bi bi-funnel me-1"></i>Filter
+                    <i class="bi bi-funnel me-1"></i>Apply
                 </button>
                 @if(!empty($financialYearId))
                     <div class="btn-group report-export-dropdown">
@@ -97,16 +97,28 @@
     @php
         $liabilityRows = [];
         foreach ($report['equity']['accounts'] as $item) {
-            $liabilityRows[] = ['account' => $item['account'], 'label' => $item['account']->account_name, 'amount' => $item['amount']];
+            $liabilityRows[] = [
+                'account' => $item['account'],
+                'label' => (string) $item['account']->account_code === \App\Models\Account::CODE_SUSPENSE ? 'Opening balance difference' : $item['account']->account_name,
+                'amount' => $item['amount'],
+            ];
         }
         $liabilityRows[] = ['account' => null, 'label' => 'Net Profit / Loss', 'amount' => $report['equity']['net_profit']];
         foreach ($report['liabilities']['accounts'] as $item) {
-            $liabilityRows[] = ['account' => $item['account'], 'label' => $item['account']->account_name, 'amount' => $item['amount']];
+            $liabilityRows[] = [
+                'account' => $item['account'],
+                'label' => (string) $item['account']->account_code === \App\Models\Account::CODE_SUSPENSE ? 'Opening balance difference' : $item['account']->account_name,
+                'amount' => $item['amount'],
+            ];
         }
 
         $assetRows = [];
         foreach ($report['assets']['accounts'] as $item) {
-            $assetRows[] = ['account' => $item['account'], 'label' => $item['account']->account_name, 'amount' => $item['amount']];
+            $assetRows[] = [
+                'account' => $item['account'],
+                'label' => (string) $item['account']->account_code === \App\Models\Account::CODE_SUSPENSE ? 'Opening balance difference' : $item['account']->account_name,
+                'amount' => $item['amount'],
+            ];
         }
 
         $bsRowCount = max(count($liabilityRows), count($assetRows));
@@ -141,7 +153,7 @@
                                 @endphp
                                 <tr>
                                     <td>
-                                        @if($liabilityRow && !empty($liabilityRow['account']))
+                                        @if($liabilityRow && !empty($liabilityRow['account']) && (string) $liabilityRow['account']->account_code !== \App\Models\Account::CODE_SUSPENSE)
                                             <a href="{{ route('admin.reports.ledger', ['account_id' => $liabilityRow['account']->id]) }}" class="report-detail-link" title="View ledger">
                                                 {{ $liabilityRow['label'] }}
                                             </a>
@@ -153,10 +165,12 @@
                                         {{ $liabilityRow ? '₹' . number_format($liabilityRow['amount'], 2) : '' }}
                                     </td>
                                     <td>
-                                        @if($assetRow && !empty($assetRow['account']))
+                                        @if($assetRow && !empty($assetRow['account']) && (string) $assetRow['account']->account_code !== \App\Models\Account::CODE_SUSPENSE)
                                             <a href="{{ route('admin.reports.ledger', ['account_id' => $assetRow['account']->id]) }}" class="report-detail-link" title="View ledger">
                                                 {{ $assetRow['label'] }}
                                             </a>
+                                        @elseif($assetRow)
+                                            <span class="fw-bold">{{ $assetRow['label'] }}</span>
                                         @endif
                                     </td>
                                     <td class="text-end fw-semibold">

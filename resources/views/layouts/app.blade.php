@@ -497,7 +497,7 @@
                             <li class="nav-item">
                                 <a class="nav-link {{ request()->routeIs('admin.reports.unapplied-receipts') ? 'active' : '' }}" href="{{ route('admin.reports.unapplied-receipts') }}">
                                     <i class="bi bi-arrow-repeat"></i>
-                                    <span>Unapplied Receipts</span>
+                                    <span>Unapplied Cash</span>
                                 </a>
                             </li>
                         </ul>

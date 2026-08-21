@@ -123,7 +123,7 @@
             </div>
             <div class="col-md-12 d-flex justify-content-end">
                 <button type="submit" class="btn btn-primary btn-sm px-4">
-                    <i class="bi bi-search me-2"></i>Filter
+                    <i class="bi bi-search me-2"></i>Apply
                 </button>
             </div>
         </form>

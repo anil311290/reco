@@ -257,9 +257,13 @@
                     <tr>
                         <td>{{ ($debtors->firstItem() ?? 1) + $loop->index }}</td>
                         <td>
-                            <a href="{{ route('admin.sales-invoices.show', $item['invoice_id']) }}" class="report-detail-link" title="View invoice">
-                                {{ $item['invoice_number'] }}
-                            </a>
+                            @if(!empty($item['is_opening_balance']))
+                                <span class="fw-semibold text-muted" title="Opening balance reference">{{ $item['invoice_number'] }}</span>
+                            @else
+                                <a href="{{ route('admin.sales-invoices.show', $item['invoice_id']) }}" class="report-detail-link" title="View invoice">
+                                    {{ $item['invoice_number'] }}
+                                </a>
+                            @endif
                             <span class="text-muted small">/ {{ $item['party']->party_code }}</span>
                         </td>
                         <td class="fw-semibold">

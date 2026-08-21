@@ -60,7 +60,7 @@ class ReportController extends Controller
     {
         $companyId = auth()->user()->company_id;
         $context = $this->resolveAsOfDateContext($request, $companyId);
-        $financialYearId = null;
+        $financialYearId = $context['financialYearId'];
         $asOfDate = $context['asOfDate'];
         $financialYears = $context['financialYears'];
 
@@ -267,8 +267,13 @@ class ReportController extends Controller
     public function unappliedReceipts(Request $request)
     {
         $companyId = auth()->user()->company_id;
-        $asOfDate = $request->input('as_of_date', now()->toDateString());
-        $items = $this->reportService->getUnappliedReceiptsAndPayments($companyId, $asOfDate);
+        $validated = $request->validate([
+            'from_date' => ['nullable', 'date'],
+            'to_date' => ['nullable', 'date', 'after_or_equal:from_date'],
+        ]);
+        $fromDate = $validated['from_date'] ?? now()->startOfMonth()->toDateString();
+        $toDate = $validated['to_date'] ?? now()->toDateString();
+        $items = $this->reportService->getUnappliedReceiptsAndPayments($companyId, $fromDate, $toDate);
 
         foreach ($items as &$item) {
             $invoiceQuery = $item['invoice_type'] === 'sales' ? SalesInvoice::query() : PurchaseInvoice::query();
@@ -277,14 +282,20 @@ class ReportController extends Controller
                 ->where('party_id', $item['party']->id)
                 ->whereNotIn('status', ['paid', 'cancelled'])
                 ->where('balance_due', '>', 0)
-                ->whereDate('invoice_date', '<=', $asOfDate)
+                ->whereDate('invoice_date', '<=', $toDate)
                 ->orderBy('due_date')
                 ->orderBy('invoice_date')
                 ->get();
+            $item['allocation_source'] = $item['allocation_source'] ?? 'voucher';
         }
         unset($item);
 
-        return view('admin.reports.unapplied-receipts', compact('items', 'asOfDate'));
+        return view('admin.reports.unapplied-receipts', [
+            'receipts' => array_values(array_filter($items, fn (array $item) => $item['voucher_type'] === 'receipt')),
+            'payments' => array_values(array_filter($items, fn (array $item) => $item['voucher_type'] === 'payment')),
+            'fromDate' => $fromDate,
+            'toDate' => $toDate,
+        ]);
     }
 
     public function agingSummary(Request $request)

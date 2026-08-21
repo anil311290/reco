@@ -36,7 +36,7 @@
                 </select>
             </div>
             <div class="col-md-2 d-flex align-items-end">
-                <button type="submit" class="btn btn-primary w-100"><i class="bi bi-search me-2"></i>Filter</button>
+                <button type="submit" class="btn btn-primary w-100"><i class="bi bi-search me-2"></i>Apply</button>
             </div>
         </form>
     </div>

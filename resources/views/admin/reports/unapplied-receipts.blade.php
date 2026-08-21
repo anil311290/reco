@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Unapplied Receipts & Payments')
+@section('title', 'Unbilled Payments & Receipts')
 
 @include('admin.reports._theme')
 
@@ -23,6 +23,10 @@
         flex: 0 0 108px;
     }
 
+    .unapplied-cash-tabs {
+        margin-bottom: 1rem;
+    }
+
     @media (max-width: 767.98px) {
         .unapplied-report-table {
             min-width: 900px;
@@ -41,8 +45,8 @@
         <div class="row g-4 align-items-center">
             <div class="col-lg-8">
                 <span class="report-eyebrow"><i class="bi bi-arrow-repeat"></i> AP / AR Reports</span>
-                <h1 class="report-title">Unapplied Receipts &amp; Payments</h1>
-                <p class="report-subtitle">Apply an unapplied receipt or payment to any open bill belonging to the same party.</p>
+                <h1 class="report-title">Unbilled Payments &amp; Receipts</h1>
+                <p class="report-subtitle">Review unapplied receipts and payments and apply them to an open bill.</p>
             </div>
             <div class="col-lg-4 text-lg-end">
                 <a href="{{ route('admin.reports.debtors-outstanding') }}" class="btn report-btn-soft"><i class="bi bi-arrow-left me-1"></i>Back to AP / AR Reports</a>
@@ -53,8 +57,12 @@
     <div class="report-filter-card mb-4">
         <form method="GET" action="{{ route('admin.reports.unapplied-receipts') }}" class="row g-3 align-items-end">
             <div class="col-12 col-md-4">
-                <label for="as_of_date" class="form-label">As of Date</label>
-                <input type="date" id="as_of_date" name="as_of_date" class="form-control" value="{{ $asOfDate }}">
+                <label for="from_date" class="form-label">From Date</label>
+                <input type="date" id="from_date" name="from_date" class="form-control" value="{{ $fromDate }}" required>
+            </div>
+            <div class="col-12 col-md-4">
+                <label for="to_date" class="form-label">To Date</label>
+                <input type="date" id="to_date" name="to_date" class="form-control" value="{{ $toDate }}" required>
             </div>
             <div class="col-12 col-md-auto">
                 <button type="submit" class="btn btn-primary"><i class="bi bi-funnel me-1"></i>Apply</button>
@@ -65,27 +73,43 @@
     <div class="report-panel">
         <div class="report-panel-header">
             <div>
-                <h5 class="mb-1">Unapplied Receipts &amp; Payments</h5>
-                <p class="mb-0 text-muted">Only posted vouchers with a remaining unapplied amount are listed.</p>
+                <h5 class="mb-1">Unbilled Payments &amp; Receipts</h5>
+                <p class="mb-0 text-muted">Posted receipts and payments with a remaining unapplied amount.</p>
             </div>
-            <span class="report-pill report-pill--info">{{ count($items) }} Items</span>
         </div>
-        <div class="table-responsive">
-            <table class="table report-table unapplied-report-table table-hover mb-0 align-middle">
-                <thead>
-                    <tr>
-                        <th>Voucher</th>
-                        <th>Date</th>
-                        <th>Party</th>
-                        <th>Type</th>
-                        <th class="text-end">Voucher Amount</th>
-                        <th class="text-end">Unapplied</th>
-                        <th style="min-width: 380px;">Apply To Bill</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @forelse($items as $item)
-                    <tr>
+        <ul class="nav nav-tabs report-tabs unapplied-cash-tabs px-3 pt-3" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#unapplied-receipts-pane" type="button" role="tab">
+                    <i class="bi bi-arrow-down-left-circle me-1"></i>Unapplied Receipts
+                    <span class="badge rounded-pill bg-success-subtle text-success-emphasis ms-1">{{ count($receipts) }}</span>
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" data-bs-toggle="tab" data-bs-target="#unapplied-payments-pane" type="button" role="tab">
+                    <i class="bi bi-arrow-up-right-circle me-1"></i>Unapplied Payments
+                    <span class="badge rounded-pill bg-warning-subtle text-warning-emphasis ms-1">{{ count($payments) }}</span>
+                </button>
+            </li>
+        </ul>
+        <div class="tab-content">
+            @foreach(['receipts' => $receipts, 'payments' => $payments] as $tabKey => $tabItems)
+            <div class="tab-pane fade {{ $tabKey === 'receipts' ? 'show active' : '' }}" id="unapplied-{{ $tabKey }}-pane" role="tabpanel">
+                <div class="table-responsive">
+                    <table class="table report-table unapplied-report-table table-hover mb-0 align-middle">
+                        <thead>
+                            <tr>
+                                <th>Voucher</th>
+                                <th>Date</th>
+                                <th>Party</th>
+                                <th>Type</th>
+                                <th class="text-end">Voucher Amount</th>
+                                <th class="text-end">Unapplied</th>
+                                <th style="min-width: 380px;">Apply To Bill</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @forelse($tabItems as $item)
+                            <tr>
                         <td class="fw-semibold">
                             <a href="{{ route('admin.vouchers.show', $item['voucher_id']) }}" class="report-detail-link">
                                 {{ $item['voucher_number'] }}
@@ -100,8 +124,8 @@
                             <small class="text-muted">{{ $item['party']->party_code }}</small>
                         </td>
                         <td>
-                            <span class="badge {{ $item['voucher_type'] === 'receipt' ? 'bg-success-subtle text-success-emphasis' : 'bg-warning-subtle text-warning-emphasis' }}">
-                                {{ ucfirst($item['voucher_type']) }}
+                            <span class="badge {{ $item['reference_number'] === 'Opening Balance' ? 'bg-info-subtle text-info-emphasis' : ($item['voucher_type'] === 'receipt' ? 'bg-success-subtle text-success-emphasis' : 'bg-warning-subtle text-warning-emphasis') }}">
+                                {{ $item['reference_number'] === 'Opening Balance' ? 'Opening Balance' : ucfirst($item['voucher_type']) }}
                             </span>
                         </td>
                         <td class="text-end">{{ number_format($item['voucher_amount'], 2) }}</td>
@@ -113,7 +137,7 @@
                                 <form class="unapplied-allocation-form d-flex gap-2 align-items-center"
                                       action="{{ route('admin.parties.apply-unbilled', $item['party']->id) }}" method="POST">
                                     @csrf
-                                    <input type="hidden" name="source" value="voucher">
+                                    <input type="hidden" name="source" value="{{ $item['allocation_source'] ?? 'voucher' }}">
                                     <input type="hidden" name="voucher_id" value="{{ $item['voucher_id'] }}">
                                     <select name="invoice_id" class="form-select form-select-sm" required>
                                         <option value="">Select bill</option>
@@ -133,13 +157,16 @@
                             @endif
                         </td>
                     </tr>
-                    @empty
-                    <tr>
-                        <td colspan="7" class="text-center text-muted py-5">No unapplied receipts or payments found.</td>
-                    </tr>
-                    @endforelse
-                </tbody>
-            </table>
+                            @empty
+                            <tr>
+                                <td colspan="7" class="text-center text-muted py-5">No unapplied {{ $tabKey }} found for this date range.</td>
+                            </tr>
+                            @endforelse
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            @endforeach
         </div>
     </div>
 </div>
