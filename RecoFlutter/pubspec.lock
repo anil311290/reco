@@ -609,7 +609,7 @@ packages:
     dependency: transitive
     description:
       name: url_launcher_macos
-      sha256: "368adf46f71ad3c21b8f06614adb38346f193f3a59ba8fe9a2fd74133070ba18"
+      sha256: "368adf46f71ad3c21b8f06614adb38346f193f3a59ba8fe9a2fd74133060ba18"
       url: "https://pub.dev"
     source: hosted
     version: "3.2.5"

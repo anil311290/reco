@@ -204,12 +204,12 @@
             <ul class="nav nav-tabs report-tabs" id="creditorsTabs" role="tablist">
                 <li class="nav-item" role="presentation">
                     <button class="nav-link active" id="invoice-wise-tab" data-bs-toggle="tab" data-bs-target="#invoice-wise-pane" type="button" role="tab" aria-controls="invoice-wise-pane" aria-selected="true">
-                        <i class="bi bi-receipt me-1"></i>Invoice Wise Details
+                        <i class="bi bi-receipt me-1"></i>Invoice Wise
                     </button>
                 </li>
                 <li class="nav-item" role="presentation">
                     <button class="nav-link" id="party-wise-tab" data-bs-toggle="tab" data-bs-target="#party-wise-pane" type="button" role="tab" aria-controls="party-wise-pane" aria-selected="false">
-                        <i class="bi bi-person-lines-fill me-1"></i>Party Wise Summary
+                        <i class="bi bi-person-lines-fill me-1"></i>Party Wise
                     </button>
                 </li>
             </ul>
@@ -475,7 +475,7 @@
             });
         });
 
-        // Re-open the Party Wise Summary tab after a filter/clear round trip.
+        // Re-open the Party Wise tab after a filter/clear round trip.
         if (window.location.hash === '#party-wise-pane') {
             const partyTabEl = document.getElementById('party-wise-tab');
             if (partyTabEl && window.bootstrap) {

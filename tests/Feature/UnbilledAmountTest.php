@@ -128,7 +128,7 @@ class UnappliedAmountTest extends TestCase
         $salesService->generateVoucher($invoice);
 
         // Standalone advance receipt of 1500 — not allocated to any invoice.
-        app(VoucherService::class)->create([
+        $advanceVoucher = app(VoucherService::class)->create([
             'company_id' => $company->id,
             'financial_year_id' => $fy->id,
             'party_id' => $debtor->id,
@@ -158,7 +158,12 @@ class UnappliedAmountTest extends TestCase
 
         $response = $this->actingAs($user)->postJson(
             "/admin/parties/{$debtor->id}/apply-unapplied",
-            ['invoice_id' => $invoice->id, 'amount' => 1000]
+            [
+                'invoice_id' => $invoice->id,
+                'amount' => 1000,
+                'source' => 'voucher',
+                'voucher_id' => $advanceVoucher->id,
+            ]
         );
 
         $response->assertOk();

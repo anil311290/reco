@@ -30,7 +30,7 @@ RECO is an **offline-first Accounting and Receivables Management SaaS platform**
 |-------|-----------|---------|
 | Backend Framework | Laravel | 12.x (latest) |
 | PHP Version | PHP | 8.3+ |
-| Database | MySQL | (configured for port 3307) |
+| Database | MySQL | (configured for port 3306) |
 | Authentication (Web) | Laravel UI + Session | Auth scaffolding |
 | Authentication (API) | Laravel Sanctum | 4.3 |
 | Frontend CSS | Bootstrap | 5.x |

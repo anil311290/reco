@@ -8,7 +8,7 @@ Reco (formerly LedgerPro) is an offline-first accounting and receivables managem
 ## What Has Been Implemented
 
 ### 1. Project Configuration
-- ✅ Environment configured for MySQL (port 3307)
+- ✅ Environment configured for MySQL (port 3306)
 - ✅ Database: `laravel_onlinefirstman`
 - ✅ Application name: LedgerPro
 

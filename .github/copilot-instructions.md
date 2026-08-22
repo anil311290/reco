@@ -56,7 +56,7 @@ Database Name:
 laravel_onlinefirstman
 
 Database Port:
-3307
+3306
 
 Authentication:
 Laravel Sanctum

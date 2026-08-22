@@ -312,6 +312,10 @@ class PartyController extends Controller
             );
         }
 
+        if ($source === 'unapplied') {
+            return ResponseHelper::error('Select a specific receipt or payment from the Unapplied Cash report before applying it to an invoice.');
+        }
+
         $available = $source === 'opening_balance' ? $availableOpeningBalance : $unapplied;
         if ($amount > $available + 0.01) {
             $label = $source === 'opening_balance' ? 'opening balance' : 'unapplied amount';
