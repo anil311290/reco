@@ -66,8 +66,8 @@
         <form method="GET" action="{{ route('admin.reports.stock-register') }}" class="row g-3 align-items-end">
             <div class="col-12 col-lg-4">
                 <label for="item_id" class="form-label">Stock Item</label>
-                <select id="item_id" name="item_id" class="form-select">
-                    <option value="">All Stock Items</option>
+                <select id="item_id" name="item_id" class="form-select" required>
+                    <option value="" disabled {{ empty($selectedItemId) ? 'selected' : '' }}>Select Stock Item</option>
                     @foreach($items as $item)
                         <option value="{{ $item->id }}" {{ (string) $selectedItemId === (string) $item->id ? 'selected' : '' }}>
                             {{ $item->name }} ({{ $item->item_code }})

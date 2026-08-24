@@ -9,6 +9,7 @@ use App\Http\Controllers\Admin\AccountController;
 use App\Http\Controllers\Admin\PartyController;
 use App\Http\Controllers\Admin\VoucherController;
 use App\Http\Controllers\Admin\ReportController;
+use App\Http\Controllers\Admin\StockValueController;
 use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\AuditLogController;
 use App\Http\Controllers\Admin\ExportController;
@@ -313,6 +314,9 @@ Route::prefix('admin')->name('admin.')->group(function () {
             Route::get('reports/receipt-payment', [ReportController::class, 'receiptPayment'])->name('reports.receipt-payment');
             Route::get('reports/balance-sheet', [ReportController::class, 'balanceSheet'])->name('reports.balance-sheet');
             Route::get('reports/stock-register', [ReportController::class, 'stockRegister'])->name('reports.stock-register');
+            Route::get('reports/stock-value-register', [StockValueController::class, 'index'])->name('reports.stock-value-register');
+            Route::post('reports/stock-value-register', [StockValueController::class, 'store'])->name('reports.stock-value-register.store');
+            Route::put('reports/stock-value-register/{entry}', [StockValueController::class, 'update'])->name('reports.stock-value-register.update');
             Route::get('reports/debtors-outstanding', [ReportController::class, 'debtorsOutstanding'])->name('reports.debtors-outstanding');
             Route::get('reports/creditors-outstanding', [ReportController::class, 'creditorsOutstanding'])->name('reports.creditors-outstanding');
             Route::get('reports/unapplied-receipts', [ReportController::class, 'unappliedReceipts'])->name('reports.unapplied-receipts');

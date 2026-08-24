@@ -104,6 +104,9 @@
                 <i class="bi {{ $isProfit ? 'bi-check-circle' : 'bi-exclamation-circle' }}"></i>
                 {{ $isProfit ? 'Profitable' : 'Loss Position' }}
             </span>
+            <a href="{{ route('admin.reports.stock-value-register', ['financial_year_id' => $financialYearId]) }}" class="btn report-btn-soft">
+                <i class="bi bi-pencil-square me-1"></i>Edit Stock Values
+            </a>
         </div>
         <div class="report-panel-body report-panel-body--flush">
             <div class="table-responsive">
@@ -176,6 +179,44 @@
             </div>
         </div>
     </div>
+
+    @if(!empty($report['stock']['register']))
+        <div class="report-panel">
+            <div class="report-panel-header">
+                <h6 class="report-panel-title"><i class="bi bi-box-seam text-primary"></i>Stock Value Register</h6>
+                <span class="report-pill report-pill--info">User-entered values</span>
+            </div>
+            <div class="report-panel-body report-panel-body--flush">
+                <div class="table-responsive">
+                    <table class="table report-table table-hover mb-0">
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th class="text-end">Stock Value (₹)</th>
+                                <th>Remarks</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach($report['stock']['register'] as $stockRow)
+                                <tr>
+                                    <td class="fw-semibold">{{ \Carbon\Carbon::parse($stockRow['valuation_date'])->format('d/m/Y') }}</td>
+                                    <td class="text-end fw-semibold">₹{{ number_format($stockRow['stock_value'], 2) }}</td>
+                                    <td>{{ $stockRow['remarks'] ?: '-' }}</td>
+                                </tr>
+                            @endforeach
+                        </tbody>
+                        <tfoot>
+                            <tr>
+                                <td class="fw-bold">Opening / Closing Value</td>
+                                <td class="text-end fw-bold">₹{{ number_format($report['stock']['opening_value'], 2) }} / ₹{{ number_format($report['stock']['closing_value'], 2) }}</td>
+                                <td><a href="{{ route('admin.reports.stock-value-register', ['financial_year_id' => $financialYearId]) }}" class="report-detail-link">Edit register</a></td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+            </div>
+        </div>
+    @endif
 @endif
 </div>
 @endsection

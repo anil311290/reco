@@ -10,6 +10,7 @@ use App\Models\PaymentInvoiceMapping;
 use App\Models\PurchaseInvoice;
 use App\Models\SalesInvoice;
 use App\Models\Voucher;
+use App\Models\StockValueEntry;
 use App\Interfaces\LedgerRepositoryInterface;
 use Carbon\Carbon;
 
@@ -92,6 +93,25 @@ class ReportService
 
         $netProfit = $totalIncome - $totalExpense;
 
+        $stock = $this->getStockValuation($companyId, $financialYearId, $dateFrom, $dateTo);
+        if ($stock['opening_value'] > 0.01) {
+            $expenseDetails[] = [
+                'account' => null,
+                'label' => 'Opening Stock (Value)',
+                'amount' => $stock['opening_value'],
+            ];
+            $totalExpense += $stock['opening_value'];
+        }
+        if ($stock['closing_value'] > 0.01) {
+            $incomeDetails[] = [
+                'account' => null,
+                'label' => 'Closing Stock (Value)',
+                'amount' => $stock['closing_value'],
+            ];
+            $totalIncome += $stock['closing_value'];
+        }
+        $netProfit = round($totalIncome - $totalExpense, 2);
+
         return [
             'income' => [
                 'accounts' => $incomeDetails,
@@ -105,6 +125,31 @@ class ReportService
             'is_profit' => $netProfit >= 0,
             'date_from' => $dateFrom,
             'date_to' => $dateTo,
+            'stock' => $stock,
+        ];
+    }
+
+    private function getStockValuation(int $companyId, int $financialYearId, ?string $dateFrom, ?string $dateTo): array
+    {
+        $entries = StockValueEntry::query()
+            ->where('company_id', $companyId)
+            ->where('financial_year_id', $financialYearId)
+            ->orderBy('valuation_date')
+            ->orderBy('id')
+            ->get();
+        $openingEntry = $entries->filter(fn ($entry) => !$dateFrom || $entry->valuation_date->toDateString() <= $dateFrom)->last();
+        $closingEntry = $entries->filter(fn ($entry) => !$dateTo || $entry->valuation_date->toDateString() <= $dateTo)->last();
+        $register = $entries->map(fn ($entry) => [
+            'entry' => $entry,
+            'valuation_date' => $entry->valuation_date->toDateString(),
+            'stock_value' => (float) $entry->stock_value,
+            'remarks' => $entry->remarks,
+        ])->all();
+
+        return [
+            'opening_value' => round((float) ($openingEntry?->stock_value ?? 0), 2),
+            'closing_value' => round((float) ($closingEntry?->stock_value ?? 0), 2),
+            'register' => $register,
         ];
     }
 

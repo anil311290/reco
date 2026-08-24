@@ -6,13 +6,17 @@ use App\Http\Controllers\Controller;
 use App\Models\FinancialYear;
 use App\Helpers\ResponseHelper;
 use App\Services\FinancialYearService;
+use App\Services\AccountService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
 class FinancialYearController extends Controller
 {
-    public function __construct(protected FinancialYearService $financialYearService)
+    public function __construct(
+        protected FinancialYearService $financialYearService,
+        protected AccountService $accountService
+    )
     {
     }
     /**
@@ -64,13 +68,26 @@ class FinancialYearController extends Controller
                 return ResponseHelper::error('Financial year overlaps with existing year');
             }
 
-            $financialYear = FinancialYear::create([
-                'company_id' => $companyId,
-                'name' => $request->name,
-                'start_date' => $request->start_date,
-                'end_date' => $request->end_date,
-                'is_current' => false,
-            ]);
+            $financialYear = DB::transaction(function () use ($request, $companyId) {
+                $financialYear = FinancialYear::create([
+                    'company_id' => $companyId,
+                    'name' => $request->name,
+                    'start_date' => $request->start_date,
+                    'end_date' => $request->end_date,
+                    'is_current' => false,
+                ]);
+
+                $this->accountService->ensureDefaultLedgersAndCleanupDuplicates(
+                    $companyId,
+                    (int) $financialYear->id,
+                    (int) auth()->id(),
+                    $request->ip()
+                );
+
+                $this->financialYearService->carryForwardOpeningBalances($financialYear->fresh());
+
+                return $financialYear;
+            });
 
             return ResponseHelper::success($financialYear, 'Financial year created successfully');
         } catch (\Exception $e) {

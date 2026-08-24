@@ -320,11 +320,9 @@ class ReportController extends Controller
             ->where('is_stockable', true)
             ->orderBy('name');
 
-        if ($selectedItemId) {
-            $itemsQuery->whereKey((int) $selectedItemId);
-        }
-
-        $items = $itemsQuery->get();
+        $items = $selectedItemId
+            ? $itemsQuery->whereKey((int) $selectedItemId)->get()
+            : collect();
         $rows = [];
         $closingQuantity = 0.0;
         $totalIn = 0.0;
