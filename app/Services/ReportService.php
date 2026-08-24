@@ -294,9 +294,10 @@ class ReportService
                 || $closingDebit > 0.001
                 || $closingCredit > 0.001;
 
-            if (!$hasMovement) {
-                continue;
-            }
+            // Keep zero-movement accounts visible in Trial Balance after a fresh seed.
+            // if (!$hasMovement) {
+            //     continue;
+            // }
 
             if ((string) $account->account_code === Account::CODE_SUSPENSE && $closingDebit < 0.001 && $closingCredit < 0.001) {
                 continue;
