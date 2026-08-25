@@ -6,8 +6,11 @@ use App\Models\Account;
 use App\Models\FinancialYear;
 use App\Models\Ledger;
 use App\Models\Party;
+use App\Models\PurchaseInvoice;
+use App\Models\SalesInvoice;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Collection as SupportCollection;
 use Illuminate\Support\Facades\DB;
 
 class PartyService
@@ -581,6 +584,44 @@ class PartyService
     public function isTransactionallyUsed(int $partyId): bool
     {
         return $this->isPartyTransactionallyUsed($partyId);
+    }
+
+    /**
+     * Open invoices for a party, oldest due first, with overdue metadata.
+     *
+     * @return \Illuminate\Support\Collection<int, array<string, mixed>>
+     */
+    public function getOutstandingInvoices(Party $party, ?string $invoiceType = null): SupportCollection
+    {
+        $invoiceType ??= $party->type === 'debtor' ? 'sales' : 'purchase';
+
+        $query = $invoiceType === 'sales' ? SalesInvoice::query() : PurchaseInvoice::query();
+
+        $invoices = $query
+            ->where('company_id', $party->company_id)
+            ->where('party_id', $party->id)
+            ->whereNotIn('status', ['paid', 'cancelled'])
+            ->where('balance_due', '>', 0)
+            ->orderBy('due_date')
+            ->orderBy('invoice_date')
+            ->get(['id', 'invoice_number', 'invoice_date', 'due_date', 'total', 'balance_due']);
+
+        $today = now()->toDateString();
+
+        return $invoices->map(function ($invoice) use ($today): array {
+            $isOverdue = $invoice->due_date && $invoice->due_date->toDateString() < $today;
+
+            return [
+                'id' => $invoice->id,
+                'invoice_number' => $invoice->invoice_number,
+                'invoice_date' => $invoice->invoice_date?->format('d-M-Y'),
+                'due_date' => $invoice->due_date?->format('d-M-Y'),
+                'total' => (float) $invoice->total,
+                'balance_due' => (float) $invoice->balance_due,
+                'is_overdue' => $isOverdue,
+                'overdue_days' => $isOverdue ? (int) $invoice->due_date->diffInDays(now()->startOfDay(), true) : 0,
+            ];
+        })->values();
     }
 
     /**

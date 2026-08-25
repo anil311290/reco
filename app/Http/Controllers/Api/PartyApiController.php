@@ -8,6 +8,8 @@ use App\Http\Resources\PartyResource;
 use App\Models\Party;
 use App\Services\LedgerService;
 use App\Services\PartyService;
+use App\Services\PurchaseInvoiceService;
+use App\Services\SalesInvoiceService;
 use App\Helpers\ResponseHelper;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -16,11 +18,19 @@ class PartyApiController extends Controller
 {
     protected PartyService $partyService;
     protected LedgerService $ledgerService;
+    protected SalesInvoiceService $salesInvoiceService;
+    protected PurchaseInvoiceService $purchaseInvoiceService;
 
-    public function __construct(PartyService $partyService, LedgerService $ledgerService)
-    {
+    public function __construct(
+        PartyService $partyService,
+        LedgerService $ledgerService,
+        SalesInvoiceService $salesInvoiceService,
+        PurchaseInvoiceService $purchaseInvoiceService
+    ) {
         $this->partyService = $partyService;
         $this->ledgerService = $ledgerService;
+        $this->salesInvoiceService = $salesInvoiceService;
+        $this->purchaseInvoiceService = $purchaseInvoiceService;
     }
 
     public function index(Request $request): JsonResponse
@@ -245,5 +255,75 @@ class PartyApiController extends Controller
             'parties' => $parties,
             'next_party_code' => $nextPartyCode,
         ]);
+    }
+
+    /**
+     * Open invoices for a party (used to build a payment allocation screen).
+     */
+    public function outstandingInvoices(Request $request, int $id): JsonResponse
+    {
+        $request->validate([
+            'invoice_type' => 'nullable|in:sales,purchase',
+        ]);
+
+        $party = $this->partyService->getById($id);
+
+        if (! $party || $party->company_id !== $request->user()->company_id) {
+            return ResponseHelper::notFound('Party not found');
+        }
+
+        return ResponseHelper::success(
+            $this->partyService->getOutstandingInvoices($party, $request->input('invoice_type'))
+        );
+    }
+
+    /**
+     * Record one payment/receipt allocated across multiple invoices of a party.
+     */
+    public function recordPayment(Request $request, int $id): JsonResponse
+    {
+        $party = $this->partyService->getById($id);
+
+        if (! $party || $party->company_id !== $request->user()->company_id) {
+            return ResponseHelper::notFound('Party not found');
+        }
+
+        if (! in_array($party->type, ['debtor', 'creditor'], true)) {
+            return ResponseHelper::error('Party must be a debtor or creditor to record payment.');
+        }
+
+        $validated = $request->validate([
+            'cash_bank_account_id' => ['required', 'integer', 'exists:accounts,id'],
+            'payment_date' => ['required', 'date'],
+            'allocations' => ['required', 'array', 'min:1'],
+            'allocations.*.invoice_id' => ['required', 'integer'],
+            'allocations.*.amount' => ['required', 'numeric', 'gt:0'],
+            'allocations.*.reference_number' => ['nullable', 'string', 'max:100'],
+        ]);
+
+        $meta = [
+            'company_id' => $party->company_id,
+            'created_by' => $request->user()->id,
+            'created_by_ip' => $request->ip(),
+        ];
+
+        try {
+            $service = $party->type === 'debtor' ? $this->salesInvoiceService : $this->purchaseInvoiceService;
+
+            $result = $service->recordMultiInvoicePayment(
+                $party->id,
+                $validated['allocations'],
+                (int) $validated['cash_bank_account_id'],
+                $validated['payment_date'],
+                $meta
+            );
+        } catch (\RuntimeException $e) {
+            return ResponseHelper::error($e->getMessage());
+        }
+
+        return ResponseHelper::success(
+            ['voucher_number' => $result['voucher']->voucher_number],
+            'Payment recorded against ' . $result['invoices']->count() . ' invoice(s).'
+        );
     }
 }

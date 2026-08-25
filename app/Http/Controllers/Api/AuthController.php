@@ -6,11 +6,15 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Api\LoginRequest;
 use App\Http\Requests\Api\RegisterRequest;
 use App\Http\Resources\UserResource;
+use App\Models\User;
 use App\Services\AuthService;
 use App\Services\LoginHistoryService;
 use App\Helpers\ResponseHelper;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Password;
+use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
 class AuthController extends Controller
@@ -143,5 +147,53 @@ class AuthController extends Controller
         );
 
         return ResponseHelper::success(null, 'Password changed successfully');
+    }
+
+    /**
+     * Send a password reset link to the given email.
+     */
+    public function forgotPassword(Request $request): JsonResponse
+    {
+        $request->validate([
+            'email' => 'required|email',
+        ]);
+
+        $status = Password::sendResetLink($request->only('email'));
+
+        if ($status === Password::RESET_LINK_SENT) {
+            return ResponseHelper::success(null, __($status));
+        }
+
+        return ResponseHelper::error(__($status), 400);
+    }
+
+    /**
+     * Reset the password using the emailed token.
+     */
+    public function resetPassword(Request $request): JsonResponse
+    {
+        $request->validate([
+            'token' => 'required|string',
+            'email' => 'required|email',
+            'password' => 'required|string|min:8|confirmed',
+        ]);
+
+        $status = Password::reset(
+            $request->only('email', 'password', 'password_confirmation', 'token'),
+            function (User $user, string $password): void {
+                $user->forceFill([
+                    'password' => Hash::make($password),
+                    'remember_token' => Str::random(60),
+                ])->save();
+
+                $user->tokens()->delete();
+            }
+        );
+
+        if ($status === Password::PASSWORD_RESET) {
+            return ResponseHelper::success(null, __($status));
+        }
+
+        return ResponseHelper::error(__($status), 400);
     }
 }

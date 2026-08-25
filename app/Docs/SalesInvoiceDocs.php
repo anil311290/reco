@@ -125,6 +125,50 @@ use OpenApi\Annotations as OA;
  *     @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")),
  *     @OA\Response(response=200, description="PDF generated", @OA\JsonContent(ref="#/components/schemas/SuccessResponse"))
  * )
+ *
+ * @OA\Post(
+ *     path="/sales-invoices/{id}/cancel",
+ *     tags={"Sales Invoices"},
+ *     summary="Cancel a sales invoice",
+ *     description="Reverses the linked voucher and its ledger entries. Fails if payments have already been settled against the invoice.",
+ *     operationId="cancelSalesInvoice",
+ *     security={{"bearerAuth":{}}},
+ *     @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer", example=10)),
+ *     @OA\Response(
+ *         response=200,
+ *         description="Invoice cancelled",
+ *         @OA\JsonContent(
+ *             @OA\Property(property="success", type="boolean", example=true),
+ *             @OA\Property(property="message", type="string", example="Invoice cancelled successfully"),
+ *             @OA\Property(property="data", type="object")
+ *         )
+ *     ),
+ *     @OA\Response(response=400, description="Invoice cannot be cancelled", @OA\JsonContent(ref="#/components/schemas/ErrorResponse")),
+ *     @OA\Response(response=401, description="Unauthorized", @OA\JsonContent(ref="#/components/schemas/ErrorResponse")),
+ *     @OA\Response(response=404, description="Invoice not found", @OA\JsonContent(ref="#/components/schemas/ErrorResponse"))
+ * )
+ *
+ * @OA\Post(
+ *     path="/sales-invoices/{id}/post",
+ *     tags={"Sales Invoices"},
+ *     summary="Post a draft sales invoice to the ledger",
+ *     description="Generates the accounting voucher for a draft invoice. Only invoices with status=draft can be posted.",
+ *     operationId="postSalesInvoice",
+ *     security={{"bearerAuth":{}}},
+ *     @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer", example=10)),
+ *     @OA\Response(
+ *         response=200,
+ *         description="Invoice posted",
+ *         @OA\JsonContent(
+ *             @OA\Property(property="success", type="boolean", example=true),
+ *             @OA\Property(property="message", type="string", example="Sales invoice posted successfully"),
+ *             @OA\Property(property="data", type="object")
+ *         )
+ *     ),
+ *     @OA\Response(response=400, description="Only draft invoices can be posted, or account mapping missing", @OA\JsonContent(ref="#/components/schemas/ErrorResponse")),
+ *     @OA\Response(response=401, description="Unauthorized", @OA\JsonContent(ref="#/components/schemas/ErrorResponse")),
+ *     @OA\Response(response=404, description="Invoice not found", @OA\JsonContent(ref="#/components/schemas/ErrorResponse"))
+ * )
  */
 class SalesInvoiceDocs
 {

@@ -204,6 +204,35 @@ class PurchaseInvoiceApiController extends Controller
         }
     }
 
+    /**
+     * Post a draft invoice to the ledger.
+     */
+    public function post(Request $request, int $id): JsonResponse
+    {
+        $invoice = $this->purchaseInvoiceService->getById($id);
+
+        if (! $invoice || $invoice->company_id !== $request->user()->company_id) {
+            return ResponseHelper::notFound('Purchase invoice not found');
+        }
+
+        if ($invoice->status !== 'draft') {
+            return ResponseHelper::error('Only draft invoices can be posted');
+        }
+
+        try {
+            if (! $this->purchaseInvoiceService->generateVoucher($invoice)) {
+                throw new \RuntimeException('Voucher/journal posting failed. Please check account mappings.');
+            }
+        } catch (\Exception $e) {
+            return ResponseHelper::error($e->getMessage());
+        }
+
+        return ResponseHelper::success(
+            new PurchaseInvoiceResource($invoice->fresh()),
+            'Purchase invoice posted successfully'
+        );
+    }
+
     protected function purchaseRules(int $companyId): array
     {
         return [

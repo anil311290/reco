@@ -417,7 +417,7 @@
                     "Accounts"
                 ],
                 "summary": "Cash / Bank / OD accounts for payments and receipts",
-                "description": "Dropdown helper matching web Paid From / Received In. Includes available_balance (null for OD).",
+                "description": "Dropdown helper matching web Paid From / Received In. Includes available_balance (null for OD). Opening Balance is always excluded.",
                 "operationId": "getCashBankAccounts",
                 "parameters": [
                     {
@@ -453,7 +453,7 @@
                     "Accounts"
                 ],
                 "summary": "Particulars for payment/receipt lines",
-                "description": "Grouped list of all parties (encoded as party:{id}) plus selectable ledger accounts. Cash/Bank/OD accounts are excluded because they are the fixed contra side. The type parameter is accepted for parity but no longer filters parties.",
+                "description": "Grouped list of all parties (encoded as party:{id}) plus selectable ledger accounts. Cash/Bank/OD accounts are excluded because they are the fixed contra side. The type parameter is accepted for parity but no longer filters parties. Party rows also include party_balance and party_balance_type for UI hints.",
                 "operationId": "getPaymentParticulars",
                 "parameters": [
                     {
@@ -494,6 +494,7 @@
                     "Accounts"
                 ],
                 "summary": "Particulars for adjustment/journal vouchers",
+                "description": "Grouped parties plus selectable ledger accounts. Opening Balance and AR/AP control ledgers are excluded from direct account rows.",
                 "operationId": "getAdjustmentParticulars",
                 "responses": {
                     "200": {
@@ -1487,7 +1488,7 @@
                     "Authentication"
                 ],
                 "summary": "Update user profile",
-                "description": "Update current user profile information",
+                "description": "Update current user profile information. Email is read-only and cannot be changed from this endpoint.",
                 "operationId": "updateProfile",
                 "requestBody": {
                     "description": "Profile data to update",
@@ -1498,11 +1499,6 @@
                                     "name": {
                                         "type": "string",
                                         "example": "John Doe Updated"
-                                    },
-                                    "email": {
-                                        "type": "string",
-                                        "format": "email",
-                                        "example": "john.updated@example.com"
                                     },
                                     "phone": {
                                         "type": "string",
@@ -1572,7 +1568,7 @@
                     "Authentication"
                 ],
                 "summary": "Change password",
-                "description": "Change current user password",
+                "description": "Change current user password. Use new_password/new_password_confirmation (legacy password/password_confirmation is also accepted).",
                 "operationId": "changePassword",
                 "requestBody": {
                     "description": "Password data",
@@ -1582,8 +1578,8 @@
                             "schema": {
                                 "required": [
                                     "current_password",
-                                    "password",
-                                    "password_confirmation"
+                                    "new_password",
+                                    "new_password_confirmation"
                                 ],
                                 "properties": {
                                     "current_password": {
@@ -1592,18 +1588,33 @@
                                         "format": "password",
                                         "example": "old12345678"
                                     },
-                                    "password": {
+                                    "new_password": {
                                         "description": "New password",
                                         "type": "string",
                                         "format": "password",
                                         "example": "new12345678",
                                         "minLength": 8
                                     },
-                                    "password_confirmation": {
+                                    "new_password_confirmation": {
                                         "description": "Confirm new password",
                                         "type": "string",
                                         "format": "password",
                                         "example": "new12345678"
+                                    },
+                                    "password": {
+                                        "description": "Legacy alias of new_password",
+                                        "type": "string",
+                                        "format": "password",
+                                        "example": "new12345678",
+                                        "nullable": true,
+                                        "minLength": 8
+                                    },
+                                    "password_confirmation": {
+                                        "description": "Legacy alias of new_password_confirmation",
+                                        "type": "string",
+                                        "format": "password",
+                                        "example": "new12345678",
+                                        "nullable": true
                                     }
                                 },
                                 "type": "object"
@@ -1658,6 +1669,476 @@
                         "bearerAuth": []
                     }
                 ]
+            }
+        },
+        "/forgot-password": {
+            "post": {
+                "tags": [
+                    "Authentication"
+                ],
+                "summary": "Send password reset link",
+                "description": "Public endpoint. Emails a password reset token to the account. Rate limited to 6 requests per minute per IP.",
+                "operationId": "forgotPassword",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "email"
+                                ],
+                                "properties": {
+                                    "email": {
+                                        "type": "string",
+                                        "format": "email",
+                                        "example": "john@example.com"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Reset link sent",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "We have emailed your password reset link."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Unable to send reset link (unknown email or throttled)",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/reset-password": {
+            "post": {
+                "tags": [
+                    "Authentication"
+                ],
+                "summary": "Reset password using emailed token",
+                "description": "Public endpoint. On success every existing Sanctum token for the user is revoked, so the app must log in again.",
+                "operationId": "resetPassword",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "token",
+                                    "email",
+                                    "password",
+                                    "password_confirmation"
+                                ],
+                                "properties": {
+                                    "token": {
+                                        "description": "Token from the reset email",
+                                        "type": "string",
+                                        "example": "a1b2c3d4..."
+                                    },
+                                    "email": {
+                                        "type": "string",
+                                        "format": "email",
+                                        "example": "john@example.com"
+                                    },
+                                    "password": {
+                                        "type": "string",
+                                        "format": "password",
+                                        "example": "new12345678",
+                                        "minLength": 8
+                                    },
+                                    "password_confirmation": {
+                                        "type": "string",
+                                        "format": "password",
+                                        "example": "new12345678"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Password reset successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Your password has been reset."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid or expired token",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/content/faqs": {
+            "get": {
+                "tags": [
+                    "Content"
+                ],
+                "summary": "List active FAQs grouped by category",
+                "description": "Public endpoint. Returns an object keyed by FAQ category, each holding an array of FAQ entries.",
+                "operationId": "contentFaqs",
+                "responses": {
+                    "200": {
+                        "description": "FAQ list",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Success"
+                                        },
+                                        "data": {
+                                            "type": "object",
+                                            "example": {
+                                                "General": [
+                                                    {
+                                                        "id": 1,
+                                                        "question": "What is Reco?",
+                                                        "answer": "An offline-first accounting app.",
+                                                        "category": "General"
+                                                    }
+                                                ]
+                                            }
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/content/testimonials": {
+            "get": {
+                "tags": [
+                    "Content"
+                ],
+                "summary": "List active testimonials",
+                "operationId": "contentTestimonials",
+                "parameters": [
+                    {
+                        "name": "featured",
+                        "in": "query",
+                        "description": "Return only featured testimonials",
+                        "required": false,
+                        "schema": {
+                            "type": "boolean",
+                            "example": true
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Testimonial list",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "type": "object"
+                                            }
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/content/site-settings": {
+            "get": {
+                "tags": [
+                    "Content"
+                ],
+                "summary": "Public site settings (branding, contact, social links)",
+                "operationId": "contentSiteSettings",
+                "responses": {
+                    "200": {
+                        "description": "Site settings key/value map",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "data": {
+                                            "type": "object",
+                                            "example": {
+                                                "site_name": "Reco",
+                                                "site_email": "support@reco.app",
+                                                "primary_color": "#0d6efd"
+                                            }
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/content/pages/{slug}": {
+            "get": {
+                "tags": [
+                    "Content"
+                ],
+                "summary": "Get a published CMS page by slug",
+                "description": "Use for in-app Privacy Policy, Terms & Conditions, About Us etc.",
+                "operationId": "contentPage",
+                "parameters": [
+                    {
+                        "name": "slug",
+                        "in": "path",
+                        "description": "Page slug",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "example": "privacy-policy"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Page content",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "data": {
+                                            "properties": {
+                                                "slug": {
+                                                    "type": "string",
+                                                    "example": "privacy-policy"
+                                                },
+                                                "title": {
+                                                    "type": "string",
+                                                    "example": "Privacy Policy"
+                                                },
+                                                "content": {
+                                                    "type": "string",
+                                                    "example": "<p>...</p>"
+                                                },
+                                                "meta_title": {
+                                                    "type": "string",
+                                                    "nullable": true
+                                                },
+                                                "meta_description": {
+                                                    "type": "string",
+                                                    "nullable": true
+                                                },
+                                                "updated_at": {
+                                                    "type": "string",
+                                                    "format": "date-time"
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Page not found",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/content/contact": {
+            "post": {
+                "tags": [
+                    "Content"
+                ],
+                "summary": "Submit the public contact form",
+                "description": "Rate limited to 6 requests per minute per IP.",
+                "operationId": "contentSubmitContact",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "name",
+                                    "email",
+                                    "message"
+                                ],
+                                "properties": {
+                                    "name": {
+                                        "type": "string",
+                                        "example": "John Doe",
+                                        "maxLength": 255
+                                    },
+                                    "email": {
+                                        "type": "string",
+                                        "format": "email",
+                                        "example": "john@example.com"
+                                    },
+                                    "phone": {
+                                        "type": "string",
+                                        "example": "+91 9876543210",
+                                        "maxLength": 20
+                                    },
+                                    "subject": {
+                                        "type": "string",
+                                        "example": "Pricing question",
+                                        "maxLength": 255
+                                    },
+                                    "message": {
+                                        "type": "string",
+                                        "example": "I would like to know more about the yearly plan.",
+                                        "maxLength": 5000
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Submission stored",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Thank you for contacting us. We will get back to you shortly."
+                                        },
+                                        "data": {
+                                            "properties": {
+                                                "id": {
+                                                    "type": "integer",
+                                                    "example": 12
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "429": {
+                        "description": "Too many requests",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
             }
         },
         "/dashboard": {
@@ -2486,6 +2967,59 @@
                 ],
                 "summary": "Export debtors outstanding report as PDF",
                 "operationId": "exportDebtorsOutstandingPdf",
+                "parameters": [
+                    {
+                        "name": "financial_year_id",
+                        "in": "query",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "date_from",
+                        "in": "query",
+                        "schema": {
+                            "type": "string",
+                            "format": "date"
+                        }
+                    },
+                    {
+                        "name": "date_to",
+                        "in": "query",
+                        "schema": {
+                            "type": "string",
+                            "format": "date"
+                        }
+                    },
+                    {
+                        "name": "overdue_status",
+                        "in": "query",
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "all",
+                                "due",
+                                "not_due"
+                            ]
+                        }
+                    },
+                    {
+                        "name": "age_bucket",
+                        "in": "query",
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "all",
+                                "current",
+                                "1_30",
+                                "31_60",
+                                "61_90",
+                                "91_plus",
+                                "custom"
+                            ]
+                        }
+                    }
+                ],
                 "responses": {
                     "200": {
                         "description": "PDF generated",
@@ -2512,9 +3046,491 @@
                 ],
                 "summary": "Export creditors outstanding report as PDF",
                 "operationId": "exportCreditorsOutstandingPdf",
+                "parameters": [
+                    {
+                        "name": "financial_year_id",
+                        "in": "query",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "date_from",
+                        "in": "query",
+                        "schema": {
+                            "type": "string",
+                            "format": "date"
+                        }
+                    },
+                    {
+                        "name": "date_to",
+                        "in": "query",
+                        "schema": {
+                            "type": "string",
+                            "format": "date"
+                        }
+                    },
+                    {
+                        "name": "overdue_status",
+                        "in": "query",
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "all",
+                                "due",
+                                "not_due"
+                            ]
+                        }
+                    },
+                    {
+                        "name": "age_bucket",
+                        "in": "query",
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "all",
+                                "current",
+                                "1_30",
+                                "31_60",
+                                "61_90",
+                                "91_plus",
+                                "custom"
+                            ]
+                        }
+                    }
+                ],
                 "responses": {
                     "200": {
                         "description": "PDF generated",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/SuccessResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/export/aging-summary/pdf": {
+            "get": {
+                "tags": [
+                    "Export"
+                ],
+                "summary": "Export combined aging summary as PDF",
+                "operationId": "exportAgingSummaryPdf",
+                "parameters": [
+                    {
+                        "name": "financial_year_id",
+                        "in": "query",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "date_from",
+                        "in": "query",
+                        "schema": {
+                            "type": "string",
+                            "format": "date"
+                        }
+                    },
+                    {
+                        "name": "date_to",
+                        "in": "query",
+                        "schema": {
+                            "type": "string",
+                            "format": "date"
+                        }
+                    },
+                    {
+                        "name": "overdue_status",
+                        "in": "query",
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "all",
+                                "due",
+                                "not_due"
+                            ]
+                        }
+                    },
+                    {
+                        "name": "age_bucket",
+                        "in": "query",
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "all",
+                                "current",
+                                "1_30",
+                                "31_60",
+                                "61_90",
+                                "91_plus",
+                                "custom"
+                            ]
+                        }
+                    },
+                    {
+                        "name": "age_min",
+                        "in": "query",
+                        "schema": {
+                            "type": "integer",
+                            "minimum": 0
+                        }
+                    },
+                    {
+                        "name": "age_max",
+                        "in": "query",
+                        "schema": {
+                            "type": "integer",
+                            "minimum": 0
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "PDF generated",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/SuccessResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/export/profit-loss/excel": {
+            "get": {
+                "tags": [
+                    "Export"
+                ],
+                "summary": "Export profit and loss report as Excel",
+                "operationId": "exportProfitLossExcel",
+                "parameters": [
+                    {
+                        "name": "financial_year_id",
+                        "in": "query",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Excel generated",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/SuccessResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/export/balance-sheet/excel": {
+            "get": {
+                "tags": [
+                    "Export"
+                ],
+                "summary": "Export balance sheet report as Excel",
+                "operationId": "exportBalanceSheetExcel",
+                "parameters": [
+                    {
+                        "name": "financial_year_id",
+                        "in": "query",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Excel generated",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/SuccessResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/export/trial-balance/excel": {
+            "get": {
+                "tags": [
+                    "Export"
+                ],
+                "summary": "Export trial balance report as Excel",
+                "operationId": "exportTrialBalanceExcel",
+                "parameters": [
+                    {
+                        "name": "financial_year_id",
+                        "in": "query",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Excel generated",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/SuccessResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/export/day-book/excel": {
+            "get": {
+                "tags": [
+                    "Export"
+                ],
+                "summary": "Export day book report as Excel",
+                "operationId": "exportDayBookExcel",
+                "parameters": [
+                    {
+                        "name": "date",
+                        "in": "query",
+                        "schema": {
+                            "type": "string",
+                            "format": "date"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Excel generated",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/SuccessResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/export/ledger/excel": {
+            "get": {
+                "tags": [
+                    "Export"
+                ],
+                "summary": "Export ledger report as Excel",
+                "operationId": "exportLedgerExcel",
+                "parameters": [
+                    {
+                        "name": "account_id",
+                        "in": "query",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Excel generated",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/SuccessResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/export/debtors-outstanding/excel": {
+            "get": {
+                "tags": [
+                    "Export"
+                ],
+                "summary": "Export debtors outstanding report as Excel",
+                "operationId": "exportDebtorsOutstandingExcel",
+                "parameters": [
+                    {
+                        "name": "financial_year_id",
+                        "in": "query",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "as_of_date",
+                        "in": "query",
+                        "schema": {
+                            "type": "string",
+                            "format": "date"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Excel generated",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/SuccessResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/export/creditors-outstanding/excel": {
+            "get": {
+                "tags": [
+                    "Export"
+                ],
+                "summary": "Export creditors outstanding report as Excel",
+                "operationId": "exportCreditorsOutstandingExcel",
+                "parameters": [
+                    {
+                        "name": "financial_year_id",
+                        "in": "query",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "as_of_date",
+                        "in": "query",
+                        "schema": {
+                            "type": "string",
+                            "format": "date"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Excel generated",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/SuccessResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/export/aging-summary/excel": {
+            "get": {
+                "tags": [
+                    "Export"
+                ],
+                "summary": "Export combined aging summary as Excel",
+                "operationId": "exportAgingSummaryExcel",
+                "parameters": [
+                    {
+                        "name": "financial_year_id",
+                        "in": "query",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "as_of_date",
+                        "in": "query",
+                        "schema": {
+                            "type": "string",
+                            "format": "date"
+                        }
+                    },
+                    {
+                        "name": "overdue_status",
+                        "in": "query",
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "all",
+                                "due",
+                                "not_due"
+                            ]
+                        }
+                    },
+                    {
+                        "name": "age_bucket",
+                        "in": "query",
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "all",
+                                "current",
+                                "1_30",
+                                "31_60",
+                                "61_90",
+                                "91_plus",
+                                "custom"
+                            ]
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Excel generated",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -3033,6 +4049,76 @@
                             "application/json": {
                                 "schema": {
                                     "$ref": "#/components/schemas/SuccessResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/financial-years/{id}/restore": {
+            "patch": {
+                "tags": [
+                    "Settings"
+                ],
+                "summary": "Restore a soft-deleted financial year",
+                "operationId": "restoreFinancialYear",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "example": 2
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Financial year restored",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Financial year restored successfully"
+                                        },
+                                        "data": {
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Not found in trash",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
                                 }
                             }
                         }
@@ -4640,6 +5726,7 @@
                     "Parties"
                 ],
                 "summary": "Update party",
+                "description": "Opening fields are immutable after creation. opening_balance, opening_balance_type, and opening_date are ignored on update.",
                 "operationId": "updateParty",
                 "parameters": [
                     {
@@ -4746,6 +5833,273 @@
                             "application/json": {
                                 "schema": {
                                     "$ref": "#/components/schemas/SuccessResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/parties/{id}/outstanding-invoices": {
+            "get": {
+                "tags": [
+                    "Parties"
+                ],
+                "summary": "Open invoices for a party",
+                "description": "Returns unpaid, non-cancelled invoices with a balance due, oldest due date first. Use this to build a payment allocation screen before calling POST /parties/{id}/record-payment.",
+                "operationId": "getPartyOutstandingInvoices",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "example": 3
+                        }
+                    },
+                    {
+                        "name": "invoice_type",
+                        "in": "query",
+                        "description": "Defaults to sales for debtors and purchase for creditors",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "sales",
+                                "purchase"
+                            ]
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Outstanding invoices",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "properties": {
+                                                    "id": {
+                                                        "type": "integer",
+                                                        "example": 10
+                                                    },
+                                                    "invoice_number": {
+                                                        "type": "string",
+                                                        "example": "INV-2026-0010"
+                                                    },
+                                                    "invoice_date": {
+                                                        "type": "string",
+                                                        "example": "01-Apr-2026"
+                                                    },
+                                                    "due_date": {
+                                                        "type": "string",
+                                                        "example": "15-Apr-2026"
+                                                    },
+                                                    "total": {
+                                                        "type": "number",
+                                                        "example": 11800
+                                                    },
+                                                    "balance_due": {
+                                                        "type": "number",
+                                                        "example": 5000
+                                                    },
+                                                    "is_overdue": {
+                                                        "type": "boolean",
+                                                        "example": true
+                                                    },
+                                                    "overdue_days": {
+                                                        "type": "integer",
+                                                        "example": 12
+                                                    }
+                                                },
+                                                "type": "object"
+                                            }
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Party not found",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/parties/{id}/record-payment": {
+            "post": {
+                "tags": [
+                    "Parties"
+                ],
+                "summary": "Record one payment/receipt allocated across multiple invoices",
+                "description": "Creates a single receipt (debtor) or payment (creditor) voucher and settles it against the supplied invoices. Allocation amounts must not exceed each invoice balance_due.",
+                "operationId": "recordPartyPayment",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "example": 3
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "cash_bank_account_id",
+                                    "payment_date",
+                                    "allocations"
+                                ],
+                                "properties": {
+                                    "cash_bank_account_id": {
+                                        "description": "From GET /accounts/cash-bank",
+                                        "type": "integer",
+                                        "example": 4
+                                    },
+                                    "payment_date": {
+                                        "type": "string",
+                                        "format": "date",
+                                        "example": "2026-04-20"
+                                    },
+                                    "allocations": {
+                                        "type": "array",
+                                        "items": {
+                                            "required": [
+                                                "invoice_id",
+                                                "amount"
+                                            ],
+                                            "properties": {
+                                                "invoice_id": {
+                                                    "type": "integer",
+                                                    "example": 10
+                                                },
+                                                "amount": {
+                                                    "type": "number",
+                                                    "example": 5000
+                                                },
+                                                "reference_number": {
+                                                    "type": "string",
+                                                    "example": "UPI-99887766",
+                                                    "maxLength": 100
+                                                }
+                                            },
+                                            "type": "object"
+                                        },
+                                        "minItems": 1
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Payment recorded",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Payment recorded against 2 invoice(s)."
+                                        },
+                                        "data": {
+                                            "properties": {
+                                                "voucher_number": {
+                                                    "type": "string",
+                                                    "example": "RCP-2026-0007"
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Party is not a debtor/creditor or allocation failed",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Party not found",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
                                 }
                             }
                         }
@@ -5526,6 +6880,168 @@
                             "application/json": {
                                 "schema": {
                                     "$ref": "#/components/schemas/SuccessResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/purchase-invoices/{id}/cancel": {
+            "post": {
+                "tags": [
+                    "Purchase Invoices"
+                ],
+                "summary": "Cancel a purchase invoice",
+                "description": "Reverses the linked voucher and its ledger entries. Fails if payments have already been settled against the invoice.",
+                "operationId": "cancelPurchaseInvoice",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "example": 7
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Invoice cancelled",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Invoice cancelled successfully"
+                                        },
+                                        "data": {
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Invoice cannot be cancelled",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Invoice not found",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/purchase-invoices/{id}/post": {
+            "post": {
+                "tags": [
+                    "Purchase Invoices"
+                ],
+                "summary": "Post a draft purchase invoice to the ledger",
+                "description": "Generates the accounting voucher for a draft invoice. Only invoices with status=draft can be posted.",
+                "operationId": "postPurchaseInvoice",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "example": 7
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Invoice posted",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Purchase invoice posted successfully"
+                                        },
+                                        "data": {
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Only draft invoices can be posted, or account mapping missing",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Invoice not found",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
                                 }
                             }
                         }
@@ -6665,8 +8181,99 @@
                     "Reports"
                 ],
                 "summary": "Get Debtors Outstanding report",
-                "description": "Get list of debtors with outstanding balances",
+                "description": "Invoice-wise receivables outstanding. Supports the same financial year / as-of-date / aging filters as the web report.",
                 "operationId": "getDebtorsOutstanding",
+                "parameters": [
+                    {
+                        "name": "financial_year_id",
+                        "in": "query",
+                        "description": "Defaults to the current financial year",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "example": 1
+                        }
+                    },
+                    {
+                        "name": "as_of_date",
+                        "in": "query",
+                        "description": "Cut-off date (defaults to today)",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "format": "date",
+                            "example": "2026-03-31"
+                        }
+                    },
+                    {
+                        "name": "overdue_status",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "example": "due",
+                            "enum": [
+                                "all",
+                                "due",
+                                "not_due"
+                            ]
+                        }
+                    },
+                    {
+                        "name": "age_bucket",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "example": "31_60",
+                            "enum": [
+                                "all",
+                                "current",
+                                "1_30",
+                                "31_60",
+                                "61_90",
+                                "91_plus",
+                                "custom"
+                            ]
+                        }
+                    },
+                    {
+                        "name": "basis",
+                        "in": "query",
+                        "description": "Age from invoice date (billed) or due date (due)",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "example": "due",
+                            "enum": [
+                                "billed",
+                                "due"
+                            ]
+                        }
+                    },
+                    {
+                        "name": "age_min",
+                        "in": "query",
+                        "description": "Only used when age_bucket=custom",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "example": 15,
+                            "minimum": 0
+                        }
+                    },
+                    {
+                        "name": "age_max",
+                        "in": "query",
+                        "description": "Only used when age_bucket=custom",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "example": 45,
+                            "minimum": 0
+                        }
+                    }
+                ],
                 "responses": {
                     "200": {
                         "description": "Success",
@@ -6689,6 +8296,731 @@
                                                 "total": {
                                                     "type": "number",
                                                     "example": 150000
+                                                },
+                                                "as_of_date": {
+                                                    "type": "string",
+                                                    "format": "date",
+                                                    "example": "2026-03-31"
+                                                },
+                                                "financial_year_id": {
+                                                    "type": "integer",
+                                                    "example": 1
+                                                },
+                                                "filters": {
+                                                    "type": "object"
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/reports/creditors-outstanding": {
+            "get": {
+                "tags": [
+                    "Reports"
+                ],
+                "summary": "Get Creditors Outstanding report",
+                "description": "Invoice-wise payables outstanding. Accepts the same filters as /reports/debtors-outstanding.",
+                "operationId": "getCreditorsOutstanding",
+                "parameters": [
+                    {
+                        "name": "financial_year_id",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "example": 1
+                        }
+                    },
+                    {
+                        "name": "as_of_date",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "format": "date",
+                            "example": "2026-03-31"
+                        }
+                    },
+                    {
+                        "name": "overdue_status",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "all",
+                                "due",
+                                "not_due"
+                            ]
+                        }
+                    },
+                    {
+                        "name": "age_bucket",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "all",
+                                "current",
+                                "1_30",
+                                "31_60",
+                                "61_90",
+                                "91_plus",
+                                "custom"
+                            ]
+                        }
+                    },
+                    {
+                        "name": "basis",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "billed",
+                                "due"
+                            ]
+                        }
+                    },
+                    {
+                        "name": "age_min",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "minimum": 0
+                        }
+                    },
+                    {
+                        "name": "age_max",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "minimum": 0
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Success",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "data": {
+                                            "properties": {
+                                                "creditors": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "object"
+                                                    }
+                                                },
+                                                "total": {
+                                                    "type": "number",
+                                                    "example": 75000
+                                                },
+                                                "as_of_date": {
+                                                    "type": "string",
+                                                    "format": "date",
+                                                    "example": "2026-03-31"
+                                                },
+                                                "financial_year_id": {
+                                                    "type": "integer",
+                                                    "example": 1
+                                                },
+                                                "filters": {
+                                                    "type": "object"
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/reports/aging-summary": {
+            "get": {
+                "tags": [
+                    "Reports"
+                ],
+                "summary": "Combined receivables + payables aging report",
+                "description": "Mirrors the web Aging Summary report. Rows are sorted by most overdue first and bucketed into Current / 1-30 / 31-60 / 61-90 / 91+ days.",
+                "operationId": "getAgingSummary",
+                "parameters": [
+                    {
+                        "name": "financial_year_id",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "example": 1
+                        }
+                    },
+                    {
+                        "name": "as_of_date",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "format": "date",
+                            "example": "2026-03-31"
+                        }
+                    },
+                    {
+                        "name": "overdue_status",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "all",
+                                "due",
+                                "not_due"
+                            ]
+                        }
+                    },
+                    {
+                        "name": "age_bucket",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "all",
+                                "current",
+                                "1_30",
+                                "31_60",
+                                "61_90",
+                                "91_plus",
+                                "custom"
+                            ]
+                        }
+                    },
+                    {
+                        "name": "basis",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "billed",
+                                "due"
+                            ]
+                        }
+                    },
+                    {
+                        "name": "age_min",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "minimum": 0
+                        }
+                    },
+                    {
+                        "name": "age_max",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "minimum": 0
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Success",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "data": {
+                                            "properties": {
+                                                "rows": {
+                                                    "description": "Each row carries report_type = Receivable | Payable",
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "object"
+                                                    }
+                                                },
+                                                "summary": {
+                                                    "properties": {
+                                                        "receivables_total": {
+                                                            "type": "number",
+                                                            "example": 150000
+                                                        },
+                                                        "payables_total": {
+                                                            "type": "number",
+                                                            "example": 75000
+                                                        },
+                                                        "receivables": {
+                                                            "type": "object",
+                                                            "example": {
+                                                                "current": {
+                                                                    "label": "Current",
+                                                                    "count": 2,
+                                                                    "amount": 5000
+                                                                },
+                                                                "1_30": {
+                                                                    "label": "1-30 Days",
+                                                                    "count": 1,
+                                                                    "amount": 2500
+                                                                }
+                                                            }
+                                                        },
+                                                        "payables": {
+                                                            "type": "object"
+                                                        }
+                                                    },
+                                                    "type": "object"
+                                                },
+                                                "as_of_date": {
+                                                    "type": "string",
+                                                    "format": "date",
+                                                    "example": "2026-03-31"
+                                                },
+                                                "financial_year_id": {
+                                                    "type": "integer",
+                                                    "example": 1
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/reports/unapplied-receipts": {
+            "get": {
+                "tags": [
+                    "Reports"
+                ],
+                "summary": "Unapplied cash (receipts & payments not fully allocated to invoices)",
+                "description": "Defaults to the current month when no dates are supplied.",
+                "operationId": "getUnappliedReceipts",
+                "parameters": [
+                    {
+                        "name": "from_date",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "format": "date",
+                            "example": "2026-04-01"
+                        }
+                    },
+                    {
+                        "name": "to_date",
+                        "in": "query",
+                        "description": "Must be on or after from_date",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "format": "date",
+                            "example": "2026-04-30"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Success",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "data": {
+                                            "properties": {
+                                                "from_date": {
+                                                    "type": "string",
+                                                    "format": "date",
+                                                    "example": "2026-04-01"
+                                                },
+                                                "to_date": {
+                                                    "type": "string",
+                                                    "format": "date",
+                                                    "example": "2026-04-30"
+                                                },
+                                                "receipts": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "object"
+                                                    }
+                                                },
+                                                "payments": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "object"
+                                                    }
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/reports/stock-register": {
+            "get": {
+                "tags": [
+                    "Reports"
+                ],
+                "summary": "Stock movement register",
+                "description": "Movement rows are only returned when item_id is supplied (matches the web report). closing_quantity always reflects every movement up to to_date, ignoring from_date.",
+                "operationId": "getStockRegister",
+                "parameters": [
+                    {
+                        "name": "item_id",
+                        "in": "query",
+                        "description": "Stockable goods item",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "example": 5
+                        }
+                    },
+                    {
+                        "name": "from_date",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "format": "date",
+                            "example": "2026-04-01"
+                        }
+                    },
+                    {
+                        "name": "to_date",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "format": "date",
+                            "example": "2026-04-30"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Success",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "data": {
+                                            "properties": {
+                                                "rows": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "object"
+                                                    }
+                                                },
+                                                "total_movements": {
+                                                    "type": "integer",
+                                                    "example": 12
+                                                },
+                                                "total_in": {
+                                                    "type": "number",
+                                                    "example": 120.5
+                                                },
+                                                "total_out": {
+                                                    "type": "number",
+                                                    "example": 80
+                                                },
+                                                "closing_quantity": {
+                                                    "type": "number",
+                                                    "example": 40.5
+                                                },
+                                                "from_date": {
+                                                    "type": "string",
+                                                    "format": "date",
+                                                    "nullable": true
+                                                },
+                                                "to_date": {
+                                                    "type": "string",
+                                                    "format": "date",
+                                                    "nullable": true
+                                                },
+                                                "item_id": {
+                                                    "type": "integer",
+                                                    "example": 5,
+                                                    "nullable": true
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/reports/settlement-audit": {
+            "get": {
+                "tags": [
+                    "Reports"
+                ],
+                "summary": "Payment-to-invoice settlement audit trail",
+                "operationId": "getSettlementAudit",
+                "parameters": [
+                    {
+                        "name": "date_from",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "format": "date",
+                            "example": "2026-04-01"
+                        }
+                    },
+                    {
+                        "name": "date_to",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "format": "date",
+                            "example": "2026-04-30"
+                        }
+                    },
+                    {
+                        "name": "filters[status]",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "example": "all",
+                            "enum": [
+                                "all",
+                                "pending",
+                                "partial",
+                                "settled",
+                                "reversed"
+                            ]
+                        }
+                    },
+                    {
+                        "name": "filters[type]",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "example": "all",
+                            "enum": [
+                                "all",
+                                "sales",
+                                "purchase"
+                            ]
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Success",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "data": {
+                                            "properties": {
+                                                "mappings": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "object"
+                                                    }
+                                                },
+                                                "summary": {
+                                                    "properties": {
+                                                        "total_mappings": {
+                                                            "type": "integer",
+                                                            "example": 25
+                                                        },
+                                                        "total_allocated": {
+                                                            "type": "number",
+                                                            "example": 125000
+                                                        },
+                                                        "total_settled": {
+                                                            "type": "number",
+                                                            "example": 120000
+                                                        },
+                                                        "total_outstanding": {
+                                                            "type": "number",
+                                                            "example": 5000
+                                                        }
+                                                    },
+                                                    "type": "object"
                                                 }
                                             },
                                             "type": "object"
@@ -6717,14 +9049,37 @@
                 ]
             }
         },
-        "/reports/creditors-outstanding": {
+        "/reports/invoice-settlement-details": {
             "get": {
                 "tags": [
                     "Reports"
                 ],
-                "summary": "Get Creditors Outstanding report",
-                "description": "Get list of creditors with outstanding balances",
-                "operationId": "getCreditorsOutstanding",
+                "summary": "Settlement breakdown for one invoice",
+                "operationId": "getInvoiceSettlementDetails",
+                "parameters": [
+                    {
+                        "name": "invoice_type",
+                        "in": "query",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "example": "sales",
+                            "enum": [
+                                "sales",
+                                "purchase"
+                            ]
+                        }
+                    },
+                    {
+                        "name": "invoice_id",
+                        "in": "query",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "example": 10
+                        }
+                    }
+                ],
                 "responses": {
                     "200": {
                         "description": "Success",
@@ -6737,22 +9092,86 @@
                                             "example": true
                                         },
                                         "data": {
-                                            "properties": {
-                                                "creditors": {
-                                                    "type": "array",
-                                                    "items": {
-                                                        "type": "object"
-                                                    }
-                                                },
-                                                "total": {
-                                                    "type": "number",
-                                                    "example": 75000
-                                                }
-                                            },
                                             "type": "object"
                                         }
                                     },
                                     "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "invoice_type / invoice_id missing or invalid",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/reports/payment-settlement-details": {
+            "get": {
+                "tags": [
+                    "Reports"
+                ],
+                "summary": "Settlement breakdown for one payment/receipt voucher",
+                "operationId": "getPaymentSettlementDetails",
+                "parameters": [
+                    {
+                        "name": "voucher_id",
+                        "in": "query",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "example": 42
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Success",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "data": {
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "voucher_id missing",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
                                 }
                             }
                         }
@@ -7259,6 +9678,168 @@
                 ]
             }
         },
+        "/sales-invoices/{id}/cancel": {
+            "post": {
+                "tags": [
+                    "Sales Invoices"
+                ],
+                "summary": "Cancel a sales invoice",
+                "description": "Reverses the linked voucher and its ledger entries. Fails if payments have already been settled against the invoice.",
+                "operationId": "cancelSalesInvoice",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "example": 10
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Invoice cancelled",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Invoice cancelled successfully"
+                                        },
+                                        "data": {
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Invoice cannot be cancelled",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Invoice not found",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/sales-invoices/{id}/post": {
+            "post": {
+                "tags": [
+                    "Sales Invoices"
+                ],
+                "summary": "Post a draft sales invoice to the ledger",
+                "description": "Generates the accounting voucher for a draft invoice. Only invoices with status=draft can be posted.",
+                "operationId": "postSalesInvoice",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "example": 10
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Invoice posted",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Sales invoice posted successfully"
+                                        },
+                                        "data": {
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Only draft invoices can be posted, or account mapping missing",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Invoice not found",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
         "/pin/login": {
             "post": {
                 "tags": [
@@ -7678,6 +10259,111 @@
                             "application/json": {
                                 "schema": {
                                     "$ref": "#/components/schemas/SuccessResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            },
+            "put": {
+                "tags": [
+                    "Settings"
+                ],
+                "summary": "Update theme settings",
+                "description": "Colors must be 6-digit hex values including the leading #. Returns the regenerated theme CSS.",
+                "operationId": "updateThemeSettings",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "primary_color",
+                                    "secondary_color",
+                                    "sidebar_color",
+                                    "header_color"
+                                ],
+                                "properties": {
+                                    "primary_color": {
+                                        "type": "string",
+                                        "example": "#0d6efd"
+                                    },
+                                    "secondary_color": {
+                                        "type": "string",
+                                        "example": "#6c757d"
+                                    },
+                                    "sidebar_color": {
+                                        "type": "string",
+                                        "example": "#212529"
+                                    },
+                                    "header_color": {
+                                        "type": "string",
+                                        "example": "#ffffff"
+                                    },
+                                    "dark_mode": {
+                                        "type": "boolean",
+                                        "example": false
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Theme settings updated",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Theme settings updated successfully"
+                                        },
+                                        "data": {
+                                            "properties": {
+                                                "css": {
+                                                    "type": "string",
+                                                    "example": ":root{--primary:#0d6efd;}"
+                                                },
+                                                "theme": {
+                                                    "type": "object"
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
                                 }
                             }
                         }
@@ -10506,6 +13192,10 @@
         {
             "name": "Devices",
             "description": "Mobile device registration for sync tracking and push tokens"
+        },
+        {
+            "name": "Content",
+            "description": "Public marketing/legal content (FAQs, testimonials, CMS pages, contact form). No authentication required."
         },
         {
             "name": "Financial Years",

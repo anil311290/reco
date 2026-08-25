@@ -207,7 +207,7 @@ class ReportController extends Controller
             }));
         }
 
-        $report['aging_summary'] = $this->summarizeAgingBuckets($report['debtors'] ?? []);
+        $report['aging_summary'] = $this->reportService->summarizeAgingBuckets($report['debtors'] ?? []);
         $debtors = $this->paginateReportItems($request, $report['debtors'] ?? [], 10);
 
         $partyWiseRows = $this->summarizePartyWise($report['debtors'] ?? [], $partyId, 'debtor', $companyId, $financialYearId, $asOfDate);
@@ -263,7 +263,7 @@ class ReportController extends Controller
             }));
         }
 
-        $report['aging_summary'] = $this->summarizeAgingBuckets($report['creditors'] ?? []);
+        $report['aging_summary'] = $this->reportService->summarizeAgingBuckets($report['creditors'] ?? []);
         $creditors = $this->paginateReportItems($request, $report['creditors'] ?? [], 10);
 
         $partyWiseRows = $this->summarizePartyWise($report['creditors'] ?? [], $partyId, 'creditor', $companyId, $financialYearId, $asOfDate);
@@ -314,71 +314,21 @@ class ReportController extends Controller
         $toDate = $request->input('to_date');
         $selectedItemId = $request->input('item_id');
 
-        $itemsQuery = Item::query()
-            ->where('company_id', $companyId)
-            ->where('type', 'goods')
-            ->where('is_stockable', true)
-            ->orderBy('name');
+        $register = $this->reportService->getStockRegister(
+            $companyId,
+            $fromDate,
+            $toDate,
+            $selectedItemId ? (int) $selectedItemId : null
+        );
 
-        $items = $selectedItemId
-            ? $itemsQuery->whereKey((int) $selectedItemId)->get()
-            : collect();
-        $rows = [];
-        $closingQuantity = 0.0;
-        $totalIn = 0.0;
-        $totalOut = 0.0;
-
-        foreach ($items as $item) {
-            $history = $this->itemService->getItemHistory(
-                (int) $item->id,
-                (int) $companyId,
-                null,
-                null,
-                0
-            );
-
-            $itemClosingQuantity = 0.0;
-            foreach ($history['rows'] as $movement) {
-                if ($movement['date'] === null || !$toDate || $movement['date'] <= $toDate) {
-                    $itemClosingQuantity = (float) $movement['running_qty'];
-                }
-            }
-            $closingQuantity += $itemClosingQuantity;
-
-            foreach ($history['rows'] as $movement) {
-                if ($movement['date'] !== null && (
-                    ($fromDate && $movement['date'] < $fromDate)
-                    || ($toDate && $movement['date'] > $toDate)
-                )) {
-                    continue;
-                }
-
-                $movement['item'] = $item;
-                $movement['stock_reference'] = $item->name . ' (' . $item->item_code . ')';
-                $movement['uom'] = $item->unit ?: '-';
-                $rows[] = $movement;
-                $totalIn += (float) $movement['qty_in'];
-                $totalOut += (float) $movement['qty_out'];
-            }
-        }
-
-        usort($rows, function (array $left, array $right): int {
-            $dateCompare = strcmp((string) ($left['date'] ?? ''), (string) ($right['date'] ?? ''));
-            if ($dateCompare !== 0) {
-                return $dateCompare;
-            }
-
-            return strcmp((string) $left['stock_reference'], (string) $right['stock_reference']);
-        });
-
-        $stockRows = $this->paginateReportItems($request, $rows, 25, 'stock_page', 'stock_per_page');
+        $stockRows = $this->paginateReportItems($request, $register['rows'], 25, 'stock_page', 'stock_per_page');
 
         return view('admin.reports.stock-register', [
             'rows' => $stockRows,
-            'totalMovements' => count($rows),
-            'totalIn' => round($totalIn, 3),
-            'totalOut' => round($totalOut, 3),
-            'closingQuantity' => round($closingQuantity, 3),
+            'totalMovements' => $register['total_movements'],
+            'totalIn' => $register['total_in'],
+            'totalOut' => $register['total_out'],
+            'closingQuantity' => $register['closing_quantity'],
             'items' => Item::query()
                 ->where('company_id', $companyId)
                 ->where('type', 'goods')
@@ -401,37 +351,10 @@ class ReportController extends Controller
         $financialYears = $context['financialYears'];
         $filters = $request->only(['overdue_status', 'age_bucket', 'age_min', 'age_max']);
 
-        $debtorsReport = $this->reportService->getDebtorsOutstanding($companyId, $financialYearId, $dateTo, $filters);
-        $creditorsReport = $this->reportService->getCreditorsOutstanding($companyId, $financialYearId, $dateTo, $filters);
+        $aging = $this->reportService->getAgingSummary($companyId, $financialYearId, $dateTo, $filters);
 
-        $rows = collect($debtorsReport['debtors'] ?? [])
-            ->map(function (array $item) {
-                $item['report_type'] = 'Receivable';
-                return $item;
-            })
-            ->merge(
-                collect($creditorsReport['creditors'] ?? [])->map(function (array $item) {
-                    $item['report_type'] = 'Payable';
-                    return $item;
-                })
-            )
-            ->sort(function (array $a, array $b) {
-                $daysCompare = (int) ($b['overdue_days'] ?? 0) <=> (int) ($a['overdue_days'] ?? 0);
-                if ($daysCompare !== 0) {
-                    return $daysCompare;
-                }
-
-                return (float) ($b['balance'] ?? 0) <=> (float) ($a['balance'] ?? 0);
-            })
-            ->values();
-
-        $agingRows = $this->paginateReportItems($request, $rows, 10);
-        $summary = [
-            'receivables_total' => (float) ($debtorsReport['total'] ?? 0),
-            'payables_total' => (float) ($creditorsReport['total'] ?? 0),
-            'receivables' => $this->summarizeAgingBuckets($debtorsReport['debtors'] ?? []),
-            'payables' => $this->summarizeAgingBuckets($creditorsReport['creditors'] ?? []),
-        ];
+        $agingRows = $this->paginateReportItems($request, $aging['rows'], 10);
+        $summary = $aging['summary'];
 
         return view('admin.reports.aging-summary', compact(
             'financialYearId',
@@ -442,33 +365,6 @@ class ReportController extends Controller
             'summary',
             'filters'
         ));
-    }
-
-    private function summarizeAgingBuckets(iterable $rows): array
-    {
-        $summary = [
-            'current' => ['label' => 'Current', 'count' => 0, 'amount' => 0.0],
-            '1_30' => ['label' => '1-30 Days', 'count' => 0, 'amount' => 0.0],
-            '31_60' => ['label' => '31-60 Days', 'count' => 0, 'amount' => 0.0],
-            '61_90' => ['label' => '61-90 Days', 'count' => 0, 'amount' => 0.0],
-            '91_plus' => ['label' => '91+ Days', 'count' => 0, 'amount' => 0.0],
-        ];
-
-        foreach ($rows as $row) {
-            $bucket = (string) ($row['age_bucket'] ?? 'current');
-            if (!array_key_exists($bucket, $summary)) {
-                continue;
-            }
-
-            $summary[$bucket]['count']++;
-            $summary[$bucket]['amount'] += (float) ($row['overdue_amount'] ?? 0);
-        }
-
-        foreach ($summary as $bucket => $meta) {
-            $summary[$bucket]['amount'] = round((float) $meta['amount'], 2);
-        }
-
-        return $summary;
     }
 
     /**

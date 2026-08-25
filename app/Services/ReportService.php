@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\Account;
 use App\Models\FinancialYear;
+use App\Models\Item;
 use App\Models\Ledger;
 use App\Models\Party;
 use App\Models\PaymentInvoiceMapping;
@@ -18,11 +19,16 @@ class ReportService
 {
     protected LedgerService $ledgerService;
     protected LedgerRepositoryInterface $ledgerRepository;
+    protected ItemService $itemService;
 
-    public function __construct(LedgerService $ledgerService, LedgerRepositoryInterface $ledgerRepository)
-    {
+    public function __construct(
+        LedgerService $ledgerService,
+        LedgerRepositoryInterface $ledgerRepository,
+        ItemService $itemService
+    ) {
         $this->ledgerService = $ledgerService;
         $this->ledgerRepository = $ledgerRepository;
+        $this->itemService = $itemService;
     }
 
     /**
@@ -1607,6 +1613,155 @@ class ReportService
                 'by_status' => $byStatus,
                 'by_type' => $byType,
             ],
+        ];
+    }
+
+    /**
+     * Combined receivable + payable aging, sorted by most overdue first.
+     */
+    public function getAgingSummary(
+        int $companyId,
+        ?int $financialYearId = null,
+        ?string $asOfDate = null,
+        array $filters = []
+    ): array {
+        $debtorsReport = $this->getDebtorsOutstanding($companyId, $financialYearId, $asOfDate, $filters);
+        $creditorsReport = $this->getCreditorsOutstanding($companyId, $financialYearId, $asOfDate, $filters);
+
+        $rows = collect($debtorsReport['debtors'] ?? [])
+            ->map(function (array $item): array {
+                $item['report_type'] = 'Receivable';
+
+                return $item;
+            })
+            ->merge(
+                collect($creditorsReport['creditors'] ?? [])->map(function (array $item): array {
+                    $item['report_type'] = 'Payable';
+
+                    return $item;
+                })
+            )
+            ->sort(function (array $a, array $b): int {
+                $daysCompare = (int) ($b['overdue_days'] ?? 0) <=> (int) ($a['overdue_days'] ?? 0);
+
+                return $daysCompare !== 0
+                    ? $daysCompare
+                    : (float) ($b['balance'] ?? 0) <=> (float) ($a['balance'] ?? 0);
+            })
+            ->values();
+
+        return [
+            'rows' => $rows,
+            'summary' => [
+                'receivables_total' => (float) ($debtorsReport['total'] ?? 0),
+                'payables_total' => (float) ($creditorsReport['total'] ?? 0),
+                'receivables' => $this->summarizeAgingBuckets($debtorsReport['debtors'] ?? []),
+                'payables' => $this->summarizeAgingBuckets($creditorsReport['creditors'] ?? []),
+            ],
+            'as_of_date' => $debtorsReport['as_of_date'] ?? $asOfDate,
+            'financial_year_id' => $financialYearId,
+            'filters' => $filters,
+        ];
+    }
+
+    /**
+     * Bucket outstanding rows into the standard 0/30/60/90+ aging brackets.
+     */
+    public function summarizeAgingBuckets(iterable $rows): array
+    {
+        $summary = [
+            'current' => ['label' => 'Current', 'count' => 0, 'amount' => 0.0],
+            '1_30' => ['label' => '1-30 Days', 'count' => 0, 'amount' => 0.0],
+            '31_60' => ['label' => '31-60 Days', 'count' => 0, 'amount' => 0.0],
+            '61_90' => ['label' => '61-90 Days', 'count' => 0, 'amount' => 0.0],
+            '91_plus' => ['label' => '91+ Days', 'count' => 0, 'amount' => 0.0],
+        ];
+
+        foreach ($rows as $row) {
+            $bucket = (string) ($row['age_bucket'] ?? 'current');
+            if (! array_key_exists($bucket, $summary)) {
+                continue;
+            }
+
+            $summary[$bucket]['count']++;
+            $summary[$bucket]['amount'] += (float) ($row['overdue_amount'] ?? 0);
+        }
+
+        foreach ($summary as $bucket => $meta) {
+            $summary[$bucket]['amount'] = round((float) $meta['amount'], 2);
+        }
+
+        return $summary;
+    }
+
+    /**
+     * Stock movement register. Movements are only listed when a specific item is
+     * selected; closing quantity always reflects every movement up to $toDate.
+     */
+    public function getStockRegister(
+        int $companyId,
+        ?string $fromDate = null,
+        ?string $toDate = null,
+        ?int $itemId = null
+    ): array {
+        $itemsQuery = Item::query()
+            ->where('company_id', $companyId)
+            ->where('type', 'goods')
+            ->where('is_stockable', true)
+            ->orderBy('name');
+
+        $items = $itemId ? $itemsQuery->whereKey($itemId)->get() : collect();
+
+        $rows = [];
+        $closingQuantity = 0.0;
+        $totalIn = 0.0;
+        $totalOut = 0.0;
+
+        foreach ($items as $item) {
+            $history = $this->itemService->getItemHistory((int) $item->id, $companyId, null, null, 0);
+
+            $itemClosingQuantity = 0.0;
+            foreach ($history['rows'] as $movement) {
+                if ($movement['date'] === null || ! $toDate || $movement['date'] <= $toDate) {
+                    $itemClosingQuantity = (float) $movement['running_qty'];
+                }
+            }
+            $closingQuantity += $itemClosingQuantity;
+
+            foreach ($history['rows'] as $movement) {
+                if ($movement['date'] !== null && (
+                    ($fromDate && $movement['date'] < $fromDate)
+                    || ($toDate && $movement['date'] > $toDate)
+                )) {
+                    continue;
+                }
+
+                $movement['item'] = $item;
+                $movement['stock_reference'] = $item->name . ' (' . $item->item_code . ')';
+                $movement['uom'] = $item->unit ?: '-';
+                $rows[] = $movement;
+                $totalIn += (float) $movement['qty_in'];
+                $totalOut += (float) $movement['qty_out'];
+            }
+        }
+
+        usort($rows, function (array $left, array $right): int {
+            $dateCompare = strcmp((string) ($left['date'] ?? ''), (string) ($right['date'] ?? ''));
+
+            return $dateCompare !== 0
+                ? $dateCompare
+                : strcmp((string) $left['stock_reference'], (string) $right['stock_reference']);
+        });
+
+        return [
+            'rows' => $rows,
+            'total_movements' => count($rows),
+            'total_in' => round($totalIn, 3),
+            'total_out' => round($totalOut, 3),
+            'closing_quantity' => round($closingQuantity, 3),
+            'from_date' => $fromDate,
+            'to_date' => $toDate,
+            'item_id' => $itemId,
         ];
     }
 }

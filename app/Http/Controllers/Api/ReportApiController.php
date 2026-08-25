@@ -145,8 +145,14 @@ class ReportApiController extends Controller
      */
     public function debtorsOutstanding(Request $request): JsonResponse
     {
-        $companyId = $request->user()->company_id;
-        $report = $this->reportService->getDebtorsOutstanding($companyId);
+        $request->validate($this->outstandingRules());
+
+        $report = $this->reportService->getDebtorsOutstanding(
+            $request->user()->company_id,
+            $this->resolveFinancialYearId($request),
+            $request->input('as_of_date'),
+            $this->outstandingFilters($request)
+        );
 
         return ResponseHelper::success($report);
     }
@@ -156,8 +162,76 @@ class ReportApiController extends Controller
      */
     public function creditorsOutstanding(Request $request): JsonResponse
     {
+        $request->validate($this->outstandingRules());
+
+        $report = $this->reportService->getCreditorsOutstanding(
+            $request->user()->company_id,
+            $this->resolveFinancialYearId($request),
+            $request->input('as_of_date'),
+            $this->outstandingFilters($request)
+        );
+
+        return ResponseHelper::success($report);
+    }
+
+    /**
+     * Combined receivables + payables aging report.
+     */
+    public function agingSummary(Request $request): JsonResponse
+    {
+        $request->validate($this->outstandingRules());
+
+        $report = $this->reportService->getAgingSummary(
+            $request->user()->company_id,
+            $this->resolveFinancialYearId($request),
+            $request->input('as_of_date'),
+            $this->outstandingFilters($request)
+        );
+
+        return ResponseHelper::success($report);
+    }
+
+    /**
+     * Receipts/payments that are not fully applied to invoices.
+     */
+    public function unappliedReceipts(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'from_date' => 'nullable|date',
+            'to_date' => 'nullable|date|after_or_equal:from_date',
+        ]);
+
         $companyId = $request->user()->company_id;
-        $report = $this->reportService->getCreditorsOutstanding($companyId);
+        $fromDate = $validated['from_date'] ?? now()->startOfMonth()->toDateString();
+        $toDate = $validated['to_date'] ?? now()->toDateString();
+
+        $items = collect($this->reportService->getUnappliedReceiptsAndPayments($companyId, $fromDate, $toDate));
+
+        return ResponseHelper::success([
+            'from_date' => $fromDate,
+            'to_date' => $toDate,
+            'receipts' => $items->where('voucher_type', 'receipt')->values(),
+            'payments' => $items->where('voucher_type', 'payment')->values(),
+        ]);
+    }
+
+    /**
+     * Stock movement register for a stockable item.
+     */
+    public function stockRegister(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'from_date' => 'nullable|date',
+            'to_date' => 'nullable|date|after_or_equal:from_date',
+            'item_id' => 'nullable|integer|exists:items,id',
+        ]);
+
+        $report = $this->reportService->getStockRegister(
+            $request->user()->company_id,
+            $validated['from_date'] ?? null,
+            $validated['to_date'] ?? null,
+            isset($validated['item_id']) ? (int) $validated['item_id'] : null
+        );
 
         return ResponseHelper::success($report);
     }
@@ -212,5 +286,36 @@ class ReportApiController extends Controller
         $report = $this->reportService->getSettlementAuditReport($companyId, $dateFrom, $dateTo, $filters);
 
         return ResponseHelper::success($report);
+    }
+
+    /**
+     * Shared validation for the outstanding/aging family of reports.
+     */
+    private function outstandingRules(): array
+    {
+        return [
+            'financial_year_id' => 'nullable|integer|exists:financial_years,id',
+            'as_of_date' => 'nullable|date',
+            'overdue_status' => 'nullable|in:all,due,not_due',
+            'age_bucket' => 'nullable|in:all,current,1_30,31_60,61_90,91_plus,custom',
+            'basis' => 'nullable|in:billed,due',
+            'age_min' => 'nullable|integer|min:0',
+            'age_max' => 'nullable|integer|min:0',
+        ];
+    }
+
+    private function outstandingFilters(Request $request): array
+    {
+        return array_filter(
+            $request->only(['overdue_status', 'age_bucket', 'basis', 'age_min', 'age_max']),
+            fn ($value) => $value !== null && $value !== ''
+        );
+    }
+
+    private function resolveFinancialYearId(Request $request): ?int
+    {
+        return $request->filled('financial_year_id')
+            ? (int) $request->input('financial_year_id')
+            : FinancialYear::getCurrent($request->user()->company_id)?->id;
     }
 }

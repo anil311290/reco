@@ -219,6 +219,35 @@ class SalesInvoiceApiController extends Controller
         }
     }
 
+    /**
+     * Post a draft invoice to the ledger.
+     */
+    public function post(Request $request, int $id): JsonResponse
+    {
+        $invoice = $this->salesInvoiceService->getById($id);
+
+        if (! $invoice || $invoice->company_id !== $request->user()->company_id) {
+            return ResponseHelper::notFound('Sales invoice not found');
+        }
+
+        if ($invoice->status !== 'draft') {
+            return ResponseHelper::error('Only draft invoices can be posted');
+        }
+
+        try {
+            if (! $this->salesInvoiceService->generateVoucher($invoice)) {
+                throw new \RuntimeException('Voucher/journal posting failed. Please check account mappings.');
+            }
+        } catch (\Exception $e) {
+            return ResponseHelper::error($e->getMessage());
+        }
+
+        return ResponseHelper::success(
+            new SalesInvoiceResource($invoice->fresh()),
+            'Sales invoice posted successfully'
+        );
+    }
+
     public function exportPdf(int $id): JsonResponse
     {
         $invoice = $this->salesInvoiceService->getById($id);

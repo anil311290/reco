@@ -129,6 +129,11 @@ use OpenApi\Annotations as OA;
  *     name="Devices",
  *     description="Mobile device registration for sync tracking and push tokens"
  * )
+ *
+ * @OA\Tag(
+ *     name="Content",
+ *     description="Public marketing/legal content (FAQs, testimonials, CMS pages, contact form). No authentication required."
+ * )
  */
 class ApiTags
 {

@@ -85,6 +85,11 @@ use OpenApi\Annotations as OA;
  *     summary="Export debtors outstanding report as PDF",
  *     operationId="exportDebtorsOutstandingPdf",
  *     security={{"bearerAuth":{}}},
+ *     @OA\Parameter(name="financial_year_id", in="query", @OA\Schema(type="integer")),
+ *     @OA\Parameter(name="date_from", in="query", @OA\Schema(type="string", format="date")),
+ *     @OA\Parameter(name="date_to", in="query", @OA\Schema(type="string", format="date")),
+ *     @OA\Parameter(name="overdue_status", in="query", @OA\Schema(type="string", enum={"all","due","not_due"})),
+ *     @OA\Parameter(name="age_bucket", in="query", @OA\Schema(type="string", enum={"all","current","1_30","31_60","61_90","91_plus","custom"})),
  *     @OA\Response(response=200, description="PDF generated", @OA\JsonContent(ref="#/components/schemas/SuccessResponse"))
  * )
  *
@@ -94,7 +99,113 @@ use OpenApi\Annotations as OA;
  *     summary="Export creditors outstanding report as PDF",
  *     operationId="exportCreditorsOutstandingPdf",
  *     security={{"bearerAuth":{}}},
+ *     @OA\Parameter(name="financial_year_id", in="query", @OA\Schema(type="integer")),
+ *     @OA\Parameter(name="date_from", in="query", @OA\Schema(type="string", format="date")),
+ *     @OA\Parameter(name="date_to", in="query", @OA\Schema(type="string", format="date")),
+ *     @OA\Parameter(name="overdue_status", in="query", @OA\Schema(type="string", enum={"all","due","not_due"})),
+ *     @OA\Parameter(name="age_bucket", in="query", @OA\Schema(type="string", enum={"all","current","1_30","31_60","61_90","91_plus","custom"})),
  *     @OA\Response(response=200, description="PDF generated", @OA\JsonContent(ref="#/components/schemas/SuccessResponse"))
+ * )
+ *
+ * @OA\Get(
+ *     path="/export/aging-summary/pdf",
+ *     tags={"Export"},
+ *     summary="Export combined aging summary as PDF",
+ *     operationId="exportAgingSummaryPdf",
+ *     security={{"bearerAuth":{}}},
+ *     @OA\Parameter(name="financial_year_id", in="query", @OA\Schema(type="integer")),
+ *     @OA\Parameter(name="date_from", in="query", @OA\Schema(type="string", format="date")),
+ *     @OA\Parameter(name="date_to", in="query", @OA\Schema(type="string", format="date")),
+ *     @OA\Parameter(name="overdue_status", in="query", @OA\Schema(type="string", enum={"all","due","not_due"})),
+ *     @OA\Parameter(name="age_bucket", in="query", @OA\Schema(type="string", enum={"all","current","1_30","31_60","61_90","91_plus","custom"})),
+ *     @OA\Parameter(name="age_min", in="query", @OA\Schema(type="integer", minimum=0)),
+ *     @OA\Parameter(name="age_max", in="query", @OA\Schema(type="integer", minimum=0)),
+ *     @OA\Response(response=200, description="PDF generated", @OA\JsonContent(ref="#/components/schemas/SuccessResponse"))
+ * )
+ *
+ * @OA\Get(
+ *     path="/export/profit-loss/excel",
+ *     tags={"Export"},
+ *     summary="Export profit and loss report as Excel",
+ *     operationId="exportProfitLossExcel",
+ *     security={{"bearerAuth":{}}},
+ *     @OA\Parameter(name="financial_year_id", in="query", @OA\Schema(type="integer")),
+ *     @OA\Response(response=200, description="Excel generated", @OA\JsonContent(ref="#/components/schemas/SuccessResponse"))
+ * )
+ *
+ * @OA\Get(
+ *     path="/export/balance-sheet/excel",
+ *     tags={"Export"},
+ *     summary="Export balance sheet report as Excel",
+ *     operationId="exportBalanceSheetExcel",
+ *     security={{"bearerAuth":{}}},
+ *     @OA\Parameter(name="financial_year_id", in="query", @OA\Schema(type="integer")),
+ *     @OA\Response(response=200, description="Excel generated", @OA\JsonContent(ref="#/components/schemas/SuccessResponse"))
+ * )
+ *
+ * @OA\Get(
+ *     path="/export/trial-balance/excel",
+ *     tags={"Export"},
+ *     summary="Export trial balance report as Excel",
+ *     operationId="exportTrialBalanceExcel",
+ *     security={{"bearerAuth":{}}},
+ *     @OA\Parameter(name="financial_year_id", in="query", @OA\Schema(type="integer")),
+ *     @OA\Response(response=200, description="Excel generated", @OA\JsonContent(ref="#/components/schemas/SuccessResponse"))
+ * )
+ *
+ * @OA\Get(
+ *     path="/export/day-book/excel",
+ *     tags={"Export"},
+ *     summary="Export day book report as Excel",
+ *     operationId="exportDayBookExcel",
+ *     security={{"bearerAuth":{}}},
+ *     @OA\Parameter(name="date", in="query", @OA\Schema(type="string", format="date")),
+ *     @OA\Response(response=200, description="Excel generated", @OA\JsonContent(ref="#/components/schemas/SuccessResponse"))
+ * )
+ *
+ * @OA\Get(
+ *     path="/export/ledger/excel",
+ *     tags={"Export"},
+ *     summary="Export ledger report as Excel",
+ *     operationId="exportLedgerExcel",
+ *     security={{"bearerAuth":{}}},
+ *     @OA\Parameter(name="account_id", in="query", required=true, @OA\Schema(type="integer")),
+ *     @OA\Response(response=200, description="Excel generated", @OA\JsonContent(ref="#/components/schemas/SuccessResponse"))
+ * )
+ *
+ * @OA\Get(
+ *     path="/export/debtors-outstanding/excel",
+ *     tags={"Export"},
+ *     summary="Export debtors outstanding report as Excel",
+ *     operationId="exportDebtorsOutstandingExcel",
+ *     security={{"bearerAuth":{}}},
+ *     @OA\Parameter(name="financial_year_id", in="query", @OA\Schema(type="integer")),
+ *     @OA\Parameter(name="as_of_date", in="query", @OA\Schema(type="string", format="date")),
+ *     @OA\Response(response=200, description="Excel generated", @OA\JsonContent(ref="#/components/schemas/SuccessResponse"))
+ * )
+ *
+ * @OA\Get(
+ *     path="/export/creditors-outstanding/excel",
+ *     tags={"Export"},
+ *     summary="Export creditors outstanding report as Excel",
+ *     operationId="exportCreditorsOutstandingExcel",
+ *     security={{"bearerAuth":{}}},
+ *     @OA\Parameter(name="financial_year_id", in="query", @OA\Schema(type="integer")),
+ *     @OA\Parameter(name="as_of_date", in="query", @OA\Schema(type="string", format="date")),
+ *     @OA\Response(response=200, description="Excel generated", @OA\JsonContent(ref="#/components/schemas/SuccessResponse"))
+ * )
+ *
+ * @OA\Get(
+ *     path="/export/aging-summary/excel",
+ *     tags={"Export"},
+ *     summary="Export combined aging summary as Excel",
+ *     operationId="exportAgingSummaryExcel",
+ *     security={{"bearerAuth":{}}},
+ *     @OA\Parameter(name="financial_year_id", in="query", @OA\Schema(type="integer")),
+ *     @OA\Parameter(name="as_of_date", in="query", @OA\Schema(type="string", format="date")),
+ *     @OA\Parameter(name="overdue_status", in="query", @OA\Schema(type="string", enum={"all","due","not_due"})),
+ *     @OA\Parameter(name="age_bucket", in="query", @OA\Schema(type="string", enum={"all","current","1_30","31_60","61_90","91_plus","custom"})),
+ *     @OA\Response(response=200, description="Excel generated", @OA\JsonContent(ref="#/components/schemas/SuccessResponse"))
  * )
  *
  * @OA\Get(

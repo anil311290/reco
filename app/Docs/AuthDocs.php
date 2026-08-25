@@ -203,6 +203,75 @@ use OpenApi\Annotations as OA;
  *         @OA\JsonContent(ref="#/components/schemas/ErrorResponse")
  *     )
  * )
+ *
+ * @OA\Post(
+ *     path="/forgot-password",
+ *     tags={"Authentication"},
+ *     summary="Send password reset link",
+ *     description="Public endpoint. Emails a password reset token to the account. Rate limited to 6 requests per minute per IP.",
+ *     operationId="forgotPassword",
+ *     @OA\RequestBody(
+ *         required=true,
+ *         @OA\JsonContent(
+ *             required={"email"},
+ *             @OA\Property(property="email", type="string", format="email", example="john@example.com")
+ *         )
+ *     ),
+ *     @OA\Response(
+ *         response=200,
+ *         description="Reset link sent",
+ *         @OA\JsonContent(
+ *             @OA\Property(property="success", type="boolean", example=true),
+ *             @OA\Property(property="message", type="string", example="We have emailed your password reset link.")
+ *         )
+ *     ),
+ *     @OA\Response(
+ *         response=400,
+ *         description="Unable to send reset link (unknown email or throttled)",
+ *         @OA\JsonContent(ref="#/components/schemas/ErrorResponse")
+ *     ),
+ *     @OA\Response(
+ *         response=422,
+ *         description="Validation error",
+ *         @OA\JsonContent(ref="#/components/schemas/ErrorResponse")
+ *     )
+ * )
+ *
+ * @OA\Post(
+ *     path="/reset-password",
+ *     tags={"Authentication"},
+ *     summary="Reset password using emailed token",
+ *     description="Public endpoint. On success every existing Sanctum token for the user is revoked, so the app must log in again.",
+ *     operationId="resetPassword",
+ *     @OA\RequestBody(
+ *         required=true,
+ *         @OA\JsonContent(
+ *             required={"token", "email", "password", "password_confirmation"},
+ *             @OA\Property(property="token", type="string", example="a1b2c3d4...", description="Token from the reset email"),
+ *             @OA\Property(property="email", type="string", format="email", example="john@example.com"),
+ *             @OA\Property(property="password", type="string", format="password", minLength=8, example="new12345678"),
+ *             @OA\Property(property="password_confirmation", type="string", format="password", example="new12345678")
+ *         )
+ *     ),
+ *     @OA\Response(
+ *         response=200,
+ *         description="Password reset successfully",
+ *         @OA\JsonContent(
+ *             @OA\Property(property="success", type="boolean", example=true),
+ *             @OA\Property(property="message", type="string", example="Your password has been reset.")
+ *         )
+ *     ),
+ *     @OA\Response(
+ *         response=400,
+ *         description="Invalid or expired token",
+ *         @OA\JsonContent(ref="#/components/schemas/ErrorResponse")
+ *     ),
+ *     @OA\Response(
+ *         response=422,
+ *         description="Validation error",
+ *         @OA\JsonContent(ref="#/components/schemas/ErrorResponse")
+ *     )
+ * )
  */
 class AuthDocs
 {

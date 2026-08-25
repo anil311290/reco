@@ -220,6 +220,30 @@ class ExportApiController extends Controller
         return $this->reportExcelResponse($request, 'creditors');
     }
 
+    public function agingSummaryPdf(Request $request): JsonResponse
+    {
+        $companyId = $request->user()->company_id;
+
+        try {
+            $pdf = $this->exportService->exportAgingSummaryPdf(
+                $companyId,
+                $request->filled('financial_year_id') ? (int) $request->input('financial_year_id') : null,
+                $request->input('date_from'),
+                $request->input('date_to'),
+                $request->only(['overdue_status', 'age_bucket', 'age_min', 'age_max'])
+            );
+
+            return $this->storePdfResponse($pdf, 'aging-summary-' . date('Y-m-d') . '.pdf');
+        } catch (\Exception $e) {
+            return ResponseHelper::error($e->getMessage());
+        }
+    }
+
+    public function agingSummaryExcel(Request $request): JsonResponse
+    {
+        return $this->reportExcelResponse($request, 'aging-summary');
+    }
+
     public function voucherPdf(Request $request, int $id): JsonResponse
     {
         try {

@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\AccountApiController;
+use App\Http\Controllers\Api\ContentApiController;
 use App\Http\Controllers\Api\PartyApiController;
 use App\Http\Controllers\Api\VoucherApiController;
 use App\Http\Controllers\Api\DashboardApiController;
@@ -38,8 +39,18 @@ Route::prefix('v1')->group(function () {
     Route::post('/register', [AuthController::class, 'register']);
     Route::get('/plans', [SubscriptionApiController::class, 'publicPlans']);
 
+    Route::post('/forgot-password', [AuthController::class, 'forgotPassword'])->middleware('throttle:6,1');
+    Route::post('/reset-password', [AuthController::class, 'resetPassword'])->middleware('throttle:6,1');
+
     Route::get('/states', [StatesCitiesApiController::class, 'states']);
     Route::get('/states/{stateId}/cities', [StatesCitiesApiController::class, 'cities']);
+
+    // Public marketing / legal content for the mobile app
+    Route::get('/content/faqs', [ContentApiController::class, 'faqs']);
+    Route::get('/content/testimonials', [ContentApiController::class, 'testimonials']);
+    Route::get('/content/site-settings', [ContentApiController::class, 'siteSettings']);
+    Route::get('/content/pages/{slug}', [ContentApiController::class, 'page']);
+    Route::post('/content/contact', [ContentApiController::class, 'submitContact'])->middleware('throttle:6,1');
 });
 
 /*
@@ -91,6 +102,8 @@ Route::prefix('v1')->middleware('auth:sanctum')->group(function () {
     Route::post('/parties', [PartyApiController::class, 'store']);
     Route::get('/parties/by-type', [PartyApiController::class, 'getByType']);
     Route::get('/parties/{id}/history', [PartyApiController::class, 'history']);
+    Route::get('/parties/{id}/outstanding-invoices', [PartyApiController::class, 'outstandingInvoices']);
+    Route::post('/parties/{id}/record-payment', [PartyApiController::class, 'recordPayment']);
     Route::get('/parties/{id}', [PartyApiController::class, 'show']);
     Route::put('/parties/{id}', [PartyApiController::class, 'update']);
     Route::delete('/parties/{id}', [PartyApiController::class, 'destroy']);
@@ -144,6 +157,9 @@ Route::prefix('v1')->middleware('auth:sanctum')->group(function () {
     Route::get('/reports/balance-sheet', [ReportApiController::class, 'balanceSheet']);
     Route::get('/reports/debtors-outstanding', [ReportApiController::class, 'debtorsOutstanding']);
     Route::get('/reports/creditors-outstanding', [ReportApiController::class, 'creditorsOutstanding']);
+    Route::get('/reports/aging-summary', [ReportApiController::class, 'agingSummary']);
+    Route::get('/reports/unapplied-receipts', [ReportApiController::class, 'unappliedReceipts']);
+    Route::get('/reports/stock-register', [ReportApiController::class, 'stockRegister']);
 
     // Settlement Reports (payment-to-invoice mapping)
     Route::get('/reports/settlement-audit', [ReportApiController::class, 'settlementAuditReport']);
@@ -188,6 +204,8 @@ Route::prefix('v1')->middleware('auth:sanctum')->group(function () {
     Route::get('/export/debtors-outstanding/excel', [ExportApiController::class, 'debtorsOutstandingExcel']);
     Route::get('/export/creditors-outstanding/pdf', [ExportApiController::class, 'creditorsOutstandingPdf']);
     Route::get('/export/creditors-outstanding/excel', [ExportApiController::class, 'creditorsOutstandingExcel']);
+    Route::get('/export/aging-summary/pdf', [ExportApiController::class, 'agingSummaryPdf']);
+    Route::get('/export/aging-summary/excel', [ExportApiController::class, 'agingSummaryExcel']);
     Route::get('/export/voucher/{id}/pdf', [ExportApiController::class, 'voucherPdf']);
     Route::get('/export/sales-invoice/{id}/pdf', [ExportApiController::class, 'salesInvoicePdf']);
     Route::get('/export/masters/{type}/excel', [ExportApiController::class, 'masterExcel']);
@@ -230,6 +248,7 @@ Route::prefix('v1')->middleware('auth:sanctum')->group(function () {
     Route::put('/sales-invoices/{id}', [SalesInvoiceApiController::class, 'update']);
     Route::delete('/sales-invoices/{id}', [SalesInvoiceApiController::class, 'destroy']);
     Route::post('/sales-invoices/{id}/cancel', [SalesInvoiceApiController::class, 'cancel']);
+    Route::post('/sales-invoices/{id}/post', [SalesInvoiceApiController::class, 'post']);
     Route::post('/sales-invoices/{id}/payment', [SalesInvoiceApiController::class, 'payment']);
     Route::get('/sales-invoices/{id}/pdf', [SalesInvoiceApiController::class, 'exportPdf']);
 
@@ -240,6 +259,7 @@ Route::prefix('v1')->middleware('auth:sanctum')->group(function () {
     Route::put('/purchase-invoices/{id}', [PurchaseInvoiceApiController::class, 'update']);
     Route::delete('/purchase-invoices/{id}', [PurchaseInvoiceApiController::class, 'destroy']);
     Route::post('/purchase-invoices/{id}/cancel', [PurchaseInvoiceApiController::class, 'cancel']);
+    Route::post('/purchase-invoices/{id}/post', [PurchaseInvoiceApiController::class, 'post']);
     Route::post('/purchase-invoices/{id}/payment', [PurchaseInvoiceApiController::class, 'payment']);
 
     // Subscriptions

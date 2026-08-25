@@ -68,6 +68,26 @@ use OpenApi\Annotations as OA;
  *     @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")),
  *     @OA\Response(response=200, description="Deleted", @OA\JsonContent(ref="#/components/schemas/SuccessResponse"))
  * )
+ *
+ * @OA\Patch(
+ *     path="/financial-years/{id}/restore",
+ *     tags={"Settings"},
+ *     summary="Restore a soft-deleted financial year",
+ *     operationId="restoreFinancialYear",
+ *     security={{"bearerAuth":{}}},
+ *     @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer", example=2)),
+ *     @OA\Response(
+ *         response=200,
+ *         description="Financial year restored",
+ *         @OA\JsonContent(
+ *             @OA\Property(property="success", type="boolean", example=true),
+ *             @OA\Property(property="message", type="string", example="Financial year restored successfully"),
+ *             @OA\Property(property="data", type="object")
+ *         )
+ *     ),
+ *     @OA\Response(response=400, description="Not found in trash", @OA\JsonContent(ref="#/components/schemas/ErrorResponse")),
+ *     @OA\Response(response=401, description="Unauthorized", @OA\JsonContent(ref="#/components/schemas/ErrorResponse"))
+ * )
  */
 class FinancialYearDocs
 {

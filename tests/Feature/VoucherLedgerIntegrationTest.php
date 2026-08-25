@@ -180,7 +180,7 @@ class VoucherLedgerIntegrationTest extends TestCase
         $this->assertGreaterThan(0, $ledgerCount, 'Ledger entries should be created when voucher is posted');
 
         // Get day book report using ledger / voucher lines
-        $reportService = new ReportService($ledgerService, $ledgerRepository);
+        $reportService = app(ReportService::class);
         $dayBook = $reportService->getDayBook(
             $this->company->id,
             $transactionDate
