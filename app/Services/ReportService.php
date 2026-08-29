@@ -1579,6 +1579,7 @@ class ReportService
             $mappingRows[] = [
                 'id' => $mapping->id,
                 'uuid' => $mapping->uuid,
+                'payment_voucher_id' => $mapping->payment_voucher_id,
                 'payment_voucher_number' => $mapping->paymentVoucher?->voucher_number ?? 'N/A',
                 'payment_date' => $mapping->paymentVoucher?->voucher_date?->toDateString(),
                 'invoice_type' => $mapping->invoice_type,

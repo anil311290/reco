@@ -27,14 +27,25 @@ class ReportApiController extends Controller
      */
     public function profitLoss(Request $request): JsonResponse
     {
+        $request->validate([
+            'financial_year_id' => 'nullable|integer|exists:financial_years,id',
+            'date_from' => 'nullable|date',
+            'date_to' => 'nullable|date|after_or_equal:date_from',
+        ]);
+
         $companyId = $request->user()->company_id;
-        $financialYearId = $request->input('financial_year_id') ?? FinancialYear::getCurrent($companyId)?->id;
+        $financialYearId = $this->resolveFinancialYearId($request) ?? FinancialYear::getCurrent($companyId)?->id;
 
         if (!$financialYearId) {
             return ResponseHelper::error('No active financial year found');
         }
 
-        $report = $this->reportService->getProfitLoss($companyId, $financialYearId);
+        $report = $this->reportService->getProfitLoss(
+            $companyId,
+            $financialYearId,
+            $request->input('date_from'),
+            $request->input('date_to')
+        );
 
         return ResponseHelper::success($report);
     }
@@ -44,14 +55,26 @@ class ReportApiController extends Controller
      */
     public function balanceSheet(Request $request): JsonResponse
     {
+        $request->validate([
+            'financial_year_id' => 'nullable|integer|exists:financial_years,id',
+            'as_of_date' => 'nullable|date',
+            'date_to' => 'nullable|date',
+        ]);
+
         $companyId = $request->user()->company_id;
-        $financialYearId = $request->input('financial_year_id') ?? FinancialYear::getCurrent($companyId)?->id;
+        $financialYearId = $this->resolveFinancialYearId($request) ?? FinancialYear::getCurrent($companyId)?->id;
 
         if (!$financialYearId) {
             return ResponseHelper::error('No active financial year found');
         }
 
-        $report = $this->reportService->getBalanceSheet($companyId, $financialYearId);
+        $asOfDate = $request->input('as_of_date') ?? $request->input('date_to');
+
+        $report = $this->reportService->getBalanceSheet(
+            $companyId,
+            $financialYearId,
+            $asOfDate
+        );
 
         return ResponseHelper::success($report);
     }
@@ -61,14 +84,26 @@ class ReportApiController extends Controller
      */
     public function trialBalance(Request $request): JsonResponse
     {
+        $request->validate([
+            'financial_year_id' => 'nullable|integer|exists:financial_years,id',
+            'date_from' => 'nullable|date',
+            'date_to' => 'nullable|date|after_or_equal:date_from',
+        ]);
+
         $companyId = $request->user()->company_id;
-        $financialYearId = $request->input('financial_year_id') ?? FinancialYear::getCurrent($companyId)?->id;
+        $financialYearId = $this->resolveFinancialYearId($request) ?? FinancialYear::getCurrent($companyId)?->id;
 
         if (!$financialYearId) {
             return ResponseHelper::error('No active financial year found');
         }
 
-        $report = $this->ledgerService->getTrialBalance($companyId, $financialYearId);
+        // Match web: dated trial balance from ReportService (opening / movement / closing).
+        $report = $this->reportService->getTrialBalance(
+            $companyId,
+            $financialYearId,
+            $request->input('date_from'),
+            $request->input('date_to')
+        );
 
         return ResponseHelper::success($report);
     }
@@ -79,14 +114,24 @@ class ReportApiController extends Controller
     public function dayBook(Request $request): JsonResponse
     {
         $request->validate([
-            'date' => 'required|date',
+            'date' => 'nullable|date|required_without:date_from',
+            'date_from' => 'nullable|date|required_without:date',
+            'date_to' => 'nullable|date|after_or_equal:date_from',
+            'financial_year_id' => 'nullable|integer|exists:financial_years,id',
         ]);
 
         $companyId = $request->user()->company_id;
-        $financialYearId = $request->filled('financial_year_id')
-            ? (int) $request->financial_year_id
-            : \App\Models\FinancialYear::getCurrent($companyId)?->id;
-        $report = $this->reportService->getDayBook($companyId, $request->date, $financialYearId);
+        $financialYearId = $this->resolveFinancialYearId($request)
+            ?? FinancialYear::getCurrent($companyId)?->id;
+        $dateFrom = $request->input('date_from') ?? $request->input('date');
+        $dateTo = $request->input('date_to') ?? $dateFrom;
+
+        $report = $this->reportService->getDayBookRange(
+            $companyId,
+            $dateFrom,
+            $dateTo,
+            $financialYearId
+        );
 
         return ResponseHelper::success($report);
     }
@@ -122,12 +167,14 @@ class ReportApiController extends Controller
     {
         $request->validate([
             'account_id' => 'required|exists:accounts,id',
+            'financial_year_id' => 'nullable|integer|exists:financial_years,id',
             'date_from' => 'nullable|date',
-            'date_to' => 'nullable|date',
+            'date_to' => 'nullable|date|after_or_equal:date_from',
         ]);
 
         $companyId = $request->user()->company_id;
-        $financialYearId = FinancialYear::getCurrent($companyId)?->id;
+        $financialYearId = $this->resolveFinancialYearId($request)
+            ?? FinancialYear::getCurrent($companyId)?->id;
 
         $report = $this->ledgerService->getAccountLedger(
             $request->account_id,

@@ -32,7 +32,12 @@ class ExportApiController extends Controller
         }
 
         try {
-            $pdf = $this->exportService->exportProfitLossPdf($companyId, $financialYearId);
+            $pdf = $this->exportService->exportProfitLossPdf(
+                $companyId,
+                (int) $financialYearId,
+                $request->input('date_from'),
+                $request->input('date_to')
+            );
 
             return $this->storePdfResponse($pdf, 'profit-loss-' . date('Y-m-d') . '.pdf');
         } catch (\Exception $e) {
@@ -50,7 +55,12 @@ class ExportApiController extends Controller
         }
 
         try {
-            $pdf = $this->exportService->exportBalanceSheetPdf($companyId, $financialYearId);
+            $asOfDate = $request->input('as_of_date') ?? $request->input('date_to');
+            $pdf = $this->exportService->exportBalanceSheetPdf(
+                $companyId,
+                (int) $financialYearId,
+                $asOfDate
+            );
 
             return $this->storePdfResponse($pdf, 'balance-sheet-' . date('Y-m-d') . '.pdf');
         } catch (\Exception $e) {
@@ -78,7 +88,12 @@ class ExportApiController extends Controller
         }
 
         try {
-            $pdf = $this->exportService->exportTrialBalancePdf($companyId, $financialYearId);
+            $pdf = $this->exportService->exportTrialBalancePdf(
+                $companyId,
+                (int) $financialYearId,
+                $request->input('date_from'),
+                $request->input('date_to')
+            );
 
             return $this->storePdfResponse($pdf, 'trial-balance-' . date('Y-m-d') . '.pdf');
         } catch (\Exception $e) {
@@ -94,19 +109,24 @@ class ExportApiController extends Controller
     public function dayBookPdf(Request $request): JsonResponse
     {
         $request->validate([
-            'date' => 'required|date',
+            'date' => 'nullable|date|required_without:date_from',
+            'date_from' => 'nullable|date|required_without:date',
+            'date_to' => 'nullable|date|after_or_equal:date_from',
         ]);
 
         $companyId = $request->user()->company_id;
+        $dateFrom = $request->input('date_from') ?? $request->input('date');
+        $dateTo = $request->input('date_to') ?? $dateFrom;
 
         try {
             $pdf = $this->exportService->exportDayBookPdf(
                 $companyId,
-                $request->date,
-                $request->filled('financial_year_id') ? (int) $request->financial_year_id : null
+                $dateFrom,
+                $request->filled('financial_year_id') ? (int) $request->financial_year_id : null,
+                $dateTo
             );
 
-            return $this->storePdfResponse($pdf, 'day-book-' . $request->date . '.pdf');
+            return $this->storePdfResponse($pdf, 'day-book-' . $dateFrom . '.pdf');
         } catch (\Exception $e) {
             return ResponseHelper::error($e->getMessage());
         }
@@ -115,7 +135,9 @@ class ExportApiController extends Controller
     public function dayBookExcel(Request $request): JsonResponse
     {
         $request->validate([
-            'date' => 'required|date',
+            'date' => 'nullable|date|required_without:date_from',
+            'date_from' => 'nullable|date|required_without:date',
+            'date_to' => 'nullable|date|after_or_equal:date_from',
         ]);
 
         return $this->reportExcelResponse($request, 'day-book');
@@ -148,13 +170,24 @@ class ExportApiController extends Controller
     {
         $request->validate([
             'account_id' => 'required|exists:accounts,id',
+            'financial_year_id' => 'nullable|integer|exists:financial_years,id',
+            'date_from' => 'nullable|date',
+            'date_to' => 'nullable|date|after_or_equal:date_from',
         ]);
 
         $companyId = $request->user()->company_id;
-        $financialYearId = FinancialYear::getCurrent($companyId)?->id;
+        $financialYearId = $request->filled('financial_year_id')
+            ? (int) $request->input('financial_year_id')
+            : FinancialYear::getCurrent($companyId)?->id;
 
         try {
-            $pdf = $this->exportService->exportLedgerPdf($request->account_id, $companyId, $financialYearId);
+            $pdf = $this->exportService->exportLedgerPdf(
+                $request->account_id,
+                $companyId,
+                $financialYearId,
+                $request->input('date_from'),
+                $request->input('date_to')
+            );
             $filename = 'ledger-' . $request->account_id . '-' . date('Y-m-d') . '.pdf';
 
             return $this->storePdfResponse($pdf, $filename);
@@ -180,9 +213,8 @@ class ExportApiController extends Controller
             $pdf = $this->exportService->exportDebtorsOutstandingPdf(
                 $companyId,
                 $request->filled('financial_year_id') ? (int) $request->input('financial_year_id') : null,
-                $request->input('date_from'),
-                $request->input('date_to'),
-                $request->only(['overdue_status', 'age_bucket', 'age_min', 'age_max'])
+                $this->resolveOutstandingAsOfDate($request),
+                $this->outstandingExportFilters($request)
             );
 
             return $this->storePdfResponse($pdf, 'debtors-outstanding-' . date('Y-m-d') . '.pdf');
@@ -204,9 +236,8 @@ class ExportApiController extends Controller
             $pdf = $this->exportService->exportCreditorsOutstandingPdf(
                 $companyId,
                 $request->filled('financial_year_id') ? (int) $request->input('financial_year_id') : null,
-                $request->input('date_from'),
-                $request->input('date_to'),
-                $request->only(['overdue_status', 'age_bucket', 'age_min', 'age_max'])
+                $this->resolveOutstandingAsOfDate($request),
+                $this->outstandingExportFilters($request)
             );
 
             return $this->storePdfResponse($pdf, 'creditors-outstanding-' . date('Y-m-d') . '.pdf');
@@ -223,14 +254,15 @@ class ExportApiController extends Controller
     public function agingSummaryPdf(Request $request): JsonResponse
     {
         $companyId = $request->user()->company_id;
+        $asOfDate = $this->resolveOutstandingAsOfDate($request);
 
         try {
             $pdf = $this->exportService->exportAgingSummaryPdf(
                 $companyId,
                 $request->filled('financial_year_id') ? (int) $request->input('financial_year_id') : null,
                 $request->input('date_from'),
-                $request->input('date_to'),
-                $request->only(['overdue_status', 'age_bucket', 'age_min', 'age_max'])
+                $asOfDate,
+                $this->outstandingExportFilters($request)
             );
 
             return $this->storePdfResponse($pdf, 'aging-summary-' . date('Y-m-d') . '.pdf');
@@ -343,6 +375,21 @@ class ExportApiController extends Controller
             'content_base64' => base64_encode($content),
             'path' => Storage::url($path),
         ], 'Export generated successfully');
+    }
+
+    protected function resolveOutstandingAsOfDate(Request $request): ?string
+    {
+        return $request->input('as_of_date')
+            ?? $request->input('date_to')
+            ?? $request->input('date_from');
+    }
+
+    protected function outstandingExportFilters(Request $request): array
+    {
+        return array_filter(
+            $request->only(['overdue_status', 'age_bucket', 'basis', 'age_min', 'age_max']),
+            fn ($value) => $value !== null && $value !== ''
+        );
     }
 
     protected function resolveMasterType(string $type): string
