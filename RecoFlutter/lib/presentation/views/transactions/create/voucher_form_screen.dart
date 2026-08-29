@@ -2,6 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 
+import '../../../../core/config/api_endpoints.dart';
+import '../../../../core/network/api_client.dart';
+import '../../../../core/utils/amount_formatter.dart';
+import '../../../../core/utils/app_action_loader.dart';
+import '../../../../core/utils/app_snackbar.dart';
 import '../../../widgets/common/custom_text_field.dart';
 import '../../../widgets/common/app_help_dialog.dart';
 import '../../../../data/models/masters/master_entities.dart';
@@ -109,6 +114,7 @@ class VoucherFormScreen<T extends BaseVoucherFormController>
                   ),
                 ),
                 if (controller.isPaymentReceipt) _PaymentRowsSection<T>(),
+                if (controller.isPaymentReceipt) _BillWiseAllocateSection<T>(),
                 if (controller.isAdjustment) _AdjustmentRowsSection<T>(),
               ],
             ),
@@ -144,6 +150,223 @@ class _PaymentRowsSection<T extends BaseVoucherFormController>
         ],
       ),
     );
+  }
+}
+
+class _BillWiseAllocateSection<T extends BaseVoucherFormController>
+    extends GetView<T> {
+  @override
+  Widget build(BuildContext context) {
+    return Obx(() {
+      final party = _selectedParty(controller);
+      if (party == null) {
+        return const SizedBox.shrink();
+      }
+      final allocations = controller.invoiceAllocations;
+      return TransactionFormSectionCard(
+        title: 'Bill-wise Details',
+        action: TextButton.icon(
+          onPressed: () => _openAllocateSheet(context, party),
+          icon: const Icon(Icons.link_rounded, size: 18),
+          label: Text(allocations.isEmpty ? 'Allocate' : 'Edit'),
+        ),
+        child: allocations.isEmpty
+            ? Text(
+                'Optionally allocate this ${controller.voucherType} against outstanding invoices for ${party.label}.',
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
+              )
+            : Column(
+                children: allocations
+                    .map(
+                      (item) => ListTile(
+                        contentPadding: EdgeInsets.zero,
+                        dense: true,
+                        title: Text(
+                          (item['invoice_number'] ?? item['invoice_id']).toString(),
+                          style: const TextStyle(fontWeight: FontWeight.w700),
+                        ),
+                        trailing: Text(
+                          AmountFormatter.currency(item['amount']),
+                          style: const TextStyle(fontWeight: FontWeight.w800),
+                        ),
+                      ),
+                    )
+                    .toList(),
+              ),
+      );
+    });
+  }
+
+  LookupOption? _selectedParty(BaseVoucherFormController controller) {
+    for (final row in controller.paymentRows) {
+      final account = row.account.value;
+      if (account == null) continue;
+      final kind = (account.kind ?? '').toLowerCase();
+      final key = account.valueKey;
+      if (kind == 'party' || key.startsWith('party:')) {
+        return account;
+      }
+    }
+    return null;
+  }
+
+  Future<void> _openAllocateSheet(
+    BuildContext context,
+    LookupOption party,
+  ) async {
+    int? partyId;
+    if (party.valueKey.startsWith('party:')) {
+      partyId = int.tryParse(party.valueKey.substring('party:'.length));
+    }
+    partyId ??= party.id;
+    if (partyId <= 0) {
+      AppSnackbar.error('Select a party particular first.');
+      return;
+    }
+
+    final resolvedPartyId = partyId;
+    List<Map<String, dynamic>> invoices = <Map<String, dynamic>>[];
+    try {
+      invoices = await AppActionLoader.run(
+        () async {
+          final response = await Get.find<ApiClient>().get<Map<String, dynamic>>(
+            ApiEndpoints.partyOutstandingInvoices(resolvedPartyId),
+            queryParameters: <String, dynamic>{
+              'invoice_type':
+                  controller.voucherType == 'receipt' ? 'sales' : 'purchase',
+            },
+          );
+          final data = response.data?['data'];
+          final list = <Map<String, dynamic>>[];
+          if (data is List) {
+            for (final item in data.whereType<Map>()) {
+              list.add(Map<String, dynamic>.from(item));
+            }
+          }
+          return list;
+        },
+        message: 'Loading invoices...',
+      );
+    } catch (_) {
+      AppSnackbar.error('Unable to load outstanding invoices.');
+      return;
+    }
+
+    if (invoices.isEmpty) {
+      AppSnackbar.error('No outstanding invoices for this party.');
+      return;
+    }
+
+    final controllers = <int, TextEditingController>{};
+    for (final invoice in invoices) {
+      final id = int.tryParse(invoice['id']?.toString() ?? '') ?? 0;
+      if (id <= 0) continue;
+      final existing = controller.invoiceAllocations.firstWhereOrNull(
+        (item) => item['invoice_id'] == id,
+      );
+      controllers[id] = TextEditingController(
+        text: existing?['amount']?.toString() ?? '',
+      );
+    }
+
+    await Get.bottomSheet<void>(
+      SafeArea(
+        child: Material(
+          color: Theme.of(context).cardColor,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                Text(
+                  'Allocate to invoices',
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w800,
+                      ),
+                ),
+                const SizedBox(height: 10),
+                ConstrainedBox(
+                  constraints: BoxConstraints(
+                    maxHeight: MediaQuery.of(context).size.height * 0.5,
+                  ),
+                  child: ListView(
+                    shrinkWrap: true,
+                    children: invoices.map((invoice) {
+                      final id =
+                          int.tryParse(invoice['id']?.toString() ?? '') ?? 0;
+                      final balance = double.tryParse(
+                            invoice['balance_due']?.toString() ?? '0',
+                          ) ??
+                          0;
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 10),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: <Widget>[
+                            Text(
+                              (invoice['invoice_number'] ?? '-').toString(),
+                              style: const TextStyle(fontWeight: FontWeight.w700),
+                            ),
+                            Text(
+                              'Balance ${AmountFormatter.currency(balance)}',
+                              style: Theme.of(context).textTheme.labelMedium,
+                            ),
+                            CustomTextField(
+                              label: 'Allocate',
+                              controller: controllers[id],
+                              keyboardType:
+                                  const TextInputType.numberWithOptions(
+                                decimal: true,
+                              ),
+                              bottomPadding: 0,
+                            ),
+                          ],
+                        ),
+                      );
+                    }).toList(),
+                  ),
+                ),
+                const SizedBox(height: 10),
+                SizedBox(
+                  width: double.infinity,
+                  child: FilledButton(
+                    onPressed: () {
+                      final next = <Map<String, dynamic>>[];
+                      for (final invoice in invoices) {
+                        final id =
+                            int.tryParse(invoice['id']?.toString() ?? '') ?? 0;
+                        final amount = double.tryParse(
+                              controllers[id]?.text.trim() ?? '',
+                            ) ??
+                            0;
+                        if (id <= 0 || amount <= 0) continue;
+                        next.add(<String, dynamic>{
+                          'invoice_id': id,
+                          'invoice_number': invoice['invoice_number'],
+                          'amount': amount,
+                        });
+                      }
+                      controller.invoiceAllocations.assignAll(next);
+                      Get.back<void>();
+                    },
+                    child: const Text('Save Allocations'),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+      isScrollControlled: true,
+    );
+
+    for (final c in controllers.values) {
+      c.dispose();
+    }
   }
 }
 

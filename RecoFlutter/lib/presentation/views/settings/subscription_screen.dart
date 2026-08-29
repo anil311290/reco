@@ -81,7 +81,7 @@ class SubscriptionScreen extends GetView<SubscriptionController> {
                   const SizedBox(height: 10),
                   if (controller.invoices.isEmpty)
                     _EmptySubscriptionState(
-                      icon: FontAwesomeIcons.fileInvoiceDollar,
+                      icon: FontAwesomeIcons.fileInvoiceDollar.data,
                       title: 'No invoices yet',
                       subtitle: 'Subscription invoices from the web plan will appear here.',
                     )
@@ -142,7 +142,7 @@ class SubscriptionScreen extends GetView<SubscriptionController> {
                   const SizedBox(height: 10),
                   if (controller.payments.isEmpty)
                     _EmptySubscriptionState(
-                      icon: FontAwesomeIcons.creditCard,
+                      icon: FontAwesomeIcons.creditCard.data,
                       title: 'No payments yet',
                       subtitle: 'Subscription payments from the web plan will appear here.',
                     )
@@ -187,22 +187,22 @@ class _SubscriptionShortcutRow extends StatelessWidget {
       runSpacing: 10,
       children: <Widget>[
         _ShortcutChip(
-          icon: FontAwesomeIcons.solidCircleCheck,
+          icon: FontAwesomeIcons.solidCircleCheck.data,
           label: hasCurrent ? 'Current Plan Active' : 'No Active Plan',
           color: hasCurrent ? const Color(0xFF16A34A) : const Color(0xFF64748B),
         ),
         _ShortcutChip(
-          icon: FontAwesomeIcons.layerGroup,
+          icon: FontAwesomeIcons.layerGroup.data,
           label: '${controller.plans.length} Plans',
           color: theme.colorScheme.primary,
         ),
         _ShortcutChip(
-          icon: FontAwesomeIcons.fileInvoiceDollar,
+          icon: FontAwesomeIcons.fileInvoiceDollar.data,
           label: '${controller.invoices.length} Invoices',
           color: const Color(0xFF2563EB),
         ),
         _ShortcutChip(
-          icon: FontAwesomeIcons.creditCard,
+          icon: FontAwesomeIcons.creditCard.data,
           label: '${controller.payments.length} Payments',
           color: const Color(0xFF9333EA),
         ),
@@ -264,8 +264,8 @@ class _SubscriptionHeroCard extends StatelessWidget {
                 ),
                 child: Icon(
                   hasSubscription
-                      ? FontAwesomeIcons.crown
-                      : FontAwesomeIcons.solidCreditCard,
+                      ? FontAwesomeIcons.crown.data
+                      : FontAwesomeIcons.solidCreditCard.data,
                   size: 18,
                   color: accent,
                 ),
@@ -326,7 +326,7 @@ class _SubscriptionHeroCard extends StatelessWidget {
                       (controller.currentSubscription['billing_cycle'] ?? '-')
                           .toString(),
                     ),
-                    icon: FontAwesomeIcons.arrowsRotate,
+                    icon: FontAwesomeIcons.arrowsRotate.data,
                     color: const Color(0xFF2563EB),
                   ),
                 ),
@@ -335,7 +335,7 @@ class _SubscriptionHeroCard extends StatelessWidget {
                   child: _MiniInfoCard(
                     label: 'Amount',
                     value: _planAmountLabel(plan),
-                    icon: FontAwesomeIcons.indianRupeeSign,
+                    icon: FontAwesomeIcons.indianRupeeSign.data,
                     color: const Color(0xFF16A34A),
                   ),
                 ),
@@ -348,7 +348,7 @@ class _SubscriptionHeroCard extends StatelessWidget {
                   child: _MiniInfoCard(
                     label: 'Current Period',
                     value: _rangeLabel(periodStart, periodEnd),
-                    icon: FontAwesomeIcons.calendarDays,
+                    icon: FontAwesomeIcons.calendarDays.data,
                     color: const Color(0xFFF59E0B),
                   ),
                 ),
@@ -365,8 +365,8 @@ class _SubscriptionHeroCard extends StatelessWidget {
                             ? 'One-time purchase'
                             : _shortDate(periodEnd),
                     icon: isTrial
-                        ? FontAwesomeIcons.clock
-                        : FontAwesomeIcons.rotateRight,
+                        ? FontAwesomeIcons.clock.data
+                        : FontAwesomeIcons.rotateRight.data,
                     color: const Color(0xFF7C3AED),
                   ),
                 ),
@@ -552,7 +552,7 @@ class _PlanCard extends StatelessWidget {
               borderRadius: BorderRadius.circular(14),
             ),
             child: Icon(
-              isTrial ? FontAwesomeIcons.rocket : FontAwesomeIcons.layerGroup,
+              isTrial ? FontAwesomeIcons.rocket.data : FontAwesomeIcons.layerGroup.data,
               color: accent,
               size: 16,
             ),
@@ -636,7 +636,7 @@ class _InvoiceCard extends StatelessWidget {
               borderRadius: BorderRadius.circular(12),
             ),
             child: Icon(
-              FontAwesomeIcons.fileInvoice,
+              FontAwesomeIcons.fileInvoice.data,
               size: 15,
               color: accent,
             ),
@@ -711,7 +711,7 @@ class _PaymentCard extends StatelessWidget {
               borderRadius: BorderRadius.circular(12),
             ),
             child: Icon(
-              FontAwesomeIcons.creditCard,
+              FontAwesomeIcons.creditCard.data,
               size: 15,
               color: accent,
             ),

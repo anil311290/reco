@@ -277,6 +277,86 @@ Future<void> printSalesInvoice(TransactionRecord record) async {
   }
 }
 
+Future<void> printVoucher(TransactionRecord record) async {
+  if (record.kind != TransactionRecordKind.voucher || record.id == null) {
+    AppSnackbar.error('Print is not available for this voucher.');
+    return;
+  }
+
+  try {
+    await AppActionLoader.run(
+      () async {
+        final repository = Get.find<TransactionsRepository>();
+        final response = await repository.exportFile(
+          endpoint: ApiEndpoints.exportVoucherPdf(record.id!),
+        );
+        final exportData = _extractExportData(response);
+        if (exportData == null) {
+          AppSnackbar.error('PDF export is not available right now.');
+          return;
+        }
+
+        final base64 = exportData['content_base64']?.toString();
+        if (base64 != null && base64.isNotEmpty) {
+          final bytes = base64Decode(base64);
+          final directory = await getTemporaryDirectory();
+          final file = File(
+            p.join(
+              directory.path,
+              'voucher_${record.id}_${DateTime.now().millisecondsSinceEpoch}.pdf',
+            ),
+          );
+          await file.writeAsBytes(bytes);
+          await _openOrSharePdf(file.path);
+          return;
+        }
+
+        final url = _resolveExportUrl(
+          exportData['download_url']?.toString(),
+          exportData['path']?.toString(),
+          exportData['url']?.toString(),
+          exportData['file_url']?.toString(),
+          exportData['file_path']?.toString(),
+        );
+        if (url == null || url.isEmpty) {
+          AppSnackbar.error('PDF export is not available right now.');
+          return;
+        }
+
+        final uri = Uri.tryParse(url);
+        if (uri != null &&
+            await launchUrl(uri, mode: LaunchMode.externalApplication)) {
+          AppSnackbar.success('Voucher PDF opened successfully.');
+          return;
+        }
+        AppSnackbar.error('Unable to open voucher PDF.');
+      },
+      message: 'Preparing voucher PDF...',
+    );
+  } catch (error) {
+    AppSnackbar.error(error.toString());
+  }
+}
+
+/// Web-style edit rule: draft always; posted only if not linked to an invoice.
+bool canEditVoucherRecord(TransactionRecord record) {
+  if (record.kind != TransactionRecordKind.voucher) {
+    return false;
+  }
+  if (record.status == 'draft') {
+    return true;
+  }
+  if (record.status != 'posted') {
+    return false;
+  }
+  final salesId = record.rawPayload['sales_invoice_id'];
+  final purchaseId = record.rawPayload['purchase_invoice_id'];
+  final hasSales = salesId != null && salesId.toString().trim().isNotEmpty;
+  final hasPurchase =
+      purchaseId != null && purchaseId.toString().trim().isNotEmpty;
+  return !hasSales && !hasPurchase;
+}
+
 Future<void> deleteTransactionRecord({
   required BaseTransactionsTabController controller,
   required TransactionRecord record,
@@ -403,6 +483,55 @@ double? _parseNullableDouble(dynamic value) {
     return value.toDouble();
   }
   return double.tryParse(value.toString());
+}
+
+Future<bool> postInvoice(TransactionRecord record) async {
+  if (record.id == null ||
+      (record.kind != TransactionRecordKind.salesInvoice &&
+          record.kind != TransactionRecordKind.purchaseInvoice)) {
+    AppSnackbar.error('Post is not available for this invoice.');
+    return false;
+  }
+
+  if (record.status != 'draft') {
+    AppSnackbar.error('Only draft invoices can be posted.');
+    return false;
+  }
+
+  if (!Get.find<TransactionsRepository>().networkMonitorService.isOnline.value) {
+    AppSnackbar.error('Internet is required to post this invoice.');
+    return false;
+  }
+
+  final confirmed = await AppAlertDialog.confirm(
+    title: 'Post Invoice?',
+    message: record.kind == TransactionRecordKind.salesInvoice
+        ? 'This will post the sales invoice to ledgers and update stock.'
+        : 'This will post the purchase invoice to ledgers and update stock.',
+    confirmText: 'Yes, post it',
+    cancelText: 'No',
+  );
+
+  if (confirmed != true) {
+    return false;
+  }
+
+  final endpoint = record.kind == TransactionRecordKind.salesInvoice
+      ? ApiEndpoints.salesInvoicePost(record.id!)
+      : ApiEndpoints.purchaseInvoicePost(record.id!);
+
+  await AppActionLoader.run(
+    () async {
+      await Get.find<TransactionsRepository>().apiClient.post<Map<String, dynamic>>(
+        endpoint,
+        data: const <String, dynamic>{},
+      );
+    },
+    message: 'Posting invoice...',
+  );
+
+  AppSnackbar.success('Invoice posted successfully.');
+  return true;
 }
 
 Future<bool> cancelInvoice(TransactionRecord record) async {

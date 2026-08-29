@@ -60,7 +60,7 @@ class _LedgerHistoryScreenState extends State<LedgerHistoryScreen> {
           children: <Widget>[
             ReportSectionCard(
               title: 'History for Ledger Entry #${widget.ledgerEntryId}',
-              icon: FontAwesomeIcons.clockRotateLeft,
+              icon: FontAwesomeIcons.clockRotateLeft.data,
               iconColor: const Color(0xFF475569),
               child: rows.isEmpty
                   ? const Padding(

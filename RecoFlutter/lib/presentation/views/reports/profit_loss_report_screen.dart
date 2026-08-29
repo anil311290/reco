@@ -18,9 +18,9 @@ class ProfitLossReportScreen extends GetView<ProfitLossReportController> {
     final lookup = Get.find<ReportLookupController>();
     return Scaffold(
       appBar: AppBar(
-        title: const ReportPageTitle(
+        title: ReportPageTitle(
           title: 'Profit & Loss Statement',
-          icon: FontAwesomeIcons.chartLine,
+          icon: FontAwesomeIcons.chartLine.data,
           color: Color(0xFF16A34A),
         ),
       ),
@@ -37,7 +37,7 @@ class ProfitLossReportScreen extends GetView<ProfitLossReportController> {
             ReportFilterPanel(
               title: 'Filters',
               subtitle: 'Track income, expenses, and final profitability with a cleaner statement layout built for fast management review.',
-              icon: FontAwesomeIcons.sliders,
+              icon: FontAwesomeIcons.sliders.data,
               iconColor: const Color(0xFF16A34A),
               child: Column(
                 children: <Widget>[
@@ -66,12 +66,12 @@ class ProfitLossReportScreen extends GetView<ProfitLossReportController> {
                     children: <Widget>[
                       ReportPrimaryButton(
                         label: 'Filter',
-                        icon: FontAwesomeIcons.sliders,
+                        icon: FontAwesomeIcons.sliders.data,
                         onTap: controller.loadReport,
                       ),
                       ReportSecondaryButton(
                         label: 'Excel',
-                        icon: FontAwesomeIcons.fileExcel,
+                        icon: FontAwesomeIcons.fileExcel.data,
                         onTap: () => controller.exportExcel(
                           reportName: 'profit_loss',
                           exportEndpoint: ApiEndpoints.exportProfitLossExcel,
@@ -80,7 +80,7 @@ class ProfitLossReportScreen extends GetView<ProfitLossReportController> {
                       ),
                       ReportSecondaryButton(
                         label: 'PDF',
-                        icon: FontAwesomeIcons.filePdf,
+                        icon: FontAwesomeIcons.filePdf.data,
                         onTap: () => controller.exportPdf(
                           exportEndpoint: ApiEndpoints.exportProfitLossPdf,
                           queryParameters: controller.queryParameters,
@@ -156,7 +156,7 @@ class ProfitLossReportScreen extends GetView<ProfitLossReportController> {
         ),
         note: 'Revenue and income recorded in the selected financial year.',
         color: const Color(0xFF16A34A),
-        icon: FontAwesomeIcons.sackDollar,
+        icon: FontAwesomeIcons.sackDollar.data,
       ),
       ReportStatCard(
         label: 'Total Expenses',
@@ -165,7 +165,7 @@ class ProfitLossReportScreen extends GetView<ProfitLossReportController> {
         ),
         note: 'All expense heads included in this period.',
         color: const Color(0xFFEF4444),
-        icon: FontAwesomeIcons.moneyBillTransfer,
+        icon: FontAwesomeIcons.moneyBillTransfer.data,
       ),
       ReportStatCard(
         label: 'Net Result',
@@ -174,7 +174,7 @@ class ProfitLossReportScreen extends GetView<ProfitLossReportController> {
             ? 'Profit recorded for this period.'
             : 'Loss recorded for this period.',
         color: isProfit ? const Color(0xFF2563EB) : const Color(0xFFF59E0B),
-        icon: isProfit ? FontAwesomeIcons.chartSimple : FontAwesomeIcons.chartColumn,
+        icon: isProfit ? FontAwesomeIcons.chartSimple.data : FontAwesomeIcons.chartColumn.data,
       ),
     ];
 
@@ -223,8 +223,8 @@ class ProfitLossReportScreen extends GetView<ProfitLossReportController> {
     return ReportSectionCard(
       title: title,
       icon: title == 'Income'
-          ? FontAwesomeIcons.circleArrowDown
-          : FontAwesomeIcons.circleArrowUp,
+          ? FontAwesomeIcons.circleArrowDown.data
+          : FontAwesomeIcons.circleArrowUp.data,
       iconColor: color,
       trailing: Wrap(
         spacing: 8,
@@ -282,7 +282,7 @@ class ProfitLossReportScreen extends GetView<ProfitLossReportController> {
     final id = account is Map<String, dynamic> ? _asInt(account['id']) : null;
     final name = account is Map<String, dynamic>
         ? (account['account_name'] ?? '-').toString()
-        : '-';
+        : (item['label'] ?? '-').toString();
     return InkWell(
       onTap: id == null ? null : () => Get.to(() => LedgerReportScreen(initialAccountId: id)),
       child: Container(
@@ -381,15 +381,15 @@ class ProfitLossReportScreen extends GetView<ProfitLossReportController> {
             context,
             '$label: $amount',
             const Color(0xFF6366F1),
-            icon: FontAwesomeIcons.calculator,
+            icon: FontAwesomeIcons.calculator.data,
           ),
           _pill(
             context,
             isProfit ? 'Profitable' : 'Loss Position',
             color,
             icon: isProfit
-                ? FontAwesomeIcons.circleCheck
-                : FontAwesomeIcons.circleExclamation,
+                ? FontAwesomeIcons.circleCheck.data
+                : FontAwesomeIcons.circleExclamation.data,
           ),
         ],
       ),

@@ -190,8 +190,8 @@ class _NotificationCard extends StatelessWidget {
                   ),
                   child: Icon(
                     isRead
-                        ? FontAwesomeIcons.solidEnvelopeOpen
-                        : FontAwesomeIcons.solidBell,
+                        ? FontAwesomeIcons.solidEnvelopeOpen.data
+                        : FontAwesomeIcons.solidBell.data,
                     color: accent,
                     size: 16,
                   ),
@@ -371,7 +371,7 @@ class _EmptyNotificationsState extends StatelessWidget {
                     ),
                   ),
                   Icon(
-                    FontAwesomeIcons.bellSlash,
+                    FontAwesomeIcons.bellSlash.data,
                     size: 30,
                     color: scheme.primary,
                   ),

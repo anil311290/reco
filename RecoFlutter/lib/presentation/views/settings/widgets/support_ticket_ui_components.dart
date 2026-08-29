@@ -283,7 +283,7 @@ class SupportTicketCard extends StatelessWidget {
                   ),
                   SupportChip(
                     label: _formatLabel(priority),
-                    icon: FontAwesomeIcons.bolt,
+                    icon: FontAwesomeIcons.bolt.data,
                     color: _priorityColor(priority),
                   ),
                   SupportChip(
@@ -418,7 +418,7 @@ class SupportTicketHeader extends StatelessWidget {
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Icon(
-                  FontAwesomeIcons.headset,
+                  FontAwesomeIcons.headset.data,
                   color: accent,
                   size: 15,
                 ),
@@ -437,7 +437,7 @@ class SupportTicketHeader extends StatelessWidget {
               ),
               SupportChip(
                 label: _formatLabel(priority),
-                icon: FontAwesomeIcons.bolt,
+                icon: FontAwesomeIcons.bolt.data,
                 color: _priorityColor(priority),
               ),
               SupportChip(
@@ -1125,29 +1125,29 @@ String _formatDate(dynamic value) {
 IconData _categoryIcon(String category) {
   switch (category) {
     case 'billing':
-      return FontAwesomeIcons.creditCard;
+      return FontAwesomeIcons.creditCard.data;
     case 'technical':
-      return FontAwesomeIcons.screwdriverWrench;
+      return FontAwesomeIcons.screwdriverWrench.data;
     case 'feature':
-      return FontAwesomeIcons.lightbulb;
+      return FontAwesomeIcons.lightbulb.data;
     case 'other':
-      return FontAwesomeIcons.comments;
+      return FontAwesomeIcons.comments.data;
     default:
-      return FontAwesomeIcons.circleQuestion;
+      return FontAwesomeIcons.circleQuestion.data;
   }
 }
 
 IconData _statusIcon(String status) {
   switch (status) {
     case 'in_progress':
-      return FontAwesomeIcons.arrowsRotate;
+      return FontAwesomeIcons.arrowsRotate.data;
     case 'waiting_on_customer':
-      return FontAwesomeIcons.hourglassHalf;
+      return FontAwesomeIcons.hourglassHalf.data;
     case 'resolved':
     case 'closed':
-      return FontAwesomeIcons.circleCheck;
+      return FontAwesomeIcons.circleCheck.data;
     default:
-      return FontAwesomeIcons.envelopeOpen;
+      return FontAwesomeIcons.envelopeOpen.data;
   }
 }
 

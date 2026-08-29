@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
 import '../../../../core/utils/app_date_formatter.dart';
+import '../../../../data/models/transactions/transaction_entities.dart';
 import '../../../controllers/transactions/sales_invoices_controller.dart';
 import '../../masters/widgets/masters_ui_components.dart';
 import '../details/transaction_detail_screen.dart';
@@ -48,47 +49,63 @@ class SalesInvoicesTabScreen extends GetView<SalesInvoicesController> {
                 onSelected: (value) async {
                   switch (value) {
                     case 'view':
-                      final detailRecord = await resolveTransactionDetailRecord(item);
+                      final detailRecord =
+                          await resolveTransactionDetailRecord(item);
                       await Get.to(
                         () => TransactionDetailScreen(
                           record: detailRecord,
-                          onEdit: item.status != 'paid' && item.status != 'cancelled'
+                          onPost: item.status == 'draft'
+                              ? () async {
+                                  final updated = await postInvoice(item);
+                                  if (updated) Get.back<void>();
+                                }
+                              : null,
+                          onEdit: _canEdit(item)
                               ? () => openInvoiceEditor(item)
                               : null,
-                          onRecordPayment:
-                              item.balanceDue > 0 &&
-                              item.status != 'paid' &&
-                              item.status != 'cancelled'
+                          onRecordPayment: _canPay(item)
                               ? () async {
-                                  final updated = await recordInvoicePayment(item);
-                                  if (updated) {
-                                    Get.back<void>();
-                                  }
+                                  final updated =
+                                      await recordInvoicePayment(item);
+                                  if (updated) Get.back<void>();
                                 }
                               : null,
                           onCancel: item.status != 'cancelled'
                               ? () async {
                                   final updated = await cancelInvoice(item);
-                                  if (updated) {
-                                    Get.back<void>();
-                                  }
+                                  if (updated) Get.back<void>();
                                 }
                               : null,
                           onDelete: item.status == 'draft'
                               ? () => deleteTransactionRecord(
-                                  controller: controller,
-                                  record: item,
-                                  closeAfterDelete: true,
-                                )
+                                    controller: controller,
+                                    record: item,
+                                    closeAfterDelete: true,
+                                  )
                               : null,
                           onPrint: () => printSalesInvoice(item),
                         ),
                       );
                       await controller.refreshData(forceRemote: true);
                       break;
+                    case 'post':
+                      if (await postInvoice(item)) {
+                        await controller.refreshData(forceRemote: true);
+                      }
+                      break;
+                    case 'payment':
+                      if (await recordInvoicePayment(item)) {
+                        await controller.refreshData(forceRemote: true);
+                      }
+                      break;
                     case 'edit':
                       await openInvoiceEditor(item);
                       await controller.refreshData(forceRemote: true);
+                      break;
+                    case 'cancel':
+                      if (await cancelInvoice(item)) {
+                        await controller.refreshData(forceRemote: true);
+                      }
                       break;
                     case 'delete':
                       await deleteTransactionRecord(
@@ -106,7 +123,17 @@ class SalesInvoicesTabScreen extends GetView<SalesInvoicesController> {
                     value: 'view',
                     child: Text('View'),
                   ),
-                  if (item.status != 'paid' && item.status != 'cancelled')
+                  if (item.status == 'draft')
+                    const PopupMenuItem<String>(
+                      value: 'post',
+                      child: Text('Post'),
+                    ),
+                  if (_canPay(item))
+                    const PopupMenuItem<String>(
+                      value: 'payment',
+                      child: Text('Record Payment'),
+                    ),
+                  if (_canEdit(item))
                     const PopupMenuItem<String>(
                       value: 'edit',
                       child: Text('Edit'),
@@ -115,6 +142,11 @@ class SalesInvoicesTabScreen extends GetView<SalesInvoicesController> {
                     value: 'print',
                     child: Text('Invoice PDF'),
                   ),
+                  if (item.status != 'cancelled' && item.status != 'draft')
+                    const PopupMenuItem<String>(
+                      value: 'cancel',
+                      child: Text('Cancel'),
+                    ),
                   if (item.status == 'draft')
                     const PopupMenuItem<String>(
                       value: 'delete',
@@ -129,7 +161,16 @@ class SalesInvoicesTabScreen extends GetView<SalesInvoicesController> {
     );
   }
 
-  String _formatDate(String value) {
-    return AppDateFormatter.formatDisplay(value);
-  }
+  bool _canEdit(TransactionRecord item) =>
+      item.status != 'paid' &&
+      item.status != 'partial' &&
+      item.status != 'cancelled';
+
+  bool _canPay(TransactionRecord item) =>
+      item.balanceDue > 0 &&
+      item.status != 'paid' &&
+      item.status != 'cancelled' &&
+      item.status != 'draft';
+
+  String _formatDate(String value) => AppDateFormatter.formatDisplay(value);
 }

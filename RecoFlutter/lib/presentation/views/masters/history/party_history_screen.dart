@@ -7,6 +7,8 @@ import '../../../../data/models/transactions/transaction_entities.dart';
 import '../../../controllers/masters/party_history_controller.dart';
 import '../../reports/widgets/report_ui_components.dart';
 import '../../../views/transactions/details/transaction_detail_screen.dart';
+import '../forms/party_form_sheet.dart';
+import '../party_record_payment_screen.dart';
 import '../widgets/masters_ui_components.dart';
 
 class PartyHistoryScreen extends StatefulWidget {
@@ -61,6 +63,51 @@ class _PartyHistoryScreenState extends State<PartyHistoryScreen> {
             fontWeight: FontWeight.w600,
           ),
         ),
+        actions: <Widget>[
+          Obx(() {
+            final party = controller.party.value;
+            if (party == null || party.id == null) {
+              return const SizedBox.shrink();
+            }
+            return Row(
+              mainAxisSize: MainAxisSize.min,
+              children: <Widget>[
+                IconButton(
+                  tooltip: 'Edit Party',
+                  icon: Icon(
+                    Icons.edit_outlined,
+                    color: Theme.of(context).colorScheme.primary,
+                  ),
+                  onPressed: () async {
+                    final result = await Get.to(
+                      () => PartyFormSheet(entity: party),
+                    );
+                    if (result == true) {
+                      await controller.loadHistory(forceRefresh: true);
+                    }
+                  },
+                ),
+                IconButton(
+                  tooltip: party.type == 'debtor'
+                      ? 'Record Receipt'
+                      : 'Record Payment',
+                  icon: Icon(
+                    Icons.payments_outlined,
+                    color: party.type == 'debtor'
+                        ? const Color(0xFF16A34A)
+                        : const Color(0xFFDC2626),
+                  ),
+                  onPressed: () async {
+                    final updated = await openPartyRecordPayment(party);
+                    if (updated) {
+                      await controller.loadHistory(forceRefresh: true);
+                    }
+                  },
+                ),
+              ],
+            );
+          }),
+        ],
       ),
       body: Obx(
         () => ListView(

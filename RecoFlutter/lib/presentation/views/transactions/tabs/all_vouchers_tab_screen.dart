@@ -26,7 +26,7 @@ class AllVouchersTabScreen extends GetView<AllVouchersController> {
         masterColumn(context, 'Party', size: ColumnSize.L),
         masterColumn(context, 'Amount', size: ColumnSize.M),
         masterColumn(context, 'Status', fixedWidth: 120),
-        masterColumn(context, 'Actions', fixedWidth: 160),
+        masterColumn(context, 'Actions', fixedWidth: 220),
       ],
       rowBuilder: _buildVoucherRow,
     );
@@ -56,7 +56,8 @@ class AllVouchersTabScreen extends GetView<AllVouchersController> {
                   tooltip: 'View',
                   color: const Color(0xFF38BDF8),
                   onTap: () async {
-                    final detailRecord = await resolveTransactionDetailRecord(item);
+                    final detailRecord =
+                        await resolveTransactionDetailRecord(item);
                     await Get.to(
                       () => TransactionDetailScreen(
                         record: detailRecord,
@@ -66,23 +67,24 @@ class AllVouchersTabScreen extends GetView<AllVouchersController> {
                         onCancel: item.status == 'posted'
                             ? () => controller.cancelRecord(item)
                             : null,
-                        onEdit: item.status == 'draft'
+                        onEdit: canEditVoucherRecord(item)
                             ? () => openVoucherEditor(item)
                             : null,
                         onDelete: item.status == 'draft'
                             ? () => deleteTransactionRecord(
-                                controller: controller,
-                                record: item,
-                                closeAfterDelete: true,
-                              )
+                                  controller: controller,
+                                  record: item,
+                                  closeAfterDelete: true,
+                                )
                             : null,
+                        onPrint: () => printVoucher(item),
                       ),
                     );
                     await controller.refreshData(forceRemote: true);
                   },
                 ),
                 const SizedBox(width: 8),
-                if (item.status == 'draft') ...<Widget>[
+                if (canEditVoucherRecord(item)) ...<Widget>[
                   MasterActionButton(
                     icon: Icons.edit_outlined,
                     tooltip: 'Edit',
@@ -93,10 +95,12 @@ class AllVouchersTabScreen extends GetView<AllVouchersController> {
                     },
                   ),
                   const SizedBox(width: 8),
+                ],
+                if (item.status == 'draft') ...<Widget>[
                   MasterActionButton(
                     icon: Icons.check_circle_outline_rounded,
                     tooltip: 'Post',
-                    color: const Color(0xFF16A34A),
+                    color: const Color(0xFF16A36A),
                     onTap: () => controller.postRecord(item),
                   ),
                   const SizedBox(width: 8),
@@ -105,12 +109,19 @@ class AllVouchersTabScreen extends GetView<AllVouchersController> {
                   MasterActionButton(
                     icon: Icons.cancel_outlined,
                     tooltip: 'Cancel',
-                    color: const Color(0xFFF59E0B),
+                    color: const Color(0xFFF29B38),
                     onTap: () => controller.cancelRecord(item),
                   ),
                   const SizedBox(width: 8),
                 ],
-                if (item.status == 'draft')
+                MasterActionButton(
+                  icon: Icons.picture_as_pdf_outlined,
+                  tooltip: 'PDF',
+                  color: const Color(0xFFDC2626),
+                  onTap: () => printVoucher(item),
+                ),
+                if (item.status == 'draft') ...<Widget>[
+                  const SizedBox(width: 8),
                   MasterActionButton(
                     icon: Icons.delete_outline_rounded,
                     tooltip: 'Delete',
@@ -120,6 +131,7 @@ class AllVouchersTabScreen extends GetView<AllVouchersController> {
                       record: item,
                     ),
                   ),
+                ],
               ],
             ),
           ),

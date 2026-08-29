@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
 import '../../../../core/utils/app_date_formatter.dart';
+import '../../../../data/models/transactions/transaction_entities.dart';
 import '../../../controllers/transactions/receipts_controller.dart';
 import '../../masters/widgets/masters_ui_components.dart';
 import '../details/transaction_detail_screen.dart';
@@ -25,58 +26,73 @@ class ReceiptsTabScreen extends GetView<ReceiptsController> {
         masterColumn(context, 'Party', size: ColumnSize.L),
         masterColumn(context, 'Amount', size: ColumnSize.M),
         masterColumn(context, 'Status', fixedWidth: 120),
-        masterColumn(context, 'Actions', fixedWidth: 160),
+        masterColumn(context, 'Actions', fixedWidth: 220),
       ],
-      rowBuilder: (context, item, index) => DataRow(
-        cells: <DataCell>[
-          masterTextCell('${index + 1}'),
-          masterTextCell(item.number.isEmpty ? '-' : item.number),
-          masterTextCell(_formatDate(item.date)),
-          DataCell(
-            Center(
-              child: const VoucherTypeChip(type: 'receipt'),
-            ),
+      rowBuilder: (context, item, index) => _buildVoucherRow(
+        context,
+        item,
+        index,
+      ),
+    );
+  }
+
+  DataRow _buildVoucherRow(
+    BuildContext context,
+    TransactionRecord item,
+    int index,
+  ) {
+    return DataRow(
+      cells: <DataCell>[
+        masterTextCell('${index + 1}'),
+        masterTextCell(item.number.isEmpty ? '-' : item.number),
+        masterTextCell(_formatDate(item.date)),
+        const DataCell(
+          Center(
+            child: VoucherTypeChip(type: 'receipt'),
           ),
-          masterTextCell(item.partyName.isEmpty ? '-' : item.partyName),
-          masterTextCell(_currency(item.amount)),
-          DataCell(Center(child: TransactionStatusChip(status: item.status))),
-          DataCell(
-            Center(
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: <Widget>[
-                  MasterActionButton(
-                    icon: Icons.remove_red_eye_outlined,
-                    tooltip: 'View',
-                    color: const Color(0xFF38BDF8),
-                    onTap: () async {
-                      final detailRecord = await resolveTransactionDetailRecord(item);
-                      await Get.to(
-                        () => TransactionDetailScreen(
-                          record: detailRecord,
+        ),
+        masterTextCell(item.partyName.isEmpty ? '-' : item.partyName),
+        masterTextCell(_currency(item.amount)),
+        DataCell(Center(child: TransactionStatusChip(status: item.status))),
+        DataCell(
+          Center(
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: <Widget>[
+                MasterActionButton(
+                  icon: Icons.remove_red_eye_outlined,
+                  tooltip: 'View',
+                  color: const Color(0xFF38BDF8),
+                  onTap: () async {
+                    final detailRecord =
+                        await resolveTransactionDetailRecord(item);
+                    await Get.to(
+                      () => TransactionDetailScreen(
+                        record: detailRecord,
                         onPost: item.status == 'draft'
                             ? () => controller.postRecord(item)
                             : null,
                         onCancel: item.status == 'posted'
                             ? () => controller.cancelRecord(item)
                             : null,
-                        onEdit: item.status == 'draft'
+                        onEdit: canEditVoucherRecord(item)
                             ? () => openVoucherEditor(item)
                             : null,
                         onDelete: item.status == 'draft'
                             ? () => deleteTransactionRecord(
-                                controller: controller,
-                                record: item,
-                                closeAfterDelete: true,
+                                  controller: controller,
+                                  record: item,
+                                  closeAfterDelete: true,
                                 )
-                              : null,
-                        ),
-                      );
-                      await controller.refreshData(forceRemote: true);
-                    },
-                  ),
-                  const SizedBox(width: 8),
-                if (item.status == 'draft') ...<Widget>[
+                            : null,
+                        onPrint: () => printVoucher(item),
+                      ),
+                    );
+                    await controller.refreshData(forceRemote: true);
+                  },
+                ),
+                const SizedBox(width: 8),
+                if (canEditVoucherRecord(item)) ...<Widget>[
                   MasterActionButton(
                     icon: Icons.edit_outlined,
                     tooltip: 'Edit',
@@ -87,39 +103,48 @@ class ReceiptsTabScreen extends GetView<ReceiptsController> {
                     },
                   ),
                   const SizedBox(width: 8),
+                ],
+                if (item.status == 'draft') ...<Widget>[
                   MasterActionButton(
                     icon: Icons.check_circle_outline_rounded,
                     tooltip: 'Post',
-                      color: const Color(0xFF16A36A),
-                      onTap: () => controller.postRecord(item),
-                    ),
-                    const SizedBox(width: 8),
-                  ],
-                  if (item.status == 'posted') ...<Widget>[
-                    MasterActionButton(
-                      icon: Icons.cancel_outlined,
-                      tooltip: 'Cancel',
-                      color: const Color(0xFFF29B38),
-                      onTap: () => controller.cancelRecord(item),
-                    ),
-                    const SizedBox(width: 8),
-                  ],
-                  if (item.status == 'draft')
-                    MasterActionButton(
-                      icon: Icons.delete_outline_rounded,
-                      tooltip: 'Delete',
-                      color: Theme.of(context).colorScheme.error,
-                      onTap: () => deleteTransactionRecord(
-                        controller: controller,
-                        record: item,
-                      ),
-                    ),
+                    color: const Color(0xFF16A36A),
+                    onTap: () => controller.postRecord(item),
+                  ),
+                  const SizedBox(width: 8),
                 ],
-              ),
+                if (item.status == 'posted') ...<Widget>[
+                  MasterActionButton(
+                    icon: Icons.cancel_outlined,
+                    tooltip: 'Cancel',
+                    color: const Color(0xFFF29B38),
+                    onTap: () => controller.cancelRecord(item),
+                  ),
+                  const SizedBox(width: 8),
+                ],
+                MasterActionButton(
+                  icon: Icons.picture_as_pdf_outlined,
+                  tooltip: 'PDF',
+                  color: const Color(0xFFDC2626),
+                  onTap: () => printVoucher(item),
+                ),
+                if (item.status == 'draft') ...<Widget>[
+                  const SizedBox(width: 8),
+                  MasterActionButton(
+                    icon: Icons.delete_outline_rounded,
+                    tooltip: 'Delete',
+                    color: Theme.of(context).colorScheme.error,
+                    onTap: () => deleteTransactionRecord(
+                      controller: controller,
+                      record: item,
+                    ),
+                  ),
+                ],
+              ],
             ),
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 

@@ -20,9 +20,9 @@ class TrialBalanceReportScreen extends GetView<TrialBalanceReportController> {
     final lookup = Get.find<ReportLookupController>();
     return Scaffold(
       appBar: AppBar(
-        title: const ReportPageTitle(
+        title:  ReportPageTitle(
           title: 'Trial Balance',
-          icon: FontAwesomeIcons.scaleBalanced,
+          icon: FontAwesomeIcons.scaleBalanced.data,
           color: Color(0xFFD97706),
         ),
       ),
@@ -40,7 +40,7 @@ class TrialBalanceReportScreen extends GetView<TrialBalanceReportController> {
             ReportFilterPanel(
               title: 'Filters',
               subtitle: 'Basis for Balance Sheet and Profit & Loss - closing debit/credit balances for each ledger.',
-              icon: FontAwesomeIcons.sliders,
+              icon: FontAwesomeIcons.sliders.data,
               iconColor: const Color(0xFFD97706),
               child: Column(
                 children: <Widget>[
@@ -69,12 +69,12 @@ class TrialBalanceReportScreen extends GetView<TrialBalanceReportController> {
                     children: <Widget>[
                       ReportPrimaryButton(
                         label: 'Filter',
-                        icon: FontAwesomeIcons.sliders,
+                        icon: FontAwesomeIcons.sliders.data,
                         onTap: controller.loadReport,
                       ),
                       ReportSecondaryButton(
                         label: 'Excel',
-                        icon: FontAwesomeIcons.fileExcel,
+                        icon: FontAwesomeIcons.fileExcel.data,
                         onTap: () => controller.exportExcel(
                           reportName: 'trial_balance',
                           exportEndpoint: ApiEndpoints.exportTrialBalanceExcel,
@@ -83,7 +83,7 @@ class TrialBalanceReportScreen extends GetView<TrialBalanceReportController> {
                       ),
                       ReportSecondaryButton(
                         label: 'PDF',
-                        icon: FontAwesomeIcons.filePdf,
+                        icon: FontAwesomeIcons.filePdf.data,
                         onTap: () => controller.exportPdf(
                           exportEndpoint: ApiEndpoints.exportTrialBalancePdf,
                           queryParameters: controller.queryParameters,
@@ -106,7 +106,7 @@ class TrialBalanceReportScreen extends GetView<TrialBalanceReportController> {
                           value: controller.formatCurrency(report['total_debit']),
                           note: 'Must equal closing credit when books tally.',
                           color: const Color(0xFF2563EB),
-                          icon: FontAwesomeIcons.arrowTrendUp,
+                          icon: FontAwesomeIcons.arrowTrendUp.data,
                         ),
                       ),
                       const SizedBox(width: 10),
@@ -116,7 +116,7 @@ class TrialBalanceReportScreen extends GetView<TrialBalanceReportController> {
                           value: controller.formatCurrency(report['total_credit']),
                           note: 'Closing balances across all ledgers.',
                           color: const Color(0xFFF59E0B),
-                          icon: FontAwesomeIcons.arrowTrendDown,
+                          icon: FontAwesomeIcons.arrowTrendDown.data,
                         ),
                       ),
                     ],
@@ -135,8 +135,8 @@ class TrialBalanceReportScreen extends GetView<TrialBalanceReportController> {
                               ? const Color(0xFF16A34A)
                               : const Color(0xFFEF4444),
                           icon: (report['is_balanced'] == true)
-                              ? FontAwesomeIcons.circleCheck
-                              : FontAwesomeIcons.triangleExclamation,
+                              ? FontAwesomeIcons.circleCheck.data
+                              : FontAwesomeIcons.triangleExclamation.data,
                         ),
                       ),
                       const Spacer(),
@@ -148,7 +148,7 @@ class TrialBalanceReportScreen extends GetView<TrialBalanceReportController> {
             ],
             ReportSectionCard(
               title: 'Account Balances',
-              icon: FontAwesomeIcons.tableList,
+              icon: FontAwesomeIcons.tableList.data,
               iconColor: const Color(0xFFD97706),
               trailing: report is Map<String, dynamic>
                   ? _buildSectionMeta(context, report)
@@ -182,8 +182,12 @@ class TrialBalanceReportScreen extends GetView<TrialBalanceReportController> {
         final item = accounts[index];
         final account = item['account'];
         final accountId = account is Map<String, dynamic> ? _asInt(account['id']) : null;
-        final debit = _asDouble(item['debit']);
-        final credit = _asDouble(item['credit']);
+        final opening = _asDouble(item['opening_balance']);
+        final openingType = (item['opening_type'] ?? '').toString();
+        final txnDebit = _asDouble(item['transaction_debit'] ?? item['debit']);
+        final txnCredit = _asDouble(item['transaction_credit'] ?? item['credit']);
+        final closingDebit = _asDouble(item['closing_debit'] ?? item['debit']);
+        final closingCredit = _asDouble(item['closing_credit'] ?? item['credit']);
         return DataRow(
           cells: <DataCell>[
             DataCell(
@@ -218,15 +222,53 @@ class TrialBalanceReportScreen extends GetView<TrialBalanceReportController> {
               Center(
                 child: _typeChip(
                   context,
-                  account is Map<String, dynamic>
-                      ? (account['account_type'] ?? '-').toString()
-                      : '-',
+                  (item['type'] ??
+                          (account is Map<String, dynamic>
+                              ? account['account_type']
+                              : null) ??
+                          '-')
+                      .toString(),
                 ),
               ),
             ),
-            DataCell(Center(child: Text(debit > 0 ? controller.formatCurrency(debit) : '-', textAlign: TextAlign.center, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: Color(0xFF2563EB))))),
-            DataCell(Center(child: Text(credit > 0 ? controller.formatCurrency(credit) : '-', textAlign: TextAlign.center, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: Color(0xFFF59E0B))))),
-            masterTextCell(_balanceText(debit, credit)),
+            masterTextCell(
+              opening > 0
+                  ? '${controller.formatCurrency(opening)} ${openingType == 'credit' ? 'Cr' : 'Dr'}'
+                  : '-',
+            ),
+            DataCell(
+              Center(
+                child: Text(
+                  txnDebit > 0 ? controller.formatCurrency(txnDebit) : '-',
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w600,
+                    fontSize: 13,
+                    color: Color(0xFF2563EB),
+                  ),
+                ),
+              ),
+            ),
+            DataCell(
+              Center(
+                child: Text(
+                  txnCredit > 0 ? controller.formatCurrency(txnCredit) : '-',
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w600,
+                    fontSize: 13,
+                    color: Color(0xFFF59E0B),
+                  ),
+                ),
+              ),
+            ),
+            masterTextCell(
+              closingDebit > 0
+                  ? '${controller.formatCurrency(closingDebit)} Dr'
+                  : closingCredit > 0
+                      ? '${controller.formatCurrency(closingCredit)} Cr'
+                      : '-',
+            ),
           ],
         );
       }),
@@ -241,8 +283,36 @@ class TrialBalanceReportScreen extends GetView<TrialBalanceReportController> {
             ),
           ),
           const DataCell(SizedBox.shrink()),
-          DataCell(Center(child: Text(controller.formatCurrency(reportData['total_debit']), style: reportTotalRowTextStyle(context)?.copyWith(fontSize: 13)))),
-          DataCell(Center(child: Text(controller.formatCurrency(reportData['total_credit']), style: reportTotalRowTextStyle(context)?.copyWith(fontSize: 13)))),
+          DataCell(
+            Center(
+              child: Text(
+                controller.formatCurrency(reportData['total_opening_debit']),
+                style: reportTotalRowTextStyle(context)?.copyWith(fontSize: 12),
+              ),
+            ),
+          ),
+          DataCell(
+            Center(
+              child: Text(
+                controller.formatCurrency(
+                  reportData['total_transaction_debit'] ??
+                      reportData['total_debit'],
+                ),
+                style: reportTotalRowTextStyle(context)?.copyWith(fontSize: 12),
+              ),
+            ),
+          ),
+          DataCell(
+            Center(
+              child: Text(
+                controller.formatCurrency(
+                  reportData['total_transaction_credit'] ??
+                      reportData['total_credit'],
+                ),
+                style: reportTotalRowTextStyle(context)?.copyWith(fontSize: 12),
+              ),
+            ),
+          ),
           DataCell(
             Center(
               child: Text(
@@ -269,14 +339,15 @@ class TrialBalanceReportScreen extends GetView<TrialBalanceReportController> {
       child: MastersTableShell(
         isLoading: false,
         emptyText: 'No accounts found',
-        minWidth: 980,
+        minWidth: 1100,
         columns: <DataColumn2>[
           masterColumn(context, 'Account Code'),
           masterColumn(context, 'Particulars', size: ColumnSize.L),
           masterColumn(context, 'Type'),
+          masterColumn(context, 'Opening'),
           masterColumn(context, 'Debit (₹)'),
           masterColumn(context, 'Credit (₹)'),
-          masterColumn(context, 'Balance (₹)'),
+          masterColumn(context, 'Closing'),
         ],
         rows: tableRows,
       ),
@@ -353,16 +424,6 @@ class TrialBalanceReportScreen extends GetView<TrialBalanceReportController> {
       return value.toDouble();
     }
     return double.tryParse(value?.toString() ?? '') ?? 0;
-  }
-
-  String _balanceText(double debit, double credit) {
-    if (debit > 0) {
-      return '${controller.formatCurrency(debit)} Dr';
-    }
-    if (credit > 0) {
-      return '${controller.formatCurrency(credit)} Cr';
-    }
-    return controller.formatCurrency(0);
   }
 
   Widget _typeChip(BuildContext context, String type) {

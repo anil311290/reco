@@ -2,10 +2,14 @@ import 'package:data_table_2/data_table_2.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
+import '../../../../core/config/api_endpoints.dart';
+import '../../../../core/network/api_client.dart';
+import '../../../../core/utils/amount_formatter.dart';
 import '../../../../core/utils/app_date_formatter.dart';
 import '../../../../data/models/transactions/transaction_entities.dart';
 import '../../masters/history/party_history_screen.dart';
 import '../../masters/widgets/masters_ui_components.dart';
+import '../../reports/settlement_details_sheet.dart';
 import '../../reports/widgets/report_ui_components.dart';
 
 typedef TransactionActionCallback = Future<void> Function();
@@ -136,6 +140,24 @@ class TransactionDetailScreen extends StatelessWidget {
                   _SectionCard(
                     title: 'Amounts',
                     children: <Widget>[
+                      if (_payloadAmount(record, 'subtotal') != null)
+                        _InfoTile(
+                          label: 'Subtotal',
+                          value: _currency(_payloadAmount(record, 'subtotal')!),
+                        ),
+                      if (_payloadAmount(record, 'discount_amount') != null &&
+                          _payloadAmount(record, 'discount_amount')! > 0)
+                        _InfoTile(
+                          label: 'Discount',
+                          value: _currency(
+                            _payloadAmount(record, 'discount_amount')!,
+                          ),
+                        ),
+                      if (_payloadAmount(record, 'tax_amount') != null)
+                        _InfoTile(
+                          label: 'Tax',
+                          value: _currency(_payloadAmount(record, 'tax_amount')!),
+                        ),
                       _InfoTile(label: 'Total Amount', value: _currency(record.amount)),
                       if (record.amountPaid > 0)
                         _InfoTile(label: 'Amount Paid', value: _currency(record.amountPaid)),
@@ -149,6 +171,10 @@ class TransactionDetailScreen extends StatelessWidget {
                     ),),
                     const SizedBox(height: 12),
                     _InvoiceLinesTable(lines: invoiceLines),
+                  ],
+                  if (record.id != null) ...<Widget>[
+                    const SizedBox(height: 12),
+                    _InvoiceSettlementSection(record: record),
                   ],
                   if (record.supplierReference.isNotEmpty || record.narration.isNotEmpty) ...[
                     const SizedBox(height: 12),
@@ -271,6 +297,13 @@ class TransactionDetailScreen extends StatelessWidget {
     if (Get.isOverlaysOpen) {
       return;
     }
+  }
+
+  static double? _payloadAmount(TransactionRecord record, String key) {
+    final value = record.rawPayload[key];
+    if (value == null) return null;
+    if (value is num) return value.toDouble();
+    return double.tryParse(value.toString());
   }
 
   static String _screenTitle(TransactionRecord record) {
@@ -452,9 +485,77 @@ class _VoucherDetailBody extends StatelessWidget {
             );
           },
         ),
+        if (_hasVoucherActions) ...<Widget>[
+          const SizedBox(height: 16),
+          Text(
+            'Actions',
+            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.w600,
+                ),
+          ),
+          const SizedBox(height: 10),
+          Wrap(
+            spacing: 10,
+            runSpacing: 10,
+            children: <Widget>[
+              if (onPost != null)
+                _ActionChipButton(
+                  label: 'Post',
+                  icon: Icons.check_circle_outline_rounded,
+                  background: const Color(0xFFDCFCE7),
+                  foreground: const Color(0xFF166534),
+                  onTap: () async => onPost!(),
+                ),
+              if (onCancel != null)
+                _ActionChipButton(
+                  label: 'Cancel',
+                  icon: Icons.cancel_outlined,
+                  background: const Color(0xFFFFEDD5),
+                  foreground: const Color(0xFF9A3412),
+                  onTap: () async => onCancel!(),
+                ),
+              if (onEdit != null)
+                _ActionChipButton(
+                  label: 'Edit',
+                  icon: Icons.edit_outlined,
+                  background: const Color(0xFFDBEAFE),
+                  foreground: const Color(0xFF1D4ED8),
+                  onTap: () async => onEdit!(),
+                ),
+              if (onPrint != null)
+                _ActionChipButton(
+                  label: 'PDF',
+                  icon: Icons.picture_as_pdf_outlined,
+                  background: const Color(0xFFFEE2E2),
+                  foreground: const Color(0xFFB91C1C),
+                  onTap: () async => onPrint!(),
+                ),
+              if (onDelete != null)
+                _ActionChipButton(
+                  label: 'Delete',
+                  icon: Icons.delete_outline_rounded,
+                  background: Theme.of(context).colorScheme.errorContainer,
+                  foreground: Theme.of(context).colorScheme.onErrorContainer,
+                  onTap: () async => onDelete!(),
+                ),
+            ],
+          ),
+        ],
+        if (record.id != null &&
+            (record.type == 'payment' || record.type == 'receipt')) ...<Widget>[
+          const SizedBox(height: 16),
+          _PaymentSettlementSection(record: record),
+        ],
       ],
     );
   }
+
+  bool get _hasVoucherActions =>
+      onPost != null ||
+      onCancel != null ||
+      onDelete != null ||
+      onEdit != null ||
+      onPrint != null;
 
   List<(String, String, Widget?)> _voucherDetailsItems(
     TransactionRecord record,
@@ -485,6 +586,10 @@ class _VoucherDetailBody extends StatelessWidget {
     items.add(('Amount', TransactionDetailScreen._currency(record.amount), null));
     if (financialYearName.trim().isNotEmpty) {
       items.add(('Financial Year', financialYearName, null));
+    }
+    final reference = (record.rawPayload['reference_number'] ?? '').toString().trim();
+    if (reference.isNotEmpty) {
+      items.add(('Reference', reference, null));
     }
     items.add(('Narration', TransactionDetailScreen._fallback(record.narration), null));
     return items;
@@ -1229,6 +1334,228 @@ class _InvoiceLinesTable extends StatelessWidget {
             ),
           ),
         ),
+      ],
+    );
+  }
+}
+
+class _InvoiceSettlementSection extends StatefulWidget {
+  const _InvoiceSettlementSection({required this.record});
+
+  final TransactionRecord record;
+
+  @override
+  State<_InvoiceSettlementSection> createState() =>
+      _InvoiceSettlementSectionState();
+}
+
+class _InvoiceSettlementSectionState extends State<_InvoiceSettlementSection> {
+  bool _loading = true;
+  List<Map<String, dynamic>> _rows = <Map<String, dynamic>>[];
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    if (widget.record.id == null) {
+      setState(() => _loading = false);
+      return;
+    }
+    try {
+      final invoiceType =
+          widget.record.kind == TransactionRecordKind.purchaseInvoice
+              ? 'purchase'
+              : 'sales';
+      final response = await Get.find<ApiClient>().get<Map<String, dynamic>>(
+        ApiEndpoints.reportsInvoiceSettlementDetails,
+        queryParameters: <String, dynamic>{
+          'invoice_type': invoiceType,
+          'invoice_id': widget.record.id,
+        },
+      );
+      final data = response.data?['data'];
+      final list = <Map<String, dynamic>>[];
+      if (data is Map && data['settlements'] is List) {
+        for (final item in (data['settlements'] as List).whereType<Map>()) {
+          list.add(Map<String, dynamic>.from(item));
+        }
+      }
+      if (mounted) {
+        setState(() {
+          _rows = list;
+          _loading = false;
+        });
+      }
+    } catch (_) {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return _SectionCard(
+      title: 'Settlement History',
+      children: <Widget>[
+        if (_loading)
+          const Padding(
+            padding: EdgeInsets.symmetric(vertical: 12),
+            child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
+          )
+        else if (_rows.isEmpty)
+          Text(
+            'No settlements yet.',
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
+          )
+        else
+          ..._rows.map((row) {
+            final voucher = (row['voucher_number'] ?? '-').toString();
+            final amount = AmountFormatter.currency(
+              row['amount_settled'] ?? row['amount'] ?? 0,
+            );
+            final date = AppDateFormatter.formatDisplay(
+              (row['voucher_date'] ?? '').toString(),
+            );
+            final status = (row['status'] ?? '').toString();
+            return ListTile(
+              contentPadding: EdgeInsets.zero,
+              dense: true,
+              title: Text(
+                voucher,
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      fontWeight: FontWeight.w700,
+                      color: Theme.of(context).colorScheme.primary,
+                    ),
+              ),
+              subtitle: Text(
+                [if (date.isNotEmpty && date != '-') date, if (status.isNotEmpty) status]
+                    .join(' · '),
+              ),
+              trailing: Text(
+                amount,
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      fontWeight: FontWeight.w800,
+                    ),
+              ),
+              onTap: row['voucher_id'] == null
+                  ? null
+                  : () => showPaymentSettlementDetails(
+                        voucherId: row['voucher_id'],
+                        title: voucher,
+                      ),
+            );
+          }),
+      ],
+    );
+  }
+}
+
+class _PaymentSettlementSection extends StatefulWidget {
+  const _PaymentSettlementSection({required this.record});
+
+  final TransactionRecord record;
+
+  @override
+  State<_PaymentSettlementSection> createState() =>
+      _PaymentSettlementSectionState();
+}
+
+class _PaymentSettlementSectionState extends State<_PaymentSettlementSection> {
+  bool _loading = true;
+  List<Map<String, dynamic>> _rows = <Map<String, dynamic>>[];
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    if (widget.record.id == null) {
+      setState(() => _loading = false);
+      return;
+    }
+    try {
+      final response = await Get.find<ApiClient>().get<Map<String, dynamic>>(
+        ApiEndpoints.reportsPaymentSettlementDetails,
+        queryParameters: <String, dynamic>{'voucher_id': widget.record.id},
+      );
+      final data = response.data?['data'];
+      final list = <Map<String, dynamic>>[];
+      if (data is Map && data['invoices_settled'] is List) {
+        for (final item in (data['invoices_settled'] as List).whereType<Map>()) {
+          list.add(Map<String, dynamic>.from(item));
+        }
+      }
+      if (mounted) {
+        setState(() {
+          _rows = list;
+          _loading = false;
+        });
+      }
+    } catch (_) {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return _SectionCard(
+      title: 'Invoices Settled',
+      children: <Widget>[
+        if (_loading)
+          const Padding(
+            padding: EdgeInsets.symmetric(vertical: 12),
+            child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
+          )
+        else if (_rows.isEmpty)
+          Text(
+            'No invoice mappings for this voucher.',
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
+          )
+        else
+          ..._rows.map((row) {
+            final invoice = (row['invoice_number'] ?? '-').toString();
+            final amount = AmountFormatter.currency(
+              row['amount_settled'] ?? row['amount_allocated'] ?? 0,
+            );
+            final type = (row['invoice_type'] ?? '').toString();
+            final status = (row['status'] ?? '').toString();
+            return ListTile(
+              contentPadding: EdgeInsets.zero,
+              dense: true,
+              title: Text(
+                invoice,
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      fontWeight: FontWeight.w700,
+                      color: Theme.of(context).colorScheme.primary,
+                    ),
+              ),
+              subtitle: Text(
+                [if (type.isNotEmpty) type, if (status.isNotEmpty) status]
+                    .join(' · '),
+              ),
+              trailing: Text(
+                amount,
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      fontWeight: FontWeight.w800,
+                    ),
+              ),
+              onTap: row['invoice_id'] == null
+                  ? null
+                  : () => showInvoiceSettlementDetails(
+                        invoiceType: (row['invoice_type'] ?? 'sales').toString(),
+                        invoiceId: row['invoice_id'],
+                        title: invoice,
+                      ),
+            );
+          }),
       ],
     );
   }

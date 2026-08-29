@@ -74,7 +74,7 @@ class AuditLogsScreen extends GetView<AuditLogsController> {
                       child: Row(
                         children: <Widget>[
                           Icon(
-                            FontAwesomeIcons.clockRotateLeft,
+                            FontAwesomeIcons.clockRotateLeft.data,
                           size: 18,
                           color: primary,
                         ),

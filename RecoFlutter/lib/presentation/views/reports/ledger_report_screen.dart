@@ -48,9 +48,9 @@ class _LedgerReportScreenState extends State<LedgerReportScreen> {
     final lookup = Get.find<ReportLookupController>();
     return Scaffold(
       appBar: AppBar(
-        title: const ReportPageTitle(
+        title: ReportPageTitle(
           title: 'Ledger',
-          icon: FontAwesomeIcons.bookOpen,
+          icon: FontAwesomeIcons.bookOpen.data,
           color: Color(0xFF475569),
         ),
       ),
@@ -71,7 +71,7 @@ class _LedgerReportScreenState extends State<LedgerReportScreen> {
             ReportFilterPanel(
               title: 'Filters',
               subtitle: 'Select one ledger to view opening balance, voucher-wise movement, and closing balance (Tally ledger style).',
-              icon: FontAwesomeIcons.sliders,
+              icon: FontAwesomeIcons.sliders.data,
               iconColor: const Color(0xFF475569),
               child: Column(
                 children: <Widget>[
@@ -125,12 +125,12 @@ class _LedgerReportScreenState extends State<LedgerReportScreen> {
                     children: <Widget>[
                       ReportPrimaryButton(
                         label: 'Filter',
-                        icon: FontAwesomeIcons.sliders,
+                        icon: FontAwesomeIcons.sliders.data,
                         onTap: controller.loadReport,
                       ),
                       ReportSecondaryButton(
                         label: 'Excel',
-                        icon: FontAwesomeIcons.fileExcel,
+                        icon: FontAwesomeIcons.fileExcel.data,
                         onTap: () => controller.exportExcel(
                           reportName: 'ledger',
                           exportEndpoint: ApiEndpoints.exportLedgerExcel,
@@ -139,7 +139,7 @@ class _LedgerReportScreenState extends State<LedgerReportScreen> {
                       ),
                       ReportSecondaryButton(
                         label: 'PDF',
-                        icon: FontAwesomeIcons.filePdf,
+                        icon: FontAwesomeIcons.filePdf.data,
                         onTap: () => controller.exportPdf(
                           exportEndpoint: ApiEndpoints.exportLedgerPdf,
                           queryParameters: controller.queryParameters,
@@ -154,7 +154,7 @@ class _LedgerReportScreenState extends State<LedgerReportScreen> {
             if (report is! Map<String, dynamic>)
               ReportSectionCard(
                 title: 'Select an account',
-                icon: FontAwesomeIcons.bookOpenReader,
+                icon: FontAwesomeIcons.bookOpenReader.data,
                 iconColor: const Color(0xFF475569),
                 child: Container(
                   width: double.infinity,
@@ -187,7 +187,7 @@ class _LedgerReportScreenState extends State<LedgerReportScreen> {
                         value: (selectedAccount['account_code'] ?? '-').toString(),
                         note: (selectedAccount['account_name'] ?? 'Ledger Account').toString(),
                         color: const Color(0xFF0F766E),
-                        icon: FontAwesomeIcons.bookBookmark,
+                        icon: FontAwesomeIcons.bookBookmark.data,
                       ),
                     ),
                     SizedBox(
@@ -204,7 +204,7 @@ class _LedgerReportScreenState extends State<LedgerReportScreen> {
                               .toString(),
                         ),
                         color: const Color(0xFF2563EB),
-                        icon: FontAwesomeIcons.circlePlay,
+                        icon: FontAwesomeIcons.circlePlay.data,
                       ),
                     ),
                   ],
@@ -230,7 +230,7 @@ class _LedgerReportScreenState extends State<LedgerReportScreen> {
                               .toString(),
                         ),
                         color: const Color(0xFF2563EB),
-                        icon: FontAwesomeIcons.circlePlay,
+                        icon: FontAwesomeIcons.circlePlay.data,
                       ),
                     ),
                   SizedBox(
@@ -247,7 +247,7 @@ class _LedgerReportScreenState extends State<LedgerReportScreen> {
                             .toString(),
                       ),
                       color: const Color(0xFF16A34A),
-                      icon: FontAwesomeIcons.circleStop,
+                      icon: FontAwesomeIcons.circleStop.data,
                     ),
                   ),
                 ],
@@ -257,7 +257,7 @@ class _LedgerReportScreenState extends State<LedgerReportScreen> {
             const SizedBox(height: 12),
             ReportSectionCard(
               title: 'Ledger Entries',
-              icon: FontAwesomeIcons.tableList,
+              icon: FontAwesomeIcons.tableList.data,
               iconColor: const Color(0xFF475569),
               trailing: report is Map<String, dynamic>
                   ? Text(
@@ -428,7 +428,7 @@ class _LedgerReportScreenState extends State<LedgerReportScreen> {
                   ),
                   const SizedBox(width: 6),
                   MasterActionButton(
-                    icon: FontAwesomeIcons.clockRotateLeft,
+                    icon: FontAwesomeIcons.clockRotateLeft.data,
                     tooltip: 'Ledger Audit',
                     color: const Color(0xFF38BDF8),
                     onTap: () {

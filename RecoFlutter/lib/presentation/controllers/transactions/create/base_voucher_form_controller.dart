@@ -33,6 +33,7 @@ abstract class BaseVoucherFormController extends GetxController {
   final selectedCashBankAccount = Rxn<LookupOption>();
   final paymentRows = <PaymentVoucherRowModel>[].obs;
   final adjustmentRows = <AdjustmentVoucherRowModel>[].obs;
+  final invoiceAllocations = <Map<String, dynamic>>[].obs;
   Map<String, dynamic>? _editingPayload;
 
   String get title;
@@ -158,6 +159,7 @@ abstract class BaseVoucherFormController extends GetxController {
     _editingPayload = Map<String, dynamic>.from(payload);
     dateController.text = _shortDate(payload['voucher_date']?.toString());
     narrationController.text = (payload['narration'] ?? '').toString();
+    invoiceAllocations.clear();
 
     for (final row in paymentRows) {
       row.dispose();
@@ -203,6 +205,22 @@ abstract class BaseVoucherFormController extends GetxController {
         paymentRows.add(PaymentVoucherRowModel());
       }
       paymentRows.refresh();
+
+      final rawSettlements = payload['settlements'] ?? payload['invoice_settlements'];
+      if (rawSettlements is List) {
+        for (final item in rawSettlements.whereType<Map>()) {
+          final invoiceId = _lookupInt(item['invoice_id'] ?? item['sales_invoice_id'] ?? item['purchase_invoice_id']);
+          final amount = _lookupDouble(item['amount'] ?? item['amount_allocated']);
+          if (invoiceId == null || amount <= 0) continue;
+          invoiceAllocations.add(<String, dynamic>{
+            'invoice_id': invoiceId,
+            'invoice_number': item['invoice_number'] ?? item['number'],
+            'amount': amount,
+            if ((item['reference_number'] ?? '').toString().isNotEmpty)
+              'reference_number': item['reference_number'],
+          });
+        }
+      }
       return;
     }
 
@@ -445,17 +463,31 @@ abstract class BaseVoucherFormController extends GetxController {
       'narration': narrationController.text.trim().isEmpty
           ? null
           : narrationController.text.trim(),
-      'payment_rows': validRows
-          .map(
-            (row) => <String, dynamic>{
-              'account_id': row.account.value?.valueKey,
-              'amount': row.amount,
-              'description': row.descriptionController.text.trim().isEmpty
-                  ? null
-                  : row.descriptionController.text.trim(),
-            },
-          )
-          .toList(),
+      'payment_rows': validRows.map((row) {
+        final account = row.account.value;
+        final isPartyRow = account != null &&
+            (account.kind == 'party' || account.valueKey.startsWith('party:'));
+        final rowPayload = <String, dynamic>{
+          'account_id': account?.valueKey,
+          'amount': row.amount,
+          'description': row.descriptionController.text.trim().isEmpty
+              ? null
+              : row.descriptionController.text.trim(),
+        };
+        if (isPartyRow && invoiceAllocations.isNotEmpty) {
+          rowPayload['invoice_allocations'] = invoiceAllocations
+              .map(
+                (item) => <String, dynamic>{
+                  'invoice_id': item['invoice_id'],
+                  'amount': item['amount'],
+                  if ((item['reference_number'] ?? '').toString().isNotEmpty)
+                    'reference_number': item['reference_number'],
+                },
+              )
+              .toList();
+        }
+        return rowPayload;
+      }).toList(),
       'voucher_number': '$temporaryPrefix-${DateTime.now().millisecondsSinceEpoch}',
       'status': 'draft',
       'type_label': title.replaceAll(' Voucher', ''),

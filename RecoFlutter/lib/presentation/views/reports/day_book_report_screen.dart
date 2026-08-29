@@ -26,9 +26,9 @@ class DayBookReportScreen extends GetView<DayBookReportController> {
     final lookup = Get.find<ReportLookupController>();
     return Scaffold(
       appBar: AppBar(
-        title: const ReportPageTitle(
+        title: ReportPageTitle(
           title: 'Day Book',
-          icon: FontAwesomeIcons.calendarDay,
+          icon: FontAwesomeIcons.calendarDay.data,
           color: Color(0xFF0891B2),
         ),
       ),
@@ -54,7 +54,7 @@ class DayBookReportScreen extends GetView<DayBookReportController> {
                 ReportFilterPanel(
                   title: 'Filters',
                   subtitle: 'Pick date and financial year to refresh the report.',
-                  icon: FontAwesomeIcons.sliders,
+                  icon: FontAwesomeIcons.sliders.data,
                   iconColor: const Color(0xFF0891B2),
                   child: Column(
                     children: <Widget>[
@@ -88,12 +88,12 @@ class DayBookReportScreen extends GetView<DayBookReportController> {
                         children: <Widget>[
                           ReportPrimaryButton(
                             label: 'Filter',
-                            icon: FontAwesomeIcons.sliders,
+                            icon: FontAwesomeIcons.sliders.data,
                             onTap: controller.loadReport,
                           ),
                           ReportSecondaryButton(
                             label: 'Excel',
-                            icon: FontAwesomeIcons.fileExcel,
+                            icon: FontAwesomeIcons.fileExcel.data,
                             onTap: () => controller.exportExcel(
                               reportName: 'day_book',
                               exportEndpoint: ApiEndpoints.exportDayBookExcel,
@@ -102,7 +102,7 @@ class DayBookReportScreen extends GetView<DayBookReportController> {
                           ),
                           ReportSecondaryButton(
                             label: 'PDF',
-                            icon: FontAwesomeIcons.filePdf,
+                            icon: FontAwesomeIcons.filePdf.data,
                             onTap: () => controller.exportPdf(
                               exportEndpoint: ApiEndpoints.exportDayBookPdf,
                               queryParameters: controller.queryParameters,
@@ -126,7 +126,7 @@ class DayBookReportScreen extends GetView<DayBookReportController> {
                                   '${controller.formatDate(controller.fromDateController.text)} to ${controller.formatDate(controller.toDateController.text)}',
                               note: 'Selected date range for voucher activity',
                               color: const Color(0xFF0891B2),
-                              icon: FontAwesomeIcons.calendarCheck,
+                              icon: FontAwesomeIcons.calendarCheck.data,
                             ),
                           ),
                           const SizedBox(width: 10),
@@ -136,7 +136,7 @@ class DayBookReportScreen extends GetView<DayBookReportController> {
                               value: '$voucherCount',
                               note: 'Posted vouchers for the day',
                               color: const Color(0xFF2563EB),
-                              icon: FontAwesomeIcons.receipt,
+                              icon: FontAwesomeIcons.receipt.data,
                             ),
                           ),
                         ],
@@ -150,7 +150,7 @@ class DayBookReportScreen extends GetView<DayBookReportController> {
                               value: controller.formatCurrency(report['total_debit']),
                               note: 'Must equal credit',
                               color: const Color(0xFF16A34A),
-                              icon: FontAwesomeIcons.arrowTrendUp,
+                              icon: FontAwesomeIcons.arrowTrendUp.data,
                             ),
                           ),
                           const SizedBox(width: 10),
@@ -160,7 +160,7 @@ class DayBookReportScreen extends GetView<DayBookReportController> {
                               value: controller.formatCurrency(report['total_credit']),
                               note: 'Must equal debit',
                               color: const Color(0xFFF59E0B),
-                              icon: FontAwesomeIcons.arrowTrendDown,
+                              icon: FontAwesomeIcons.arrowTrendDown.data,
                             ),
                           ),
                         ],
@@ -171,7 +171,7 @@ class DayBookReportScreen extends GetView<DayBookReportController> {
                 ],
             ReportSectionCard(
               title: 'Day Book Entries',
-              icon: FontAwesomeIcons.tableList,
+              icon: FontAwesomeIcons.tableList.data,
               iconColor: const Color(0xFF0891B2),
               trailing: report is Map<String, dynamic>
                   ? Text(
@@ -201,9 +201,7 @@ class DayBookReportScreen extends GetView<DayBookReportController> {
     BuildContext context,
     TextEditingController target,
   ) async {
-    final initial =
-        AppDateFormatter.parse(target.text) ??
-            DateTime(2026, 7, 22);
+    final initial = AppDateFormatter.parse(target.text) ?? DateTime.now();
     final selected = await showDatePicker(
       context: context,
       initialDate: initial,

@@ -23,9 +23,9 @@ class ReceiptPaymentReportScreen extends GetView<ReceiptPaymentReportController>
     final lookup = Get.find<ReportLookupController>();
     return Scaffold(
       appBar: AppBar(
-        title: const ReportPageTitle(
+        title: ReportPageTitle(
           title: 'Receipt & Payment',
-          icon: FontAwesomeIcons.moneyBillTransfer,
+          icon: FontAwesomeIcons.moneyBillTransfer.data,
           color: Color(0xFF059669),
         ),
       ),
@@ -45,7 +45,7 @@ class ReceiptPaymentReportScreen extends GetView<ReceiptPaymentReportController>
             ReportFilterPanel(
               title: 'Filters',
               subtitle: 'Every cash, bank, and OD movement of the period grouped head-wise, with opening and closing balances.',
-              icon: FontAwesomeIcons.sliders,
+              icon: FontAwesomeIcons.sliders.data,
               iconColor: const Color(0xFF059669),
               child: Column(
                 children: <Widget>[
@@ -76,12 +76,12 @@ class ReceiptPaymentReportScreen extends GetView<ReceiptPaymentReportController>
                     children: <Widget>[
                       ReportPrimaryButton(
                         label: 'Filter',
-                        icon: FontAwesomeIcons.sliders,
+                        icon: FontAwesomeIcons.sliders.data,
                         onTap: controller.loadReport,
                       ),
                       ReportSecondaryButton(
                         label: 'Excel',
-                        icon: FontAwesomeIcons.fileExcel,
+                        icon: FontAwesomeIcons.fileExcel.data,
                         onTap: () => controller.exportExcel(
                           reportName: 'receipt_payment',
                           exportEndpoint: ApiEndpoints.exportReceiptPaymentExcel,
@@ -90,7 +90,7 @@ class ReceiptPaymentReportScreen extends GetView<ReceiptPaymentReportController>
                       ),
                       ReportSecondaryButton(
                         label: 'PDF',
-                        icon: FontAwesomeIcons.filePdf,
+                        icon: FontAwesomeIcons.filePdf.data,
                         onTap: () => controller.exportPdf(
                           exportEndpoint: ApiEndpoints.exportReceiptPaymentPdf,
                           queryParameters: controller.queryParameters,
@@ -105,7 +105,7 @@ class ReceiptPaymentReportScreen extends GetView<ReceiptPaymentReportController>
             if (message != null && message.isNotEmpty)
               ReportSectionCard(
                 title: 'Receipt & Payment unavailable',
-                icon: FontAwesomeIcons.circleInfo,
+                icon: FontAwesomeIcons.circleInfo.data,
                 iconColor: const Color(0xFF059669),
                 child: Text(message),
               )
@@ -118,7 +118,7 @@ class ReceiptPaymentReportScreen extends GetView<ReceiptPaymentReportController>
                       value: controller.formatCurrency(report['opening_total']),
                       note: 'Cash, bank, and OD as on ${controller.formatDate((report['date_from'] ?? '').toString())}',
                       color: const Color(0xFF2563EB),
-                      icon: FontAwesomeIcons.wallet,
+                      icon: FontAwesomeIcons.wallet.data,
                     ),
                   ),
                   const SizedBox(width: 10),
@@ -128,7 +128,7 @@ class ReceiptPaymentReportScreen extends GetView<ReceiptPaymentReportController>
                       value: controller.formatCurrency(receipts['total']),
                       note: 'Money received during the period.',
                       color: _receiptColor,
-                      icon: FontAwesomeIcons.arrowDownWideShort,
+                      icon: FontAwesomeIcons.arrowDownWideShort.data,
                     ),
                   ),
                 ],
@@ -142,7 +142,7 @@ class ReceiptPaymentReportScreen extends GetView<ReceiptPaymentReportController>
                       value: controller.formatCurrency(payments['total']),
                       note: 'Money paid during the period.',
                       color: _paymentColor,
-                      icon: FontAwesomeIcons.arrowUpWideShort,
+                      icon: FontAwesomeIcons.arrowUpWideShort.data,
                     ),
                   ),
                   const SizedBox(width: 10),
@@ -152,7 +152,7 @@ class ReceiptPaymentReportScreen extends GetView<ReceiptPaymentReportController>
                       value: controller.formatCurrency(report['closing_total']),
                       note: 'Cash, bank, and OD as on ${controller.formatDate((report['date_to'] ?? '').toString())}',
                       color: const Color(0xFFF59E0B),
-                      icon: FontAwesomeIcons.vault,
+                      icon: FontAwesomeIcons.vault.data,
                     ),
                   ),
                 ],
@@ -161,7 +161,7 @@ class ReceiptPaymentReportScreen extends GetView<ReceiptPaymentReportController>
               _headSection(
                 context,
                 title: 'Receipts',
-                icon: FontAwesomeIcons.coins,
+                icon: FontAwesomeIcons.coins.data,
                 color: _receiptColor,
                 rows: _rowsOf(receipts),
                 leadingLabel: 'Opening Balance b/f',
@@ -174,7 +174,7 @@ class ReceiptPaymentReportScreen extends GetView<ReceiptPaymentReportController>
               _headSection(
                 context,
                 title: 'Payments',
-                icon: FontAwesomeIcons.fileInvoiceDollar,
+                icon: FontAwesomeIcons.fileInvoiceDollar.data,
                 color: _paymentColor,
                 rows: _rowsOf(payments),
                 leadingLabel: null,
@@ -186,7 +186,7 @@ class ReceiptPaymentReportScreen extends GetView<ReceiptPaymentReportController>
               const SizedBox(height: 12),
               ReportSectionCard(
                 title: 'Cash / Bank Ledgers',
-                icon: FontAwesomeIcons.tableList,
+                icon: FontAwesomeIcons.tableList.data,
                 iconColor: const Color(0xFF059669),
                 trailing: Wrap(
                   spacing: 8,
@@ -201,8 +201,8 @@ class ReceiptPaymentReportScreen extends GetView<ReceiptPaymentReportController>
                           ? const Color(0xFF16A34A)
                           : const Color(0xFFEF4444),
                       icon: report['is_balanced'] == true
-                          ? FontAwesomeIcons.circleCheck
-                          : FontAwesomeIcons.circleExclamation,
+                          ? FontAwesomeIcons.circleCheck.data
+                          : FontAwesomeIcons.circleExclamation.data,
                     ),
                   ],
                 ),

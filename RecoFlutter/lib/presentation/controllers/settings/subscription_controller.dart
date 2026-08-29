@@ -1,6 +1,7 @@
 import 'package:get/get.dart';
 
 import '../../../core/utils/app_snackbar.dart';
+import '../../../data/models/common/paginated_result.dart';
 import '../../../data/repositories/settings/subscriptions_repository.dart';
 
 class SubscriptionController extends GetxController {
@@ -25,8 +26,10 @@ class SubscriptionController extends GetxController {
 
   static const int pageSize = 10;
 
-  bool get hasMoreInvoices => invoicesCurrentPage.value < invoicesLastPage.value;
-  bool get hasMorePayments => paymentsCurrentPage.value < paymentsLastPage.value;
+  bool get hasMoreInvoices =>
+      invoicesCurrentPage.value < invoicesLastPage.value;
+  bool get hasMorePayments =>
+      paymentsCurrentPage.value < paymentsLastPage.value;
 
   @override
   void onInit() {
@@ -46,9 +49,18 @@ class SubscriptionController extends GetxController {
       currentSubscription.assignAll(
         (results[0] as Map<String, dynamic>?) ?? <String, dynamic>{},
       );
-      plans.assignAll(results[1] as List<Map<String, dynamic>>);
-      _applyInvoicesPage(results[2], reset: true);
-      _applyPaymentsPage(results[3], reset: true);
+      final loadedPlans = results[1];
+      plans.assignAll(
+        loadedPlans is List ? _mapList(loadedPlans) : <Map<String, dynamic>>[],
+      );
+      _applyInvoicesPage(
+        results[2] as PaginatedResult<Map<String, dynamic>>,
+        reset: true,
+      );
+      _applyPaymentsPage(
+        results[3] as PaginatedResult<Map<String, dynamic>>,
+        reset: true,
+      );
     } finally {
       isLoading.value = false;
     }
@@ -86,14 +98,14 @@ class SubscriptionController extends GetxController {
     }
   }
 
-  void _applyInvoicesPage(dynamic result, {required bool reset}) {
+  void _applyInvoicesPage(
+    PaginatedResult<Map<String, dynamic>> result, {
+    required bool reset,
+  }) {
     invoicesCurrentPage.value = result.currentPage;
     invoicesLastPage.value = result.lastPage;
     invoicesTotal.value = result.total;
-    final incoming = result.items
-        .whereType<Map>()
-        .map((item) => Map<String, dynamic>.from(item))
-        .toList();
+    final incoming = _mapList(result.items);
     if (reset) {
       invoices.assignAll(
         _mergeMaps(
@@ -104,23 +116,19 @@ class SubscriptionController extends GetxController {
       );
     } else {
       invoices.assignAll(
-        _mergeMaps(
-          incoming,
-          base: invoices,
-          keyBuilder: _invoiceKey,
-        ),
+        _mergeMaps(incoming, base: invoices, keyBuilder: _invoiceKey),
       );
     }
   }
 
-  void _applyPaymentsPage(dynamic result, {required bool reset}) {
+  void _applyPaymentsPage(
+    PaginatedResult<Map<String, dynamic>> result, {
+    required bool reset,
+  }) {
     paymentsCurrentPage.value = result.currentPage;
     paymentsLastPage.value = result.lastPage;
     paymentsTotal.value = result.total;
-    final incoming = result.items
-        .whereType<Map>()
-        .map((item) => Map<String, dynamic>.from(item))
-        .toList();
+    final incoming = _mapList(result.items);
     if (reset) {
       payments.assignAll(
         _mergeMaps(
@@ -131,11 +139,7 @@ class SubscriptionController extends GetxController {
       );
     } else {
       payments.assignAll(
-        _mergeMaps(
-          incoming,
-          base: payments,
-          keyBuilder: _paymentKey,
-        ),
+        _mergeMaps(incoming, base: payments, keyBuilder: _paymentKey),
       );
     }
   }
@@ -155,6 +159,13 @@ class SubscriptionController extends GetxController {
     return merged.values.toList();
   }
 
+  List<Map<String, dynamic>> _mapList(List<dynamic> data) {
+    return data
+        .whereType<Map>()
+        .map((item) => Map<String, dynamic>.from(item))
+        .toList();
+  }
+
   String _invoiceKey(Map<String, dynamic> item) {
     final id = item['id']?.toString();
     if (id != null && id.isNotEmpty) {
@@ -169,8 +180,8 @@ class SubscriptionController extends GetxController {
     if (id != null && id.isNotEmpty) {
       return 'id:$id';
     }
-    final paymentId =
-        (item['razorpay_payment_id'] ?? item['payment_id'] ?? '').toString();
+    final paymentId = (item['razorpay_payment_id'] ?? item['payment_id'] ?? '')
+        .toString();
     return 'payment:$paymentId';
   }
 

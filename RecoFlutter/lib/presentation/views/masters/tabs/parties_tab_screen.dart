@@ -11,6 +11,7 @@ import '../../../controllers/settings/audit_logs_controller.dart';
 import '../../../widgets/common/custom_text_field.dart';
 import '../forms/party_form_sheet.dart';
 import '../history/party_history_screen.dart';
+import '../party_record_payment_screen.dart';
 import '../widgets/masters_ui_components.dart';
 import '../../settings/audit_logs_screen.dart';
 
@@ -59,7 +60,7 @@ class PartiesTabScreen extends GetView<PartiesController> {
                   masterColumn(context, 'Mobile', size: ColumnSize.M),
                   masterColumn(context, 'Opening Balance', size: ColumnSize.M),
                   masterColumn(context, 'Status', fixedWidth: 120),
-                  masterColumn(context, 'Actions', fixedWidth: 208),
+                  masterColumn(context, 'Actions', fixedWidth: 250),
                 ],
                   rows: List<DataRow>.generate(controller.filteredItems.length, (
                   index,
@@ -202,14 +203,35 @@ class PartiesTabScreen extends GetView<PartiesController> {
                                     ? null
                                     : () => _openDetails(item),
                               ),
-                              const SizedBox(width: 8),
+                              const SizedBox(width: 6),
+                              MasterActionButton(
+                                icon: Icons.payments_outlined,
+                                tooltip: item.type == 'debtor'
+                                    ? 'Record Receipt'
+                                    : 'Record Payment',
+                                color: item.type == 'debtor'
+                                    ? const Color(0xFF16A34A)
+                                    : const Color(0xFFDC2626),
+                                onTap: item.id == null
+                                    ? null
+                                    : () async {
+                                        final updated =
+                                            await openPartyRecordPayment(item);
+                                        if (updated) {
+                                          await controller.refreshData(
+                                            forceRemote: true,
+                                          );
+                                        }
+                                      },
+                              ),
+                              const SizedBox(width: 6),
                               MasterActionButton(
                                 icon: Icons.edit_outlined,
                                 tooltip: 'Edit',
                                 color: Theme.of(context).colorScheme.primary,
                                 onTap: () => _openForm(context, entity: item),
                               ),
-                              const SizedBox(width: 8),
+                              const SizedBox(width: 6),
                               MasterActionButton(
                                 icon: Icons.history_rounded,
                                 tooltip: 'Audit Logs',
@@ -218,7 +240,7 @@ class PartiesTabScreen extends GetView<PartiesController> {
                                     ? null
                                     : () => _openAuditLogs(item),
                               ),
-                              const SizedBox(width: 8),
+                              const SizedBox(width: 6),
                               MasterActionButton(
                                 icon: Icons.delete_outline_rounded,
                                 tooltip: 'Delete',

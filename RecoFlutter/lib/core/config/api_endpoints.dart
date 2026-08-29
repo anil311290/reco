@@ -40,6 +40,9 @@ class ApiEndpoints {
   static const String parties = '/parties';
   static const String partyByType = '/parties/by-type';
   static String partyHistory(Object id) => '/parties/$id/history';
+  static String partyOutstandingInvoices(Object id) =>
+      '/parties/$id/outstanding-invoices';
+  static String partyRecordPayment(Object id) => '/parties/$id/record-payment';
   static const String states = '/states';
 
   static String stateCities(int stateId) => '/states/$stateId/cities';
@@ -62,6 +65,14 @@ class ApiEndpoints {
   static const String reportsDebtorsOutstanding = '/reports/debtors-outstanding';
   static const String reportsCreditorsOutstanding =
       '/reports/creditors-outstanding';
+  static const String reportsAgingSummary = '/reports/aging-summary';
+  static const String reportsUnappliedReceipts = '/reports/unapplied-receipts';
+  static const String reportsStockRegister = '/reports/stock-register';
+  static const String reportsSettlementAudit = '/reports/settlement-audit';
+  static const String reportsInvoiceSettlementDetails =
+      '/reports/invoice-settlement-details';
+  static const String reportsPaymentSettlementDetails =
+      '/reports/payment-settlement-details';
   static const String exportDayBookPdf = '/export/day-book/pdf';
   static const String exportDayBookExcel = '/export/day-book/excel';
   static const String exportReceiptPaymentPdf = '/export/receipt-payment/pdf';
@@ -82,8 +93,16 @@ class ApiEndpoints {
       '/export/creditors-outstanding/pdf';
   static const String exportCreditorsOutstandingExcel =
       '/export/creditors-outstanding/excel';
+  static const String exportAgingSummaryPdf = '/export/aging-summary/pdf';
+  static const String exportAgingSummaryExcel = '/export/aging-summary/excel';
   static String exportMasterExcel(String type) => '/export/masters/$type/excel';
   static String exportMasterPdf(String type) => '/export/masters/$type/pdf';
+
+  static const String contentFaqs = '/content/faqs';
+  static const String contentTestimonials = '/content/testimonials';
+  static const String contentSiteSettings = '/content/site-settings';
+  static String contentPage(String slug) => '/content/pages/$slug';
+  static const String contentContact = '/content/contact';
 
   static const String financialYears = '/financial-years';
   static const String currentFinancialYear = '/financial-years/current';
@@ -98,10 +117,18 @@ class ApiEndpoints {
   static const String salesInvoices = '/sales-invoices';
   static String salesInvoiceDetail(Object id) => '/sales-invoices/$id';
   static String salesInvoicePdf(Object id) => '/sales-invoices/$id/pdf';
+  static String salesInvoicePost(Object id) => '/sales-invoices/$id/post';
+  static String salesInvoiceCancel(Object id) => '/sales-invoices/$id/cancel';
+  static String salesInvoicePayment(Object id) => '/sales-invoices/$id/payment';
   static String exportSalesInvoicePdf(Object id) => '/export/sales-invoice/$id/pdf';
+  static String exportVoucherPdf(Object id) => '/export/voucher/$id/pdf';
   static const String serviceSalesInvoices = '/service-sales-invoices';
   static const String purchaseInvoices = '/purchase-invoices';
   static String purchaseInvoiceDetail(Object id) => '/purchase-invoices/$id';
+  static String purchaseInvoicePost(Object id) => '/purchase-invoices/$id/post';
+  static String purchaseInvoiceCancel(Object id) => '/purchase-invoices/$id/cancel';
+  static String purchaseInvoicePayment(Object id) =>
+      '/purchase-invoices/$id/payment';
 
   static const String subscriptionPlans = '/subscriptions/plans';
   static const String currentSubscription = '/subscriptions/current';

@@ -75,14 +75,14 @@ class SupportTicketsScreen extends GetView<SupportTicketsController> {
                       SupportStatItem(
                         label: 'All Tickets',
                         value: controller.stats['total'] ?? 0,
-                        icon: FontAwesomeIcons.inbox,
+                        icon: FontAwesomeIcons.inbox.data,
                         isActive: controller.selectedStatus.value.isEmpty,
                         onTap: () => controller.applyStatus(''),
                       ),
                       SupportStatItem(
                         label: 'Open',
                         value: controller.stats['open'] ?? 0,
-                        icon: FontAwesomeIcons.envelopeOpen,
+                        icon: FontAwesomeIcons.envelopeOpen.data,
                         color: theme.colorScheme.primary,
                         isActive: controller.selectedStatus.value == 'open',
                         onTap: () => controller.applyStatus('open'),
@@ -90,7 +90,7 @@ class SupportTicketsScreen extends GetView<SupportTicketsController> {
                       SupportStatItem(
                         label: 'In Progress',
                         value: controller.stats['in_progress'] ?? 0,
-                        icon: FontAwesomeIcons.arrowsRotate,
+                        icon: FontAwesomeIcons.arrowsRotate.data,
                         color: Colors.amber.shade700,
                         isActive:
                             controller.selectedStatus.value == 'in_progress',
@@ -99,7 +99,7 @@ class SupportTicketsScreen extends GetView<SupportTicketsController> {
                       SupportStatItem(
                         label: 'Awaiting Reply',
                         value: controller.stats['waiting_on_customer'] ?? 0,
-                        icon: FontAwesomeIcons.hourglassHalf,
+                        icon: FontAwesomeIcons.hourglassHalf.data,
                         color: Colors.lightBlue.shade700,
                         isActive:
                             controller.selectedStatus.value ==
@@ -110,7 +110,7 @@ class SupportTicketsScreen extends GetView<SupportTicketsController> {
                       SupportStatItem(
                         label: 'Resolved',
                         value: controller.stats['resolved'] ?? 0,
-                        icon: FontAwesomeIcons.circleCheck,
+                        icon: FontAwesomeIcons.circleCheck.data,
                         color: Colors.green.shade700,
                         isActive:
                             controller.selectedStatus.value == 'resolved' ||

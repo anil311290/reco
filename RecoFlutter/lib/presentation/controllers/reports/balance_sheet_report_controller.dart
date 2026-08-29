@@ -9,8 +9,7 @@ import 'report_lookup_controller.dart';
 class BalanceSheetReportController extends BaseReportController {
   BalanceSheetReportController(super.repository, super.networkMonitorService);
 
-  final fromDateController = TextEditingController();
-  final toDateController = TextEditingController();
+  final asOfDateController = TextEditingController();
   final financialYearId = RxnInt();
 
   @override
@@ -19,10 +18,8 @@ class BalanceSheetReportController extends BaseReportController {
   @override
   Map<String, dynamic> get queryParameters => <String, dynamic>{
         if (financialYearId.value != null) 'financial_year_id': financialYearId.value,
-        if (fromDateController.text.isNotEmpty)
-          'date_from': AppDateFormatter.toApiDate(fromDateController.text),
-        if (toDateController.text.isNotEmpty)
-          'date_to': AppDateFormatter.toApiDate(toDateController.text),
+        if (asOfDateController.text.isNotEmpty)
+          'as_of_date': AppDateFormatter.toApiDate(asOfDateController.text),
       };
 
   @override
@@ -33,7 +30,8 @@ class BalanceSheetReportController extends BaseReportController {
 
   Future<void> _initializeDefaults() async {
     final lookup = Get.find<ReportLookupController>();
-    if (lookup.financialYears.isEmpty || lookup.currentFinancialYearId.value == null) {
+    if (lookup.financialYears.isEmpty ||
+        lookup.currentFinancialYearId.value == null) {
       await lookup.preload();
     }
     applyFinancialYear(lookup.currentFinancialYearId.value, lookup);
@@ -42,14 +40,15 @@ class BalanceSheetReportController extends BaseReportController {
 
   void applyFinancialYear(int? value, ReportLookupController lookup) {
     financialYearId.value = value;
-    fromDateController.text = lookup.formatFinancialYearStart(value);
-    toDateController.text = lookup.formatFinancialYearEnd(value);
+    final end = lookup.formatFinancialYearEnd(value);
+    final today = AppDateFormatter.formatDisplay(DateTime.now());
+    // Default to today when within FY, otherwise FY end (web-style as-of).
+    asOfDateController.text = end.isNotEmpty ? end : today;
   }
 
   @override
   void onClose() {
-    fromDateController.dispose();
-    toDateController.dispose();
+    asOfDateController.dispose();
     super.onClose();
   }
 }

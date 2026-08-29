@@ -386,19 +386,19 @@ String _formatDate(dynamic value) {
 IconData _actionIcon(String action) {
   switch (action) {
     case 'create':
-      return FontAwesomeIcons.plus;
+      return FontAwesomeIcons.plus.data;
     case 'update':
-      return FontAwesomeIcons.penToSquare;
+      return FontAwesomeIcons.penToSquare.data;
     case 'delete':
-      return FontAwesomeIcons.trash;
+      return FontAwesomeIcons.trash.data;
     case 'login':
-      return FontAwesomeIcons.rightToBracket;
+      return FontAwesomeIcons.rightToBracket.data;
     case 'logout':
-      return FontAwesomeIcons.rightFromBracket;
+      return FontAwesomeIcons.rightFromBracket.data;
     case 'status_change':
-      return FontAwesomeIcons.rotate;
+      return FontAwesomeIcons.rotate.data;
     default:
-      return FontAwesomeIcons.clockRotateLeft;
+      return FontAwesomeIcons.clockRotateLeft.data;
   }
 }
 

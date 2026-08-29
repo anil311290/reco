@@ -26,7 +26,7 @@ class PaymentsTabScreen extends GetView<PaymentsController> {
         masterColumn(context, 'Party', size: ColumnSize.L),
         masterColumn(context, 'Amount', size: ColumnSize.M),
         masterColumn(context, 'Status', fixedWidth: 120),
-        masterColumn(context, 'Actions', fixedWidth: 160),
+        masterColumn(context, 'Actions', fixedWidth: 220),
       ],
       rowBuilder: (context, item, index) => _buildVoucherRow(
         context,
@@ -74,7 +74,7 @@ class PaymentsTabScreen extends GetView<PaymentsController> {
                         onCancel: item.status == 'posted'
                             ? () => controller.cancelRecord(item)
                             : null,
-                        onEdit: item.status == 'draft'
+                        onEdit: canEditVoucherRecord(item)
                             ? () => openVoucherEditor(item)
                             : null,
                         onDelete: item.status == 'draft'
@@ -84,13 +84,14 @@ class PaymentsTabScreen extends GetView<PaymentsController> {
                                 closeAfterDelete: true,
                               )
                             : null,
+                        onPrint: () => printVoucher(item),
                       ),
                     );
                     await controller.refreshData(forceRemote: true);
                   },
                 ),
                 const SizedBox(width: 8),
-                if (item.status == 'draft') ...<Widget>[
+                if (canEditVoucherRecord(item)) ...<Widget>[
                   MasterActionButton(
                     icon: Icons.edit_outlined,
                     tooltip: 'Edit',
@@ -101,6 +102,8 @@ class PaymentsTabScreen extends GetView<PaymentsController> {
                     },
                   ),
                   const SizedBox(width: 8),
+                ],
+                if (item.status == 'draft') ...<Widget>[
                   MasterActionButton(
                     icon: Icons.check_circle_outline_rounded,
                     tooltip: 'Post',
@@ -118,7 +121,14 @@ class PaymentsTabScreen extends GetView<PaymentsController> {
                   ),
                   const SizedBox(width: 8),
                 ],
-                if (item.status == 'draft')
+                MasterActionButton(
+                  icon: Icons.picture_as_pdf_outlined,
+                  tooltip: 'PDF',
+                  color: const Color(0xFFDC2626),
+                  onTap: () => printVoucher(item),
+                ),
+                if (item.status == 'draft') ...<Widget>[
+                  const SizedBox(width: 8),
                   MasterActionButton(
                     icon: Icons.delete_outline_rounded,
                     tooltip: 'Delete',
@@ -128,6 +138,7 @@ class PaymentsTabScreen extends GetView<PaymentsController> {
                       record: item,
                     ),
                   ),
+                ],
               ],
             ),
           ),

@@ -59,16 +59,9 @@ class SubscriptionsRepository {
   }) async {
     final response = await _apiClient.get<Map<String, dynamic>>(
       ApiEndpoints.subscriptionInvoices,
-      queryParameters: <String, dynamic>{
-        'page': page,
-        'per_page': perPage,
-      },
+      queryParameters: <String, dynamic>{'page': page, 'per_page': perPage},
     );
-    return _parsePaginatedResponse(
-      response.data,
-      page: page,
-      perPage: perPage,
-    );
+    return _parsePaginatedResponse(response.data, page: page, perPage: perPage);
   }
 
   Future<List<Map<String, dynamic>>> fetchPayments({int perPage = 10}) async {
@@ -98,16 +91,9 @@ class SubscriptionsRepository {
   }) async {
     final response = await _apiClient.get<Map<String, dynamic>>(
       ApiEndpoints.subscriptionPayments,
-      queryParameters: <String, dynamic>{
-        'page': page,
-        'per_page': perPage,
-      },
+      queryParameters: <String, dynamic>{'page': page, 'per_page': perPage},
     );
-    return _parsePaginatedResponse(
-      response.data,
-      page: page,
-      perPage: perPage,
-    );
+    return _parsePaginatedResponse(response.data, page: page, perPage: perPage);
   }
 
   Future<void> cancelCurrent() async {
@@ -120,17 +106,28 @@ class SubscriptionsRepository {
     required int perPage,
   }) {
     final data = body?['data'];
+    if (data is List) {
+      final items = _mapList(data);
+      return PaginatedResult<Map<String, dynamic>>.singlePage(
+        items,
+        currentPage: page,
+        perPage: perPage,
+        total: items.length,
+      );
+    }
     if (data is Map<String, dynamic> && data['data'] is List) {
-      final items = (data['data'] as List)
-          .whereType<Map>()
-          .map((item) => Map<String, dynamic>.from(item))
-          .toList();
+      final items = _mapList(data['data'] as List);
       return PaginatedResult<Map<String, dynamic>>(
         items: items,
-        currentPage: int.tryParse(data['current_page']?.toString() ?? '$page') ?? page,
-        lastPage: int.tryParse(data['last_page']?.toString() ?? '$page') ?? page,
-        perPage: int.tryParse(data['per_page']?.toString() ?? '$perPage') ?? perPage,
-        total: int.tryParse(data['total']?.toString() ?? '${items.length}') ?? items.length,
+        currentPage:
+            int.tryParse(data['current_page']?.toString() ?? '$page') ?? page,
+        lastPage:
+            int.tryParse(data['last_page']?.toString() ?? '$page') ?? page,
+        perPage:
+            int.tryParse(data['per_page']?.toString() ?? '$perPage') ?? perPage,
+        total:
+            int.tryParse(data['total']?.toString() ?? '${items.length}') ??
+            items.length,
       );
     }
     return PaginatedResult<Map<String, dynamic>>(
@@ -140,5 +137,12 @@ class SubscriptionsRepository {
       perPage: perPage,
       total: 0,
     );
+  }
+
+  List<Map<String, dynamic>> _mapList(List<dynamic> data) {
+    return data
+        .whereType<Map>()
+        .map((item) => Map<String, dynamic>.from(item))
+        .toList();
   }
 }

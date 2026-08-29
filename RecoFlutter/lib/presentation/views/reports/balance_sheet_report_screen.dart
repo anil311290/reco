@@ -22,9 +22,9 @@ class BalanceSheetReportScreen extends GetView<BalanceSheetReportController> {
     final lookup = Get.find<ReportLookupController>();
     return Scaffold(
       appBar: AppBar(
-        title: const ReportPageTitle(
+        title: ReportPageTitle(
           title: 'Balance Sheet',
-          icon: FontAwesomeIcons.fileInvoiceDollar,
+          icon: FontAwesomeIcons.fileInvoiceDollar.data,
           color: Color(0xFF2563EB),
         ),
       ),
@@ -38,8 +38,8 @@ class BalanceSheetReportScreen extends GetView<BalanceSheetReportController> {
           children: <Widget>[
             ReportFilterPanel(
               title: 'Filters',
-              subtitle: 'Review assets, liabilities, and equity in a cleaner statement layout with faster year switching and a clearer balance check.',
-              icon: FontAwesomeIcons.sliders,
+              subtitle: 'Point-in-time assets, liabilities, and equity as of a selected date.',
+              icon: FontAwesomeIcons.sliders.data,
               iconColor: const Color(0xFF2563EB),
               child: Column(
                 children: <Widget>[
@@ -57,23 +57,27 @@ class BalanceSheetReportScreen extends GetView<BalanceSheetReportController> {
                     onChanged: (value) => controller.applyFinancialYear(value, lookup),
                   ),
 
-                  ReportDateRangeRow(
-                    fromController: controller.fromDateController,
-                    toController: controller.toDateController,
-                    onFromTap: () => _pickBalanceSheetDate(context, controller.fromDateController),
-                    onToTap: () => _pickBalanceSheetDate(context, controller.toDateController),
+                  CustomTextField(
+                    label: 'As of Date',
+                    controller: controller.asOfDateController,
+                    readOnly: true,
+                    suffixIcon: Icons.edit_calendar_rounded,
+                    onTap: () => _pickBalanceSheetDate(
+                      context,
+                      controller.asOfDateController,
+                    ),
+                    bottomPadding: 12,
                   ),
-                  const SizedBox(height: 12),
                   ReportActionBar(
                     children: <Widget>[
                       ReportPrimaryButton(
                         label: 'Filter',
-                        icon: FontAwesomeIcons.sliders,
+                        icon: FontAwesomeIcons.sliders.data,
                         onTap: controller.loadReport,
                       ),
                       ReportSecondaryButton(
                         label: 'Excel',
-                        icon: FontAwesomeIcons.fileExcel,
+                        icon: FontAwesomeIcons.fileExcel.data,
                         onTap: () => controller.exportExcel(
                           reportName: 'balance_sheet',
                           exportEndpoint: ApiEndpoints.exportBalanceSheetExcel,
@@ -82,7 +86,7 @@ class BalanceSheetReportScreen extends GetView<BalanceSheetReportController> {
                       ),
                       ReportSecondaryButton(
                         label: 'PDF',
-                        icon: FontAwesomeIcons.filePdf,
+                        icon: FontAwesomeIcons.filePdf.data,
                         onTap: () => controller.exportPdf(
                           exportEndpoint: ApiEndpoints.exportBalanceSheetPdf,
                           queryParameters: controller.queryParameters,
@@ -124,7 +128,7 @@ class BalanceSheetReportScreen extends GetView<BalanceSheetReportController> {
                           ),
                           note: 'Current asset-side total for the selected year.',
                           color: _assetColor,
-                          icon: FontAwesomeIcons.buildingCircleCheck,
+                          icon: FontAwesomeIcons.buildingCircleCheck.data,
                         ),
                       ),
                       const SizedBox(width: 10),
@@ -134,7 +138,7 @@ class BalanceSheetReportScreen extends GetView<BalanceSheetReportController> {
                           value: controller.formatCurrency(report['total_liabilities_equity']),
                           note: 'Combined closing position on the source side.',
                           color: _liabilityColor,
-                          icon: FontAwesomeIcons.scaleBalanced,
+                          icon: FontAwesomeIcons.scaleBalanced.data,
                         ),
                       ),
                     ],
@@ -153,8 +157,8 @@ class BalanceSheetReportScreen extends GetView<BalanceSheetReportController> {
                               ? _equityColor
                               : const Color(0xFFF59E0B),
                           icon: (report['is_balanced'] == true)
-                              ? FontAwesomeIcons.circleCheck
-                              : FontAwesomeIcons.triangleExclamation,
+                              ? FontAwesomeIcons.circleCheck.data
+                              : FontAwesomeIcons.triangleExclamation.data,
                         ),
                       ),
                       const Spacer(),
@@ -182,10 +186,10 @@ class BalanceSheetReportScreen extends GetView<BalanceSheetReportController> {
     return ReportSectionCard(
       title: title,
       icon: title == 'Assets'
-          ? FontAwesomeIcons.building
+          ? FontAwesomeIcons.building.data
           : title == 'Liabilities'
-              ? FontAwesomeIcons.fileCircleMinus
-              : FontAwesomeIcons.chartPie,
+              ? FontAwesomeIcons.fileCircleMinus.data
+              : FontAwesomeIcons.chartPie.data,
       iconColor: color,
       trailing: Wrap(
         spacing: 8,
@@ -253,10 +257,10 @@ class BalanceSheetReportScreen extends GetView<BalanceSheetReportController> {
                           ),
                           child: Icon(
                             title == 'Assets'
-                                ? FontAwesomeIcons.building
+                                ? FontAwesomeIcons.building.data
                                 : title == 'Liabilities'
-                                    ? FontAwesomeIcons.fileCircleMinus
-                                    : FontAwesomeIcons.chartPie,
+                                    ? FontAwesomeIcons.fileCircleMinus.data
+                                    : FontAwesomeIcons.chartPie.data,
                             size: 15,
                             color: color,
                           ),
@@ -478,7 +482,7 @@ class BalanceSheetReportScreen extends GetView<BalanceSheetReportController> {
 int? _asInt(dynamic value) => int.tryParse(value?.toString() ?? '');
 
 String _dateRangeLabelForBalanceSheet(BalanceSheetReportController controller) {
-  return '${controller.formatDate(controller.fromDateController.text)} to ${controller.formatDate(controller.toDateController.text)}';
+  return 'As of ${controller.formatDate(controller.asOfDateController.text)}';
 }
 }
 
@@ -531,8 +535,8 @@ class _BalanceHeadlineCard extends StatelessWidget {
                 ),
                 child: Icon(
                   isBalanced
-                      ? FontAwesomeIcons.shieldHeart
-                      : FontAwesomeIcons.scaleBalanced,
+                      ? FontAwesomeIcons.shieldHeart.data
+                      : FontAwesomeIcons.scaleBalanced.data,
                   size: 18,
                   color: accent,
                 ),

@@ -1,9 +1,11 @@
 import 'package:get/get.dart';
 
+import '../controllers/reports/aging_summary_report_controller.dart';
 import '../controllers/reports/balance_sheet_report_controller.dart';
 import '../controllers/reports/creditors_outstanding_report_controller.dart';
 import '../controllers/reports/day_book_report_controller.dart';
 import '../controllers/reports/debtors_outstanding_report_controller.dart';
+import '../controllers/reports/extended_reports_controllers.dart';
 import '../controllers/reports/ledger_report_controller.dart';
 import '../controllers/reports/profit_loss_report_controller.dart';
 import '../controllers/reports/receipt_payment_report_controller.dart';
@@ -47,6 +49,22 @@ class ReportsBinding extends Bindings {
     );
     Get.lazyPut<CreditorsOutstandingReportController>(
       () => CreditorsOutstandingReportController(Get.find(), Get.find()),
+      fenix: true,
+    );
+    Get.lazyPut<AgingSummaryReportController>(
+      () => AgingSummaryReportController(Get.find(), Get.find()),
+      fenix: true,
+    );
+    Get.lazyPut<UnappliedReceiptsReportController>(
+      () => UnappliedReceiptsReportController(Get.find(), Get.find()),
+      fenix: true,
+    );
+    Get.lazyPut<StockRegisterReportController>(
+      () => StockRegisterReportController(Get.find(), Get.find()),
+      fenix: true,
+    );
+    Get.lazyPut<SettlementAuditReportController>(
+      () => SettlementAuditReportController(Get.find(), Get.find()),
       fenix: true,
     );
   }

@@ -77,7 +77,7 @@ class DashboardScreen extends GetView<DashboardController> {
                 const SizedBox(height: 10),
                 _SingleTrendCard(
                   title: 'Receivables Trend',
-                  icon: FontAwesomeIcons.chartLine,
+                  icon: FontAwesomeIcons.chartLine.data,
                   color: Theme.of(context).colorScheme.tertiary,
                   values: controller.receivableSeries,
                   labels: controller.receivableLabels,
@@ -87,7 +87,7 @@ class DashboardScreen extends GetView<DashboardController> {
                 const SizedBox(height: 10),
                 _SingleTrendCard(
                   title: 'Payables Trend',
-                  icon: FontAwesomeIcons.chartColumn,
+                  icon: FontAwesomeIcons.chartColumn.data,
                   color: Theme.of(context).colorScheme.error,
                   values: controller.payableSeries,
                   labels: controller.payableLabels,
@@ -491,14 +491,14 @@ class _QuickActionsCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final actions = <(String, IconData, Color, _DashboardAction)>[
-      ('Payment', FontAwesomeIcons.arrowTrendUp, const Color(0xFFF59E0B), _DashboardAction.payment),
-      ('Receipt', FontAwesomeIcons.arrowTrendDown, const Color(0xFF2563EB), _DashboardAction.receipt),
-      ('Adjustment', FontAwesomeIcons.bookBookmark, const Color(0xFF8B5CF6), _DashboardAction.adjustment),
-      ('Sale Invoice', FontAwesomeIcons.fileCirclePlus, const Color(0xFF16A36A), _DashboardAction.salesInvoice),
-      ('Purchase Invoice', FontAwesomeIcons.cartPlus, const Color(0xFFEF5B62), _DashboardAction.purchaseInvoice),
-      ('Add Party', FontAwesomeIcons.userPlus, const Color(0xFF475569), _DashboardAction.party),
-      ('Add Ledger', FontAwesomeIcons.buildingColumns, const Color(0xFF0EA5E9), _DashboardAction.ledger),
-      ('Reports', FontAwesomeIcons.chartSimple, const Color(0xFFEF5B62), _DashboardAction.reports),
+      ('Payment', FontAwesomeIcons.arrowTrendUp.data, const Color(0xFFF59E0B), _DashboardAction.payment),
+      ('Receipt', FontAwesomeIcons.arrowTrendDown.data, const Color(0xFF2563EB), _DashboardAction.receipt),
+      ('Adjustment', FontAwesomeIcons.bookBookmark.data, const Color(0xFF8B5CF6), _DashboardAction.adjustment),
+      ('Sale Invoice', FontAwesomeIcons.fileCirclePlus.data, const Color(0xFF16A36A), _DashboardAction.salesInvoice),
+      ('Purchase Invoice', FontAwesomeIcons.cartPlus.data, const Color(0xFFEF5B62), _DashboardAction.purchaseInvoice),
+      ('Add Party', FontAwesomeIcons.userPlus.data, const Color(0xFF475569), _DashboardAction.party),
+      ('Add Ledger', FontAwesomeIcons.buildingColumns.data, const Color(0xFF0EA5E9), _DashboardAction.ledger),
+      ('Reports', FontAwesomeIcons.chartSimple.data, const Color(0xFFEF5B62), _DashboardAction.reports),
     ];
 
     return Card(
@@ -507,9 +507,9 @@ class _QuickActionsCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: <Widget>[
-            const _CardTitle(
+            _CardTitle(
               title: 'Quick Actions',
-              icon: FontAwesomeIcons.bolt,
+              icon: FontAwesomeIcons.bolt.data,
               iconColor: Color(0xFFF59E0B),
             ),
             const SizedBox(height: 10),
@@ -597,10 +597,10 @@ class _IncomeExpenseCard extends StatelessWidget {
           children: <Widget>[
             Row(
               children: <Widget>[
-                const Expanded(
+                Expanded(
                   child: _CardTitle(
                     title: 'Income vs Expense',
-                    icon: FontAwesomeIcons.chartColumn,
+                    icon: FontAwesomeIcons.chartColumn.data,
                     iconColor: Color(0xFF2563EB),
                   ),
                 ),
@@ -763,10 +763,10 @@ class _RecentTransactionsCard extends StatelessWidget {
           children: <Widget>[
             Row(
               children: <Widget>[
-                const Expanded(
+                Expanded(
                   child: _CardTitle(
                     title: 'Recent Transactions',
-                    icon: FontAwesomeIcons.clockRotateLeft,
+                    icon: FontAwesomeIcons.clockRotateLeft.data,
                     iconColor: Color(0xFF64748B),
                   ),
                 ),
