@@ -104,6 +104,7 @@ Route::prefix('v1')->middleware('auth:sanctum')->group(function () {
     Route::get('/parties/{id}/history', [PartyApiController::class, 'history']);
     Route::get('/parties/{id}/outstanding-invoices', [PartyApiController::class, 'outstandingInvoices']);
     Route::post('/parties/{id}/record-payment', [PartyApiController::class, 'recordPayment']);
+    Route::post('/parties/{id}/apply-unapplied', [PartyApiController::class, 'applyUnapplied']);
     Route::get('/parties/{id}', [PartyApiController::class, 'show']);
     Route::put('/parties/{id}', [PartyApiController::class, 'update']);
     Route::delete('/parties/{id}', [PartyApiController::class, 'destroy']);

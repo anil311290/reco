@@ -9,6 +9,7 @@ use App\Models\Party;
 use App\Services\LedgerService;
 use App\Services\PartyService;
 use App\Services\PurchaseInvoiceService;
+use App\Services\ReportService;
 use App\Services\SalesInvoiceService;
 use App\Helpers\ResponseHelper;
 use Illuminate\Http\JsonResponse;
@@ -20,17 +21,23 @@ class PartyApiController extends Controller
     protected LedgerService $ledgerService;
     protected SalesInvoiceService $salesInvoiceService;
     protected PurchaseInvoiceService $purchaseInvoiceService;
+    protected ReportService $reportService;
+    protected \App\Http\Controllers\Admin\PartyController $partyAdmin;
 
     public function __construct(
         PartyService $partyService,
         LedgerService $ledgerService,
         SalesInvoiceService $salesInvoiceService,
-        PurchaseInvoiceService $purchaseInvoiceService
+        PurchaseInvoiceService $purchaseInvoiceService,
+        ReportService $reportService,
+        \App\Http\Controllers\Admin\PartyController $partyAdmin
     ) {
         $this->partyService = $partyService;
         $this->ledgerService = $ledgerService;
         $this->salesInvoiceService = $salesInvoiceService;
         $this->purchaseInvoiceService = $purchaseInvoiceService;
+        $this->reportService = $reportService;
+        $this->partyAdmin = $partyAdmin;
     }
 
     public function index(Request $request): JsonResponse
@@ -325,5 +332,14 @@ class PartyApiController extends Controller
             ['voucher_number' => $result['voucher']->voucher_number],
             'Payment recorded against ' . $result['invoices']->count() . ' invoice(s).'
         );
+    }
+
+    /**
+     * Apply a party's unapplied voucher amount (or opening balance) to one open invoice.
+     * Mirrors admin.parties.apply-unapplied for app consumption.
+     */
+    public function applyUnapplied(Request $request, int $id): JsonResponse
+    {
+        return $this->partyAdmin->applyUnappliedAmount($request, $id);
     }
 }
