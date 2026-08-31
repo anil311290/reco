@@ -137,9 +137,11 @@ class _TransactionFilterSheet<T extends BaseTransactionsTabController>
                       items: (controller as AllVouchersController).typeOptions,
                       itemLabelBuilder: (value) => switch (value) {
                         'All' => 'All Types',
-                        'income' => 'Sales',
-                        'expense' => 'Purchase',
+                        'payment' => 'Payment',
+                        'receipt' => 'Receipt',
                         'journal' => 'Adjustment',
+                        'income' => 'Sales (Invoice posting)',
+                        'expense' => 'Purchase (Invoice posting)',
                         _ => _titleCase(value),
                       },
                       onChanged: (value) =>
@@ -166,44 +168,46 @@ class _TransactionFilterSheet<T extends BaseTransactionsTabController>
                             setModalState(() => partyId = value ?? 0),
                       ),
                     ),
-                  CustomTextField(
-                    label: 'From Date',
-                    controller: fromDateController,
-                    readOnly: true,
-                    hintText: 'DD-MMM-YYYY',
-                    suffixIcon: Icons.calendar_today_outlined,
-                    onTap: () async {
-                      final selected = await showDatePicker(
-                        context: context,
-                        initialDate: DateTime.now(),
-                        firstDate: DateTime(2000),
-                        lastDate: DateTime(2100),
-                      );
-                      if (selected != null) {
-                        fromDateController.text =
-                            AppDateFormatter.formatDisplay(selected);
-                      }
-                    },
-                  ),
-                  CustomTextField(
-                    label: 'To Date',
-                    controller: toDateController,
-                    readOnly: true,
-                    hintText: 'DD-MMM-YYYY',
-                    suffixIcon: Icons.calendar_today_outlined,
-                    onTap: () async {
-                      final selected = await showDatePicker(
-                        context: context,
-                        initialDate: DateTime.now(),
-                        firstDate: DateTime(2000),
-                        lastDate: DateTime(2100),
-                      );
-                      if (selected != null) {
-                        toDateController.text =
-                            AppDateFormatter.formatDisplay(selected);
-                      }
-                    },
-                  ),
+                  if (controller.supportsDateFilter) ...<Widget>[
+                    CustomTextField(
+                      label: 'From Date',
+                      controller: fromDateController,
+                      readOnly: true,
+                      hintText: 'DD-MMM-YYYY',
+                      suffixIcon: Icons.calendar_today_outlined,
+                      onTap: () async {
+                        final selected = await showDatePicker(
+                          context: context,
+                          initialDate: DateTime.now(),
+                          firstDate: DateTime(2000),
+                          lastDate: DateTime(2100),
+                        );
+                        if (selected != null) {
+                          fromDateController.text =
+                              AppDateFormatter.formatDisplay(selected);
+                        }
+                      },
+                    ),
+                    CustomTextField(
+                      label: 'To Date',
+                      controller: toDateController,
+                      readOnly: true,
+                      hintText: 'DD-MMM-YYYY',
+                      suffixIcon: Icons.calendar_today_outlined,
+                      onTap: () async {
+                        final selected = await showDatePicker(
+                          context: context,
+                          initialDate: DateTime.now(),
+                          firstDate: DateTime(2000),
+                          lastDate: DateTime(2100),
+                        );
+                        if (selected != null) {
+                          toDateController.text =
+                              AppDateFormatter.formatDisplay(selected);
+                        }
+                      },
+                    ),
+                  ],
                   Row(
                     children: <Widget>[
                       Expanded(
@@ -215,9 +219,19 @@ class _TransactionFilterSheet<T extends BaseTransactionsTabController>
                             }
                           },
                           style: OutlinedButton.styleFrom(
-                            minimumSize: const Size.fromHeight(48),
+                            minimumSize: const Size.fromHeight(45),
+                            side: BorderSide(
+                              color: Theme.of(context).colorScheme.primary,
+                              width: 1.2,
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
                           ),
-                          child: const Text('Clear'),
+                          child: const Text(
+                            'Clear',
+                            style: TextStyle(fontWeight: FontWeight.w700),
+                          ),
                         ),
                       ),
                       const SizedBox(width: 10),
@@ -245,9 +259,15 @@ class _TransactionFilterSheet<T extends BaseTransactionsTabController>
                             }
                           },
                           style: FilledButton.styleFrom(
-                            minimumSize: const Size.fromHeight(48),
+                            minimumSize: const Size.fromHeight(45),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
                           ),
-                          child: const Text('Apply'),
+                          child: const Text(
+                            'Apply',
+                            style: TextStyle(fontWeight: FontWeight.w800),
+                          ),
                         ),
                       ),
                     ],

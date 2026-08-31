@@ -85,34 +85,60 @@ class _ItemHistoryScreenState extends State<ItemHistoryScreen> {
     final accentColor = item.type == 'service'
         ? const Color(0xFF0284C7)
         : theme.colorScheme.primary;
-    final primarySummary = <MapEntry<String, String>>[
-      MapEntry<String, String>('Category', item.categoryName.isEmpty ? '-' : item.categoryName),
-      MapEntry<String, String>('HSN / SAC', item.hsnSacCode.isEmpty ? '-' : item.hsnSacCode),
-      MapEntry<String, String>('Unit', item.unit.isEmpty ? '-' : item.unit.toUpperCase()),
-      MapEntry<String, String>('Tax Rate', item.taxLabel.isEmpty ? '-' : item.taxLabel),
-    ];
-    final priceSummary = <MapEntry<String, String>>[
-      if (item.type == 'goods')
-        MapEntry<String, String>('Purchase Price', _plainCurrency(item.purchasePrice)),
-      MapEntry<String, String>(
-        item.type == 'service' ? 'Default Rate' : 'Selling Price',
+    final isGoods = item.type == 'goods';
+
+    final fields = <_ItemDetailField>[
+      _ItemDetailField('Code', item.itemCode),
+      _ItemDetailField('Type', _titleCase(item.type)),
+      _ItemDetailField(
+        'Category',
+        item.categoryName.isEmpty ? '-' : item.categoryName,
+      ),
+      _ItemDetailField(
+        'HSN / SAC',
+        item.hsnSacCode.isEmpty ? '-' : item.hsnSacCode,
+      ),
+      _ItemDetailField(
+        'Unit',
+        item.unit.isEmpty ? '-' : item.unit.toUpperCase(),
+      ),
+      _ItemDetailField(
+        'Purchase Price',
+        isGoods ? _plainCurrency(item.purchasePrice) : '-',
+      ),
+      _ItemDetailField(
+        'Selling Price',
         _plainCurrency(item.sellingPrice),
       ),
-      if (item.type == 'goods')
-        MapEntry<String, String>(
-          'Opening Stock',
-          '${controller.formatQuantity(item.openingStock)} ${item.unit}',
-        ),
-      if (item.type == 'goods')
-        MapEntry<String, String>(
-          'Current Stock',
-          '${controller.formatQuantity(item.currentStock)} ${item.unit}',
-        ),
-      MapEntry<String, String>(
+      _ItemDetailField(
+        'Tax Rate',
+        item.taxLabel.isEmpty ? '-' : item.taxLabel,
+      ),
+      _ItemDetailField(
+        'Status',
+        item.isActive ? 'Active' : 'Inactive',
+        isBadge: true,
+        badgeColor: item.isActive
+            ? const Color(0xFF15803D)
+            : const Color(0xFF6B7280),
+      ),
+      _ItemDetailField(
+        'Opening Stock',
+        isGoods
+            ? '${controller.formatQuantity(item.openingStock)} ${item.unit}'
+            : '-',
+      ),
+      _ItemDetailField(
+        'Current Stock',
+        isGoods
+            ? '${controller.formatQuantity(item.currentStock)} ${item.unit}'
+            : '-',
+      ),
+      _ItemDetailField(
         'Total Purchases',
         _plainCurrency(controller.totalPurchaseAmount.value),
       ),
-      MapEntry<String, String>(
+      _ItemDetailField(
         'Total Sales',
         _plainCurrency(controller.totalSalesAmount.value),
       ),
@@ -124,28 +150,28 @@ class _ItemHistoryScreenState extends State<ItemHistoryScreen> {
           width: double.infinity,
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(22),
+            borderRadius: BorderRadius.circular(18),
             gradient: LinearGradient(
               colors: <Color>[
-                accentColor.withValues(alpha: .14),
+                accentColor.withValues(alpha: .12),
                 theme.colorScheme.surface,
               ],
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
             ),
             border: Border.all(
-              color: accentColor.withValues(alpha: .16),
+              color: accentColor.withValues(alpha: .18),
             ),
           ),
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: <Widget>[
               Container(
-                width: 58,
-                height: 58,
+                width: 56,
+                height: 56,
                 decoration: BoxDecoration(
                   color: theme.colorScheme.surface,
-                  borderRadius: BorderRadius.circular(18),
+                  borderRadius: BorderRadius.circular(16),
                 ),
                 alignment: Alignment.center,
                 child: Icon(
@@ -153,7 +179,7 @@ class _ItemHistoryScreenState extends State<ItemHistoryScreen> {
                       ? Icons.design_services_rounded
                       : Icons.inventory_2_rounded,
                   color: accentColor,
-                  size: 28,
+                  size: 26,
                 ),
               ),
               const SizedBox(width: 14),
@@ -161,43 +187,15 @@ class _ItemHistoryScreenState extends State<ItemHistoryScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: <Widget>[
-                    Row(
-                      children: <Widget>[
-                        Expanded(
-                          child: Text(
-                            item.name,
-                            style: theme.textTheme.titleLarge?.copyWith(
-                              fontWeight: FontWeight.w800,
-                            ),
-                          ),
-                        ),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 10,
-                            vertical: 5,
-                          ),
-                          decoration: BoxDecoration(
-                            color: item.isActive
-                                ? const Color(0xFFDCFCE7)
-                                : theme.colorScheme.surfaceContainerHighest,
-                            borderRadius: BorderRadius.circular(999),
-                          ),
-                          child: Text(
-                            item.isActive ? 'Active' : 'Inactive',
-                            style: TextStyle(
-                              fontSize: 11.5,
-                              fontWeight: FontWeight.w700,
-                              color: item.isActive
-                                  ? const Color(0xFF15803D)
-                                  : theme.colorScheme.onSurfaceVariant,
-                            ),
-                          ),
-                        ),
-                      ],
+                    Text(
+                      item.name,
+                      style: theme.textTheme.titleLarge?.copyWith(
+                        fontWeight: FontWeight.w800,
+                      ),
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      '${item.itemCode} • ${_titleCase(item.type)}',
+                      '${item.itemCode} · ${_titleCase(item.type)}',
                       style: theme.textTheme.bodyMedium?.copyWith(
                         color: theme.colorScheme.onSurfaceVariant,
                         fontWeight: FontWeight.w600,
@@ -222,95 +220,110 @@ class _ItemHistoryScreenState extends State<ItemHistoryScreen> {
           ),
         ),
         const SizedBox(height: 12),
-        _buildSummaryCard(
-          theme: theme,
-          title: 'Overview',
-          values: primarySummary,
-        ),
-        const SizedBox(height: 12),
-        _buildSummaryCard(
-          theme: theme,
-          title: item.type == 'service' ? 'Rates' : 'Stock & Amounts',
-          values: priceSummary,
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: theme.cardColor,
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(
+              color: theme.dividerColor.withValues(alpha: .35),
+            ),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              Text(
+                'Item Details',
+                style: theme.textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const SizedBox(height: 12),
+              LayoutBuilder(
+                builder: (context, constraints) {
+                  final crossAxis = constraints.maxWidth >= 720
+                      ? 4
+                      : constraints.maxWidth >= 460
+                          ? 3
+                          : 2;
+                  final spacing = 10.0;
+                  final cellWidth =
+                      (constraints.maxWidth - (spacing * (crossAxis - 1))) /
+                          crossAxis;
+                  return Wrap(
+                    spacing: spacing,
+                    runSpacing: spacing,
+                    children: fields
+                        .map(
+                          (field) => SizedBox(
+                            width: cellWidth,
+                            child: _detailTile(theme, field),
+                          ),
+                        )
+                        .toList(),
+                  );
+                },
+              ),
+            ],
+          ),
         ),
       ],
     );
   }
 
-  Widget _buildSummaryCard({
-    required ThemeData theme,
-    required String title,
-    required List<MapEntry<String, String>> values,
-  }) {
+  Widget _detailTile(ThemeData theme, _ItemDetailField field) {
     return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
-        color: theme.cardColor,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(
-          color: theme.dividerColor.withValues(alpha: .28),
-        ),
+        color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: .35),
+        borderRadius: BorderRadius.circular(12),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
           Text(
-            title,
-            style: theme.textTheme.titleMedium?.copyWith(
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-          const SizedBox(height: 12),
-          Wrap(
-            spacing: 10,
-            runSpacing: 10,
-            children: values
-                .map(
-                  (entry) => _summaryTile(
-                    theme,
-                    entry.key,
-                    entry.value,
-                  ),
-                )
-                .toList(),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _summaryTile(ThemeData theme, String label, String value) {
-    return Container(
-      width: (MediaQuery.of(context).size.width - 46) / 2,
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
-      decoration: BoxDecoration(
-        color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: .42),
-        borderRadius: BorderRadius.circular(14),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: <Widget>[
-          Text(
-            label,
+            field.label,
             style: theme.textTheme.labelSmall?.copyWith(
               color: theme.colorScheme.onSurfaceVariant,
               fontWeight: FontWeight.w600,
             ),
           ),
-          const SizedBox(height: 5),
-          Text(
-            value,
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-            style: theme.textTheme.bodyMedium?.copyWith(
-              fontWeight: FontWeight.w700,
+          const SizedBox(height: 4),
+          if (field.isBadge)
+            Container(
+              padding: const EdgeInsets.symmetric(
+                horizontal: 10,
+                vertical: 3,
+              ),
+              decoration: BoxDecoration(
+                color: (field.badgeColor ?? const Color(0xFF6B7280))
+                    .withValues(alpha: .14),
+                borderRadius: BorderRadius.circular(999),
+              ),
+              child: Text(
+                field.value,
+                style: TextStyle(
+                  fontSize: 11.5,
+                  fontWeight: FontWeight.w800,
+                  color: field.badgeColor,
+                ),
+              ),
+            )
+          else
+            Text(
+              field.value.isEmpty ? '-' : field.value,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: theme.textTheme.bodyMedium?.copyWith(
+                fontWeight: FontWeight.w700,
+              ),
             ),
-          ),
         ],
       ),
     );
   }
+
   Widget _buildHistorySection(ThemeData theme) {
     return Container(
       width: double.infinity,
@@ -459,28 +472,15 @@ class _ItemHistoryScreenState extends State<ItemHistoryScreen> {
     final calculatedHeight = 42.0 + ((rows.length + 1) * 52.0);
     final tableHeight = calculatedHeight.clamp(200.0, 550.0);
 
-    return Container(
-      decoration: BoxDecoration(
-        color: theme.cardColor,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: theme.dividerColor.withValues(alpha: .35)),
-        boxShadow: <BoxShadow>[
-          BoxShadow(
-            color: theme.colorScheme.shadow.withValues(alpha: .03),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: SizedBox(
-        height: tableHeight,
+    return SizedBox(
+      height: tableHeight,
         child: MastersTableShell(
           isLoading: controller.isLoading.value,
           emptyText: 'No transactions found for this item.',
           minWidth: 1180,
           columns: <DataColumn2>[
             masterColumn(context, 'Date'),
-            masterColumn(context, 'Type', fixedWidth: 100),
+            masterColumn(context, 'Type', fixedWidth: 130),
             masterColumn(context, 'Invoice #'),
             masterColumn(context, 'Party', size: ColumnSize.M),
             masterColumn(context, 'Qty In'),
@@ -491,8 +491,7 @@ class _ItemHistoryScreenState extends State<ItemHistoryScreen> {
           ],
           rows: tableRows,
         ),
-      ),
-    );
+      );
   }
 
   Widget _buildPaginationFooter(ThemeData theme) {
@@ -540,43 +539,32 @@ class _ItemHistoryScreenState extends State<ItemHistoryScreen> {
   Widget _typeBadge(ThemeData theme, Map<String, dynamic> row) {
     final type = (row['type'] ?? '').toString();
     final label = (row['type_label'] ?? '-').toString();
-    final Color background;
-    final Color foreground;
-    final Color border;
+    final Color color;
     switch (type) {
       case 'sale':
-        background = const Color(0xFFE0F2FE);
-        foreground = const Color(0xFF0369A1);
-        border = const Color(0xFF7DD3FC);
+        color = const Color(0xFF3B82F6);
         break;
       case 'purchase':
-        background = const Color(0xFFDCFCE7);
-        foreground = const Color(0xFF15803D);
-        border = const Color(0xFF86EFAC);
+        color = const Color(0xFF10B981);
         break;
       case 'opening':
-        background = const Color(0xFFF3E8FF);
-        foreground = const Color(0xFF7E22CE);
-        border = const Color(0xFFD8B4FE);
+        color = const Color(0xFF6366F1);
         break;
       default:
-        background = theme.colorScheme.surfaceContainerHighest;
-        foreground = theme.colorScheme.onSurfaceVariant;
-        border = theme.dividerColor.withValues(alpha: .45);
+        color = const Color(0xFF6B7280);
     }
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
-        color: background,
+        color: color.withValues(alpha: .14),
         borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: border),
       ),
       child: Text(
         label,
-        style: theme.textTheme.bodySmall?.copyWith(
-          color: foreground,
-          fontWeight: FontWeight.w700,
-          fontSize: 11,
+        style: TextStyle(
+          color: color,
+          fontWeight: FontWeight.w800,
+          fontSize: 11.5,
         ),
       ),
     );
@@ -698,6 +686,20 @@ class _ItemHistoryScreenState extends State<ItemHistoryScreen> {
       },
     );
   }
+}
+
+class _ItemDetailField {
+  const _ItemDetailField(
+    this.label,
+    this.value, {
+    this.isBadge = false,
+    this.badgeColor,
+  });
+
+  final String label;
+  final String value;
+  final bool isBadge;
+  final Color? badgeColor;
 }
 
 class _ExportActionChip extends StatelessWidget {

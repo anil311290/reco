@@ -182,7 +182,20 @@ class _MasterFilterSheet extends StatelessWidget {
                               }
                             });
                           },
-                          child: const Text('Clear'),
+                          style: OutlinedButton.styleFrom(
+                            minimumSize: const Size.fromHeight(45),
+                            side: BorderSide(
+                              color: Theme.of(context).colorScheme.primary,
+                              width: 1.2,
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          child: const Text(
+                            'Clear',
+                            style: TextStyle(fontWeight: FontWeight.w700),
+                          ),
                         ),
                       ),
                       const SizedBox(width: 10),
@@ -195,7 +208,16 @@ class _MasterFilterSheet extends StatelessWidget {
                               }
                             });
                           },
-                          child: const Text('Apply'),
+                          style: FilledButton.styleFrom(
+                            minimumSize: const Size.fromHeight(45),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          child: const Text(
+                            'Apply',
+                            style: TextStyle(fontWeight: FontWeight.w800),
+                          ),
                         ),
                       ),
                     ],

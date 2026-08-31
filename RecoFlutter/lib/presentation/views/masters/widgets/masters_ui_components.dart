@@ -675,6 +675,33 @@ class MasterBottomSheetHandle extends StatelessWidget {
   }
 }
 
+class DrCrBalanceCell extends StatelessWidget {
+  const DrCrBalanceCell({
+    required this.amount,
+    required this.type,
+    super.key,
+  });
+
+  final double amount;
+  final String type;
+
+  bool get _isCredit => type.toLowerCase() == 'credit';
+
+  @override
+  Widget build(BuildContext context) {
+    final label = amount == 0
+        ? '₹0.00'
+        : '₹${amount.toStringAsFixed(2)} ${_isCredit ? 'Cr' : 'Dr'}';
+    return Text(
+      label,
+      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+            fontWeight: FontWeight.w600,
+            color: Theme.of(context).colorScheme.onSurface,
+          ),
+    );
+  }
+}
+
 DataColumn2 masterColumn(
   BuildContext context,
   String title, {

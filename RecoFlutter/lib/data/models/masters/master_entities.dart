@@ -8,6 +8,8 @@ class LookupOption {
     this.kind,
     this.transactionMode,
     this.availableBalance,
+    this.partyBalance,
+    this.partyBalanceType,
   });
 
   final int id;
@@ -18,6 +20,8 @@ class LookupOption {
   final String? kind;
   final String? transactionMode;
   final double? availableBalance;
+  final double? partyBalance;
+  final String? partyBalanceType;
 
   String get valueKey {
     final raw = rawId?.trim();
@@ -57,6 +61,8 @@ class LookupOption {
       kind: json['kind']?.toString(),
       transactionMode: json['transaction_mode']?.toString(),
       availableBalance: _parseNullableDouble(json['available_balance']),
+      partyBalance: _parseNullableDouble(json['party_balance']),
+      partyBalanceType: json['party_balance_type']?.toString(),
     );
   }
 }

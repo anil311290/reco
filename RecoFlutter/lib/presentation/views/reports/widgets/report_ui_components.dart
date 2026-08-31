@@ -148,7 +148,7 @@ class ReportStatCard extends StatelessWidget {
           padding: EdgeInsets.all(compact ? 11 : 12),
           decoration: BoxDecoration(
             color: color.withValues(alpha: .08),
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(10),
             border: Border.all(color: color.withValues(alpha: .18)),
           ),
           child: Column(
@@ -192,7 +192,7 @@ class ReportStatCard extends StatelessWidget {
                 overflow: TextOverflow.ellipsis,
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
                   color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  fontSize: compact ? 10.5 : 11,
+                  fontSize: compact ? 8.5 : 11,
                   height: 1.2,
                 ),
               ),

@@ -226,9 +226,16 @@ class ItemsController extends GetxController with MasterExportMixin {
   }
 
   Future<void> deleteItem(ItemEntity entity) async {
-    await _repository.delete(entity);
-    await refreshData();
-    AppSnackbar.success('Item delete queued.');
+    try {
+      await _repository.delete(entity);
+      if (_networkMonitorService.isOnline.value) {
+        await _syncService.syncPendingMutations(showSuccessMessage: false);
+      }
+      await refreshData(forceRemote: true);
+      AppSnackbar.success('Item deleted.');
+    } catch (error) {
+      AppSnackbar.error(error.toString());
+    }
   }
 
   Future<void> toggleStatus(ItemEntity entity, bool value) async {

@@ -216,3 +216,136 @@ Widget overdueBadge(BuildContext context, Map<String, dynamic> row) {
     ),
   );
 }
+
+/// Aggregate invoice-level outstanding rows into party-wise totals (web parity).
+List<Map<String, dynamic>> summarizeOutstandingPartyWise(
+  List<Map<String, dynamic>> rows,
+) {
+  final groups = <String, Map<String, dynamic>>{};
+
+  for (final row in rows) {
+    final partyRaw = row['party'];
+    if (partyRaw is! Map) continue;
+    final party = Map<String, dynamic>.from(partyRaw);
+    final key = (party['id'] ?? party['name'] ?? '').toString();
+    if (key.isEmpty) continue;
+
+    final existing = groups.putIfAbsent(
+      key,
+      () => <String, dynamic>{
+        'party': party,
+        'invoice_count': 0,
+        'invoice_total': 0.0,
+        'amount_paid': 0.0,
+        'balance': 0.0,
+        'max_due_days': null,
+      },
+    );
+
+    existing['invoice_count'] = (existing['invoice_count'] as int) + 1;
+    existing['invoice_total'] =
+        (existing['invoice_total'] as double) +
+        (double.tryParse(row['invoice_total']?.toString() ?? '') ?? 0);
+    existing['amount_paid'] =
+        (existing['amount_paid'] as double) +
+        (double.tryParse(row['amount_paid']?.toString() ?? '') ?? 0);
+    existing['balance'] =
+        (existing['balance'] as double) +
+        (double.tryParse(row['balance']?.toString() ?? '') ?? 0);
+
+    final dueDays = int.tryParse(
+      (row['due_days'] ?? row['overdue_days'])?.toString() ?? '',
+    );
+    if (dueDays != null) {
+      final currentMax = existing['max_due_days'] as int?;
+      if (currentMax == null || dueDays > currentMax) {
+        existing['max_due_days'] = dueDays;
+      }
+    }
+  }
+
+  final result = groups.values.toList()
+    ..sort(
+      (a, b) => ((b['balance'] as double).compareTo(a['balance'] as double)),
+    );
+  return result;
+}
+
+class OutstandingViewTabs extends StatelessWidget {
+  const OutstandingViewTabs({
+    required this.partyWise,
+    required this.onChanged,
+    required this.primaryColor,
+    super.key,
+  });
+
+  final bool partyWise;
+  final ValueChanged<bool> onChanged;
+  final Color primaryColor;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: <Widget>[
+        Expanded(
+          child: _tabChip(
+            context,
+            label: 'Invoice Wise',
+            selected: !partyWise,
+            onTap: () => onChanged(false),
+          ),
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: _tabChip(
+            context,
+            label: 'Party Wise',
+            selected: partyWise,
+            onTap: () => onChanged(true),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _tabChip(
+    BuildContext context, {
+    required String label,
+    required bool selected,
+    required VoidCallback onTap,
+  }) {
+    return Material(
+      color: selected
+          ? primaryColor.withValues(alpha: .12)
+          : Theme.of(context).colorScheme.surfaceContainerHighest.withValues(
+                alpha: .45,
+              ),
+      borderRadius: BorderRadius.circular(10),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(10),
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 10),
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(
+              color: selected
+                  ? primaryColor.withValues(alpha: .45)
+                  : Theme.of(context).dividerColor.withValues(alpha: .35),
+            ),
+          ),
+          child: Text(
+            label,
+            style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                  fontWeight: FontWeight.w800,
+                  color: selected
+                      ? primaryColor
+                      : Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
+          ),
+        ),
+      ),
+    );
+  }
+}

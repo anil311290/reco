@@ -1,29 +1,31 @@
+import 'package:data_table_2/data_table_2.dart';
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:get/get.dart';
 
+import '../../../core/utils/app_date_formatter.dart';
 import '../../../data/repositories/settings/audit_logs_repository.dart';
 import '../../controllers/settings/audit_log_detail_controller.dart';
 import '../../controllers/settings/audit_logs_controller.dart';
 import '../../widgets/common/custom_text_field.dart';
+import '../masters/widgets/masters_ui_components.dart';
+import '../reports/widgets/report_ui_components.dart';
 import 'audit_log_detail_screen.dart';
 import 'widgets/audit_log_ui_components.dart';
 
 class AuditLogsScreen extends GetView<AuditLogsController> {
   const AuditLogsScreen({super.key});
 
+  static const Color _primaryColor = Color(0xFF6366F1);
+
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final primary = theme.colorScheme.primary;
-
     return Scaffold(
       appBar: AppBar(
-        title: Text(
-          'Audit Logs',
-          style: theme.textTheme.titleMedium?.copyWith(
-            fontWeight: FontWeight.w600,
-          ),
+        title: ReportPageTitle(
+          title: 'Audit Logs',
+          icon: FontAwesomeIcons.clockRotateLeft.data,
+          color: _primaryColor,
         ),
         actions: <Widget>[
           AnimatedRotation(
@@ -33,340 +35,58 @@ class AuditLogsScreen extends GetView<AuditLogsController> {
               onPressed: controller.isRefreshing.value
                   ? null
                   : controller.loadLogs,
-              icon: Icon(
-                Icons.refresh_rounded,
-                color: controller.isRefreshing.value
-                    ? theme.colorScheme.primary
-                    : null,
-              ),
+              icon: const Icon(Icons.refresh_rounded),
               tooltip: 'Refresh',
             ),
           ),
           const SizedBox(width: 4),
         ],
       ),
-      body: Obx(
-        () => RefreshIndicator(
+      body: Obx(() {
+        final stats = controller.statistics;
+        final totalLogs = controller.total.value;
+        final todayLogs = stats['today_logs']?.toString() ?? '0';
+        final monthLogs = stats['month_logs']?.toString() ?? '0';
+        final modulesCount = stats['by_module'] is Map
+            ? (stats['by_module'] as Map).length
+            : 0;
+
+        return RefreshIndicator(
           onRefresh: controller.loadLogs,
-          child: CustomScrollView(
-            slivers: <Widget>[
-              // ── Compact Stats Bar ──
-              SliverPadding(
-                padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-                sliver: SliverToBoxAdapter(
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 12,
-                    ),
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: <Color>[
-                          primary.withValues(alpha: .12),
-                          primary.withValues(alpha: .04),
-                        ],
-                      ),
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(
-                        color: primary.withValues(alpha: .18),
-                      ),
-                    ),
-                      child: Row(
-                        children: <Widget>[
-                          Icon(
-                            FontAwesomeIcons.clockRotateLeft.data,
-                          size: 18,
-                          color: primary,
-                        ),
-                        const SizedBox(width: 10),
-                        Text(
-                          '${controller.total.value} records',
-                          style: theme.textTheme.titleSmall?.copyWith(
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                        const Spacer(),
-                        if (controller.statistics['today_logs'] != null)
-                          _MiniStat(
-                            label: 'Today',
-                            value:
-                                '${controller.statistics['today_logs']}',
-                            color: Colors.blue,
-                          ),
-                        const SizedBox(width: 12),
-                        if (controller.statistics['month_logs'] != null)
-                          _MiniStat(
-                            label: 'Month',
-                            value:
-                                '${controller.statistics['month_logs']}',
-                            color: Colors.green,
-                          ),
-                        const SizedBox(width: 12),
-                        if (controller.statistics['by_module'] is Map)
-                          _MiniStat(
-                            label: 'Modules',
-                            value:
-                                '${(controller.statistics['by_module'] as Map).length}',
-                            color: Colors.indigo,
-                          ),
-                      ],
-                    ),
-                  ),
-                ),
+          child: ListView(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            children: <Widget>[
+              _StatGrid(
+                total: totalLogs,
+                today: todayLogs,
+                month: monthLogs,
+                modules: '$modulesCount',
               ),
-
-              // ── Filters (matching web: Search, Action, Module, User) ──
-              SliverPadding(
-                padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
-                sliver: SliverToBoxAdapter(
-                  child: Column(
-                    children: <Widget>[
-                      CustomTextField(
-                        label: 'Search',
-                        controller: controller.searchController,
-                        hintText: 'Search by description or module',
-                        prefixIcon: Icons.search_rounded,
-                        bottomPadding: 8,
-                        onFieldSubmitted: (_) => controller.applyFilters(),
-                      ),
-                      Row(
-                        children: <Widget>[
-                          Expanded(
-                            child: Obx(
-                              () => CustomDropdown<String>(
-                                label: 'Action',
-                                value: controller.selectedAction.value.isEmpty
-                                    ? null
-                                    : controller.selectedAction.value,
-                                items: controller.actionOptions,
-                                hint: 'All Actions',
-                                enableSearch: false,
-                                itemLabelBuilder: auditLabelize,
-                                onChanged: (value) {
-                                  controller.selectedAction.value =
-                                      value ?? '';
-                                  controller.applyFilters();
-                                },
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 10),
-                          Expanded(
-                            child: Obx(
-                              () => CustomDropdown<String>(
-                                label: 'Module',
-                                value: controller.selectedModule.value.isEmpty
-                                    ? null
-                                    : controller.selectedModule.value,
-                                items: controller.moduleOptions,
-                                hint: 'All Modules',
-                                enableSearch: false,
-                                itemLabelBuilder: auditLabelize,
-                                onChanged: (value) {
-                                  controller.selectedModule.value =
-                                      value ?? '';
-                                  controller.applyFilters();
-                                },
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                      Obx(
-                        () => CustomDropdown<String>(
-                          label: 'User',
-                          value: controller.selectedUserId.value.isEmpty
-                              ? null
-                              : controller.selectedUserId.value,
-                          items: controller.userOptions
-                              .map((item) => item['id'].toString())
-                              .toList(),
-                          hint: 'All Users',
-                          itemLabelBuilder: (id) {
-                            final user = controller.userOptions
-                                .firstWhereOrNull(
-                                  (item) => item['id'].toString() == id,
-                                );
-                            return (user?['name'] ?? 'User').toString();
-                          },
-                          onChanged: (value) {
-                            controller.selectedUserId.value = value ?? '';
-                            controller.applyFilters();
-                          },
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
+              const SizedBox(height: 12),
+              CompactSearchFilterBar(
+                hint: 'Search by description or module...',
+                controller: controller.searchController,
+                onChanged: (_) => controller.applyFilters(),
+                onFilterTap: () => _openFilters(context),
+                filterTooltip: 'Audit log filters',
+                onExcelTap: () => _export(context, 'excel'),
+                onPdfTap: () => _export(context, 'pdf'),
               ),
-
-              // ── Active filter chips ──
-              Obx(() {
-                final hasFilters = controller.selectedAction.value.isNotEmpty ||
-                    controller.selectedModule.value.isNotEmpty ||
-                    controller.selectedUserId.value.isNotEmpty;
-
-                if (!hasFilters) return const SliverToBoxAdapter();
-
-                return SliverPadding(
-                  padding: const EdgeInsets.fromLTRB(16, 2, 16, 8),
-                  sliver: SliverToBoxAdapter(
-                    child: Wrap(
-                      spacing: 6,
-                      runSpacing: 4,
-                      children: <Widget>[
-                        if (controller.selectedAction.value.isNotEmpty)
-                          ActionChip(
-                            avatar: const Icon(Icons.close, size: 14),
-                            label: Text(
-                              auditLabelize(controller.selectedAction.value),
-                              style: const TextStyle(fontSize: 11),
-                            ),
-                            onPressed: () {
-                              controller.selectedAction.value = '';
-                              controller.applyFilters();
-                            },
-                            visualDensity: VisualDensity.compact,
-                            materialTapTargetSize:
-                                MaterialTapTargetSize.shrinkWrap,
-                          ),
-                        if (controller.selectedModule.value.isNotEmpty)
-                          ActionChip(
-                            avatar: const Icon(Icons.close, size: 14),
-                            label: Text(
-                              auditLabelize(controller.selectedModule.value),
-                              style: const TextStyle(fontSize: 11),
-                            ),
-                            onPressed: () {
-                              controller.selectedModule.value = '';
-                              controller.applyFilters();
-                            },
-                            visualDensity: VisualDensity.compact,
-                            materialTapTargetSize:
-                                MaterialTapTargetSize.shrinkWrap,
-                          ),
-                        if (controller.selectedUserId.value.isNotEmpty)
-                          ActionChip(
-                            avatar: const Icon(Icons.close, size: 14),
-                            label: Text(
-                              controller.userOptions
-                                      .firstWhereOrNull(
-                                        (item) =>
-                                            item['id'].toString() ==
-                                            controller.selectedUserId.value,
-                                      )
-                                      ?.let((u) => u['name']?.toString()) ??
-                                  'User',
-                              style: const TextStyle(fontSize: 11),
-                            ),
-                            onPressed: () {
-                              controller.selectedUserId.value = '';
-                              controller.applyFilters();
-                            },
-                            visualDensity: VisualDensity.compact,
-                            materialTapTargetSize:
-                                MaterialTapTargetSize.shrinkWrap,
-                          ),
-                        ActionChip(
-                          avatar: const Icon(Icons.clear_all, size: 14),
-                          label: const Text(
-                            'Clear all',
-                            style: TextStyle(fontSize: 11),
-                          ),
-                          onPressed: () {
-                            controller.clearFilters();
-                            controller.applyFilters();
-                          },
-                          visualDensity: VisualDensity.compact,
-                          materialTapTargetSize:
-                              MaterialTapTargetSize.shrinkWrap,
-                        ),
-                      ],
-                    ),
-                  ),
-                );
-              }),
-
-              // ── Loading / Empty / List ──
+              const SizedBox(height: 12),
               if (controller.isLoading.value && controller.logs.isEmpty)
-                const SliverFillRemaining(
-                  hasScrollBody: false,
+                const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 60),
                   child: Center(child: CircularProgressIndicator()),
                 )
-              else if (controller.logs.isEmpty)
-                SliverFillRemaining(
-                  hasScrollBody: false,
-                  child: Center(
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: <Widget>[
-                        Icon(
-                          Icons.history_toggle_off_rounded,
-                          size: 48,
-                          color: theme.colorScheme.onSurfaceVariant
-                              .withValues(alpha: .35),
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          'No audit logs found',
-                          style: theme.textTheme.bodyMedium?.copyWith(
-                            color: theme.colorScheme.onSurfaceVariant,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                )
               else
-                SliverPadding(
-                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
-                  sliver: SliverList.separated(
-                    itemCount:
-                        controller.logs.length + (controller.hasMore ? 1 : 0),
-                    separatorBuilder: (_, _) => const SizedBox(height: 8),
-                    itemBuilder: (_, index) {
-                      if (index == controller.logs.length) {
-                        return Padding(
-                          padding: const EdgeInsets.symmetric(vertical: 8),
-                          child: Center(
-                            child: controller.isLoadingMore.value
-                                ? const SizedBox(
-                                    width: 24,
-                                    height: 24,
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2,
-                                    ),
-                                  )
-                                : OutlinedButton.icon(
-                                    onPressed: controller.loadMore,
-                                    icon: const Icon(
-                                      Icons.expand_more_rounded,
-                                      size: 18,
-                                    ),
-                                    label: const Text('Load More'),
-                                    style: OutlinedButton.styleFrom(
-                                      visualDensity: VisualDensity.compact,
-                                    ),
-                                  ),
-                          ),
-                        );
-                      }
-                      final item = controller.logs[index];
-                      return AuditLogCard(
-                        log: item,
-                        onTap: () => _openDetail(item),
-                      );
-                    },
-                  ),
+                _AuditTable(
+                  controller: controller,
+                  onDetail: _openDetail,
                 ),
-
-              const SliverPadding(
-                padding: EdgeInsets.only(bottom: 32),
-              ),
             ],
           ),
-        ),
-      ),
+        );
+      }),
     );
   }
 
@@ -380,44 +100,447 @@ class AuditLogsScreen extends GetView<AuditLogsController> {
       }),
     );
   }
+
+  void _export(BuildContext context, String format) {
+    controller.exportLogs(format);
+  }
+
+  void _openFilters(BuildContext context) {
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => _AuditFilterSheet(controller: controller),
+    );
+  }
 }
 
-// ── Mini stat dot ──
-class _MiniStat extends StatelessWidget {
-  const _MiniStat({
-    required this.label,
-    required this.value,
-    required this.color,
+class _StatGrid extends StatelessWidget {
+  const _StatGrid({
+    required this.total,
+    required this.today,
+    required this.month,
+    required this.modules,
   });
 
-  final String label;
-  final String value;
-  final Color color;
+  final int total;
+  final String today;
+  final String month;
+  final String modules;
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: <Widget>[
-        Container(
-          width: 6,
-          height: 6,
-          decoration: BoxDecoration(color: color, shape: BoxShape.circle),
-        ),
-        const SizedBox(width: 4),
-        Text(
-          '$value $label',
-          style: Theme.of(context).textTheme.labelSmall?.copyWith(
-            fontWeight: FontWeight.w700,
-            color: color,
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final width = constraints.maxWidth;
+        final crossAxis = width >= 720 ? 4 : 2;
+        final childWidth =
+            (width - ((crossAxis - 1) * 20)) / crossAxis;
+        return Wrap(
+          spacing: 10,
+          runSpacing: 10,
+          children: <Widget>[
+            SizedBox(
+              width: childWidth,
+              child: AuditStatCard(
+                label: 'Total Logs',
+                value: '$total',
+                icon: FontAwesomeIcons.clockRotateLeft.data,
+                color: const Color(0xFF6366F1),
+              ),
+            ),
+            SizedBox(
+              width: childWidth,
+              child: AuditStatCard(
+                label: "Today's Logs",
+                value: today,
+                icon: FontAwesomeIcons.calendarDay.data,
+                color: const Color(0xFF3B82F6),
+              ),
+            ),
+            SizedBox(
+              width: childWidth,
+              child: AuditStatCard(
+                label: 'This Month',
+                value: month,
+                icon: FontAwesomeIcons.calendar.data,
+                color: const Color(0xFF10B981),
+              ),
+            ),
+            SizedBox(
+              width: childWidth,
+              child: AuditStatCard(
+                label: 'Modules Tracked',
+                value: modules,
+                icon: FontAwesomeIcons.cubes.data,
+                color: const Color(0xFFF59E0B),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+}
+
+class _AuditFilterSheet extends StatefulWidget {
+  const _AuditFilterSheet({required this.controller});
+
+  final AuditLogsController controller;
+
+  @override
+  State<_AuditFilterSheet> createState() => _AuditFilterSheetState();
+}
+
+class _AuditFilterSheetState extends State<_AuditFilterSheet> {
+  late String _action;
+  late String _module;
+  late String _userId;
+
+  @override
+  void initState() {
+    super.initState();
+    _action = widget.controller.selectedAction.value;
+    _module = widget.controller.selectedModule.value;
+    _userId = widget.controller.selectedUserId.value;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Padding(
+      padding: EdgeInsets.only(
+        bottom: MediaQuery.of(context).viewInsets.bottom,
+      ),
+      child: Material(
+        color: theme.cardColor,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+        child: SafeArea(
+          top: false,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                Center(
+                  child: Container(
+                    width: 40,
+                    height: 4,
+                    margin: const EdgeInsets.only(bottom: 12),
+                    decoration: BoxDecoration(
+                      color: theme.dividerColor,
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                ),
+                Text(
+                  'Filters',
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'Filter audit logs by action, module, or user.',
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                ),
+                const SizedBox(height: 14),
+                CustomDropdown<String>(
+                  label: 'Action',
+                  value: _action.isEmpty ? null : _action,
+                  items: widget.controller.actionOptions,
+                  hint: 'All Actions',
+                  enableSearch: false,
+                  itemLabelBuilder: auditLabelize,
+                  onChanged: (value) => setState(() => _action = value ?? ''),
+                ),
+                const SizedBox(height: 12),
+                CustomDropdown<String>(
+                  label: 'Module',
+                  value: _module.isEmpty ? null : _module,
+                  items: widget.controller.moduleOptions,
+                  hint: 'All Modules',
+                  enableSearch: false,
+                  itemLabelBuilder: auditLabelize,
+                  onChanged: (value) => setState(() => _module = value ?? ''),
+                ),
+                const SizedBox(height: 12),
+                CustomDropdown<String>(
+                  label: 'User',
+                  value: _userId.isEmpty ? null : _userId,
+                  items: widget.controller.userOptions
+                      .map((item) => item['id'].toString())
+                      .toList(),
+                  hint: 'All Users',
+                  itemLabelBuilder: (id) {
+                    final user = widget.controller.userOptions.firstWhereOrNull(
+                      (item) => item['id'].toString() == id,
+                    );
+                    return (user?['name'] ?? 'User').toString();
+                  },
+                  onChanged: (value) => setState(() => _userId = value ?? ''),
+                ),
+                const SizedBox(height: 16),
+                Row(
+                  children: <Widget>[
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: () {
+                          widget.controller.clearFilters();
+                          if (mounted) Navigator.of(context).pop();
+                        },
+                        style: OutlinedButton.styleFrom(
+                          minimumSize: const Size.fromHeight(45),
+                          side: BorderSide(
+                            color: Theme.of(context).colorScheme.primary,
+                            width: 1.2,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        child: const Text(
+                          'Clear',
+                          style: TextStyle(fontWeight: FontWeight.w700),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: FilledButton(
+                        onPressed: () {
+                          widget.controller.selectedAction.value = _action;
+                          widget.controller.selectedModule.value = _module;
+                          widget.controller.selectedUserId.value = _userId;
+                          widget.controller.applyFilters();
+                          if (mounted) Navigator.of(context).pop();
+                        },
+                        style: FilledButton.styleFrom(
+                          minimumSize: const Size.fromHeight(45),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        child: const Text(
+                          'Apply',
+                          style: TextStyle(fontWeight: FontWeight.w800),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _AuditTable extends StatelessWidget {
+  const _AuditTable({
+    required this.controller,
+    required this.onDetail,
+  });
+
+  final AuditLogsController controller;
+  final ValueChanged<Map<String, dynamic>> onDetail;
+
+  @override
+  Widget build(BuildContext context) {
+    final logs = controller.logs;
+    final theme = Theme.of(context);
+    final loadedCount = logs.length;
+    final totalCount = controller.total.value;
+
+    final tableRows = <DataRow>[
+      ...List<DataRow>.generate(logs.length, (index) {
+        final log = logs[index];
+        final action = (log['action'] ?? '').toString();
+        final module = (log['module'] ?? '-').toString();
+        final userName = log['user'] is Map
+            ? (log['user']['name'] ?? 'System').toString()
+            : 'System';
+        final description = (log['description'] ?? '').toString();
+        final ip = (log['ip_address'] ?? '').toString();
+        final amount = _extractAmount(log);
+        final actionColor = _actionColor(action);
+
+        return DataRow(
+          cells: <DataCell>[
+            masterTextCell('${index + 1}'),
+            masterTextCell(_formatDateTime(log['created_at'])),
+            masterTextCell(userName),
+            DataCell(
+              Center(
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 3,
+                  ),
+                  decoration: BoxDecoration(
+                    color: actionColor.withValues(alpha: .14),
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                  child: Text(
+                    auditLabelize(action),
+                    style: TextStyle(
+                      color: actionColor,
+                      fontWeight: FontWeight.w800,
+                      fontSize: 11,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            DataCell(
+              Center(
+                child: Text(
+                  auditLabelize(module),
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ),
+            DataCell(
+              Center(
+                child: Text(
+                  amount ?? '-',
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+            ),
+            DataCell(
+              Center(
+                child: Text(
+                  description.isEmpty ? '-' : description,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ),
+            ),
+            masterTextCell(ip.isEmpty ? '-' : ip),
+            DataCell(
+              Center(
+                child: MasterActionButton(
+                  icon: Icons.visibility_outlined,
+                  tooltip: 'View details',
+                  color: const Color(0xFF6366F1),
+                  onTap: () => onDetail(log),
+                ),
+              ),
+            ),
+          ],
+        );
+      }),
+    ];
+
+    final from = totalCount == 0 ? 0 : 1;
+    final to = loadedCount;
+    final height = (42.0 + (loadedCount * 52.0)).clamp(160.0, 560.0);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: <Widget>[
+        Padding(
+          padding: const EdgeInsets.only(bottom: 8),
+          child: Text(
+            'Showing $from to $to of $totalCount entries',
+            style: theme.textTheme.labelMedium?.copyWith(
+              fontWeight: FontWeight.w600,
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+          ),
+        ),
+        SizedBox(
+          height: height,
+          child: MastersTableShell(
+            isLoading: controller.isLoading.value,
+            emptyText: 'No audit logs found',
+            minWidth: 1280,
+            columns: <DataColumn2>[
+              masterColumn(context, '#', fixedWidth: 52),
+              masterColumn(context, 'Date/Time', size: ColumnSize.M),
+              masterColumn(context, 'User', size: ColumnSize.M),
+              masterColumn(context, 'Action', fixedWidth: 110),
+              masterColumn(context, 'Module', size: ColumnSize.M),
+              masterColumn(context, 'Amount', size: ColumnSize.M),
+              masterColumn(context, 'Description', size: ColumnSize.L),
+              masterColumn(context, 'IP Address', size: ColumnSize.M),
+              masterColumn(context, 'Details', fixedWidth: 88),
+            ],
+            rows: tableRows,
+          ),
+        ),
+        if (controller.hasMore)
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 12),
+            child: Center(
+              child: controller.isLoadingMore.value
+                  ? const SizedBox(
+                      width: 24,
+                      height: 24,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : OutlinedButton.icon(
+                      onPressed: controller.loadMore,
+                      icon: const Icon(Icons.expand_more_rounded, size: 18),
+                      label: const Text('Load More'),
+                    ),
+            ),
+          ),
       ],
     );
   }
 }
 
-// ── Helper extension ──
-extension _Let<T> on T {
-  R let<R>(R Function(T it) block) => block(this);
+String _formatDateTime(dynamic value) {
+  final raw = value?.toString();
+  if (raw == null || raw.isEmpty) return '-';
+  return AppDateFormatter.formatDateTime(raw, fallback: raw);
+}
+
+String? _extractAmount(Map<String, dynamic> log) {
+  final newValues = log['new_values'];
+  final oldValues = log['old_values'];
+  final dynamic fromNew =
+      newValues is Map ? newValues['opening_balance'] : null;
+  final dynamic fromOld =
+      oldValues is Map ? oldValues['opening_balance'] : null;
+  final dynamic amountField = log['amount'];
+  final resolved = amountField ?? fromNew ?? fromOld;
+  if (resolved == null) return null;
+  final text = resolved.toString();
+  if (text.isEmpty || text == 'null' || text == '-') return null;
+  return text;
+}
+
+Color _actionColor(String action) {
+  switch (action) {
+    case 'create':
+      return const Color(0xFF10B981);
+    case 'update':
+      return const Color(0xFF3B82F6);
+    case 'delete':
+      return const Color(0xFFEF4444);
+    case 'login':
+      return const Color(0xFF14B8A6);
+    case 'logout':
+      return const Color(0xFF6B7280);
+    case 'status_change':
+      return const Color(0xFFF59E0B);
+    default:
+      return const Color(0xFF6366F1);
+  }
 }

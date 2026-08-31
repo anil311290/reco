@@ -58,7 +58,7 @@ mixin OutstandingReportFiltersMixin on GetxController {
       await lookup.preload();
     }
     financialYearId.value = lookup.currentFinancialYearId.value;
-    asOfDateController.text = AppDateFormatter.formatDisplay(DateTime.now());
+    lookup.applyAsOfToday(asOfDateController);
     overdueStatus.value = 'all';
     ageBucket.value = 'all';
     basis.value = 'due';

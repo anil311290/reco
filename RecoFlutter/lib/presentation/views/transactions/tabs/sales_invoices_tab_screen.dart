@@ -31,7 +31,63 @@ class SalesInvoicesTabScreen extends GetView<SalesInvoicesController> {
       ],
       rowBuilder: (context, item, index) => DataRow(
         cells: <DataCell>[
-          masterTextCell(item.number.isEmpty ? '-' : item.number),
+          DataCell(
+            InkWell(
+              onTap: () async {
+                final detailRecord =
+                    await resolveTransactionDetailRecord(item);
+                await Get.to(
+                  () => TransactionDetailScreen(
+                    record: detailRecord,
+                    onPost: item.status == 'draft'
+                        ? () async {
+                            final updated = await postInvoice(item);
+                            if (updated) Get.back<void>();
+                          }
+                        : null,
+                    onEdit: _canEdit(item)
+                        ? () => openInvoiceEditor(item)
+                        : null,
+                    onRecordPayment: _canPay(item)
+                        ? () async {
+                            final updated =
+                                await recordInvoicePayment(item);
+                            if (updated) Get.back<void>();
+                          }
+                        : null,
+                    onCancel: item.status != 'cancelled'
+                        ? () async {
+                            final updated = await cancelInvoice(item);
+                            if (updated) Get.back<void>();
+                          }
+                        : null,
+                    onDelete: item.status == 'draft'
+                        ? () => deleteTransactionRecord(
+                              controller: controller,
+                              record: item,
+                              closeAfterDelete: true,
+                            )
+                        : null,
+                    onPrint: () => printSalesInvoice(item),
+                  ),
+                );
+                await controller.refreshData(forceRemote: true);
+              },
+              child: Center(
+                child: Text(
+                  item.number.isEmpty ? '-' : item.number,
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: Theme.of(context).colorScheme.primary,
+                    fontWeight: FontWeight.w700,
+                    fontSize: 13,
+                    decoration: TextDecoration.underline,
+                    decorationColor: Theme.of(context).colorScheme.primary,
+                  ),
+                ),
+              ),
+            ),
+          ),
           masterTextCell(_formatDate(item.date)),
           masterTextCell(item.partyName.isEmpty ? '-' : item.partyName),
           masterTextCell('₹${item.amount.toStringAsFixed(2)}'),
@@ -102,20 +158,6 @@ class SalesInvoicesTabScreen extends GetView<SalesInvoicesController> {
                       await openInvoiceEditor(item);
                       await controller.refreshData(forceRemote: true);
                       break;
-                    case 'cancel':
-                      if (await cancelInvoice(item)) {
-                        await controller.refreshData(forceRemote: true);
-                      }
-                      break;
-                    case 'delete':
-                      await deleteTransactionRecord(
-                        controller: controller,
-                        record: item,
-                      );
-                      break;
-                    case 'print':
-                      await printSalesInvoice(item);
-                      break;
                   }
                 },
                 itemBuilder: (context) => <PopupMenuEntry<String>>[
@@ -138,20 +180,6 @@ class SalesInvoicesTabScreen extends GetView<SalesInvoicesController> {
                       value: 'edit',
                       child: Text('Edit'),
                     ),
-                  const PopupMenuItem<String>(
-                    value: 'print',
-                    child: Text('Invoice PDF'),
-                  ),
-                  if (item.status != 'cancelled' && item.status != 'draft')
-                    const PopupMenuItem<String>(
-                      value: 'cancel',
-                      child: Text('Cancel'),
-                    ),
-                  if (item.status == 'draft')
-                    const PopupMenuItem<String>(
-                      value: 'delete',
-                      child: Text('Delete'),
-                    ),
                 ],
               ),
             ),
@@ -162,14 +190,13 @@ class SalesInvoicesTabScreen extends GetView<SalesInvoicesController> {
   }
 
   bool _canEdit(TransactionRecord item) =>
+      item.status != 'cancelled' &&
       item.status != 'paid' &&
-      item.status != 'partial' &&
-      item.status != 'cancelled';
+      item.status != 'partial';
 
   bool _canPay(TransactionRecord item) =>
-      item.balanceDue > 0 &&
-      item.status != 'paid' &&
       item.status != 'cancelled' &&
+      item.status != 'paid' &&
       item.status != 'draft';
 
   String _formatDate(String value) => AppDateFormatter.formatDisplay(value);

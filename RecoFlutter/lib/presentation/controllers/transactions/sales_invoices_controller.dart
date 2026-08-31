@@ -22,7 +22,10 @@ class SalesInvoicesController extends BaseTransactionsTabController {
   String get searchHint => 'Search by invoice no or customer...';
 
   @override
-  bool get supportsPartyFilter => true;
+  bool get supportsPartyFilter => false;
+
+  @override
+  bool get supportsDateFilter => false;
 
   @override
   bool get supportsWorkflowActions => false;

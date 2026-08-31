@@ -526,7 +526,7 @@ abstract class BaseInvoiceFormController extends GetxController {
     update();
   }
 
-  Future<void> submit() async {
+  Future<void> submit({bool saveAsDraft = false}) async {
     FocusManager.instance.primaryFocus?.unfocus();
     if (!formKey.currentState!.validate()) {
       return;
@@ -577,6 +577,7 @@ abstract class BaseInvoiceFormController extends GetxController {
       final payload = _buildPayload(
         validItemRows,
         validServiceRows,
+        saveAsDraft: saveAsDraft,
       );
       if (isEditing) {
         final recordId = _toInt(_editingPayload?['id']);
@@ -600,9 +601,11 @@ abstract class BaseInvoiceFormController extends GetxController {
       }
       Get.back<bool>(result: true);
       AppSnackbar.success(
-        isEditing
-            ? '$title was updated locally and will sync when online.'
-            : '$title was saved locally and will sync when online.',
+        saveAsDraft
+            ? '$title saved as draft locally and will sync when online.'
+            : (isEditing
+                ? '$title was updated locally and will sync when online.'
+                : '$title was saved locally and will sync when online.'),
       );
       await _refreshList();
     } catch (error) {
@@ -614,18 +617,22 @@ abstract class BaseInvoiceFormController extends GetxController {
 
   Map<String, dynamic> _buildPayload(
     List<InvoiceItemRowModel> validItemRows,
-    List<InvoiceServiceRowModel> validServiceRows,
-  ) {
+    List<InvoiceServiceRowModel> validServiceRows, {
+    bool saveAsDraft = false,
+  }) {
     final recordId = _toInt(_editingPayload?['id']);
     final currentNumber = draftInvoiceNumber.value.trim();
     final tempNumber = currentNumber.isNotEmpty
         ? currentNumber
         : invoiceNumberController.text.trim();
-    final currentStatus = (_editingPayload?['status'] ?? 'draft').toString();
+    final statusOverride = saveAsDraft ? 'draft' : null;
+    final currentStatus = (statusOverride ??
+            (_editingPayload?['status'] ?? 'draft'))
+        .toString();
     final currentStatusLabel =
-        (_editingPayload?['status_label'] ?? 'Draft').toString();
+        saveAsDraft ? 'Draft' : (_editingPayload?['status_label'] ?? 'Draft').toString();
     return <String, dynamic>{
-      if (recordId case final currentRecordId?) 'id': currentRecordId,
+      ?recordId == null ? null : 'id': recordId,
       'party_id': selectedPartyOption.value?.token,
       'invoice_date': AppDateFormatter.toApiDate(invoiceDateController.text.trim()),
       'due_date': AppDateFormatter.toApiDate(dueDateController.text.trim()),
@@ -647,6 +654,7 @@ abstract class BaseInvoiceFormController extends GetxController {
           ? null
           : notesController.text.trim(),
       'discount_percentage': double.tryParse(discountController.text.trim()) ?? 0,
+      'save_as_draft': saveAsDraft,
       'lines': validItemRows
           .map(
             (row) => <String, dynamic>{

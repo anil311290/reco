@@ -44,7 +44,7 @@ class PartiesTabScreen extends GetView<PartiesController> {
                 child: MastersTableShell(
                   isLoading: controller.isLoading.value,
                   emptyText: 'No parties found',
-                  minWidth: 1080,
+                  minWidth: 1180,
                   dataRowHeight: 80,
                   columns: <DataColumn2>[
                   masterColumn(
@@ -56,11 +56,11 @@ class PartiesTabScreen extends GetView<PartiesController> {
                   masterColumn(context, 'Code', size: ColumnSize.M),
                   masterColumn(context, 'Name', size: ColumnSize.L),
                   masterColumn(context, 'Type', size: ColumnSize.M),
-                  masterColumn(context, 'Linked Ledger', size: ColumnSize.L),
+                  masterColumn(context, 'Linked Ledger', fixedWidth: 200),
                   masterColumn(context, 'Mobile', size: ColumnSize.M),
-                  masterColumn(context, 'Opening Balance', size: ColumnSize.M),
+                  masterColumn(context, 'Opening Balance', size: ColumnSize.L),
                   masterColumn(context, 'Status', fixedWidth: 120),
-                  masterColumn(context, 'Actions', fixedWidth: 250),
+                  masterColumn(context, 'Actions', fixedWidth: 220),
                 ],
                   rows: List<DataRow>.generate(controller.filteredItems.length, (
                   index,
@@ -175,8 +175,11 @@ class PartiesTabScreen extends GetView<PartiesController> {
                         ),
                       ),
                       masterTextCell(item.mobile.isEmpty ? '-' : item.mobile),
-                      masterTextCell(
-                        '₹${item.openingBalance.toStringAsFixed(2)}',
+                      DataCell(
+                        Center(child: DrCrBalanceCell(
+                          amount: item.openingBalance,
+                          type: item.openingBalanceType,
+                        )),
                       ),
                       DataCell(
                         Center(
@@ -412,12 +415,19 @@ class _PartyFilterSheet extends StatelessWidget {
                             });
                           },
                           style: OutlinedButton.styleFrom(
-                            minimumSize: const Size.fromHeight(48),
+                            minimumSize: const Size.fromHeight(45),
+                            side: BorderSide(
+                              color: Theme.of(context).colorScheme.primary,
+                              width: 1.2,
+                            ),
                             shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(8),
+                              borderRadius: BorderRadius.circular(12),
                             ),
                           ),
-                          child: const Text('Clear'),
+                          child: const Text(
+                            'Clear',
+                            style: TextStyle(fontWeight: FontWeight.w700),
+                          ),
                         ),
                       ),
                       const SizedBox(width: 10),
@@ -434,12 +444,15 @@ class _PartyFilterSheet extends StatelessWidget {
                             });
                           },
                           style: FilledButton.styleFrom(
-                            minimumSize: const Size.fromHeight(48),
+                            minimumSize: const Size.fromHeight(45),
                             shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(8),
+                              borderRadius: BorderRadius.circular(12),
                             ),
                           ),
-                          child: const Text('Apply'),
+                          child: const Text(
+                            'Apply',
+                            style: TextStyle(fontWeight: FontWeight.w800),
+                          ),
                         ),
                       ),
                     ],

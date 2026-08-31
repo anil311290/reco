@@ -1,6 +1,15 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:open_filex/open_filex.dart';
+import 'package:path/path.dart' as p;
+import 'package:path_provider/path_provider.dart';
+import 'package:share_plus/share_plus.dart';
 
+import '../../../core/utils/app_action_loader.dart';
+import '../../../core/utils/app_snackbar.dart';
+import '../../../core/utils/simple_table_pdf_builder.dart';
 import '../../../data/repositories/settings/audit_logs_repository.dart';
 
 class AuditLogsController extends GetxController {
@@ -124,10 +133,16 @@ class AuditLogsController extends GetxController {
           ? result['filters'] as Map<String, dynamic>
           : <String, dynamic>{};
       actionOptions.assignAll(
-        _uniqueStrings(filters['actions'] as List? ?? const <dynamic>[]),
+        _mergeWithFallback(
+          _uniqueStrings(filters['actions'] as List? ?? const <dynamic>[]),
+          _fallbackActionOptions,
+        ),
       );
       moduleOptions.assignAll(
-        _uniqueStrings(filters['modules'] as List? ?? const <dynamic>[]),
+        _mergeWithFallback(
+          _uniqueStrings(filters['modules'] as List? ?? const <dynamic>[]),
+          _fallbackModuleOptions,
+        ),
       );
       userOptions.assignAll(
         _uniqueUsersById(filters['users'] as List? ?? const <dynamic>[]),
@@ -181,11 +196,152 @@ class AuditLogsController extends GetxController {
     await loadLogs();
   }
 
+  static const _fallbackActionOptions = <String>[
+    'create',
+    'update',
+    'delete',
+    'login',
+    'logout',
+    'status_change',
+  ];
+
+  static const _fallbackModuleOptions = <String>[
+    'accounts',
+    'parties',
+    'items',
+    'item_categories',
+    'tax_rates',
+    'financial_years',
+    'ledger',
+    'sales_invoice',
+    'purchase_invoice',
+    'payment_voucher',
+    'receipt_voucher',
+  ];
+
+  List<String> _mergeWithFallback(Iterable<String> serverValues, List<String> fallback) {
+    final seen = <String>{};
+    final merged = <String>[];
+    for (final value in <String>[...serverValues, ...fallback]) {
+      final normalized = value.trim();
+      if (normalized.isEmpty) continue;
+      if (seen.add(normalized)) {
+        merged.add(normalized);
+      }
+    }
+    return merged;
+  }
+
   void clearFilters() {
     selectedAction.value = '';
     selectedModule.value = '';
     selectedRecordId.value = '';
     selectedUserId.value = '';
     searchController.clear();
+  }
+
+  Future<void> exportLogs(String format) async {
+    if (logs.isEmpty) {
+      AppSnackbar.error('No data to export.');
+      return;
+    }
+    await AppActionLoader.run(
+      () async {
+        final rows = logs
+            .map(
+              (log) => <String, dynamic>{
+                'date': (log['created_at'] ?? '').toString(),
+                'user': log['user'] is Map
+                    ? (log['user']['name'] ?? 'System').toString()
+                    : 'System',
+                'action': (log['action'] ?? '').toString(),
+                'module': (log['module'] ?? '').toString(),
+                'amount': _extractAmount(log),
+                'description': (log['description'] ?? '').toString(),
+                'ip': (log['ip_address'] ?? '').toString(),
+              },
+            )
+            .toList();
+        final directory = await getTemporaryDirectory();
+        final timestamp = DateTime.now().millisecondsSinceEpoch;
+        if (format == 'excel') {
+          final fileName = 'audit_logs_$timestamp.csv';
+          final file = File(p.join(directory.path, fileName));
+          await file.writeAsString(_buildCsv(rows));
+          await _shareOrOpen(file.path, 'Audit Logs');
+        } else {
+          final fileName = 'audit_logs_$timestamp.pdf';
+          final file = File(p.join(directory.path, fileName));
+          await file.writeAsBytes(
+            SimpleTablePdfBuilder.build(
+              title: 'Audit Logs',
+              rows: rows,
+            ),
+          );
+          await _shareOrOpen(file.path, 'Audit Logs');
+        }
+      },
+      message: 'Preparing export...',
+    );
+  }
+
+  String _buildCsv(List<Map<String, dynamic>> rows) {
+    const headers = <String>[
+      'date',
+      'user',
+      'action',
+      'module',
+      'amount',
+      'description',
+      'ip',
+    ];
+    final buffer = StringBuffer()..writeln(headers.join(','));
+    for (final row in rows) {
+      buffer.writeln(
+        headers.map((h) => _escape(row[h]?.toString() ?? '')).join(','),
+      );
+    }
+    return buffer.toString();
+  }
+
+  String _escape(String value) {
+    final escaped = value.replaceAll('"', '""');
+    return '"$escaped"';
+  }
+
+  Future<void> _shareOrOpen(String filePath, String reportName) async {
+    final openResult = await OpenFilex.open(filePath);
+    if (openResult.type == ResultType.done) {
+      AppSnackbar.success('$reportName exported successfully.');
+      return;
+    }
+    final shareResult = await SharePlus.instance.share(
+      ShareParams(
+        files: <XFile>[XFile(filePath)],
+        subject: '$reportName Export',
+        text: '$reportName exported successfully.',
+      ),
+    );
+    if (shareResult.status == ShareResultStatus.success ||
+        shareResult.status == ShareResultStatus.dismissed) {
+      AppSnackbar.success('$reportName exported successfully.');
+      return;
+    }
+    AppSnackbar.error('Unable to open the export.');
+  }
+
+  String? _extractAmount(Map<String, dynamic> log) {
+    final newValues = log['new_values'];
+    final oldValues = log['old_values'];
+    final dynamic fromNew =
+        newValues is Map ? newValues['opening_balance'] : null;
+    final dynamic fromOld =
+        oldValues is Map ? oldValues['opening_balance'] : null;
+    final dynamic amountField = log['amount'];
+    final resolved = amountField ?? fromNew ?? fromOld;
+    if (resolved == null) return null;
+    final text = resolved.toString();
+    if (text.isEmpty || text == 'null' || text == '-') return null;
+    return text;
   }
 }

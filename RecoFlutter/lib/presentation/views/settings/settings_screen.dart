@@ -88,19 +88,19 @@ class SettingsScreen extends GetView<SettingsController> {
                     subtitle: 'In-app alerts for sync, support and activity',
                     onTap: _openNotifications,
                   ),
-                  SettingsMenuTile(
-                    icon: Icons.manage_history_rounded,
-                    title: 'Audit Logs',
-                    subtitle: 'Track create, update, delete and login activity',
-                    onTap: _openAuditLogs,
-                  ),
+                  // SettingsMenuTile(
+                  //   icon: Icons.manage_history_rounded,
+                  //   title: 'Audit Logs',
+                  //   subtitle: 'Track create, update, delete and login activity',
+                  //   onTap: _openAuditLogs,
+                  // ),
                   // SettingsMenuTile(
                   //   icon: Icons.lock_outline_rounded,
                   //   title: 'Security Settings',
                   //   subtitle: 'PIN, app lock, biometric and auto lock',
                   //   onTap: _openSecuritySettings,
                   // ),
-                ],
+              ],
               ),
               SettingsGroupCard(
                 title: 'App Preferences',

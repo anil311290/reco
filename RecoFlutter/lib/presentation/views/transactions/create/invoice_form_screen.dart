@@ -11,10 +11,6 @@ import '../../masters/forms/account_form_sheet.dart';
 import '../../../widgets/common/custom_text_field.dart';
 import 'widgets/transaction_form_components.dart';
 
-String _catalogOptionSearchText(InvoiceCatalogOption item) {
-  return '${item.label} ${item.isItem ? 'Goods' : 'Service'}';
-}
-
 Widget _buildCatalogOptionMenuItem(
   BuildContext context,
   InvoiceCatalogOption item,
@@ -124,20 +120,26 @@ class InvoiceFormScreen<T extends BaseInvoiceFormController> extends GetView<T> 
         ),
       ),
       bottomNavigationBar: Obx(
-        () => TransactionSubmitBar(
-          text: controller.isEditing
-              ? 'Update ${controller.title}'
-              : 'Save ${controller.title}',
-          isLoading: controller.isSubmitting.value,
-          onPressed: controller.submit,
-        ),
+        () => controller.isEditing
+            ? TransactionSubmitBar(
+                text: 'Update ${controller.title}',
+                isLoading: controller.isSubmitting.value,
+                onPressed: controller.submit,
+              )
+            : TransactionSubmitBarWithDraft(
+                primaryText: 'Save ${controller.title}',
+                secondaryText: 'Save as Draft',
+                isLoading: controller.isSubmitting.value,
+                onPrimary: () => controller.submit(),
+                onSecondary: () => controller.submit(saveAsDraft: true),
+              ),
       ),
       body: Form(
         key: controller.formKey,
         child: GetBuilder<T>(
           builder: (_) {
             return SingleChildScrollView(
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.symmetric(horizontal: 12),
               child: Column(
                 children: <Widget>[
                   TransactionFormSectionCard(
@@ -417,10 +419,10 @@ class _ItemLinesSection<T extends BaseInvoiceFormController> extends GetView<T> 
         children: <Widget>[
           OutlinedButton.icon(
             onPressed: () => _openQuickAddItem(context, controller),
-            icon: const Icon(Icons.bolt_rounded, size: 16),
+
             label: const Text('Quick Add Item'),
             style: OutlinedButton.styleFrom(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 0),
               side: BorderSide(
                 color: Theme.of(context).colorScheme.primary,
               ),
@@ -430,24 +432,30 @@ class _ItemLinesSection<T extends BaseInvoiceFormController> extends GetView<T> 
               ),
             ),
           ),
-          const SizedBox(width: 8),
+          const SizedBox(width: 5),
           FilledButton.tonalIcon(
             onPressed: controller.addItemRow,
+
             icon: const Icon(Icons.add_circle_outline_rounded, size: 16),
             label: const Text('Add Line'),
             style: FilledButton.styleFrom(
+              backgroundColor: context.theme.colorScheme.background,
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
               textStyle: Theme.of(context).textTheme.labelMedium?.copyWith(
                 fontWeight: FontWeight.w700,
+
               ),
             ),
           ),
         ],
       ),
       child: Column(
-        children: controller.itemRows
-            .map((row) => _ItemRowCard<T>(row: row))
-            .toList(),
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: <Widget>[
+          ...controller.itemRows.map(
+            (row) => _ItemRowCard<T>(row: row),
+          ),
+        ],
       ),
     );
   }
@@ -476,119 +484,81 @@ class _ItemRowCard<T extends BaseInvoiceFormController> extends GetView<T> {
                 ? row.catalogOption
                 : row.item,
             builder: (context, value, _) {
-              return Obx(() {
-                if (controller.usesUnifiedSalesRows) {
-                  final isCatalogLoading =
-                      controller.lookupController.isItemsLoading.value ||
-                      controller.lookupController.isServiceAccountsLoading.value;
-                  return Column(
-                    children: <Widget>[
-                      CustomDropdown<InvoiceCatalogOption>(
-                        label: 'Item / Service',
-                        value: row.catalogOption.value,
-                        items: controller.salesCatalogOptions,
-                        itemLabelBuilder: (item) => item.label,
-                        searchTextBuilder: _catalogOptionSearchText,
-                        menuItemBuilder: (context, item) =>
-                            _buildCatalogOptionMenuItem(context, item),
-                        onChanged: (item) =>
-                            controller.onSalesCatalogChanged(row, item),
-                        hint: 'Select item or service',
-                        requiredField: true,
-                        isLoading: isCatalogLoading,
-                        enabled: !isCatalogLoading,
-                      ),
-                      if (isCatalogLoading)
-                        Align(
-                          alignment: Alignment.centerLeft,
-                          child: Padding(
-                            padding: const EdgeInsets.only(bottom: 8),
-                            child: Text(
-                              'Loading item and service list...',
-                              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                color: Theme.of(context)
-                                    .colorScheme
-                                    .onSurfaceVariant,
-                              ),
-                            ),
-                          ),
-                        ),
-                    ],
-                  );
-                }
-
-                final isItemsLoading =
-                    controller.lookupController.isItemsLoading.value;
-                return Column(
-                  children: <Widget>[
-                    CustomDropdown<ItemEntity>(
-                      label: 'Item',
-                      value: row.item.value,
-                      items: controller.isPurchaseInvoice
-                          ? controller.items
-                                .where((item) => item.type != 'service')
-                                .toList()
-                          : controller.items,
-                      itemLabelBuilder: (item) => item.name,
-                      onChanged: (item) => controller.onItemChanged(row, item),
-                      hint: 'Select Item',
-                      requiredField: true,
-                      isLoading: isItemsLoading,
-                      enabled: !isItemsLoading,
-                    ),
-                    if (isItemsLoading)
-                      Align(
-                        alignment: Alignment.centerLeft,
-                        child: Padding(
-                          padding: const EdgeInsets.only(bottom: 8),
-                          child: Text(
-                            'Loading item list...',
-                            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                              color: Theme.of(context)
-                                  .colorScheme
-                                  .onSurfaceVariant,
-                            ),
-                          ),
-                        ),
-                      ),
-                  ],
+              if (controller.usesUnifiedSalesRows) {
+                return CustomDropdown<InvoiceCatalogOption>(
+                  label: 'Item / Service',
+                  value: row.catalogOption.value,
+                  items: controller.salesCatalogOptions,
+                  itemLabelBuilder: (item) => item.label,
+                  onChanged: (item) =>
+                      controller.onSalesCatalogChanged(row, item),
+                  hint: 'Select item or service',
+                  requiredField: true,
+                  isLoading: controller.lookupController.isItemsLoading.value ||
+                      controller.lookupController
+                          .isServiceAccountsLoading.value,
+                  enabled: !(controller.lookupController.isItemsLoading.value ||
+                      controller.lookupController
+                          .isServiceAccountsLoading.value),
+                  menuItemBuilder: (context, item) =>
+                      _buildCatalogOptionMenuItem(context, item),
                 );
-              });
+              }
+
+              return CustomDropdown<ItemEntity>(
+                label: 'Item',
+                value: row.item.value,
+                items: controller.isPurchaseInvoice
+                    ? controller.items
+                        .where((item) => item.type != 'service')
+                        .toList()
+                    : controller.items,
+                itemLabelBuilder: (item) => item.name,
+                onChanged: (item) => controller.onItemChanged(row, item),
+                requiredField: true,
+                isLoading: controller.lookupController.isItemsLoading.value,
+                enabled: !controller.lookupController.isItemsLoading.value,
+              );
             },
           ),
+          if (!row.isServiceSelection)
+            CustomTextField(
+              label: 'Description',
+              controller: row.descriptionController,
+              hintText: 'Item description',
+            ),
+          if (!row.isServiceSelection)
+            CustomTextField(
+              label: 'Quantity',
+              controller: row.quantityController,
+              keyboardType:
+                  const TextInputType.numberWithOptions(decimal: true),
+              inputFormatters: <TextInputFormatter>[
+                FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d{0,3}')),
+              ],
+              onChanged: (_) => controller.update(),
+            ),
           CustomTextField(
-            label: 'Description',
-            controller: row.descriptionController,
-            hintText: 'Description',
-            readOnly: true,
-          ),
-          CustomTextField(
-            label: 'Quantity',
-            controller: row.quantityController,
-            keyboardType: const TextInputType.numberWithOptions(decimal: true),
-            inputFormatters: <TextInputFormatter>[
-              FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d{0,3}')),
-            ],
-            onChanged: (_) => controller.update(),
-          ),
-          CustomTextField(
-            label: 'Unit Price',
+            label: row.isServiceSelection ? 'Amount' : 'Unit Price',
             controller: row.unitPriceController,
-            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            keyboardType:
+                const TextInputType.numberWithOptions(decimal: true),
             inputFormatters: <TextInputFormatter>[
               FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d{0,2}')),
             ],
             onChanged: (_) => controller.update(),
           ),
-          CustomTextField(
-            label: 'Discount %',
-            controller: row.discountController,
-            keyboardType: const TextInputType.numberWithOptions(decimal: true),
-            inputFormatters: <TextInputFormatter>[
-              FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d{0,2}')),
-            ],
-            onChanged: (_) => controller.update(),
-          ),
+          if (!row.isServiceSelection)
+            CustomTextField(
+              label: 'Discount %',
+              controller: row.discountController,
+              keyboardType:
+                  const TextInputType.numberWithOptions(decimal: true),
+              inputFormatters: <TextInputFormatter>[
+                FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d{0,2}')),
+              ],
+              onChanged: (_) => controller.update(),
+            ),
           ValueListenableBuilder<TaxRateEntity?>(
             valueListenable: row.taxRate,
             builder: (context, value, _) {
@@ -603,8 +573,10 @@ class _ItemRowCard<T extends BaseInvoiceFormController> extends GetView<T> {
                   controller.update();
                 },
                 hint: 'No Tax',
-                isLoading: controller.lookupController.isTaxRatesLoading.value,
-                enabled: !controller.lookupController.isTaxRatesLoading.value,
+                isLoading:
+                    controller.lookupController.isTaxRatesLoading.value,
+                enabled:
+                    !controller.lookupController.isTaxRatesLoading.value,
               );
             },
           ),

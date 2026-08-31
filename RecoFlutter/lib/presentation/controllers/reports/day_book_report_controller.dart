@@ -36,17 +36,22 @@ class DayBookReportController extends BaseReportController {
       await lookup.preload();
     }
     financialYearId.value = lookup.currentFinancialYearId.value;
-    final today = DateTime.now();
-    final todayDisplay = AppDateFormatter.formatDisplay(today);
-    fromDateController.text = todayDisplay;
-    toDateController.text = todayDisplay;
+    // Web day-book uses resolveReportContext → FY start to FY end.
+    lookup.applyFinancialYearDateRange(
+      financialYearId: financialYearId.value,
+      fromController: fromDateController,
+      toController: toDateController,
+    );
     await loadReport();
   }
 
   void applyFinancialYear(int? value, ReportLookupController lookup) {
     financialYearId.value = value;
-    fromDateController.text = lookup.formatFinancialYearStart(value);
-    toDateController.text = lookup.formatFinancialYearEnd(value);
+    lookup.applyFinancialYearDateRange(
+      financialYearId: value,
+      fromController: fromDateController,
+      toController: toDateController,
+    );
   }
 
   @override

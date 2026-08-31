@@ -101,15 +101,15 @@ class ProfitLossReportScreen extends GetView<ProfitLossReportController> {
                   final sections = <Widget>[
                     _accountSection(
                       context,
-                      title: 'Income',
-                      color: const Color(0xFF16A34A),
-                      section: income,
-                    ),
-                    _accountSection(
-                      context,
                       title: 'Expenses',
                       color: const Color(0xFFEF4444),
                       section: expense,
+                    ),
+                    _accountSection(
+                      context,
+                      title: 'Income',
+                      color: const Color(0xFF16A34A),
+                      section: income,
                     ),
                   ];
                   if (compact) {

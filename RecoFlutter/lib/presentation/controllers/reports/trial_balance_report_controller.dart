@@ -42,8 +42,11 @@ class TrialBalanceReportController extends BaseReportController {
 
   void applyFinancialYear(int? value, ReportLookupController lookup) {
     financialYearId.value = value;
-    fromDateController.text = lookup.formatFinancialYearStart(value);
-    toDateController.text = lookup.formatFinancialYearEnd(value);
+    lookup.applyFinancialYearDateRange(
+      financialYearId: value,
+      fromController: fromDateController,
+      toController: toDateController,
+    );
   }
 
   @override

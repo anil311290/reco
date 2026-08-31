@@ -21,13 +21,13 @@ class TransactionFormSectionCard extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 16),
       decoration: BoxDecoration(
         color: theme.cardColor,
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(12),
         border: Border.all(
           color: theme.dividerColor.withValues(alpha: .45),
         ),
       ),
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.symmetric(vertical: 10,horizontal: 8),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: <Widget>[
@@ -120,6 +120,69 @@ class TransactionSubmitBar extends StatelessWidget {
           text: text,
           isLoading: isLoading,
           onPressed: onPressed,
+        ),
+      ),
+    );
+  }
+}
+
+class TransactionSubmitBarWithDraft extends StatelessWidget {
+  const TransactionSubmitBarWithDraft({
+    required this.primaryText,
+    required this.secondaryText,
+    required this.isLoading,
+    required this.onPrimary,
+    required this.onSecondary,
+    this.primaryIcon = Icons.check_circle_outline_rounded,
+    this.secondaryIcon = Icons.save_outlined,
+    super.key,
+  });
+
+  final String primaryText;
+  final String secondaryText;
+  final bool isLoading;
+  final VoidCallback onPrimary;
+  final VoidCallback onSecondary;
+  final IconData primaryIcon;
+  final IconData secondaryIcon;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return SafeArea(
+      top: false,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 10, 16, 16),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: <Widget>[
+            CommonButton(
+              text: primaryText,
+              isLoading: isLoading,
+              onPressed: onPrimary,
+            ),
+            const SizedBox(height: 8),
+            OutlinedButton.icon(
+              onPressed: isLoading ? null : onSecondary,
+              icon: Icon(secondaryIcon, size: 18),
+              label: Text(
+                secondaryText,
+                style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                      fontWeight: FontWeight.w700,
+                      color: scheme.onSurfaceVariant,
+                    ),
+              ),
+              style: OutlinedButton.styleFrom(
+                minimumSize: const Size.fromHeight(48),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                side: BorderSide(
+                  color: scheme.outlineVariant.withValues(alpha: .5),
+                ),
+              ),
+            ),
+          ],
         ),
       ),
     );

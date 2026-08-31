@@ -130,7 +130,7 @@ abstract class OfflineFirstRepository {
     required String localId,
     String? serverId,
   }) async {
-    await databaseService.saveLocalRecord(
+    final resolvedLocalId = await databaseService.saveLocalRecord(
       module: module,
       payload: payload,
       syncAction: 'update',
@@ -143,7 +143,7 @@ abstract class OfflineFirstRepository {
       endpoint: endpoint,
       method: 'PUT',
       payload: payload,
-      recordLocalId: localId,
+      recordLocalId: resolvedLocalId,
     );
     await invalidateRelatedCaches(module: module);
 
@@ -151,7 +151,7 @@ abstract class OfflineFirstRepository {
       unawaited(syncService.syncPendingMutations(showSuccessMessage: false));
     }
 
-    return localId;
+    return resolvedLocalId;
   }
 
   Future<void> queueDelete({
@@ -161,7 +161,7 @@ abstract class OfflineFirstRepository {
     required String localId,
     String? serverId,
   }) async {
-    await databaseService.saveLocalRecord(
+    final resolvedLocalId = await databaseService.saveLocalRecord(
       module: module,
       payload: payload,
       syncAction: 'delete',
@@ -175,7 +175,7 @@ abstract class OfflineFirstRepository {
       endpoint: endpoint,
       method: 'DELETE',
       payload: payload,
-      recordLocalId: localId,
+      recordLocalId: resolvedLocalId,
     );
     await invalidateRelatedCaches(module: module);
 

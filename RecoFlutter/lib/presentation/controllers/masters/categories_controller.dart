@@ -191,9 +191,16 @@ class CategoriesController extends GetxController with MasterExportMixin {
   }
 
   Future<void> deleteItem(ItemCategoryEntity entity) async {
-    await _repository.delete(entity);
-    await refreshData();
-    AppSnackbar.success('Category delete queued.');
+    try {
+      await _repository.delete(entity);
+      if (_networkMonitorService.isOnline.value) {
+        await _syncService.syncPendingMutations(showSuccessMessage: false);
+      }
+      await refreshData(forceRemote: true);
+      AppSnackbar.success('Category deleted.');
+    } catch (error) {
+      AppSnackbar.error(error.toString());
+    }
   }
 
   Future<void> toggleStatus(ItemCategoryEntity entity, bool value) async {

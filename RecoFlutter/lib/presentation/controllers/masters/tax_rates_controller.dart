@@ -201,9 +201,16 @@ class TaxRatesController extends GetxController with MasterExportMixin {
   }
 
   Future<void> deleteItem(TaxRateEntity entity) async {
-    await _repository.delete(entity);
-    await refreshData();
-    AppSnackbar.success('Tax rate delete queued.');
+    try {
+      await _repository.delete(entity);
+      if (_networkMonitorService.isOnline.value) {
+        await _syncService.syncPendingMutations(showSuccessMessage: false);
+      }
+      await refreshData(forceRemote: true);
+      AppSnackbar.success('Tax rate deleted.');
+    } catch (error) {
+      AppSnackbar.error(error.toString());
+    }
   }
 
   Future<void> toggleStatus(TaxRateEntity entity, bool value) async {

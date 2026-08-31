@@ -427,29 +427,29 @@ class _LedgerReportScreenState extends State<LedgerReportScreen> {
                     },
                   ),
                   const SizedBox(width: 6),
-                  MasterActionButton(
-                    icon: FontAwesomeIcons.clockRotateLeft.data,
-                    tooltip: 'Ledger Audit',
-                    color: const Color(0xFF38BDF8),
-                    onTap: () {
-                      final ledgerId = _asInt(entry['id']);
-                      if (ledgerId == null) {
-                        return;
-                      }
-                      Get.to(
-                        () => const AuditLogsScreen(),
-                        binding: BindingsBuilder(() {
-                          Get.put(
-                            AuditLogsController(
-                              Get.find<AuditLogsRepository>(),
-                              initialModule: 'ledger',
-                              initialRecordId: ledgerId.toString(),
-                            ),
-                          );
-                        }),
-                      );
-                    },
-                  ),
+                  // MasterActionButton(
+                  //   icon: FontAwesomeIcons.clockRotateLeft.data,
+                  //   tooltip: 'Ledger Audit',
+                  //   color: const Color(0xFF38BDF8),
+                  //   onTap: () {
+                  //     final ledgerId = _asInt(entry['id']);
+                  //     if (ledgerId == null) {
+                  //       return;
+                  //     }
+                  //     Get.to(
+                  //       () => const AuditLogsScreen(),
+                  //       binding: BindingsBuilder(() {
+                  //         Get.put(
+                  //           AuditLogsController(
+                  //             Get.find<AuditLogsRepository>(),
+                  //             initialModule: 'ledger',
+                  //             initialRecordId: ledgerId.toString(),
+                  //           ),
+                  //         );
+                  //       }),
+                  //     );
+                  //   },
+                  // ),
                 ],
               ),
             )),

@@ -26,10 +26,11 @@ class UnappliedReceiptsReportController extends BaseReportController {
   @override
   void onInit() {
     super.onInit();
-    final now = DateTime.now();
-    fromDateController.text =
-        AppDateFormatter.formatDisplay(DateTime(now.year, now.month, 1));
-    toDateController.text = AppDateFormatter.formatDisplay(now);
+    // Web unapplied cash: month start → today.
+    Get.find<ReportLookupController>().applyMonthToDateRange(
+      fromController: fromDateController,
+      toController: toDateController,
+    );
     loadReport();
   }
 
@@ -73,10 +74,11 @@ class StockRegisterReportController extends BaseReportController {
   @override
   void onInit() {
     super.onInit();
-    final now = DateTime.now();
-    fromDateController.text =
-        AppDateFormatter.formatDisplay(DateTime(now.year, now.month, 1));
-    toDateController.text = AppDateFormatter.formatDisplay(now);
+    // Prefill like other period reports: month start → today.
+    Get.find<ReportLookupController>().applyMonthToDateRange(
+      fromController: fromDateController,
+      toController: toDateController,
+    );
     _loadItems();
     loadReport();
   }
@@ -166,17 +168,19 @@ class SettlementAuditReportController extends BaseReportController {
     final lookup = Get.find<ReportLookupController>();
     if (lookup.financialYears.isEmpty) {
       lookup.preload().then((_) {
-        fromDateController.text =
-            lookup.formatFinancialYearStart(lookup.currentFinancialYearId.value);
-        toDateController.text =
-            lookup.formatFinancialYearEnd(lookup.currentFinancialYearId.value);
+        lookup.applyFinancialYearDateRange(
+          financialYearId: lookup.currentFinancialYearId.value,
+          fromController: fromDateController,
+          toController: toDateController,
+        );
         loadReport();
       });
     } else {
-      fromDateController.text =
-          lookup.formatFinancialYearStart(lookup.currentFinancialYearId.value);
-      toDateController.text =
-          lookup.formatFinancialYearEnd(lookup.currentFinancialYearId.value);
+      lookup.applyFinancialYearDateRange(
+        financialYearId: lookup.currentFinancialYearId.value,
+        fromController: fromDateController,
+        toController: toDateController,
+      );
       loadReport();
     }
   }

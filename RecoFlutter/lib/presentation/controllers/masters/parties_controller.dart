@@ -200,9 +200,16 @@ class PartiesController extends GetxController with MasterExportMixin {
   }
 
   Future<void> deleteItem(PartyEntity entity) async {
-    await _repository.delete(entity);
-    await refreshData();
-    AppSnackbar.success('Party delete queued.');
+    try {
+      await _repository.delete(entity);
+      if (_networkMonitorService.isOnline.value) {
+        await _syncService.syncPendingMutations(showSuccessMessage: false);
+      }
+      await refreshData(forceRemote: true);
+      AppSnackbar.success('Party deleted.');
+    } catch (error) {
+      AppSnackbar.error(error.toString());
+    }
   }
 
   Future<void> toggleStatus(PartyEntity entity, bool value) async {

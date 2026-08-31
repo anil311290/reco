@@ -43,6 +43,7 @@ class ApiEndpoints {
   static String partyOutstandingInvoices(Object id) =>
       '/parties/$id/outstanding-invoices';
   static String partyRecordPayment(Object id) => '/parties/$id/record-payment';
+  static String partyApplyUnapplied(Object id) => '/parties/$id/apply-unapplied';
   static const String states = '/states';
 
   static String stateCities(int stateId) => '/states/$stateId/cities';

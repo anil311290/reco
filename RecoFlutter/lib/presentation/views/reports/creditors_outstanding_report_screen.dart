@@ -12,12 +12,23 @@ import 'settlement_details_sheet.dart';
 import 'widgets/outstanding_filters_form.dart';
 import 'widgets/report_ui_components.dart';
 
-class CreditorsOutstandingReportScreen
-    extends GetView<CreditorsOutstandingReportController> {
+class CreditorsOutstandingReportScreen extends StatefulWidget {
   const CreditorsOutstandingReportScreen({super.key});
 
+  @override
+  State<CreditorsOutstandingReportScreen> createState() =>
+      _CreditorsOutstandingReportScreenState();
+}
+
+class _CreditorsOutstandingReportScreenState
+    extends State<CreditorsOutstandingReportScreen> {
   static const Color _primaryColor = Color(0xFF7C3AED);
   static const Color _secondaryColor = Color(0xFF2563EB);
+
+  CreditorsOutstandingReportController get controller =>
+      Get.find<CreditorsOutstandingReportController>();
+
+  bool _partyWise = false;
 
   @override
   Widget build(BuildContext context) {
@@ -36,10 +47,17 @@ class CreditorsOutstandingReportScreen
           return const ReportLoadingView();
         }
         final report = controller.reportData['data'];
-        final rows = _getRows(report);
+        final invoiceRows = _getRows(report);
+        final partyRows = summarizeOutstandingPartyWise(invoiceRows);
         final total = report is Map
             ? double.tryParse(report['total']?.toString() ?? '0') ?? 0.0
             : 0.0;
+        final basisLabel = controller.basis.value == 'billed'
+            ? 'Billed Days'
+            : 'Due Days';
+        final asOf = report is Map
+            ? controller.formatDate(report['as_of_date']?.toString() ?? '')
+            : controller.formatDate(controller.asOfDateController.text);
 
         return ListView(
           padding: const EdgeInsets.all(16),
@@ -89,7 +107,7 @@ class CreditorsOutstandingReportScreen
                   Expanded(
                     child: ReportStatCard(
                       label: 'Invoices',
-                      value: '${rows.length}',
+                      value: '${invoiceRows.length}',
                       note: 'Outstanding payable invoices.',
                       color: _secondaryColor,
                       icon: FontAwesomeIcons.fileInvoiceDollar.data,
@@ -99,17 +117,46 @@ class CreditorsOutstandingReportScreen
               ),
             if (report is Map) const SizedBox(height: 12),
             ReportSectionCard(
-              title: 'Outstanding Invoices',
+              title: _partyWise ? 'Party Wise' : 'Invoice Wise',
               icon: FontAwesomeIcons.tableList.data,
               iconColor: _primaryColor,
-              trailing: _sectionPill(
-                context,
-                controller.formatCurrency(total),
-                _primaryColor,
+              trailing: Wrap(
+                spacing: 6,
+                runSpacing: 6,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                children: <Widget>[
+                  _sectionPill(context, 'As of $asOf', _secondaryColor),
+                  _sectionPill(
+                    context,
+                    'Bucketed by: $basisLabel',
+                    _secondaryColor,
+                  ),
+                  _sectionPill(
+                    context,
+                    controller.formatCurrency(total),
+                    _primaryColor,
+                  ),
+                ],
               ),
-              child: rows.isEmpty
-                  ? _empty(theme, 'No outstanding payables')
-                  : _buildTable(context, rows, total),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: <Widget>[
+                  OutstandingViewTabs(
+                    partyWise: _partyWise,
+                    primaryColor: _primaryColor,
+                    onChanged: (value) => setState(() => _partyWise = value),
+                  ),
+                  const SizedBox(height: 12),
+                  if (_partyWise)
+                    (partyRows.isEmpty
+                        ? _empty(theme, 'No outstanding payables')
+                        : _buildPartyTable(context, partyRows, total))
+                  else
+                    (invoiceRows.isEmpty
+                        ? _empty(theme, 'No outstanding payables')
+                        : _buildInvoiceTable(context, invoiceRows, total)),
+                ],
+              ),
             ),
           ],
         );
@@ -160,7 +207,7 @@ class CreditorsOutstandingReportScreen
     );
   }
 
-  Widget _buildTable(
+  Widget _buildInvoiceTable(
     BuildContext context,
     List<Map<String, dynamic>> rows,
     double total,
@@ -267,17 +314,112 @@ class CreditorsOutstandingReportScreen
         minWidth: 1280,
         columns: <DataColumn2>[
           masterColumn(context, '#', fixedWidth: 48),
-          masterColumn(context, 'Invoice', size: ColumnSize.M),
+          masterColumn(context, 'Invoice No', size: ColumnSize.M),
           masterColumn(context, 'Party', size: ColumnSize.L),
-          masterColumn(context, 'Inv Date', size: ColumnSize.S),
-          masterColumn(context, 'Due', size: ColumnSize.S),
-          masterColumn(context, 'Billed', fixedWidth: 64),
+          masterColumn(context, 'Invoice Date', size: ColumnSize.S),
+          masterColumn(context, 'Due Date', size: ColumnSize.S),
+          masterColumn(context, 'Billed Days', fixedWidth: 72),
           masterColumn(context, 'Due Days', fixedWidth: 72),
           masterColumn(context, 'Amount', size: ColumnSize.M),
           masterColumn(context, 'Paid', size: ColumnSize.M),
           masterColumn(context, 'Balance Cr', size: ColumnSize.M),
           masterColumn(context, 'Bucket', fixedWidth: 72),
           masterColumn(context, 'Status', size: ColumnSize.M),
+        ],
+        rows: tableRows,
+      ),
+    );
+  }
+
+  Widget _buildPartyTable(
+    BuildContext context,
+    List<Map<String, dynamic>> rows,
+    double total,
+  ) {
+    final tableRows = <DataRow>[
+      ...List<DataRow>.generate(rows.length, (index) {
+        final row = rows[index];
+        final party = _party(row);
+        final code = _val(party['party_code'] ?? party['code']);
+        final name = _val(party['name']);
+        return DataRow(
+          cells: <DataCell>[
+            masterTextCell('${index + 1}'),
+            DataCell(
+              Center(
+                child: ReportLinkText(
+                  code == '-' ? name : '$name / $code',
+                  onTap: party['id'] == null
+                      ? null
+                      : () => _openPartyHistory(party),
+                ),
+              ),
+            ),
+            masterTextCell('${row['invoice_count'] ?? 0}'),
+            masterTextCell(controller.formatCurrency(row['invoice_total'])),
+            masterTextCell(controller.formatCurrency(row['amount_paid'])),
+            DataCell(
+              Center(
+                child: Text(
+                  controller.formatCurrency(row['balance']),
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w700,
+                    fontSize: 13,
+                    color: _primaryColor,
+                  ),
+                ),
+              ),
+            ),
+            masterTextCell(
+              row['max_due_days'] == null ? '-' : '${row['max_due_days']}',
+            ),
+          ],
+        );
+      }),
+      DataRow(
+        color: reportTotalRowColor(context),
+        cells: <DataCell>[
+          const DataCell(SizedBox.shrink()),
+          DataCell(
+            Center(
+              child: Text(
+                'Total',
+                style: reportTotalRowTextStyle(context)?.copyWith(fontSize: 13),
+              ),
+            ),
+          ),
+          const DataCell(SizedBox.shrink()),
+          const DataCell(SizedBox.shrink()),
+          const DataCell(SizedBox.shrink()),
+          DataCell(
+            Center(
+              child: Text(
+                controller.formatCurrency(total),
+                style: reportTotalRowTextStyle(context)?.copyWith(fontSize: 13),
+              ),
+            ),
+          ),
+          const DataCell(SizedBox.shrink()),
+        ],
+      ),
+    ];
+
+    final height = (42.0 + ((rows.length + 1) * 52.0)).clamp(160.0, 520.0);
+
+    return SizedBox(
+      height: height,
+      child: MastersTableShell(
+        isLoading: false,
+        emptyText: 'No outstanding payables',
+        minWidth: 900,
+        columns: <DataColumn2>[
+          masterColumn(context, '#', fixedWidth: 48),
+          masterColumn(context, 'Party', size: ColumnSize.L),
+          masterColumn(context, 'Invoices', fixedWidth: 80),
+          masterColumn(context, 'Amount', size: ColumnSize.M),
+          masterColumn(context, 'Paid', size: ColumnSize.M),
+          masterColumn(context, 'Balance Cr', size: ColumnSize.M),
+          masterColumn(context, 'Max Due Days', fixedWidth: 100),
         ],
         rows: tableRows,
       ),

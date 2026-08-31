@@ -4,6 +4,7 @@ import 'package:get/get.dart';
 import '../../../../core/utils/app_date_formatter.dart';
 import '../../../../data/models/masters/master_entities.dart';
 import '../../../../data/repositories/masters/financial_years_repository.dart';
+import '../../../controllers/main/main_controller.dart';
 import '../../../controllers/masters/accounts_controller.dart';
 import '../../../widgets/common/app_help_dialog.dart';
 import '../../../widgets/common/common_button.dart';
@@ -501,7 +502,10 @@ class _AccountFormSheetState extends State<AccountFormSheet> {
         ),
       );
       if (mounted) {
-        Navigator.of(context).pop(true);
+        if (Get.isRegistered<MainController>()) {
+          Get.find<MainController>().changeTab(0);
+        }
+        Get.back<bool>(result: true);
       }
     } finally {
       if (mounted) {

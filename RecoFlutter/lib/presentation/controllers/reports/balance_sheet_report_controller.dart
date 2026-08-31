@@ -40,10 +40,8 @@ class BalanceSheetReportController extends BaseReportController {
 
   void applyFinancialYear(int? value, ReportLookupController lookup) {
     financialYearId.value = value;
-    final end = lookup.formatFinancialYearEnd(value);
-    final today = AppDateFormatter.formatDisplay(DateTime.now());
-    // Default to today when within FY, otherwise FY end (web-style as-of).
-    asOfDateController.text = end.isNotEmpty ? end : today;
+    // Web balance-sheet as_of_date defaults to today.
+    lookup.applyAsOfToday(asOfDateController);
   }
 
   @override

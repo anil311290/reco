@@ -195,21 +195,38 @@ class AppDatabaseService {
     bool isDirty = true,
     bool markDeleted = false,
   }) async {
-    final String resolvedLocalId = localId ?? _uuid.v7();
+    final String requestedLocalId = localId ?? _uuid.v7();
     final String now = DateTime.now().toIso8601String();
+    final normalizedServerId =
+        serverId != null && serverId.trim().isNotEmpty ? serverId.trim() : null;
+    var resolvedLocalId = requestedLocalId;
 
     await database.transaction((txn) async {
-      final existing = await txn.query(
+      var existing = await txn.query(
         DbConstants.offlineRecordsTable,
         where: 'local_id = ?',
-        whereArgs: <Object?>[resolvedLocalId],
+        whereArgs: <Object?>[requestedLocalId],
         limit: 1,
       );
+
+      // Same module+server_id may already exist under a different local_id
+      // (e.g. create synced with UUID, UI later uses remote-{module}-{id}).
+      if (existing.isEmpty && normalizedServerId != null) {
+        existing = await txn.query(
+          DbConstants.offlineRecordsTable,
+          where: 'module = ? AND server_id = ?',
+          whereArgs: <Object?>[module, normalizedServerId],
+          limit: 1,
+        );
+        if (existing.isNotEmpty) {
+          resolvedLocalId = existing.first['local_id']!.toString();
+        }
+      }
 
       final data = <String, Object?>{
         'local_id': resolvedLocalId,
         'module': module,
-        'server_id': serverId,
+        'server_id': normalizedServerId,
         'payload_json': jsonEncode(payload),
         'sync_status': syncStatus,
         'sync_action': syncAction,

@@ -55,7 +55,8 @@ class ItemsRepository extends OfflineFirstRepository {
     );
     final records = _extractList(response.data?['data']);
     await mergeRemoteRecords(module: _module, records: records);
-    return records.map(ItemEntity.fromRecord).toList()..sort(_sortItems);
+    final local = await getLocalModuleRecords(_module);
+    return local.map(ItemEntity.fromRecord).toList()..sort(_sortItems);
   }
 
   Future<PaginatedResult<ItemEntity>> refreshPaginatedItems({
@@ -74,17 +75,6 @@ class ItemsRepository extends OfflineFirstRepository {
     final data = response.data?['data'];
     final records = _extractList(data);
     await mergeRemoteRecords(module: _module, records: records);
-
-    if (data is Map<String, dynamic> && data['data'] is List) {
-      final items = records.map(ItemEntity.fromRecord).toList()..sort(_sortItems);
-      return PaginatedResult<ItemEntity>(
-        items: items,
-        currentPage: int.tryParse(data['current_page']?.toString() ?? '$page') ?? page,
-        lastPage: int.tryParse(data['last_page']?.toString() ?? '$page') ?? page,
-        perPage: int.tryParse(data['per_page']?.toString() ?? '$perPage') ?? perPage,
-        total: int.tryParse(data['total']?.toString() ?? '${items.length}') ?? items.length,
-      );
-    }
 
     return getPaginatedItems(
       queryParameters: queryParameters,
@@ -247,7 +237,7 @@ class ItemsRepository extends OfflineFirstRepository {
       return;
     }
     final localId = entity.localId ?? 'remote-$_module-$serverId';
-    await databaseService.saveLocalRecord(
+    final resolvedLocalId = await databaseService.saveLocalRecord(
       module: _module,
       payload: <String, dynamic>{
         ...entity.toPayload(),
@@ -263,7 +253,7 @@ class ItemsRepository extends OfflineFirstRepository {
       endpoint: '${ApiEndpoints.items}/$serverId/status',
       method: 'PATCH',
       payload: const <String, dynamic>{},
-      recordLocalId: localId,
+      recordLocalId: resolvedLocalId,
     );
     await invalidateRelatedCaches(module: _module);
     if (await networkMonitorService.hasInternetNow()) {

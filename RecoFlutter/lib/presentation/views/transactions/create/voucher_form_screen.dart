@@ -6,6 +6,7 @@ import '../../../../core/config/api_endpoints.dart';
 import '../../../../core/network/api_client.dart';
 import '../../../../core/utils/amount_formatter.dart';
 import '../../../../core/utils/app_action_loader.dart';
+import '../../../../core/utils/app_date_formatter.dart';
 import '../../../../core/utils/app_snackbar.dart';
 import '../../../widgets/common/custom_text_field.dart';
 import '../../../widgets/common/app_help_dialog.dart';
@@ -110,11 +111,31 @@ class VoucherFormScreen<T extends BaseVoucherFormController>
                         maxLines: 3,
                         hintText: 'Brief description',
                       ),
+                      if (controller.isPaymentReceipt)
+                        CustomTextField(
+                          label: 'Reference / Advance ID',
+                          controller: controller.referenceController,
+                          hintText: 'e.g. cheque no. or advance reference',
+                        ),
+                      if (controller.isPaymentReceipt)
+                        Align(
+                          alignment: Alignment.centerLeft,
+                          child: Padding(
+                            padding: const EdgeInsets.only(left: 4, bottom: 4),
+                            child: Text(
+                              'Use this when this ${controller.voucherType} is not being mapped to any invoice below.',
+                              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                    color: Theme.of(context)
+                                        .colorScheme
+                                        .onSurfaceVariant,
+                                  ),
+                            ),
+                          ),
+                        ),
                     ],
                   ),
                 ),
                 if (controller.isPaymentReceipt) _PaymentRowsSection<T>(),
-                if (controller.isPaymentReceipt) _BillWiseAllocateSection<T>(),
                 if (controller.isAdjustment) _AdjustmentRowsSection<T>(),
               ],
             ),
@@ -155,65 +176,104 @@ class _PaymentRowsSection<T extends BaseVoucherFormController>
 
 class _BillWiseAllocateSection<T extends BaseVoucherFormController>
     extends GetView<T> {
+  const _BillWiseAllocateSection({required this.row});
+
+  final PaymentVoucherRowModel row;
+
   @override
   Widget build(BuildContext context) {
-    return Obx(() {
-      final party = _selectedParty(controller);
-      if (party == null) {
-        return const SizedBox.shrink();
-      }
-      final allocations = controller.invoiceAllocations;
-      return TransactionFormSectionCard(
-        title: 'Bill-wise Details',
-        action: TextButton.icon(
-          onPressed: () => _openAllocateSheet(context, party),
-          icon: const Icon(Icons.link_rounded, size: 18),
-          label: Text(allocations.isEmpty ? 'Allocate' : 'Edit'),
-        ),
-        child: allocations.isEmpty
-            ? Text(
-                'Optionally allocate this ${controller.voucherType} against outstanding invoices for ${party.label}.',
+    return ValueListenableBuilder<LookupOption?>(
+      valueListenable: row.account,
+      builder: (context, party, _) {
+        if (party == null || !row.isPartyParticular) {
+          return const SizedBox.shrink();
+        }
+        final allocations = row.invoiceAllocations;
+        final allocated = row.allocatedTotal;
+        final overAllocated = allocated > row.amount + 0.009;
+        return Container(
+          width: double.infinity,
+          margin: const EdgeInsets.only(top: 8),
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: Theme.of(context).colorScheme.surfaceContainerHighest
+                .withValues(alpha: .35),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: Theme.of(context).dividerColor.withValues(alpha: .4),
+            ),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              Row(
+                children: <Widget>[
+                  Expanded(
+                    child: Text(
+                      'Bill-wise Details (optional)',
+                      style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                            fontWeight: FontWeight.w800,
+                          ),
+                    ),
+                  ),
+                  Text(
+                    'Allocated: ₹${allocated.toStringAsFixed(2)} / ₹${row.amount.toStringAsFixed(2)}',
+                    style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                          fontWeight: FontWeight.w700,
+                          color: overAllocated
+                              ? Theme.of(context).colorScheme.error
+                              : Theme.of(context).colorScheme.onSurfaceVariant,
+                        ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 4),
+              Text(
+                'Settle against outstanding ${controller.voucherType == 'receipt' ? 'sales' : 'purchase'} invoices for ${party.label}.',
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
                       color: Theme.of(context).colorScheme.onSurfaceVariant,
                     ),
-              )
-            : Column(
-                children: allocations
-                    .map(
-                      (item) => ListTile(
-                        contentPadding: EdgeInsets.zero,
-                        dense: true,
-                        title: Text(
-                          (item['invoice_number'] ?? item['invoice_id']).toString(),
-                          style: const TextStyle(fontWeight: FontWeight.w700),
+              ),
+              const SizedBox(height: 8),
+              if (allocations.isNotEmpty)
+                ...allocations.map(
+                  (item) => Padding(
+                    padding: const EdgeInsets.only(bottom: 4),
+                    child: Row(
+                      children: <Widget>[
+                        Expanded(
+                          child: Text(
+                            (item['invoice_number'] ?? item['invoice_id'])
+                                .toString(),
+                            style: const TextStyle(fontWeight: FontWeight.w700),
+                          ),
                         ),
-                        trailing: Text(
+                        Text(
                           AmountFormatter.currency(item['amount']),
                           style: const TextStyle(fontWeight: FontWeight.w800),
                         ),
-                      ),
-                    )
-                    .toList(),
+                      ],
+                    ),
+                  ),
+                ),
+              Align(
+                alignment: Alignment.centerRight,
+                child: TextButton.icon(
+                  onPressed: () => _openAllocateSheet(context, row, party),
+                  icon: const Icon(Icons.link_rounded, size: 18),
+                  label: Text(allocations.isEmpty ? 'Allocate' : 'Edit'),
+                ),
               ),
-      );
-    });
-  }
-
-  LookupOption? _selectedParty(BaseVoucherFormController controller) {
-    for (final row in controller.paymentRows) {
-      final account = row.account.value;
-      if (account == null) continue;
-      final kind = (account.kind ?? '').toLowerCase();
-      final key = account.valueKey;
-      if (kind == 'party' || key.startsWith('party:')) {
-        return account;
-      }
-    }
-    return null;
+            ],
+          ),
+        );
+      },
+    );
   }
 
   Future<void> _openAllocateSheet(
     BuildContext context,
+    PaymentVoucherRowModel row,
     LookupOption party,
   ) async {
     int? partyId;
@@ -259,22 +319,132 @@ class _BillWiseAllocateSection<T extends BaseVoucherFormController>
       return;
     }
 
-    final controllers = <int, TextEditingController>{};
-    for (final invoice in invoices) {
+    await Get.bottomSheet<void>(
+      _BillWiseAllocateSheet(
+        invoices: invoices,
+        rowAmount: row.amount,
+        existingAllocations: row.invoiceAllocations,
+        invoiceTypeLabel:
+            controller.voucherType == 'receipt' ? 'Sales' : 'Purchase',
+        onSave: (next) {
+          row.invoiceAllocations
+            ..clear()
+            ..addAll(next);
+          controller.paymentRows.refresh();
+          controller.update();
+        },
+      ),
+      isScrollControlled: true,
+    );
+  }
+}
+
+class _BillWiseAllocateSheet extends StatefulWidget {
+  const _BillWiseAllocateSheet({
+    required this.invoices,
+    required this.rowAmount,
+    required this.existingAllocations,
+    required this.invoiceTypeLabel,
+    required this.onSave,
+  });
+
+  final List<Map<String, dynamic>> invoices;
+  final double rowAmount;
+  final List<Map<String, dynamic>> existingAllocations;
+  final String invoiceTypeLabel;
+  final ValueChanged<List<Map<String, dynamic>>> onSave;
+
+  @override
+  State<_BillWiseAllocateSheet> createState() => _BillWiseAllocateSheetState();
+}
+
+class _BillWiseAllocateSheetState extends State<_BillWiseAllocateSheet> {
+  final _searchController = TextEditingController();
+  final _selected = <int>{};
+  final _amountControllers = <int, TextEditingController>{};
+  final _refControllers = <int, TextEditingController>{};
+
+  @override
+  void initState() {
+    super.initState();
+    for (final invoice in widget.invoices) {
       final id = int.tryParse(invoice['id']?.toString() ?? '') ?? 0;
       if (id <= 0) continue;
-      final existing = controller.invoiceAllocations.firstWhereOrNull(
+      final existing = widget.existingAllocations.firstWhereOrNull(
         (item) => item['invoice_id'] == id,
       );
-      controllers[id] = TextEditingController(
-        text: existing?['amount']?.toString() ?? '',
+      final balance = double.tryParse(
+            invoice['balance_due']?.toString() ?? '0',
+          ) ??
+          0;
+      final existingAmount =
+          double.tryParse(existing?['amount']?.toString() ?? '') ?? 0;
+      if (existing != null && existingAmount > 0) {
+        _selected.add(id);
+      }
+      final defaultAmount = existingAmount > 0
+          ? existingAmount
+          : (widget.rowAmount > 0 && widget.rowAmount < balance
+              ? widget.rowAmount
+              : balance);
+      _amountControllers[id] = TextEditingController(
+        text: defaultAmount.toStringAsFixed(2),
+      );
+      _refControllers[id] = TextEditingController(
+        text: (existing?['reference_number'] ?? '').toString(),
       );
     }
+  }
 
-    await Get.bottomSheet<void>(
-      SafeArea(
+  @override
+  void dispose() {
+    _searchController.dispose();
+    for (final c in _amountControllers.values) {
+      c.dispose();
+    }
+    for (final c in _refControllers.values) {
+      c.dispose();
+    }
+    super.dispose();
+  }
+
+  double get _allocatedTotal {
+    var total = 0.0;
+    for (final id in _selected) {
+      total += double.tryParse(_amountControllers[id]?.text.trim() ?? '') ?? 0;
+    }
+    return total;
+  }
+
+  List<Map<String, dynamic>> get _filteredInvoices {
+    final term = _searchController.text.trim().toLowerCase();
+    if (term.isEmpty) {
+      return widget.invoices;
+    }
+    return widget.invoices.where((invoice) {
+      final number = (invoice['invoice_number'] ?? '').toString().toLowerCase();
+      return number.contains(term);
+    }).toList();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final mediaQuery = MediaQuery.of(context);
+    final overAllocated = _allocatedTotal > widget.rowAmount + 0.009;
+    final filtered = _filteredInvoices;
+
+    final availableHeight = mediaQuery.size.height -
+        mediaQuery.viewInsets.bottom -
+        mediaQuery.padding.top -
+        120;
+
+    return Padding(
+      padding: EdgeInsets.only(bottom: mediaQuery.viewInsets.bottom),
+      child: SafeArea(
+        top: false,
         child: Material(
-          color: Theme.of(context).cardColor,
+          color: theme.cardColor,
           borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
           child: Padding(
             padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
@@ -283,90 +453,224 @@ class _BillWiseAllocateSection<T extends BaseVoucherFormController>
               crossAxisAlignment: CrossAxisAlignment.start,
               children: <Widget>[
                 Text(
-                  'Allocate to invoices',
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w800,
-                      ),
+                  'Allocate to ${widget.invoiceTypeLabel} invoices',
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'Allocated: ₹${_allocatedTotal.toStringAsFixed(2)} / ₹${widget.rowAmount.toStringAsFixed(2)}',
+                  style: theme.textTheme.labelLarge?.copyWith(
+                    fontWeight: FontWeight.w700,
+                    color: overAllocated
+                        ? theme.colorScheme.error
+                        : theme.colorScheme.onSurfaceVariant,
+                  ),
                 ),
                 const SizedBox(height: 10),
-                ConstrainedBox(
-                  constraints: BoxConstraints(
-                    maxHeight: MediaQuery.of(context).size.height * 0.5,
-                  ),
-                  child: ListView(
-                    shrinkWrap: true,
-                    children: invoices.map((invoice) {
+              if (widget.invoices.length > 8)
+                CustomTextField(
+                  label: 'Search invoice #',
+                  controller: _searchController,
+                  hintText: 'Search invoice #...',
+                  onChanged: (_) => setState(() {}),
+                  bottomPadding: 8,
+                ),
+              ConstrainedBox(
+                constraints: BoxConstraints(maxHeight: availableHeight),
+                child: filtered.isEmpty
+                    ? Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 24),
+                        child: Center(
+                          child: Text(
+                            'No invoices match your search.',
+                            style: theme.textTheme.bodyMedium?.copyWith(
+                              color: theme.colorScheme.onSurfaceVariant,
+                            ),
+                          ),
+                        ),
+                      )
+                    : ListView.builder(
+                        shrinkWrap: true,
+                        itemCount: filtered.length,
+                        itemBuilder: (context, index) {
+                          final invoice = filtered[index];
+                          final id =
+                              int.tryParse(invoice['id']?.toString() ?? '') ??
+                                  0;
+                          final balance = double.tryParse(
+                                invoice['balance_due']?.toString() ?? '0',
+                              ) ??
+                              0;
+                          final isOverdue = invoice['is_overdue'] == true;
+                          final overdueDays = invoice['overdue_days'];
+                          final checked = _selected.contains(id);
+                          return Container(
+                            margin: const EdgeInsets.only(bottom: 10),
+                            padding: const EdgeInsets.all(10),
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(
+                                color: theme.dividerColor.withValues(alpha: .45),
+                              ),
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: <Widget>[
+                                Row(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: <Widget>[
+                                    Checkbox(
+                                      value: checked,
+                                      onChanged: (value) {
+                                        setState(() {
+                                          if (value == true) {
+                                            _selected.add(id);
+                                            final entered = widget.rowAmount;
+                                            if (entered > 0 &&
+                                                entered < balance) {
+                                              _amountControllers[id]?.text =
+                                                  entered.toStringAsFixed(2);
+                                            }
+                                          } else {
+                                            _selected.remove(id);
+                                          }
+                                        });
+                                      },
+                                    ),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: <Widget>[
+                                          Row(
+                                            children: <Widget>[
+                                              Expanded(
+                                                child: Text(
+                                                  (invoice['invoice_number'] ??
+                                                          '-')
+                                                      .toString(),
+                                                  style: const TextStyle(
+                                                    fontWeight: FontWeight.w800,
+                                                  ),
+                                                ),
+                                              ),
+                                              if (isOverdue)
+                                                Container(
+                                                  padding:
+                                                      const EdgeInsets.symmetric(
+                                                    horizontal: 8,
+                                                    vertical: 2,
+                                                  ),
+                                                  decoration: BoxDecoration(
+                                                    color: const Color(0xFFEF4444)
+                                                        .withValues(alpha: .12),
+                                                    borderRadius:
+                                                        BorderRadius.circular(
+                                                      999,
+                                                    ),
+                                                  ),
+                                                  child: Text(
+                                                    '${overdueDays ?? ''}d overdue',
+                                                    style: theme
+                                                        .textTheme.labelSmall
+                                                        ?.copyWith(
+                                                      color: const Color(
+                                                        0xFFEF4444,
+                                                      ),
+                                                      fontWeight:
+                                                          FontWeight.w700,
+                                                    ),
+                                                  ),
+                                                ),
+                                            ],
+                                          ),
+                                          Text(
+                                            'Due: ${AppDateFormatter.formatDisplay((invoice['due_date'] ?? '').toString())}',
+                                            style: theme.textTheme.labelMedium
+                                                ?.copyWith(
+                                              color: theme
+                                                  .colorScheme.onSurfaceVariant,
+                                            ),
+                                          ),
+                                          Text(
+                                            'Balance ${AmountFormatter.currency(balance)}',
+                                            style: theme.textTheme.labelLarge
+                                                ?.copyWith(
+                                              fontWeight: FontWeight.w700,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                if (checked) ...<Widget>[
+                                  const SizedBox(height: 8),
+                                  CustomTextField(
+                                    label: 'Allocate amount',
+                                    controller: _amountControllers[id],
+                                    keyboardType:
+                                        const TextInputType.numberWithOptions(
+                                      decimal: true,
+                                    ),
+                                    inputFormatters: <TextInputFormatter>[
+                                      FilteringTextInputFormatter.allow(
+                                        RegExp(r'^\d*\.?\d{0,2}'),
+                                      ),
+                                    ],
+                                    onChanged: (_) => setState(() {}),
+                                    bottomPadding: 8,
+                                  ),
+                                  CustomTextField(
+                                    label: 'Ref / Cheque No.',
+                                    controller: _refControllers[id],
+                                    hintText: 'Ref / Cheque No.',
+                                    bottomPadding: 0,
+                                  ),
+                                ],
+                              ],
+                            ),
+                          );
+                        },
+                      ),
+              ),
+              const SizedBox(height: 10),
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton(
+                  onPressed: () {
+                    final next = <Map<String, dynamic>>[];
+                    for (final invoice in widget.invoices) {
                       final id =
                           int.tryParse(invoice['id']?.toString() ?? '') ?? 0;
-                      final balance = double.tryParse(
-                            invoice['balance_due']?.toString() ?? '0',
+                      if (!_selected.contains(id)) continue;
+                      final amount = double.tryParse(
+                            _amountControllers[id]?.text.trim() ?? '',
                           ) ??
                           0;
-                      return Padding(
-                        padding: const EdgeInsets.only(bottom: 10),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: <Widget>[
-                            Text(
-                              (invoice['invoice_number'] ?? '-').toString(),
-                              style: const TextStyle(fontWeight: FontWeight.w700),
-                            ),
-                            Text(
-                              'Balance ${AmountFormatter.currency(balance)}',
-                              style: Theme.of(context).textTheme.labelMedium,
-                            ),
-                            CustomTextField(
-                              label: 'Allocate',
-                              controller: controllers[id],
-                              keyboardType:
-                                  const TextInputType.numberWithOptions(
-                                decimal: true,
-                              ),
-                              bottomPadding: 0,
-                            ),
-                          ],
-                        ),
-                      );
-                    }).toList(),
-                  ),
+                      if (id <= 0 || amount <= 0) continue;
+                      final ref = _refControllers[id]?.text.trim() ?? '';
+                      next.add(<String, dynamic>{
+                        'invoice_id': id,
+                        'invoice_number': invoice['invoice_number'],
+                        'amount': amount,
+                        if (ref.isNotEmpty) 'reference_number': ref,
+                      });
+                    }
+                    widget.onSave(next);
+                    Get.back<void>();
+                  },
+                  child: const Text('Save Allocations'),
                 ),
-                const SizedBox(height: 10),
-                SizedBox(
-                  width: double.infinity,
-                  child: FilledButton(
-                    onPressed: () {
-                      final next = <Map<String, dynamic>>[];
-                      for (final invoice in invoices) {
-                        final id =
-                            int.tryParse(invoice['id']?.toString() ?? '') ?? 0;
-                        final amount = double.tryParse(
-                              controllers[id]?.text.trim() ?? '',
-                            ) ??
-                            0;
-                        if (id <= 0 || amount <= 0) continue;
-                        next.add(<String, dynamic>{
-                          'invoice_id': id,
-                          'invoice_number': invoice['invoice_number'],
-                          'amount': amount,
-                        });
-                      }
-                      controller.invoiceAllocations.assignAll(next);
-                      Get.back<void>();
-                    },
-                    child: const Text('Save Allocations'),
-                  ),
-                ),
-              ],
-            ),
+              ),
+            ],
           ),
         ),
       ),
-      isScrollControlled: true,
+      ),
     );
-
-    for (final c in controllers.values) {
-      c.dispose();
-    }
   }
 }
 
@@ -391,25 +695,48 @@ class _PaymentRowCard<T extends BaseVoucherFormController> extends GetView<T> {
           ValueListenableBuilder<LookupOption?>(
             valueListenable: row.account,
             builder: (context, value, _) {
-              return CustomDropdown<LookupOption>(
-                label: 'Particulars',
-                value: value,
-                items: controller.availablePaymentParticularsFor(row),
-                itemLabelBuilder: (item) {
-                  final group = item.group?.trim();
-                  if (group == null || group.isEmpty) {
-                    return item.label;
-                  }
-                  return '[$group] ${item.label}';
-                },
-                onChanged: (next) =>
-                    controller.onPaymentParticularChanged(row, next),
-                hint: 'Select Particulars',
-                requiredField: true,
-                isLoading: controller
-                    .lookupController.isPaymentParticularsLoading.value,
-                enabled: !controller
-                    .lookupController.isPaymentParticularsLoading.value,
+              final partyBalance = value?.partyBalance;
+              final balanceType = (value?.partyBalanceType ?? '').toLowerCase();
+              final showPartyHint = value != null &&
+                  row.isPartyParticular &&
+                  partyBalance != null;
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: <Widget>[
+                  CustomDropdown<LookupOption>(
+                    label: 'Particulars',
+                    value: value,
+                    items: controller.availablePaymentParticularsFor(row),
+                    itemLabelBuilder: (item) {
+                      final group = item.group?.trim();
+                      if (group == null || group.isEmpty) {
+                        return item.label;
+                      }
+                      return '[$group] ${item.label}';
+                    },
+                    onChanged: (next) =>
+                        controller.onPaymentParticularChanged(row, next),
+                    hint: 'Select Particulars',
+                    requiredField: true,
+                    isLoading: controller
+                        .lookupController.isPaymentParticularsLoading.value,
+                    enabled: !controller
+                        .lookupController.isPaymentParticularsLoading.value,
+                  ),
+                  if (showPartyHint)
+                    Padding(
+                      padding: const EdgeInsets.only(left: 4, bottom: 8),
+                      child: Text(
+                        'Party balance: ₹${partyBalance.toStringAsFixed(2)} ${balanceType == 'credit' ? 'Cr' : 'Dr'}',
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                              color: Theme.of(context)
+                                  .colorScheme
+                                  .onSurfaceVariant,
+                              fontWeight: FontWeight.w500,
+                            ),
+                      ),
+                    ),
+                ],
               );
             },
           ),
@@ -421,8 +748,12 @@ class _PaymentRowCard<T extends BaseVoucherFormController> extends GetView<T> {
               FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d{0,2}')),
             ],
             requiredField: true,
-            onChanged: (_) => controller.refreshPaymentTotals(),
+            onChanged: (_) {
+              controller.refreshPaymentTotals();
+              controller.update();
+            },
           ),
+          _BillWiseAllocateSection<T>(row: row),
           if (controller.paymentRows.length > 1)
             Align(
               alignment: Alignment.centerRight,

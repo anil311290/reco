@@ -205,13 +205,20 @@ class AccountsController extends GetxController with MasterExportMixin {
 
   Future<void> deleteItem(AccountEntity entity) async {
     if (entity.id == null) return;
-    await _repository.deleteAccountOffline(
-      localId: entity.localId ?? 'remote-accounts-${entity.id}',
-      accountId: entity.id.toString(),
-      payload: entity.toPayload(),
-    );
-    await refreshData();
-    AppSnackbar.success('Account delete queued.');
+    try {
+      await _repository.deleteAccountOffline(
+        localId: entity.localId ?? 'remote-accounts-${entity.id}',
+        accountId: entity.id.toString(),
+        payload: entity.toPayload(),
+      );
+      if (_networkMonitorService.isOnline.value) {
+        await _syncService.syncPendingMutations(showSuccessMessage: false);
+      }
+      await refreshData(forceRemote: true);
+      AppSnackbar.success('Account deleted.');
+    } catch (error) {
+      AppSnackbar.error(error.toString());
+    }
   }
 
   Future<void> toggleStatus(AccountEntity entity, bool value) async {

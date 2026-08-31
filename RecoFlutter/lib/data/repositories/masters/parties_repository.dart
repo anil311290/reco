@@ -55,7 +55,8 @@ class PartiesRepository extends OfflineFirstRepository {
     );
     final records = _extractList(response.data?['data']);
     await mergeRemoteRecords(module: _module, records: records);
-    return records.map(PartyEntity.fromRecord).toList()..sort(_sortParties);
+    final local = await getLocalModuleRecords(_module);
+    return local.map(PartyEntity.fromRecord).toList()..sort(_sortParties);
   }
 
   Future<PaginatedResult<PartyEntity>> refreshPaginatedParties({
@@ -74,17 +75,6 @@ class PartiesRepository extends OfflineFirstRepository {
     final data = response.data?['data'];
     final records = _extractList(data);
     await mergeRemoteRecords(module: _module, records: records);
-
-    if (data is Map<String, dynamic> && data['data'] is List) {
-      final items = records.map(PartyEntity.fromRecord).toList()..sort(_sortParties);
-      return PaginatedResult<PartyEntity>(
-        items: items,
-        currentPage: int.tryParse(data['current_page']?.toString() ?? '$page') ?? page,
-        lastPage: int.tryParse(data['last_page']?.toString() ?? '$page') ?? page,
-        perPage: int.tryParse(data['per_page']?.toString() ?? '$perPage') ?? perPage,
-        total: int.tryParse(data['total']?.toString() ?? '${items.length}') ?? items.length,
-      );
-    }
 
     return getPaginatedParties(
       queryParameters: queryParameters,
@@ -196,7 +186,7 @@ class PartiesRepository extends OfflineFirstRepository {
     required Map<String, dynamic> localPayload,
     required Map<String, dynamic> remotePayload,
   }) async {
-    await databaseService.saveLocalRecord(
+    final resolvedLocalId = await databaseService.saveLocalRecord(
       module: _module,
       payload: localPayload,
       syncAction: 'update',
@@ -208,7 +198,7 @@ class PartiesRepository extends OfflineFirstRepository {
       endpoint: endpoint,
       method: 'PATCH',
       payload: remotePayload,
-      recordLocalId: localId,
+      recordLocalId: resolvedLocalId,
     );
     await invalidateRelatedCaches(module: _module);
     if (await networkMonitorService.hasInternetNow()) {
