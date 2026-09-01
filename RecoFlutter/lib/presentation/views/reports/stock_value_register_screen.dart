@@ -7,7 +7,7 @@ import '../../../core/network/api_error_message.dart';
 import '../../../core/utils/app_date_formatter.dart';
 import '../../../core/utils/app_snackbar.dart';
 import '../../../data/repositories/reports/reports_repository.dart';
-import '../../widgets/common/common_button.dart';
+import '../../controllers/reports/report_lookup_controller.dart';
 import '../../widgets/common/custom_text_field.dart';
 import '../masters/widgets/masters_ui_components.dart';
 import 'widgets/report_ui_components.dart';
@@ -30,15 +30,51 @@ class StockValueRegisterScreen extends StatefulWidget {
 }
 
 class _StockValueRegisterScreenState extends State<StockValueRegisterScreen> {
+  static const Color _accentColor = Color(0xFF2563EB);
+
   final _repository = Get.find<ReportsRepository>();
+  final _fromDateController = TextEditingController();
+  final _toDateController = TextEditingController();
 
   final isLoading = false.obs;
   final entries = <Map<String, dynamic>>[].obs;
 
+  late int _financialYearId;
+
   @override
   void initState() {
     super.initState();
+    _financialYearId = widget.financialYearId;
+    if (widget.fromDate != null && widget.fromDate!.isNotEmpty) {
+      _fromDateController.text = AppDateFormatter.formatDisplay(widget.fromDate);
+    }
+    if (widget.toDate != null && widget.toDate!.isNotEmpty) {
+      _toDateController.text = AppDateFormatter.formatDisplay(widget.toDate);
+    }
     _loadEntries();
+  }
+
+  @override
+  void dispose() {
+    _fromDateController.dispose();
+    _toDateController.dispose();
+    super.dispose();
+  }
+
+  String? get _activeFromDate {
+    final value = _fromDateController.text.trim();
+    if (value.isEmpty) {
+      return null;
+    }
+    return AppDateFormatter.toApiDate(value);
+  }
+
+  String? get _activeToDate {
+    final value = _toDateController.text.trim();
+    if (value.isEmpty) {
+      return null;
+    }
+    return AppDateFormatter.toApiDate(value);
   }
 
   Future<void> _loadEntries() async {
@@ -46,9 +82,9 @@ class _StockValueRegisterScreenState extends State<StockValueRegisterScreen> {
     try {
       entries.assignAll(
         await _repository.getStockValueEntries(
-          financialYearId: widget.financialYearId,
-          fromDate: widget.fromDate,
-          toDate: widget.toDate,
+          financialYearId: _financialYearId,
+          fromDate: _activeFromDate,
+          toDate: _activeToDate,
         ),
       );
     } catch (error) {
@@ -58,12 +94,24 @@ class _StockValueRegisterScreenState extends State<StockValueRegisterScreen> {
     }
   }
 
+  Future<void> _resetFilters() async {
+    final lookup = Get.find<ReportLookupController>();
+    setState(() {
+      _financialYearId =
+          lookup.currentFinancialYearId.value ?? widget.financialYearId;
+      _fromDateController.clear();
+      _toDateController.clear();
+    });
+    await _loadEntries();
+  }
+
   Future<void> _openEntryForm({Map<String, dynamic>? entry}) async {
-    final saved = await showModalBottomSheet<bool>(
+    final saved = await showDialog<bool>(
+
       context: context,
-      isScrollControlled: true,
-      builder: (context) => _StockValueEntrySheet(
-        financialYearId: widget.financialYearId,
+      builder: (context) => _StockValueEntryDialog(
+
+        financialYearId: _financialYearId,
         entry: entry,
       ),
     );
@@ -72,91 +120,46 @@ class _StockValueRegisterScreenState extends State<StockValueRegisterScreen> {
     }
   }
 
+  Future<void> _pickDate(TextEditingController target) async {
+    final initial = AppDateFormatter.parse(target.text) ?? DateTime.now();
+    final selected = await showDatePicker(
+      context: context,
+      initialDate: initial,
+      firstDate: DateTime(2000),
+      lastDate: DateTime(2100),
+    );
+    if (selected != null) {
+      target.text = AppDateFormatter.formatDisplay(selected);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    final lookup = Get.find<ReportLookupController>();
+
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Stock Value Register'),
-        actions: <Widget>[
-          IconButton(
-            tooltip: 'Add Stock Value',
-            onPressed: () => _openEntryForm(),
-            icon: const Icon(Icons.add_rounded),
-          ),
-        ],
+        title: ReportPageTitle(
+          title: 'Stock Value Register',
+          icon: FontAwesomeIcons.boxesStacked.data,
+          color: _accentColor,
+        ),
       ),
       body: Obx(() {
         if (isLoading.value && entries.isEmpty) {
-          return const Center(child: CircularProgressIndicator());
+          return const ReportLoadingView();
         }
+
         return RefreshIndicator(
           onRefresh: _loadEntries,
           child: ListView(
             padding: const EdgeInsets.all(16),
             children: <Widget>[
-              ReportSectionCard(
-                title: 'Stock Value Entries',
-                icon: FontAwesomeIcons.boxesStacked.data,
-                iconColor: const Color(0xFF2563EB),
-                trailing: TextButton.icon(
-                  onPressed: () => _openEntryForm(),
-                  icon: const Icon(Icons.add, size: 18),
-                  label: const Text('Add'),
-                ),
-                child: entries.isEmpty
-                    ? const Padding(
-                        padding: EdgeInsets.all(24),
-                        child: Center(
-                          child: Text('No stock value entries found.'),
-                        ),
-                      )
-                    : SizedBox(
-                        height: (42.0 + (entries.length * 52.0)).clamp(
-                          180.0,
-                          520.0,
-                        ),
-                        child: MastersTableShell(
-                          isLoading: false,
-                          emptyText: 'No stock value entries found.',
-                          minWidth: 720,
-                          columns: <DataColumn2>[
-                            masterColumn(context, 'Date', size: ColumnSize.M),
-                            masterColumn(context, 'Stock Value (₹)', size: ColumnSize.M),
-                            masterColumn(context, 'Remarks', size: ColumnSize.L),
-                            masterColumn(context, 'Actions', fixedWidth: 72),
-                          ],
-                          rows: entries.map((entry) {
-                            return DataRow(
-                              cells: <DataCell>[
-                                masterTextCell(
-                                  AppDateFormatter.formatDisplay(
-                                    (entry['valuation_date'] ?? '').toString(),
-                                  ),
-                                ),
-                                masterTextCell(
-                                  _formatCurrency(entry['stock_value']),
-                                  fontWeight: FontWeight.w700,
-                                ),
-                                masterTextCell(
-                                  (entry['remarks'] ?? '-').toString(),
-                                  fontWeight: FontWeight.w500,
-                                ),
-                                DataCell(
-                                  Center(
-                                    child: MasterActionButton(
-                                      icon: Icons.edit_outlined,
-                                      tooltip: 'Edit Stock Value',
-                                      color: Theme.of(context).colorScheme.primary,
-                                      onTap: () => _openEntryForm(entry: entry),
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            );
-                          }).toList(),
-                        ),
-                      ),
-              ),
+              _heroSection(context),
+              const SizedBox(height: 12),
+              _filterPanel(context, lookup),
+              const SizedBox(height: 12),
+              _entriesSection(context),
             ],
           ),
         );
@@ -164,14 +167,303 @@ class _StockValueRegisterScreenState extends State<StockValueRegisterScreen> {
     );
   }
 
+  Widget _heroSection(BuildContext context) {
+    final theme = Theme.of(context);
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: theme.dividerColor.withValues(alpha: .25),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          Text(
+            'Profit & Loss',
+            style: theme.textTheme.labelLarge?.copyWith(
+              color: _accentColor,
+              fontWeight: FontWeight.w800,
+              letterSpacing: .4,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            'Enter the total stock value by date. The latest values are used in the Profit & Loss report.',
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+              height: 1.35,
+            ),
+          ),
+          const SizedBox(height: 12),
+          Align(
+            alignment: Alignment.centerRight,
+            child: OutlinedButton.icon(
+              onPressed: Get.back,
+              icon: const Icon(Icons.arrow_back_rounded, size: 16),
+              label: const Text('Back to Profit & Loss'),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _filterPanel(BuildContext context, ReportLookupController lookup) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(16),
+        gradient: LinearGradient(
+          colors: <Color>[
+            _accentColor.withValues(alpha: .06),
+            Theme.of(context).colorScheme.surface,
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        border: Border.all(color: _accentColor.withValues(alpha: .10)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          Row(
+            children: <Widget>[
+              Icon(FontAwesomeIcons.filter.data, size: 16, color: _accentColor),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'Filters',
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w700,
+                    fontSize: 15,
+                  ),
+                ),
+              ),
+              TextButton.icon(
+                onPressed: _resetFilters,
+                icon: const Icon(Icons.refresh_rounded, size: 16),
+                label: const Text('Reset'),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          CustomDropdown<int>(
+            label: 'Financial Year',
+            value: _financialYearId,
+            items: lookup.financialYears
+                .map((e) => int.tryParse(e['id']?.toString() ?? ''))
+                .whereType<int>()
+                .toList(),
+            itemLabelBuilder: (value) {
+              final item = lookup.financialYears.firstWhere(
+                (fy) => int.tryParse(fy['id']?.toString() ?? '') == value,
+                orElse: () => <String, dynamic>{},
+              );
+              return (item['name'] ?? 'FY').toString();
+            },
+            onChanged: (value) {
+              if (value == null) {
+                return;
+              }
+              setState(() => _financialYearId = value);
+            },
+          ),
+          const SizedBox(height: 12),
+          ReportDateRangeRow(
+            fromController: _fromDateController,
+            toController: _toDateController,
+            onFromTap: () => _pickDate(_fromDateController),
+            onToTap: () => _pickDate(_toDateController),
+          ),
+          const SizedBox(height: 12),
+          Align(
+            alignment: Alignment.centerRight,
+            child: ReportPrimaryButton(
+              label: 'Apply',
+              icon: FontAwesomeIcons.filter.data,
+              onTap: _loadEntries,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _entriesSection(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: theme.dividerColor.withValues(alpha: .25),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final stacked = constraints.maxWidth < 520;
+              final header = Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: <Widget>[
+                  Row(
+                    children: <Widget>[
+                      Icon(
+                        FontAwesomeIcons.calendarDays.data,
+                        size: 16,
+                        color: _accentColor,
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'Stock Value Entries',
+                          style: theme.textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.w600,
+                            fontSize: 15,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Create or edit a dated total value. Entries cannot be deleted.',
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant,
+                      height: 1.3,
+                    ),
+                  ),
+                ],
+              );
+
+              if (stacked) {
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: <Widget>[
+                    header,
+                    const SizedBox(height: 10),
+                    ReportPrimaryButton(
+                      label: 'Add Entry',
+                      icon: FontAwesomeIcons.circlePlus.data,
+                      onTap: () => _openEntryForm(),
+                    ),
+                  ],
+                );
+              }
+
+              return Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: <Widget>[
+                  Expanded(child: header),
+                  ReportPrimaryButton(
+                    label: 'Add Entry',
+                    icon: FontAwesomeIcons.circlePlus.data,
+                    onTap: () => _openEntryForm(),
+                  ),
+                ],
+              );
+            },
+          ),
+          const SizedBox(height: 12),
+          if (entries.isEmpty)
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 40),
+              child: Center(
+                child: Text('No stock value entries found.'),
+              ),
+            )
+          else
+            SizedBox(
+              height: (42.0 + (entries.length * 52.0)).clamp(180.0, 520.0),
+              child: MastersTableShell(
+                isLoading: isLoading.value,
+                emptyText: 'No stock value entries found.',
+                minWidth: 860,
+                columns: <DataColumn2>[
+                  masterColumn(context, 'Date', size: ColumnSize.M),
+                  masterColumn(context, 'Stock Value (₹)', size: ColumnSize.M),
+                  masterColumn(context, 'Remarks', size: ColumnSize.L),
+                  masterColumn(context, 'Updated', size: ColumnSize.M),
+                  masterColumn(context, 'Action', fixedWidth: 96),
+                ],
+                rows: entries.map((entry) {
+                  return DataRow(
+                    cells: <DataCell>[
+                      masterTextCell(
+                        AppDateFormatter.formatDisplay(
+                          (entry['valuation_date'] ?? '').toString(),
+                        ),
+                        fontWeight: FontWeight.w700,
+                      ),
+                      masterTextCell(
+                        _formatCurrency(entry['stock_value']),
+                        fontWeight: FontWeight.w800,
+                      ),
+                      masterTextCell(
+                        _displayRemarks(entry['remarks']),
+                        fontWeight: FontWeight.w500,
+                      ),
+                      masterTextCell(
+                        _formatUpdatedAt(entry['updated_at']),
+                        fontWeight: FontWeight.w500,
+                      ),
+                      DataCell(
+                        Center(
+                          child: OutlinedButton.icon(
+                            onPressed: () => _openEntryForm(entry: entry),
+                            style: OutlinedButton.styleFrom(
+                              visualDensity: VisualDensity.compact,
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 10,
+                                vertical: 6,
+                              ),
+                            ),
+                            icon: const Icon(Icons.edit_outlined, size: 14),
+                            label: const Text('Edit'),
+                          ),
+                        ),
+                      ),
+                    ],
+                  );
+                }).toList(),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  String _displayRemarks(dynamic value) {
+    final text = (value ?? '').toString().trim();
+    return text.isEmpty ? '-' : text;
+  }
+
   String _formatCurrency(dynamic value) {
     final amount = double.tryParse(value?.toString() ?? '0') ?? 0;
     return '₹${amount.toStringAsFixed(2)}';
   }
+
+  String _formatUpdatedAt(dynamic value) {
+    final parsed = AppDateFormatter.parse(value);
+    if (parsed == null) {
+      return '-';
+    }
+    final day = parsed.day.toString().padLeft(2, '0');
+    final month = parsed.month.toString().padLeft(2, '0');
+    final year = parsed.year;
+    final hour = parsed.hour.toString().padLeft(2, '0');
+    final minute = parsed.minute.toString().padLeft(2, '0');
+    return '$day/$month/$year $hour:$minute';
+  }
 }
 
-class _StockValueEntrySheet extends StatefulWidget {
-  const _StockValueEntrySheet({
+class _StockValueEntryDialog extends StatefulWidget {
+  const _StockValueEntryDialog({
     required this.financialYearId,
     this.entry,
   });
@@ -180,10 +472,10 @@ class _StockValueEntrySheet extends StatefulWidget {
   final Map<String, dynamic>? entry;
 
   @override
-  State<_StockValueEntrySheet> createState() => _StockValueEntrySheetState();
+  State<_StockValueEntryDialog> createState() => _StockValueEntryDialogState();
 }
 
-class _StockValueEntrySheetState extends State<_StockValueEntrySheet> {
+class _StockValueEntryDialogState extends State<_StockValueEntryDialog> {
   final _repository = Get.find<ReportsRepository>();
   final _formKey = GlobalKey<FormState>();
   final _valueController = TextEditingController();
@@ -204,8 +496,6 @@ class _StockValueEntrySheetState extends State<_StockValueEntrySheet> {
       );
       _valueController.text = (entry['stock_value'] ?? '0').toString();
       _remarksController.text = (entry['remarks'] ?? '').toString();
-    } else {
-      _dateController.text = AppDateFormatter.formatDisplay(DateTime.now());
     }
   }
 
@@ -237,33 +527,32 @@ class _StockValueEntrySheetState extends State<_StockValueEntrySheet> {
     }
     setState(() => isSaving = true);
     try {
-      final payload = <String, dynamic>{
-        'financialYearId': widget.financialYearId,
-        'valuationDate': AppDateFormatter.toApiDate(_dateController.text),
-        'stockValue': double.tryParse(_valueController.text.trim()) ?? 0,
-        'remarks': _remarksController.text.trim(),
-      };
+      final valuationDate = AppDateFormatter.toApiDate(_dateController.text);
+      final stockValue = double.tryParse(_valueController.text.trim()) ?? 0;
+      final remarks = _remarksController.text.trim();
       if (_isEdit) {
         await _repository.updateStockValueEntry(
           entryId: int.parse(widget.entry!['id'].toString()),
-          financialYearId: payload['financialYearId'] as int,
-          valuationDate: payload['valuationDate'] as String,
-          stockValue: payload['stockValue'] as double,
-          remarks: payload['remarks'] as String,
+          financialYearId: widget.financialYearId,
+          valuationDate: valuationDate,
+          stockValue: stockValue,
+          remarks: remarks,
         );
       } else {
         await _repository.saveStockValueEntry(
-          financialYearId: payload['financialYearId'] as int,
-          valuationDate: payload['valuationDate'] as String,
-          stockValue: payload['stockValue'] as double,
-          remarks: payload['remarks'] as String,
+          financialYearId: widget.financialYearId,
+          valuationDate: valuationDate,
+          stockValue: stockValue,
+          remarks: remarks,
         );
       }
       if (mounted) {
         Navigator.of(context).pop(true);
       }
       AppSnackbar.success(
-        _isEdit ? 'Stock value updated successfully.' : 'Stock value saved successfully.',
+        _isEdit
+            ? 'Stock value updated successfully.'
+            : 'Stock value saved successfully.',
       );
     } catch (error) {
       AppSnackbar.errorDialog(extractApiErrorMessage(error));
@@ -276,37 +565,36 @@ class _StockValueEntrySheetState extends State<_StockValueEntrySheet> {
 
   @override
   Widget build(BuildContext context) {
-    final bottomInset = MediaQuery.of(context).viewInsets.bottom;
-    return Padding(
-      padding: EdgeInsets.fromLTRB(16, 16, 16, 16 + bottomInset),
-      child: Form(
+    return AlertDialog(
+
+      backgroundColor: Colors.white,
+      insetPadding: EdgeInsets.symmetric(horizontal: 10),
+      title: Text(_isEdit ? 'Edit Stock Value' : 'Add Stock Value',style: context.theme.textTheme.titleMedium?.copyWith(
+        color: context.theme.colorScheme.onBackground,
+       fontSize: 14
+      ),),
+      content: Form(
         key: _formKey,
         child: Column(
           mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: <Widget>[
-            Text(
-              _isEdit ? 'Edit Stock Value' : 'Add Stock Value',
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.w800,
-              ),
-            ),
-            const SizedBox(height: 16),
             CustomTextField(
               controller: _dateController,
-              label: 'Valuation Date',
+              label: 'Date',
               readOnly: true,
               requiredField: true,
+              suffixIcon: Icons.edit_calendar_rounded,
               onTap: _pickDate,
               validator: (value) =>
                   (value ?? '').trim().isEmpty ? 'Required field' : null,
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 10),
             CustomTextField(
               controller: _valueController,
               label: 'Stock Value (₹)',
               requiredField: true,
-              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              keyboardType:
+                  const TextInputType.numberWithOptions(decimal: true),
               validator: (value) {
                 final amount = double.tryParse((value ?? '').trim());
                 if (amount == null) {
@@ -324,15 +612,26 @@ class _StockValueEntrySheetState extends State<_StockValueEntrySheet> {
               label: 'Remarks',
               maxLines: 3,
             ),
-            const SizedBox(height: 16),
-            CommonButton(
-              text: _isEdit ? 'Update Stock Value' : 'Save Stock Value',
-              isLoading: isSaving,
-              onPressed: _submit,
-            ),
           ],
         ),
       ),
+      actions: <Widget>[
+        TextButton(
+          onPressed: isSaving ? null : () => Navigator.of(context).pop(false),
+          child: const Text('Cancel'),
+        ),
+        FilledButton.icon(
+          onPressed: isSaving ? null : _submit,
+          icon: isSaving
+              ? const SizedBox(
+                  width: 16,
+                  height: 16,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : const Icon(Icons.check_circle_outline, size: 18),
+          label: const Text('Save'),
+        ),
+      ],
     );
   }
 }

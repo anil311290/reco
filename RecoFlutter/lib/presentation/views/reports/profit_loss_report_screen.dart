@@ -263,6 +263,9 @@ class ProfitLossReportScreen extends GetView<ProfitLossReportController> {
       ),
     ];
 
+    const expenseColor = Color(0xFFEF4444);
+    const incomeColor = Color(0xFF16A34A);
+
     return SizedBox(
       height: (42.0 + (tableRows.length * 52.0)).clamp(180.0, 620.0),
       child: MastersTableShell(
@@ -270,10 +273,30 @@ class ProfitLossReportScreen extends GetView<ProfitLossReportController> {
         emptyText: 'No income or expenses recorded',
         minWidth: 920,
         columns: <DataColumn2>[
-          masterColumn(context, 'Expenses', size: ColumnSize.L),
-          masterColumn(context, 'Amount', size: ColumnSize.S),
-          masterColumn(context, 'Income', size: ColumnSize.L),
-          masterColumn(context, 'Amount', size: ColumnSize.S),
+          _sideColumn(
+            context,
+            'Expenses',
+            color: expenseColor,
+            size: ColumnSize.L,
+          ),
+          _sideColumn(
+            context,
+            'Amount',
+            color: expenseColor,
+            size: ColumnSize.S,
+          ),
+          _sideColumn(
+            context,
+            'Income',
+            color: incomeColor,
+            size: ColumnSize.L,
+          ),
+          _sideColumn(
+            context,
+            'Amount',
+            color: incomeColor,
+            size: ColumnSize.S,
+          ),
         ],
         rows: tableRows,
       ),
@@ -379,6 +402,29 @@ class ProfitLossReportScreen extends GetView<ProfitLossReportController> {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  DataColumn2 _sideColumn(
+    BuildContext context,
+    String title, {
+    required Color color,
+    ColumnSize size = ColumnSize.M,
+    double? fixedWidth,
+  }) {
+    return DataColumn2(
+      size: size,
+      fixedWidth: fixedWidth,
+      label: Center(
+        child: Text(
+          title,
+          textAlign: TextAlign.center,
+          style: Theme.of(context).textTheme.labelMedium?.copyWith(
+            fontWeight: FontWeight.w800,
+            color: color,
+          ),
+        ),
       ),
     );
   }

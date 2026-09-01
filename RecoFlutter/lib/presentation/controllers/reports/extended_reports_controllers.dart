@@ -118,6 +118,13 @@ class StockRegisterReportController extends BaseReportController {
     toDateController.dispose();
     super.onClose();
   }
+
+  Future<void> resetFilters() async {
+    itemId.value = null;
+    fromDateController.clear();
+    toDateController.clear();
+    await loadReport();
+  }
 }
 
 class SettlementAuditReportController extends BaseReportController {

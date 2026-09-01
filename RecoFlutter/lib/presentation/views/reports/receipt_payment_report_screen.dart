@@ -110,53 +110,53 @@ class ReceiptPaymentReportScreen extends GetView<ReceiptPaymentReportController>
                 child: Text(message),
               )
             else ...<Widget>[
-              Row(
-                children: <Widget>[
-                  Expanded(
-                    child: ReportStatCard(
-                      label: 'Opening Balance',
-                      value: controller.formatCurrency(report['opening_total']),
-                      note: 'Cash, bank, and OD as on ${controller.formatDate((report['date_from'] ?? '').toString())}',
-                      color: const Color(0xFF2563EB),
-                      icon: FontAwesomeIcons.wallet.data,
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: ReportStatCard(
-                      label: 'Total Receipts',
-                      value: controller.formatCurrency(receipts['total']),
-                      note: 'Money received during the period.',
-                      color: _receiptColor,
-                      icon: FontAwesomeIcons.arrowDownWideShort.data,
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 10),
-              Row(
-                children: <Widget>[
-                  Expanded(
-                    child: ReportStatCard(
-                      label: 'Total Payments',
-                      value: controller.formatCurrency(payments['total']),
-                      note: 'Money paid during the period.',
-                      color: _paymentColor,
-                      icon: FontAwesomeIcons.arrowUpWideShort.data,
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: ReportStatCard(
-                      label: 'Closing Balance',
-                      value: controller.formatCurrency(report['closing_total']),
-                      note: 'Cash, bank, and OD as on ${controller.formatDate((report['date_to'] ?? '').toString())}',
-                      color: const Color(0xFFF59E0B),
-                      icon: FontAwesomeIcons.vault.data,
-                    ),
-                  ),
-                ],
-              ),
+              // Row(
+              //   children: <Widget>[
+              //     Expanded(
+              //       child: ReportStatCard(
+              //         label: 'Opening Balance',
+              //         value: controller.formatCurrency(report['opening_total']),
+              //         note: 'Cash, bank, and OD as on ${controller.formatDate((report['date_from'] ?? '').toString())}',
+              //         color: const Color(0xFF2563EB),
+              //         icon: FontAwesomeIcons.wallet.data,
+              //       ),
+              //     ),
+              //     const SizedBox(width: 10),
+              //     Expanded(
+              //       child: ReportStatCard(
+              //         label: 'Total Receipts',
+              //         value: controller.formatCurrency(receipts['total']),
+              //         note: 'Money received during the period.',
+              //         color: _receiptColor,
+              //         icon: FontAwesomeIcons.arrowDownWideShort.data,
+              //       ),
+              //     ),
+              //   ],
+              // ),
+              // const SizedBox(height: 10),
+              // Row(
+              //   children: <Widget>[
+              //     Expanded(
+              //       child: ReportStatCard(
+              //         label: 'Total Payments',
+              //         value: controller.formatCurrency(payments['total']),
+              //         note: 'Money paid during the period.',
+              //         color: _paymentColor,
+              //         icon: FontAwesomeIcons.arrowUpWideShort.data,
+              //       ),
+              //     ),
+              //     const SizedBox(width: 10),
+              //     Expanded(
+              //       child: ReportStatCard(
+              //         label: 'Closing Balance',
+              //         value: controller.formatCurrency(report['closing_total']),
+              //         note: 'Cash, bank, and OD as on ${controller.formatDate((report['date_to'] ?? '').toString())}',
+              //         color: const Color(0xFFF59E0B),
+              //         icon: FontAwesomeIcons.vault.data,
+              //       ),
+              //     ),
+              //   ],
+              // ),
               const SizedBox(height: 12),
               _headSection(
                 context,
@@ -267,14 +267,17 @@ class ReceiptPaymentReportScreen extends GetView<ReceiptPaymentReportController>
               final account = _mapOf(row['account']);
               final id = _asInt(account['id']);
               return ListTile(
+                enabled: true,
+                dense: true,
+                minVerticalPadding: 0,
                 contentPadding: const EdgeInsets.symmetric(horizontal: 12),
                 title: Text(
                   (row['label'] ?? '-').toString(),
                   style: Theme.of(context).textTheme.titleSmall?.copyWith(
                     fontWeight: FontWeight.w700,
-                    color: id == null ? null : color,
+                    color: Colors.blue,
                     decoration: id == null ? null : TextDecoration.underline,
-                    decorationColor: id == null ? null : color.withValues(alpha: .45),
+                    decorationColor: id == null ? null :  Colors.blue.withValues(alpha: .45),
                   ),
                 ),
                 subtitle: id == null
@@ -287,7 +290,7 @@ class ReceiptPaymentReportScreen extends GetView<ReceiptPaymentReportController>
                       ),
                 trailing: Text(
                   controller.formatCurrency(row['amount']),
-                  style: TextStyle(color: color, fontWeight: FontWeight.w700),
+                  style: TextStyle(color: color, fontWeight: FontWeight.w700,fontSize: 14),
                 ),
                 onTap: id == null
                     ? null

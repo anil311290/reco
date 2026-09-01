@@ -87,6 +87,7 @@ class StockValueApiController extends Controller
             'valuation_date' => $entry->valuation_date?->toDateString(),
             'stock_value' => (float) $entry->stock_value,
             'remarks' => $entry->remarks,
+            'updated_at' => $entry->updated_at?->toIso8601String(),
         ];
     }
 }
