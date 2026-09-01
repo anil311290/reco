@@ -580,7 +580,6 @@ abstract class BaseInvoiceFormController extends GetxController {
         validServiceRows,
         saveAsDraft: saveAsDraft,
       );
-      final isOnline = repository.networkMonitorService.isOnline.value;
       if (isEditing) {
         final recordId = _toInt(_editingPayload?['id']);
         final localId = recordId == null ? null : 'remote-$module-$recordId';
@@ -593,18 +592,19 @@ abstract class BaseInvoiceFormController extends GetxController {
           localId: localId,
           serverId: recordId.toString(),
           payload: payload,
-          awaitSyncWhenOnline: isOnline,
         );
       } else {
         await repository.createRecord(
           module: module,
           endpoint: endpoint,
           payload: payload,
-          awaitSyncWhenOnline: isOnline,
         );
       }
+
+      final syncedOnline = await repository.networkMonitorService.hasInternetNow();
+      await _refreshList();
       Get.back<bool>(result: true);
-      if (isOnline) {
+      if (syncedOnline) {
         AppSnackbar.success(
           saveAsDraft
               ? '$title saved as draft.'
@@ -619,7 +619,6 @@ abstract class BaseInvoiceFormController extends GetxController {
                   : '$title was saved locally and will sync when online.'),
         );
       }
-      await _refreshList();
     } catch (error) {
       AppSnackbar.errorDialog(extractApiErrorMessage(error));
     } finally {

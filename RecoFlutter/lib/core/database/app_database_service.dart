@@ -423,6 +423,38 @@ class AppDatabaseService {
     return rows.first;
   }
 
+  Future<String?> getLastQueueErrorForRecord(String localId) async {
+    final rows = await database.query(
+      DbConstants.syncQueueTable,
+      columns: <String>['last_error'],
+      where: 'record_local_id = ?',
+      whereArgs: <Object?>[localId],
+      orderBy: 'updated_at DESC',
+      limit: 1,
+    );
+    if (rows.isEmpty) {
+      return null;
+    }
+    final error = rows.first['last_error']?.toString().trim();
+    if (error == null || error.isEmpty) {
+      return null;
+    }
+    return error;
+  }
+
+  Future<Map<String, dynamic>?> getOfflineRecordByLocalId(String localId) async {
+    final rows = await database.query(
+      DbConstants.offlineRecordsTable,
+      where: 'local_id = ?',
+      whereArgs: <Object?>[localId],
+      limit: 1,
+    );
+    if (rows.isEmpty) {
+      return null;
+    }
+    return _mapOfflineRecordRow(rows.first);
+  }
+
   Future<void> rollbackFailedCreate({
     required String localId,
     required String module,

@@ -128,9 +128,10 @@ abstract class OfflineFirstRepository {
           );
           rethrow;
         }
-      } else {
-        unawaited(syncService.syncPendingMutations(showSuccessMessage: false));
       }
+      // When not awaiting sync (background flows), pending items are picked up
+      // by SyncService.init / connectivity listener — never fire an extra
+      // unawaited sync here to avoid racing user-initiated syncRecord calls.
     }
 
     return localId;
@@ -167,8 +168,6 @@ abstract class OfflineFirstRepository {
           localId: resolvedLocalId,
           propagateErrors: true,
         );
-      } else {
-        unawaited(syncService.syncPendingMutations(showSuccessMessage: false));
       }
     }
 
@@ -207,8 +206,6 @@ abstract class OfflineFirstRepository {
           localId: resolvedLocalId,
           propagateErrors: true,
         );
-      } else {
-        unawaited(syncService.syncPendingMutations(showSuccessMessage: false));
       }
     }
   }

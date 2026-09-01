@@ -345,23 +345,25 @@ class _PartyHistoryScreenState extends State<PartyHistoryScreen> {
                   ),
                 ),
               ),
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                children: <Widget>[
-                  _ExportActionChip(
-                    label: 'Excel',
-                    icon: Icons.table_view_rounded,
-                    color: const Color(0xFF15803D),
-                    onTap: controller.exportExcel,
-                  ),
-                  const SizedBox(width: 8),
-                  _ExportActionChip(
-                    label: 'PDF',
-                    icon: Icons.picture_as_pdf_rounded,
-                    color: const Color(0xFFDC2626),
-                    onTap: controller.exportPdf,
-                  ),
-                ],
+
+            ],
+          ),
+          const SizedBox(height: 4),
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: <Widget>[
+              _ExportActionChip(
+                label: 'Excel',
+                icon: Icons.table_view_rounded,
+                color: const Color(0xFF15803D),
+                onTap: controller.exportExcel,
+              ),
+              const SizedBox(width: 8),
+              _ExportActionChip(
+                label: 'PDF',
+                icon: Icons.picture_as_pdf_rounded,
+                color: const Color(0xFFDC2626),
+                onTap: controller.exportPdf,
               ),
             ],
           ),
