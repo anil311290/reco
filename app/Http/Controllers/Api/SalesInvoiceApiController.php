@@ -91,6 +91,15 @@ class SalesInvoiceApiController extends Controller
         ];
 
         $invoice = $this->salesInvoiceService->create($data, $itemLines, $serviceLines);
+
+        if ($request->boolean('save_as_draft')) {
+            return ResponseHelper::success(
+                new SalesInvoiceResource($invoice),
+                'Sales invoice saved as draft',
+                201,
+            );
+        }
+
         $voucher = $this->salesInvoiceService->generateVoucher($invoice);
 
         if (!$voucher) {

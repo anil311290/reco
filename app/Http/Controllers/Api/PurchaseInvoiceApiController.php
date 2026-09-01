@@ -84,6 +84,14 @@ class PurchaseInvoiceApiController extends Controller
 
         $invoice = $this->purchaseInvoiceService->create($data, $validated['lines']);
 
+        if ($request->boolean('save_as_draft')) {
+            return ResponseHelper::success(
+                new PurchaseInvoiceResource($invoice),
+                'Purchase invoice saved as draft',
+                201,
+            );
+        }
+
         $voucher = $this->purchaseInvoiceService->generateVoucher($invoice);
         if (!$voucher) {
             return ResponseHelper::error('Invoice created but accounting posting failed. Please configure required accounts.', 400);
