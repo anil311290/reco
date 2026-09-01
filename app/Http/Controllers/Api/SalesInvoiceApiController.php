@@ -74,6 +74,9 @@ class SalesInvoiceApiController extends Controller
             'debtor'
         );
 
+        // Auto-calculate due_date if not provided: invoice_date + 1 month
+        $dueDate = $validated['due_date'] ?? date('Y-m-d', strtotime($validated['invoice_date'] . ' +1 month'));
+
         $data = [
             'uuid' => Str::uuid(),
             'company_id' => $companyId,
@@ -81,7 +84,7 @@ class SalesInvoiceApiController extends Controller
             'party_id' => $resolvedSelection['party_id'],
             'account_id' => $resolvedSelection['account_id'],
             'invoice_date' => $validated['invoice_date'],
-            'due_date' => $validated['due_date'],
+            'due_date' => $dueDate,
             'reference_number' => $validated['reference_number'] ?? null,
             'notes' => $validated['notes'] ?? null,
             'payment_terms' => $validated['payment_terms'] ?? null,
@@ -91,6 +94,11 @@ class SalesInvoiceApiController extends Controller
         ];
 
         $invoice = $this->salesInvoiceService->create($data, $itemLines, $serviceLines);
+
+        if ($request->boolean('save_as_draft')) {
+            return ResponseHelper::success(new SalesInvoiceResource($invoice), 'Invoice saved as draft', 201);
+        }
+
         $voucher = $this->salesInvoiceService->generateVoucher($invoice);
 
         if (!$voucher) {
@@ -158,11 +166,19 @@ class SalesInvoiceApiController extends Controller
                 'debtor'
             );
 
+            // Auto-calculate due_date if invoice_date changed and due_date not explicitly provided
+            $dueDate = $validated['due_date'];
+            if (isset($validated['invoice_date']) && $validated['invoice_date'] !== $invoice->invoice_date->format('Y-m-d')) {
+                if (!isset($validated['due_date']) || $validated['due_date'] === $invoice->due_date->format('Y-m-d')) {
+                    $dueDate = date('Y-m-d', strtotime($validated['invoice_date'] . ' +1 month'));
+                }
+            }
+
             $data = [
                 'party_id' => $resolvedSelection['party_id'],
                 'account_id' => $resolvedSelection['account_id'],
                 'invoice_date' => $validated['invoice_date'],
-                'due_date' => $validated['due_date'],
+                'due_date' => $dueDate,
                 'reference_number' => $validated['reference_number'] ?? null,
                 'notes' => $validated['notes'] ?? null,
                 'payment_terms' => $validated['payment_terms'] ?? null,
@@ -178,6 +194,13 @@ class SalesInvoiceApiController extends Controller
                 $itemLines,
                 $serviceLines
             );
+
+            if ($request->boolean('save_as_draft')) {
+                // Ensure status is reset to draft when saving as draft
+                if ($invoice->status !== 'draft') {
+                    $invoice->update(['status' => 'draft']);
+                }
+            }
 
             return ResponseHelper::success(new SalesInvoiceResource($invoice), 'Invoice updated successfully');
         } catch (\Exception $e) {
