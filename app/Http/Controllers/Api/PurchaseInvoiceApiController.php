@@ -86,9 +86,20 @@ class PurchaseInvoiceApiController extends Controller
         ];
 
         $invoice = $this->purchaseInvoiceService->create($data, $validated['lines']);
+        $saveAsDraft = (bool) ($validated['save_as_draft'] ?? false);
 
-        if ($request->boolean('save_as_draft')) {
-            return ResponseHelper::success(new PurchaseInvoiceResource($invoice), 'Invoice saved as draft', 201);
+        if ($saveAsDraft) {
+            if ($invoice->status !== 'draft') {
+                $invoice->update(['status' => 'draft']);
+            }
+
+            return ResponseHelper::success(
+                new PurchaseInvoiceResource(
+                    $invoice->fresh(['party', 'lines.item', 'lines.taxRate', 'lines.account'])
+                ),
+                'Purchase invoice saved as draft',
+                201,
+            );
         }
 
         $voucher = $this->purchaseInvoiceService->generateVoucher($invoice);
@@ -96,7 +107,13 @@ class PurchaseInvoiceApiController extends Controller
             return ResponseHelper::error('Invoice created but accounting posting failed. Please configure required accounts.', 400);
         }
 
-        return ResponseHelper::success(new PurchaseInvoiceResource($invoice), 'Invoice created', 201);
+        return ResponseHelper::success(
+            new PurchaseInvoiceResource(
+                $invoice->fresh(['party', 'lines.item', 'lines.taxRate', 'lines.account'])
+            ),
+            'Invoice created',
+            201,
+        );
     }
 
     public function payment(Request $request, int $id): JsonResponse
@@ -179,14 +196,36 @@ class PurchaseInvoiceApiController extends Controller
                 $validated['lines']
             );
 
-            if ($request->boolean('save_as_draft')) {
-                // Ensure status is reset to draft when saving as draft
+            $saveAsDraft = (bool) ($validated['save_as_draft'] ?? false);
+            if ($saveAsDraft) {
                 if ($invoice->status !== 'draft') {
                     $invoice->update(['status' => 'draft']);
                 }
+
+                return ResponseHelper::success(
+                    new PurchaseInvoiceResource(
+                        $invoice->fresh(['party', 'lines.item', 'lines.taxRate', 'lines.account'])
+                    ),
+                    'Invoice updated successfully',
+                );
             }
 
-            return ResponseHelper::success(new PurchaseInvoiceResource($invoice), 'Invoice updated successfully');
+            if ($invoice->status === 'draft' && ! $saveAsDraft) {
+                $voucher = $this->purchaseInvoiceService->generateVoucher($invoice);
+                if (! $voucher) {
+                    return ResponseHelper::error(
+                        'Invoice updated but accounting posting failed. Please configure required accounts.',
+                        400,
+                    );
+                }
+            }
+
+            return ResponseHelper::success(
+                new PurchaseInvoiceResource(
+                    $invoice->fresh(['party', 'lines.item', 'lines.taxRate', 'lines.account'])
+                ),
+                'Invoice updated successfully',
+            );
         } catch (\Exception $e) {
             return ResponseHelper::error($e->getMessage());
         }
@@ -258,6 +297,7 @@ class PurchaseInvoiceApiController extends Controller
     protected function purchaseRules(int $companyId): array
     {
         return [
+            'save_as_draft' => 'sometimes|boolean',
             'party_id' => ['required'],
             'supplier_invoice_number' => 'nullable|string|max:100',
             'invoice_date' => 'required|date',

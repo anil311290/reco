@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
+import '../../../core/network/api_error_message.dart';
 import '../../../core/services/network_monitor_service.dart';
 import '../../../core/services/sync_service.dart';
 import '../../../core/utils/app_snackbar.dart';
@@ -177,29 +178,40 @@ class CategoriesController extends GetxController with MasterExportMixin {
   }
 
   Future<void> save(ItemCategoryEntity entity) async {
-    if (entity.id == null) {
-      await _repository.create(entity);
-      AppSnackbar.success('Category saved. Syncing to server...');
-    } else {
-      await _repository.update(entity);
-      AppSnackbar.success('Category update queued. Syncing to server...');
+    try {
+      if (entity.id == null) {
+        await _repository.create(entity);
+      } else {
+        await _repository.update(entity);
+      }
+      if (_networkMonitorService.isOnline.value) {
+        await _syncService.syncPendingMutations(
+          showSuccessMessage: false,
+          propagateErrors: true,
+        );
+      }
+      await refreshData();
+      AppSnackbar.success(
+        entity.id == null ? 'Category saved successfully.' : 'Category updated successfully.',
+      );
+    } catch (error) {
+      AppSnackbar.errorDialog(extractApiErrorMessage(error));
     }
-    if (_networkMonitorService.isOnline.value) {
-      await _syncService.syncPendingMutations(showSuccessMessage: true);
-    }
-    await refreshData();
   }
 
   Future<void> deleteItem(ItemCategoryEntity entity) async {
     try {
       await _repository.delete(entity);
       if (_networkMonitorService.isOnline.value) {
-        await _syncService.syncPendingMutations(showSuccessMessage: false);
+        await _syncService.syncPendingMutations(
+          showSuccessMessage: false,
+          propagateErrors: true,
+        );
       }
       await refreshData(forceRemote: true);
       AppSnackbar.success('Category deleted.');
     } catch (error) {
-      AppSnackbar.error(error.toString());
+      AppSnackbar.errorDialog(extractApiErrorMessage(error));
     }
   }
 

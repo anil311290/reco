@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
 import '../../../../core/config/api_endpoints.dart';
+import '../../../../core/network/api_error_message.dart';
 import '../../../../core/utils/app_date_formatter.dart';
 import '../../../../core/utils/app_snackbar.dart';
 import '../../../../data/models/masters/master_entities.dart';
@@ -579,6 +580,7 @@ abstract class BaseInvoiceFormController extends GetxController {
         validServiceRows,
         saveAsDraft: saveAsDraft,
       );
+      final isOnline = repository.networkMonitorService.isOnline.value;
       if (isEditing) {
         final recordId = _toInt(_editingPayload?['id']);
         final localId = recordId == null ? null : 'remote-$module-$recordId';
@@ -591,25 +593,35 @@ abstract class BaseInvoiceFormController extends GetxController {
           localId: localId,
           serverId: recordId.toString(),
           payload: payload,
+          awaitSyncWhenOnline: isOnline,
         );
       } else {
         await repository.createRecord(
           module: module,
           endpoint: endpoint,
           payload: payload,
+          awaitSyncWhenOnline: isOnline,
         );
       }
       Get.back<bool>(result: true);
-      AppSnackbar.success(
-        saveAsDraft
-            ? '$title saved as draft locally and will sync when online.'
-            : (isEditing
-                ? '$title was updated locally and will sync when online.'
-                : '$title was saved locally and will sync when online.'),
-      );
+      if (isOnline) {
+        AppSnackbar.success(
+          saveAsDraft
+              ? '$title saved as draft.'
+              : (isEditing ? '$title updated successfully.' : '$title saved successfully.'),
+        );
+      } else {
+        AppSnackbar.success(
+          saveAsDraft
+              ? '$title saved as draft locally and will sync when online.'
+              : (isEditing
+                  ? '$title was updated locally and will sync when online.'
+                  : '$title was saved locally and will sync when online.'),
+        );
+      }
       await _refreshList();
     } catch (error) {
-      AppSnackbar.error(error.toString());
+      AppSnackbar.errorDialog(extractApiErrorMessage(error));
     } finally {
       isSubmitting.value = false;
     }
@@ -742,12 +754,13 @@ abstract class BaseInvoiceFormController extends GetxController {
   }
 
   Future<void> _refreshList() async {
+    final forceRemote = repository.networkMonitorService.isOnline.value;
     if (module == 'sales_invoices' && Get.isRegistered<SalesInvoicesController>()) {
-      await Get.find<SalesInvoicesController>().refreshData();
+      await Get.find<SalesInvoicesController>().refreshData(forceRemote: forceRemote);
     }
     if (module == 'purchase_invoices' &&
         Get.isRegistered<PurchaseInvoicesController>()) {
-      await Get.find<PurchaseInvoicesController>().refreshData();
+      await Get.find<PurchaseInvoicesController>().refreshData(forceRemote: forceRemote);
     }
   }
 }

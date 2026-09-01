@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
 import '../../../../core/config/api_endpoints.dart';
+import '../../../../core/network/api_error_message.dart';
 import '../../../../core/utils/app_date_formatter.dart';
 import '../../../../core/utils/app_snackbar.dart';
 import '../../../../data/models/masters/master_entities.dart';
@@ -416,6 +417,7 @@ abstract class BaseVoucherFormController extends GetxController {
     isSubmitting.value = true;
     try {
       final payload = isPaymentReceipt ? _buildPaymentPayload() : _buildAdjustmentPayload();
+      final isOnline = repository.networkMonitorService.isOnline.value;
       if (isEditing) {
         final recordId = _lookupInt(_editingPayload?['id']);
         final localId = recordId == null ? null : 'remote-$module-$recordId';
@@ -428,23 +430,31 @@ abstract class BaseVoucherFormController extends GetxController {
           localId: localId,
           serverId: recordId.toString(),
           payload: payload,
+          awaitSyncWhenOnline: isOnline,
         );
       } else {
         await repository.createRecord(
           module: module,
           endpoint: endpoint,
           payload: payload,
+          awaitSyncWhenOnline: isOnline,
         );
       }
-      Get.back<void>();
-      AppSnackbar.success(
-        isEditing
-            ? '$title was updated locally and will sync when available.'
-            : '$title was saved locally and will sync when available.',
-      );
-      unawaited(_refreshList());
+      await _refreshList();
+      Get.back<bool>(result: true);
+      if (isOnline) {
+        AppSnackbar.success(
+          isEditing ? '$title updated successfully.' : '$title saved successfully.',
+        );
+      } else {
+        AppSnackbar.success(
+          isEditing
+              ? '$title was updated locally and will sync when available.'
+              : '$title was saved locally and will sync when available.',
+        );
+      }
     } catch (error) {
-      AppSnackbar.error(error.toString());
+      AppSnackbar.errorDialog(extractApiErrorMessage(error));
     } finally {
       isSubmitting.value = false;
     }
@@ -551,17 +561,18 @@ abstract class BaseVoucherFormController extends GetxController {
   }
 
   Future<void> _refreshList() async {
+    final forceRemote = repository.networkMonitorService.isOnline.value;
     if (module == 'payments' && Get.isRegistered<PaymentsController>()) {
-      await Get.find<PaymentsController>().refreshData();
+      await Get.find<PaymentsController>().refreshData(forceRemote: forceRemote);
     }
     if (module == 'receipts' && Get.isRegistered<ReceiptsController>()) {
-      await Get.find<ReceiptsController>().refreshData();
+      await Get.find<ReceiptsController>().refreshData(forceRemote: forceRemote);
     }
     if (module == 'adjustments' && Get.isRegistered<AdjustmentsController>()) {
-      await Get.find<AdjustmentsController>().refreshData();
+      await Get.find<AdjustmentsController>().refreshData(forceRemote: forceRemote);
     }
     if (Get.isRegistered<AllVouchersController>()) {
-      await Get.find<AllVouchersController>().refreshData();
+      await Get.find<AllVouchersController>().refreshData(forceRemote: forceRemote);
     }
   }
 
