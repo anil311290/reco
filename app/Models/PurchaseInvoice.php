@@ -124,10 +124,15 @@ class PurchaseInvoice extends Model
         $this->total = $this->subtotal - $this->discount_amount + $this->tax_amount;
         $this->balance_due = $this->total - $this->amount_paid;
 
-        if ($this->amount_paid >= $this->total) {
+        // Update status based on payment — only if total > 0 to avoid 0 >= 0 false positive
+        if ($this->total > 0 && $this->amount_paid >= $this->total) {
             $this->status = 'paid';
         } elseif ($this->amount_paid > 0) {
             $this->status = 'partial';
+        } elseif ($this->status === 'verified') {
+            // Keep verified status if already posted
+        } else {
+            $this->status = 'draft';
         }
 
         $this->save();

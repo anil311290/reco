@@ -603,6 +603,33 @@ $('#invoiceForm').on('change input', '.is-invalid', function() {
 
 $(function() {
     ensureTrailingEmptyRow($('#linesBody .line-row').last());
+
+    function addOneMonth(dateString) {
+        if (!dateString) return '';
+
+        const [year, month, day] = dateString.split('-').map(Number);
+        const date = new Date(year, month - 1, day);
+        date.setMonth(date.getMonth() + 1);
+
+        const nextYear = date.getFullYear();
+        const nextMonth = String(date.getMonth() + 1).padStart(2, '0');
+        const nextDay = String(date.getDate()).padStart(2, '0');
+
+        return nextYear + '-' + nextMonth + '-' + nextDay;
+    }
+
+    function syncDueDateFromInvoice() {
+        const invoiceDate = $('[name="invoice_date"]').val();
+        if (invoiceDate) {
+            $('[name="due_date"]').val(addOneMonth(invoiceDate));
+        }
+    }
+
+    $('[name="invoice_date"]').on('input change', function() {
+        syncDueDateFromInvoice();
+    });
+
+    syncDueDateFromInvoice();
 });
 
 ajaxFormSubmit('#invoiceForm', '{{ route("admin.sales-invoices.update", $invoice->id) }}', 'PUT', '{{ route("admin.sales-invoices.show", $invoice->id) }}');

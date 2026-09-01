@@ -178,6 +178,9 @@ class SalesInvoiceController extends Controller
                 'debtor'
             );
 
+            // Auto-calculate due_date if not provided: invoice_date + 1 month
+            $dueDate = $validated['due_date'] ?? date('Y-m-d', strtotime($validated['invoice_date'] . ' +1 month'));
+
             $data = [
                 'uuid' => \Illuminate\Support\Str::uuid(),
                 'company_id' => $companyId,
@@ -185,7 +188,7 @@ class SalesInvoiceController extends Controller
                 'party_id' => $resolvedSelection['party_id'],
                 'account_id' => $resolvedSelection['account_id'],
                 'invoice_date' => $validated['invoice_date'],
-                'due_date' => $validated['due_date'],
+                'due_date' => $dueDate,
                 'reference_number' => $validated['reference_number'] ?? null,
                 'notes' => $validated['notes'] ?? null,
                 'discount_percentage' => $validated['discount_percentage'] ?? 0,
@@ -354,7 +357,12 @@ class SalesInvoiceController extends Controller
 
             $invoice = $this->salesInvoiceService->updateWithLines($id, $data, $validated['lines'], $validated['service_lines'] ?? []);
 
-            if ($invoice->status === 'draft' && !$request->boolean('save_as_draft')) {
+            if ($request->boolean('save_as_draft')) {
+                // Ensure status is reset to draft when saving as draft
+                if ($invoice->status !== 'draft') {
+                    $invoice->update(['status' => 'draft']);
+                }
+            } elseif ($invoice->status === 'draft') {
                 $voucher = $this->salesInvoiceService->generateVoucher($invoice);
                 if (!$voucher) {
                     throw new \RuntimeException('Sales invoice updated but voucher/journal posting failed. Please check account mappings.');
