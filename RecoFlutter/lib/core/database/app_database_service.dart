@@ -410,6 +410,37 @@ class AppDatabaseService {
     );
   }
 
+  Future<Map<String, Object?>?> getPendingQueueItemForRecord(String localId) async {
+    final rows = await database.query(
+      DbConstants.syncQueueTable,
+      where: 'record_local_id = ? AND sync_status IN (?, ?)',
+      whereArgs: <Object?>[localId, SyncStatus.pending, SyncStatus.failed],
+      limit: 1,
+    );
+    if (rows.isEmpty) {
+      return null;
+    }
+    return rows.first;
+  }
+
+  Future<void> rollbackFailedCreate({
+    required String localId,
+    required String module,
+  }) async {
+    await database.transaction((txn) async {
+      await txn.delete(
+        DbConstants.offlineRecordsTable,
+        where: 'local_id = ? AND module = ?',
+        whereArgs: <Object?>[localId, module],
+      );
+      await txn.delete(
+        DbConstants.syncQueueTable,
+        where: 'record_local_id = ?',
+        whereArgs: <Object?>[localId],
+      );
+    });
+  }
+
   Future<void> markQueueSyncing(String queueId) async {
     final now = DateTime.now().toIso8601String();
     await database.update(

@@ -100,6 +100,7 @@ abstract class OfflineFirstRepository {
     required String module,
     required String endpoint,
     required Map<String, dynamic> payload,
+    bool awaitSyncWhenOnline = false,
   }) async {
     final localId = await databaseService.saveLocalRecord(
       module: module,
@@ -117,7 +118,19 @@ abstract class OfflineFirstRepository {
     await invalidateRelatedCaches(module: module);
 
     if (await networkMonitorService.hasInternetNow()) {
-      unawaited(syncService.syncPendingMutations(showSuccessMessage: false));
+      if (awaitSyncWhenOnline) {
+        try {
+          await syncService.syncRecord(localId: localId, propagateErrors: true);
+        } catch (error) {
+          await databaseService.rollbackFailedCreate(
+            localId: localId,
+            module: module,
+          );
+          rethrow;
+        }
+      } else {
+        unawaited(syncService.syncPendingMutations(showSuccessMessage: false));
+      }
     }
 
     return localId;
@@ -129,6 +142,7 @@ abstract class OfflineFirstRepository {
     required Map<String, dynamic> payload,
     required String localId,
     String? serverId,
+    bool awaitSyncWhenOnline = false,
   }) async {
     final resolvedLocalId = await databaseService.saveLocalRecord(
       module: module,
@@ -148,7 +162,14 @@ abstract class OfflineFirstRepository {
     await invalidateRelatedCaches(module: module);
 
     if (await networkMonitorService.hasInternetNow()) {
-      unawaited(syncService.syncPendingMutations(showSuccessMessage: false));
+      if (awaitSyncWhenOnline) {
+        await syncService.syncRecord(
+          localId: resolvedLocalId,
+          propagateErrors: true,
+        );
+      } else {
+        unawaited(syncService.syncPendingMutations(showSuccessMessage: false));
+      }
     }
 
     return resolvedLocalId;
@@ -160,6 +181,7 @@ abstract class OfflineFirstRepository {
     required Map<String, dynamic> payload,
     required String localId,
     String? serverId,
+    bool awaitSyncWhenOnline = false,
   }) async {
     final resolvedLocalId = await databaseService.saveLocalRecord(
       module: module,
@@ -180,7 +202,14 @@ abstract class OfflineFirstRepository {
     await invalidateRelatedCaches(module: module);
 
     if (await networkMonitorService.hasInternetNow()) {
-      unawaited(syncService.syncPendingMutations(showSuccessMessage: false));
+      if (awaitSyncWhenOnline) {
+        await syncService.syncRecord(
+          localId: resolvedLocalId,
+          propagateErrors: true,
+        );
+      } else {
+        unawaited(syncService.syncPendingMutations(showSuccessMessage: false));
+      }
     }
   }
 }

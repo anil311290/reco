@@ -6,6 +6,7 @@ import 'package:get/get.dart' hide Response;
 
 import '../database/app_database_service.dart';
 import '../network/api_client.dart';
+import '../network/api_error_message.dart';
 import '../utils/app_snackbar.dart';
 import 'network_monitor_service.dart';
 
@@ -38,14 +39,20 @@ class SyncService extends GetxService {
     return this;
   }
 
-  Future<void> syncPendingMutations({bool showSuccessMessage = true}) async {
+  Future<void> syncPendingMutations({
+    bool showSuccessMessage = true,
+    bool propagateErrors = false,
+  }) async {
     final runningSync = _activeSync;
     if (runningSync != null) {
       await runningSync;
       return;
     }
 
-    final syncFuture = _runSync(showSuccessMessage: showSuccessMessage);
+    final syncFuture = _runSync(
+      showSuccessMessage: showSuccessMessage,
+      propagateErrors: propagateErrors,
+    );
     _activeSync = syncFuture;
     try {
       await syncFuture;
@@ -56,7 +63,26 @@ class SyncService extends GetxService {
     }
   }
 
-  Future<void> _runSync({required bool showSuccessMessage}) async {
+  /// Syncs a single queued record (used after user-initiated create/update).
+  Future<void> syncRecord({
+    required String localId,
+    bool propagateErrors = true,
+  }) async {
+    final item = await _databaseService.getPendingQueueItemForRecord(localId);
+    if (item == null) {
+      return;
+    }
+
+    await _syncQueueItem(
+      item,
+      propagateErrors: propagateErrors,
+    );
+  }
+
+  Future<void> _runSync({
+    required bool showSuccessMessage,
+    required bool propagateErrors,
+  }) async {
     if (!await _networkMonitorService.hasInternetNow()) {
       return;
     }
@@ -70,7 +96,10 @@ class SyncService extends GetxService {
       }
 
       for (final item in items) {
-        await _syncQueueItem(item);
+        await _syncQueueItem(
+          item,
+          propagateErrors: propagateErrors,
+        );
       }
 
       if (showSuccessMessage) {
@@ -81,7 +110,10 @@ class SyncService extends GetxService {
     }
   }
 
-  Future<void> _syncQueueItem(Map<String, Object?> item) async {
+  Future<void> _syncQueueItem(
+    Map<String, Object?> item, {
+    bool propagateErrors = false,
+  }) async {
     final queueId = item['queue_id']?.toString();
     final endpoint = item['endpoint']?.toString();
     final method = item['method']?.toString().toUpperCase();
@@ -159,7 +191,11 @@ class SyncService extends GetxService {
 
       await _databaseService.markQueueSynced(queueId);
     } catch (error) {
-      await _databaseService.markQueueFailed(queueId, error.toString());
+      final message = extractApiErrorMessage(error);
+      await _databaseService.markQueueFailed(queueId, message);
+      if (propagateErrors) {
+        throw Exception(message);
+      }
     }
   }
 

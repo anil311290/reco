@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
+import '../../../core/network/api_error_message.dart';
 import '../../../core/services/network_monitor_service.dart';
 import '../../../core/services/sync_service.dart';
 import '../../../core/utils/app_snackbar.dart';
@@ -182,25 +183,33 @@ class AccountsController extends GetxController with MasterExportMixin {
   }
 
   Future<void> save(AccountEntity entity) async {
-    final payload = <String, dynamic>{
-      ...entity.toPayload(),
-      'entry_source': entity.entrySource.isEmpty ? 'manual' : entity.entrySource,
-    };
-    if (entity.id == null) {
-      await _repository.createAccountOffline(payload);
-      AppSnackbar.success('Account saved. Syncing to server...');
-    } else {
-      await _repository.updateAccountOffline(
-        localId: entity.localId ?? 'remote-accounts-${entity.id}',
-        accountId: entity.id.toString(),
-        payload: payload,
+    try {
+      final payload = <String, dynamic>{
+        ...entity.toPayload(),
+        'entry_source': entity.entrySource.isEmpty ? 'manual' : entity.entrySource,
+      };
+      if (entity.id == null) {
+        await _repository.createAccountOffline(payload);
+      } else {
+        await _repository.updateAccountOffline(
+          localId: entity.localId ?? 'remote-accounts-${entity.id}',
+          accountId: entity.id.toString(),
+          payload: payload,
+        );
+      }
+      if (_networkMonitorService.isOnline.value) {
+        await _syncService.syncPendingMutations(
+          showSuccessMessage: false,
+          propagateErrors: true,
+        );
+      }
+      await refreshData();
+      AppSnackbar.success(
+        entity.id == null ? 'Account saved successfully.' : 'Account updated successfully.',
       );
-      AppSnackbar.success('Account update queued. Syncing to server...');
+    } catch (error) {
+      AppSnackbar.errorDialog(extractApiErrorMessage(error));
     }
-    if (_networkMonitorService.isOnline.value) {
-      await _syncService.syncPendingMutations(showSuccessMessage: true);
-    }
-    await refreshData();
   }
 
   Future<void> deleteItem(AccountEntity entity) async {
@@ -212,12 +221,15 @@ class AccountsController extends GetxController with MasterExportMixin {
         payload: entity.toPayload(),
       );
       if (_networkMonitorService.isOnline.value) {
-        await _syncService.syncPendingMutations(showSuccessMessage: false);
+        await _syncService.syncPendingMutations(
+          showSuccessMessage: false,
+          propagateErrors: true,
+        );
       }
       await refreshData(forceRemote: true);
       AppSnackbar.success('Account deleted.');
     } catch (error) {
-      AppSnackbar.error(error.toString());
+      AppSnackbar.errorDialog(extractApiErrorMessage(error));
     }
   }
 

@@ -91,10 +91,13 @@ class SalesInvoiceApiController extends Controller
         ];
 
         $invoice = $this->salesInvoiceService->create($data, $itemLines, $serviceLines);
+        $saveAsDraft = (bool) ($validated['save_as_draft'] ?? false);
 
-        if ($request->boolean('save_as_draft')) {
+        if ($saveAsDraft) {
             return ResponseHelper::success(
-                new SalesInvoiceResource($invoice),
+                new SalesInvoiceResource(
+                    $invoice->fresh(['party', 'lines.item', 'lines.taxRate', 'lines.account'])
+                ),
                 'Sales invoice saved as draft',
                 201,
             );
@@ -106,7 +109,13 @@ class SalesInvoiceApiController extends Controller
             return ResponseHelper::error('Invoice created but voucher/journal posting failed. Please configure required accounts.', 400);
         }
 
-        return ResponseHelper::success(new SalesInvoiceResource($invoice), 'Invoice created', 201);
+        return ResponseHelper::success(
+            new SalesInvoiceResource(
+                $invoice->fresh(['party', 'lines.item', 'lines.taxRate', 'lines.account'])
+            ),
+            'Invoice created',
+            201,
+        );
     }
 
     public function payment(Request $request, int $id): JsonResponse
@@ -188,7 +197,23 @@ class SalesInvoiceApiController extends Controller
                 $serviceLines
             );
 
-            return ResponseHelper::success(new SalesInvoiceResource($invoice), 'Invoice updated successfully');
+            $saveAsDraft = (bool) ($validated['save_as_draft'] ?? false);
+            if ($invoice->status === 'draft' && ! $saveAsDraft) {
+                $voucher = $this->salesInvoiceService->generateVoucher($invoice);
+                if (! $voucher) {
+                    return ResponseHelper::error(
+                        'Invoice updated but voucher/journal posting failed. Please configure required accounts.',
+                        400,
+                    );
+                }
+            }
+
+            return ResponseHelper::success(
+                new SalesInvoiceResource(
+                    $invoice->fresh(['party', 'lines.item', 'lines.taxRate', 'lines.account'])
+                ),
+                'Invoice updated successfully',
+            );
         } catch (\Exception $e) {
             return ResponseHelper::error($e->getMessage());
         }
@@ -293,6 +318,7 @@ class SalesInvoiceApiController extends Controller
     protected function salesInvoiceRules(int $companyId): array
     {
         return [
+            'save_as_draft' => 'sometimes|boolean',
             'party_id' => ['required'],
             'invoice_date' => 'required|date',
             'due_date' => 'required|date|after_or_equal:invoice_date',
