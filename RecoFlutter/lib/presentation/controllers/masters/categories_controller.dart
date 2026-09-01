@@ -179,14 +179,15 @@ class CategoriesController extends GetxController with MasterExportMixin {
 
   Future<void> save(ItemCategoryEntity entity) async {
     try {
+      late final String localId;
       if (entity.id == null) {
-        await _repository.create(entity);
+        localId = await _repository.create(entity);
       } else {
-        await _repository.update(entity);
+        localId = await _repository.update(entity);
       }
       if (_networkMonitorService.isOnline.value) {
-        await _syncService.syncPendingMutations(
-          showSuccessMessage: false,
+        await _syncService.syncRecord(
+          localId: localId,
           propagateErrors: true,
         );
       }
@@ -201,10 +202,11 @@ class CategoriesController extends GetxController with MasterExportMixin {
 
   Future<void> deleteItem(ItemCategoryEntity entity) async {
     try {
+      final localId = entity.localId ?? 'remote-item_categories-${entity.id}';
       await _repository.delete(entity);
       if (_networkMonitorService.isOnline.value) {
-        await _syncService.syncPendingMutations(
-          showSuccessMessage: false,
+        await _syncService.syncRecord(
+          localId: localId,
           propagateErrors: true,
         );
       }

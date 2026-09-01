@@ -431,44 +431,44 @@ class _BillWiseAllocateSheetState extends State<_BillWiseAllocateSheet> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final mediaQuery = MediaQuery.of(context);
+    final keyboardInset = mediaQuery.viewInsets.bottom;
     final overAllocated = _allocatedTotal > widget.rowAmount + 0.009;
     final filtered = _filteredInvoices;
 
-    final availableHeight = mediaQuery.size.height -
-        mediaQuery.viewInsets.bottom -
-        mediaQuery.padding.top -
-        120;
+    // Keep the sheet above the keyboard without double-subtracting insets.
+    final sheetHeight = (mediaQuery.size.height -
+            keyboardInset -
+            mediaQuery.padding.top -
+            24)
+        .clamp(280.0, mediaQuery.size.height * 0.92);
 
-    return Padding(
-      padding: EdgeInsets.only(bottom: mediaQuery.viewInsets.bottom),
-      child: SafeArea(
-        top: false,
-        child: Material(
-          color: theme.cardColor,
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: <Widget>[
-                Text(
-                  'Allocate to ${widget.invoiceTypeLabel} invoices',
-                  style: theme.textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.w800,
-                  ),
+    return Material(
+      color: theme.cardColor,
+      borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+      child: SizedBox(
+        height: sheetHeight,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              Text(
+                'Allocate to ${widget.invoiceTypeLabel} invoices',
+                style: theme.textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.w800,
                 ),
-                const SizedBox(height: 4),
-                Text(
-                  'Allocated: ₹${_allocatedTotal.toStringAsFixed(2)} / ₹${widget.rowAmount.toStringAsFixed(2)}',
-                  style: theme.textTheme.labelLarge?.copyWith(
-                    fontWeight: FontWeight.w700,
-                    color: overAllocated
-                        ? theme.colorScheme.error
-                        : theme.colorScheme.onSurfaceVariant,
-                  ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                'Allocated: ₹${_allocatedTotal.toStringAsFixed(2)} / ₹${widget.rowAmount.toStringAsFixed(2)}',
+                style: theme.textTheme.labelLarge?.copyWith(
+                  fontWeight: FontWeight.w700,
+                  color: overAllocated
+                      ? theme.colorScheme.error
+                      : theme.colorScheme.onSurfaceVariant,
                 ),
-                const SizedBox(height: 10),
+              ),
+              const SizedBox(height: 10),
               if (widget.invoices.length > 8)
                 CustomTextField(
                   label: 'Search invoice #',
@@ -477,28 +477,29 @@ class _BillWiseAllocateSheetState extends State<_BillWiseAllocateSheet> {
                   onChanged: (_) => setState(() {}),
                   bottomPadding: 8,
                 ),
-              ConstrainedBox(
-                constraints: BoxConstraints(maxHeight: availableHeight),
+              Expanded(
                 child: filtered.isEmpty
-                    ? Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 24),
-                        child: Center(
-                          child: Text(
-                            'No invoices match your search.',
-                            style: theme.textTheme.bodyMedium?.copyWith(
-                              color: theme.colorScheme.onSurfaceVariant,
-                            ),
+                    ? Center(
+                        child: Text(
+                          'No invoices match your search.',
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            color: theme.colorScheme.onSurfaceVariant,
                           ),
                         ),
                       )
                     : ListView.builder(
+
+                        keyboardDismissBehavior:
+                            ScrollViewKeyboardDismissBehavior.onDrag,
+                        padding: EdgeInsets.zero,physics: ScrollPhysics(),
                         shrinkWrap: true,
                         itemCount: filtered.length,
                         itemBuilder: (context, index) {
                           final invoice = filtered[index];
-                          final id =
-                              int.tryParse(invoice['id']?.toString() ?? '') ??
-                                  0;
+                          final id = int.tryParse(
+                                invoice['id']?.toString() ?? '',
+                              ) ??
+                              0;
                           final balance = double.tryParse(
                                 invoice['balance_due']?.toString() ?? '0',
                               ) ??
@@ -512,14 +513,16 @@ class _BillWiseAllocateSheetState extends State<_BillWiseAllocateSheet> {
                             decoration: BoxDecoration(
                               borderRadius: BorderRadius.circular(12),
                               border: Border.all(
-                                color: theme.dividerColor.withValues(alpha: .45),
+                                color: theme.dividerColor
+                                    .withValues(alpha: .45),
                               ),
                             ),
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: <Widget>[
                                 Row(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  crossAxisAlignment:
+                                      CrossAxisAlignment.start,
                                   children: <Widget>[
                                     Checkbox(
                                       value: checked,
@@ -552,20 +555,22 @@ class _BillWiseAllocateSheetState extends State<_BillWiseAllocateSheet> {
                                                           '-')
                                                       .toString(),
                                                   style: const TextStyle(
-                                                    fontWeight: FontWeight.w800,
+                                                    fontWeight:
+                                                        FontWeight.w800,
                                                   ),
                                                 ),
                                               ),
                                               if (isOverdue)
                                                 Container(
-                                                  padding:
-                                                      const EdgeInsets.symmetric(
+                                                  padding: const EdgeInsets
+                                                      .symmetric(
                                                     horizontal: 8,
                                                     vertical: 2,
                                                   ),
                                                   decoration: BoxDecoration(
-                                                    color: const Color(0xFFEF4444)
-                                                        .withValues(alpha: .12),
+                                                    color: const Color(
+                                                      0xFFEF4444,
+                                                    ).withValues(alpha: .12),
                                                     borderRadius:
                                                         BorderRadius.circular(
                                                       999,
@@ -588,15 +593,17 @@ class _BillWiseAllocateSheetState extends State<_BillWiseAllocateSheet> {
                                           ),
                                           Text(
                                             'Due: ${AppDateFormatter.formatDisplay((invoice['due_date'] ?? '').toString())}',
-                                            style: theme.textTheme.labelMedium
+                                            style: theme
+                                                .textTheme.labelMedium
                                                 ?.copyWith(
-                                              color: theme
-                                                  .colorScheme.onSurfaceVariant,
+                                              color: theme.colorScheme
+                                                  .onSurfaceVariant,
                                             ),
                                           ),
                                           Text(
                                             'Balance ${AmountFormatter.currency(balance)}',
-                                            style: theme.textTheme.labelLarge
+                                            style: theme
+                                                .textTheme.labelLarge
                                                 ?.copyWith(
                                               fontWeight: FontWeight.w700,
                                             ),
@@ -611,8 +618,8 @@ class _BillWiseAllocateSheetState extends State<_BillWiseAllocateSheet> {
                                   CustomTextField(
                                     label: 'Allocate amount',
                                     controller: _amountControllers[id],
-                                    keyboardType:
-                                        const TextInputType.numberWithOptions(
+                                    keyboardType: const TextInputType
+                                        .numberWithOptions(
                                       decimal: true,
                                     ),
                                     inputFormatters: <TextInputFormatter>[
@@ -644,7 +651,8 @@ class _BillWiseAllocateSheetState extends State<_BillWiseAllocateSheet> {
                     final next = <Map<String, dynamic>>[];
                     for (final invoice in widget.invoices) {
                       final id =
-                          int.tryParse(invoice['id']?.toString() ?? '') ?? 0;
+                          int.tryParse(invoice['id']?.toString() ?? '') ??
+                              0;
                       if (!_selected.contains(id)) continue;
                       final amount = double.tryParse(
                             _amountControllers[id]?.text.trim() ?? '',
@@ -668,7 +676,6 @@ class _BillWiseAllocateSheetState extends State<_BillWiseAllocateSheet> {
             ],
           ),
         ),
-      ),
       ),
     );
   }

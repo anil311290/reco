@@ -417,7 +417,6 @@ abstract class BaseVoucherFormController extends GetxController {
     isSubmitting.value = true;
     try {
       final payload = isPaymentReceipt ? _buildPaymentPayload() : _buildAdjustmentPayload();
-      final isOnline = repository.networkMonitorService.isOnline.value;
       if (isEditing) {
         final recordId = _lookupInt(_editingPayload?['id']);
         final localId = recordId == null ? null : 'remote-$module-$recordId';
@@ -430,19 +429,19 @@ abstract class BaseVoucherFormController extends GetxController {
           localId: localId,
           serverId: recordId.toString(),
           payload: payload,
-          awaitSyncWhenOnline: isOnline,
         );
       } else {
         await repository.createRecord(
           module: module,
           endpoint: endpoint,
           payload: payload,
-          awaitSyncWhenOnline: isOnline,
         );
       }
+
+      final syncedOnline = await repository.networkMonitorService.hasInternetNow();
       await _refreshList();
       Get.back<bool>(result: true);
-      if (isOnline) {
+      if (syncedOnline) {
         AppSnackbar.success(
           isEditing ? '$title updated successfully.' : '$title saved successfully.',
         );

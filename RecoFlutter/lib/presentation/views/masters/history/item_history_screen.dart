@@ -361,23 +361,25 @@ class _ItemHistoryScreenState extends State<ItemHistoryScreen> {
                   ],
                 ),
               ),
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                children: <Widget>[
-                  _ExportActionChip(
-                    label: 'Excel',
-                    icon: Icons.table_view_rounded,
-                    color: const Color(0xFF15803D),
-                    onTap: controller.exportExcel,
-                  ),
-                  const SizedBox(width: 8),
-                  _ExportActionChip(
-                    label: 'PDF',
-                    icon: Icons.picture_as_pdf_rounded,
-                    color: const Color(0xFFDC2626),
-                    onTap: controller.exportPdf,
-                  ),
-                ],
+
+            ],
+          ),
+          const SizedBox(height: 5),
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: <Widget>[
+              _ExportActionChip(
+                label: 'Excel',
+                icon: Icons.table_view_rounded,
+                color: const Color(0xFF15803D),
+                onTap: controller.exportExcel,
+              ),
+              const SizedBox(width: 8),
+              _ExportActionChip(
+                label: 'PDF',
+                icon: Icons.picture_as_pdf_rounded,
+                color: const Color(0xFFDC2626),
+                onTap: controller.exportPdf,
               ),
             ],
           ),
@@ -481,7 +483,7 @@ class _ItemHistoryScreenState extends State<ItemHistoryScreen> {
           columns: <DataColumn2>[
             masterColumn(context, 'Date'),
             masterColumn(context, 'Type', fixedWidth: 130),
-            masterColumn(context, 'Invoice #'),
+            masterColumn(context, 'Invoice #', size: ColumnSize.L),
             masterColumn(context, 'Party', size: ColumnSize.M),
             masterColumn(context, 'Qty In'),
             masterColumn(context, 'Qty Out'),

@@ -188,18 +188,20 @@ class AccountsController extends GetxController with MasterExportMixin {
         ...entity.toPayload(),
         'entry_source': entity.entrySource.isEmpty ? 'manual' : entity.entrySource,
       };
+      late final String localId;
       if (entity.id == null) {
-        await _repository.createAccountOffline(payload);
+        localId = await _repository.createAccountOffline(payload);
       } else {
+        localId = entity.localId ?? 'remote-accounts-${entity.id}';
         await _repository.updateAccountOffline(
-          localId: entity.localId ?? 'remote-accounts-${entity.id}',
+          localId: localId,
           accountId: entity.id.toString(),
           payload: payload,
         );
       }
       if (_networkMonitorService.isOnline.value) {
-        await _syncService.syncPendingMutations(
-          showSuccessMessage: false,
+        await _syncService.syncRecord(
+          localId: localId,
           propagateErrors: true,
         );
       }
@@ -215,14 +217,15 @@ class AccountsController extends GetxController with MasterExportMixin {
   Future<void> deleteItem(AccountEntity entity) async {
     if (entity.id == null) return;
     try {
+      final localId = entity.localId ?? 'remote-accounts-${entity.id}';
       await _repository.deleteAccountOffline(
-        localId: entity.localId ?? 'remote-accounts-${entity.id}',
+        localId: localId,
         accountId: entity.id.toString(),
         payload: entity.toPayload(),
       );
       if (_networkMonitorService.isOnline.value) {
-        await _syncService.syncPendingMutations(
-          showSuccessMessage: false,
+        await _syncService.syncRecord(
+          localId: localId,
           propagateErrors: true,
         );
       }

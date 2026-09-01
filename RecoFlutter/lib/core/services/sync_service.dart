@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'package:dio/dio.dart';
 import 'package:get/get.dart' hide Response;
 
+import '../config/sync_constants.dart';
 import '../database/app_database_service.dart';
 import '../network/api_client.dart';
 import '../network/api_error_message.dart';
@@ -43,22 +44,39 @@ class SyncService extends GetxService {
     bool showSuccessMessage = true,
     bool propagateErrors = false,
   }) async {
-    final runningSync = _activeSync;
-    if (runningSync != null) {
-      await runningSync;
-      return;
-    }
+    while (true) {
+      final runningSync = _activeSync;
+      if (runningSync != null) {
+        await runningSync;
+        if (!propagateErrors) {
+          return;
+        }
+      }
 
-    final syncFuture = _runSync(
-      showSuccessMessage: showSuccessMessage,
-      propagateErrors: propagateErrors,
-    );
-    _activeSync = syncFuture;
-    try {
-      await syncFuture;
-    } finally {
-      if (identical(_activeSync, syncFuture)) {
-        _activeSync = null;
+      if (!await _networkMonitorService.hasInternetNow()) {
+        return;
+      }
+
+      final pendingItems = await _databaseService.getPendingSyncQueue();
+      if (pendingItems.isEmpty) {
+        return;
+      }
+
+      final syncFuture = _runSync(
+        showSuccessMessage: showSuccessMessage,
+        propagateErrors: propagateErrors,
+      );
+      _activeSync = syncFuture;
+      try {
+        await syncFuture;
+      } finally {
+        if (identical(_activeSync, syncFuture)) {
+          _activeSync = null;
+        }
+      }
+
+      if (!propagateErrors) {
+        return;
       }
     }
   }
@@ -68,14 +86,39 @@ class SyncService extends GetxService {
     required String localId,
     bool propagateErrors = true,
   }) async {
+    final runningSync = _activeSync;
+    if (runningSync != null) {
+      await runningSync;
+    }
+
     final item = await _databaseService.getPendingQueueItemForRecord(localId);
-    if (item == null) {
+    if (item != null) {
+      await _syncQueueItem(
+        item,
+        propagateErrors: propagateErrors,
+      );
       return;
     }
 
-    await _syncQueueItem(
-      item,
-      propagateErrors: propagateErrors,
+    if (!propagateErrors) {
+      return;
+    }
+
+    final record = await _databaseService.getOfflineRecordByLocalId(localId);
+    if (record == null) {
+      return;
+    }
+
+    final syncStatus = record['sync_status']?.toString();
+    final isDirty = record['is_dirty'] == true;
+    if (syncStatus == SyncStatus.synced && !isDirty) {
+      return;
+    }
+
+    final lastError =
+        await _databaseService.getLastQueueErrorForRecord(localId);
+    throw Exception(
+      lastError ?? 'Unable to sync this record to the server.',
     );
   }
 
