@@ -16,10 +16,13 @@ import '../masters/widgets/masters_ui_components.dart';
 import '../masters/history/party_history_screen.dart';
 import 'ledger_report_screen.dart';
 import '../transactions/details/transaction_detail_screen.dart';
+import '../transactions/utils/invoice_transaction_actions.dart';
 import 'widgets/report_ui_components.dart';
 
 class DayBookReportScreen extends GetView<DayBookReportController> {
   const DayBookReportScreen({super.key});
+
+  static const double _rowHeight = 68;
 
   @override
   Widget build(BuildContext context) {
@@ -43,9 +46,6 @@ class DayBookReportScreen extends GetView<DayBookReportController> {
                   (report['rows'] as List).whereType<Map>(),
                 )
               : <Map<String, dynamic>>[];
-          final voucherCount = report is Map<String, dynamic> && report['vouchers'] is List
-              ? (report['vouchers'] as List).length
-              : rows.length;
           return RefreshIndicator(
             onRefresh: controller.loadReport,
             child: ListView(
@@ -114,61 +114,6 @@ class DayBookReportScreen extends GetView<DayBookReportController> {
                   ),
                 ),
                 const SizedBox(height: 12),
-                if (report is Map<String, dynamic>) ...<Widget>[
-                  Column(
-                    children: <Widget>[
-                      Row(
-                        children: <Widget>[
-                          Expanded(
-                            child: ReportStatCard(
-                              label: 'Report Period',
-                              value:
-                                  '${controller.formatDate(controller.fromDateController.text)} to ${controller.formatDate(controller.toDateController.text)}',
-                              note: 'Selected date range for voucher activity',
-                              color: const Color(0xFF0891B2),
-                              icon: FontAwesomeIcons.calendarCheck.data,
-                            ),
-                          ),
-                          const SizedBox(width: 10),
-                          Expanded(
-                            child: ReportStatCard(
-                              label: 'Vouchers',
-                              value: '$voucherCount',
-                              note: 'Posted vouchers for the day',
-                              color: const Color(0xFF2563EB),
-                              icon: FontAwesomeIcons.receipt.data,
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 10),
-                      Row(
-                        children: <Widget>[
-                          Expanded(
-                            child: ReportStatCard(
-                              label: 'Total Debit',
-                              value: controller.formatCurrency(report['total_debit']),
-                              note: 'Must equal credit',
-                              color: const Color(0xFF16A34A),
-                              icon: FontAwesomeIcons.arrowTrendUp.data,
-                            ),
-                          ),
-                          const SizedBox(width: 10),
-                          Expanded(
-                            child: ReportStatCard(
-                              label: 'Total Credit',
-                              value: controller.formatCurrency(report['total_credit']),
-                              note: 'Must equal debit',
-                              color: const Color(0xFFF59E0B),
-                              icon: FontAwesomeIcons.arrowTrendDown.data,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-                ],
             ReportSectionCard(
               title: 'Day Book Entries',
               icon: FontAwesomeIcons.tableList.data,
@@ -231,8 +176,12 @@ class DayBookReportScreen extends GetView<DayBookReportController> {
       ...List<DataRow>.generate(rows.length, (index) {
         final row = rows[index];
         final accountId = _asInt(row['account_id']);
+        final partyId = _asInt(row['party_id']);
+        final partyName = (row['party_name'] ?? '').toString().trim();
+        final serial = row['serial'] ?? (index + 1);
         return DataRow(
           cells: <DataCell>[
+            masterTextCell('$serial'),
             masterTextCell(
               controller.formatDate((row['voucher_date'] ?? '').toString()),
             ),
@@ -246,11 +195,12 @@ class DayBookReportScreen extends GetView<DayBookReportController> {
                 ),
               ),
             ),
-            masterTextCell((row['voucher_type'] ?? '-').toString()),
+            DataCell(Center(child: _buildVoucherTypePill(context, row))),
             DataCell(
               Center(
                 child: ReportLinkText(
                   (row['account_name'] ?? '-').toString(),
+                  maxLines: 3,
                   onTap: accountId == null
                       ? null
                       : () => Get.to(
@@ -261,27 +211,60 @@ class DayBookReportScreen extends GetView<DayBookReportController> {
             ),
             DataCell(
               Center(
-                child: ReportLinkText(
-                  (row['party_name'] ?? '-').toString(),
-                  onTap: _asInt(row['party_id']) == null
-                      ? null
-                      : () => Get.to(
-                            () => PartyHistoryScreen(
-                              partyId: _asInt(row['party_id'])!,
-                            ),
-                          ),
+                child: partyId == null
+                    ? Text(
+                        partyName.isEmpty ? '-' : partyName,
+                        maxLines: 3,
+                        overflow: TextOverflow.ellipsis,
+                        textAlign: TextAlign.center,
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          fontWeight: FontWeight.w500,
+                          height: 1.35,
+                        ),
+                      )
+                    : ReportLinkText(
+                        partyName.isEmpty ? '-' : partyName,
+                        maxLines: 3,
+                        onTap: () => Get.to(
+                          () => PartyHistoryScreen(partyId: partyId),
+                        ),
+                      ),
+              ),
+            ),
+            _buildNarrationCell(context, row),
+            DataCell(
+              Center(
+                child: Text(
+                  _formatDrCrAmount(row['debit']),
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w600,
+                    fontSize: 13,
+                    color: Color(0xFF16A34A),
+                  ),
                 ),
               ),
             ),
-            masterTextCell((row['narration'] ?? '-').toString()),
-            DataCell(Center(child: Text(controller.formatCurrency(row['debit']), textAlign: TextAlign.center, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: Color(0xFF16A34A))))),
-            DataCell(Center(child: Text(controller.formatCurrency(row['credit']), textAlign: TextAlign.center, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: Color(0xFFEF4444))))),
+            DataCell(
+              Center(
+                child: Text(
+                  _formatDrCrAmount(row['credit']),
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w600,
+                    fontSize: 13,
+                    color: Color(0xFFEF4444),
+                  ),
+                ),
+              ),
+            ),
           ],
         );
       }),
       DataRow(
         color: reportTotalRowColor(context),
         cells: <DataCell>[
+          const DataCell(SizedBox.shrink()),
           const DataCell(SizedBox.shrink()),
           const DataCell(SizedBox.shrink()),
           const DataCell(SizedBox.shrink()),
@@ -295,34 +278,160 @@ class DayBookReportScreen extends GetView<DayBookReportController> {
               ),
             ),
           ),
-          DataCell(Center(child: Text(controller.formatCurrency(reportData['total_debit']), style: reportTotalRowTextStyle(context)?.copyWith(fontSize: 13)))),
-          DataCell(Center(child: Text(controller.formatCurrency(reportData['total_credit']), style: reportTotalRowTextStyle(context)?.copyWith(fontSize: 13)))),
+          DataCell(
+            Center(
+              child: Text(
+                controller.formatCurrency(reportData['total_debit']),
+                style: reportTotalRowTextStyle(context)?.copyWith(fontSize: 13),
+              ),
+            ),
+          ),
+          DataCell(
+            Center(
+              child: Text(
+                controller.formatCurrency(reportData['total_credit']),
+                style: reportTotalRowTextStyle(context)?.copyWith(fontSize: 13),
+              ),
+            ),
+          ),
         ],
       ),
     ];
 
-    final calculatedHeight = 42.0 + (rows.length * 52.0);
-    final tableHeight = calculatedHeight.clamp(160.0, 550.0);
+    final calculatedHeight =
+        42.0 + (rows.length * _rowHeight) + _rowHeight;
+    final tableHeight = calculatedHeight.clamp(200.0, 620.0);
 
     return SizedBox(
       height: tableHeight,
       child: MastersTableShell(
         isLoading: false,
         emptyText: 'No posted transactions found.',
-        minWidth: 1240,
+        minWidth: 1320,
+        dataRowHeight: _rowHeight,
         columns: <DataColumn2>[
+          masterColumn(context, '#', size: ColumnSize.S),
           masterColumn(context, 'Date', size: ColumnSize.M),
           masterColumn(context, 'Voucher #', size: ColumnSize.M),
           masterColumn(context, 'Type', size: ColumnSize.S),
           masterColumn(context, 'Particulars', size: ColumnSize.L),
           masterColumn(context, 'Party', size: ColumnSize.M),
           masterColumn(context, 'Narration', size: ColumnSize.L),
-          masterColumn(context, 'Dr', size: ColumnSize.M),
-          masterColumn(context, 'Cr', size: ColumnSize.M),
+          masterColumn(context, 'Debit (₹)', size: ColumnSize.M),
+          masterColumn(context, 'Credit (₹)', size: ColumnSize.M),
         ],
         rows: tableRows,
       ),
     );
+  }
+
+  Widget _buildVoucherTypePill(BuildContext context, Map<String, dynamic> row) {
+    final rawType = (row['voucher_type'] ?? '-').toString().trim();
+    if (rawType.isEmpty || rawType == '-') {
+      return Text(
+        '-',
+        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+          fontWeight: FontWeight.w500,
+        ),
+      );
+    }
+    final label = rawType[0].toUpperCase() + rawType.substring(1);
+    final scheme = Theme.of(context).colorScheme;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(
+        color: scheme.primary.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Text(
+        label,
+        style: Theme.of(context).textTheme.labelMedium?.copyWith(
+          color: scheme.primary,
+          fontWeight: FontWeight.w700,
+        ),
+      ),
+    );
+  }
+
+  DataCell _buildNarrationCell(BuildContext context, Map<String, dynamic> row) {
+    final narration = (row['narration'] ?? '-').toString();
+    final limited = narration.length > 60
+        ? '${narration.substring(0, 60)}...'
+        : narration;
+    final salesInvoiceId = _asInt(row['sales_invoice_id']);
+    final purchaseInvoiceId = _asInt(row['purchase_invoice_id']);
+    final hasInvoiceLink =
+        salesInvoiceId != null || purchaseInvoiceId != null;
+
+    return DataCell(
+      Align(
+        alignment: Alignment.centerLeft,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 6),
+          child: Wrap(
+            spacing: 6,
+            runSpacing: 4,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            children: <Widget>[
+              if (salesInvoiceId != null)
+                ReportLinkText(
+                  'Invoice',
+                  onTap: () => _openInvoice('sales', salesInvoiceId),
+                ),
+              if (purchaseInvoiceId != null)
+                ReportLinkText(
+                  'Invoice',
+                  onTap: () => _openInvoice('purchase', purchaseInvoiceId),
+                ),
+              if (!hasInvoiceLink || limited != '-')
+                Text(
+                  limited,
+                  maxLines: 3,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    height: 1.35,
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  String _formatDrCrAmount(dynamic value) {
+    final amount = double.tryParse(value?.toString() ?? '0') ?? 0;
+    if (amount <= 0) {
+      return '-';
+    }
+    return controller.formatCurrency(amount);
+  }
+
+  Future<void> _openInvoice(String movementType, int invoiceId) async {
+    final record = TransactionRecord(
+      kind: movementType == 'sales'
+          ? TransactionRecordKind.salesInvoice
+          : TransactionRecordKind.purchaseInvoice,
+      id: invoiceId,
+      number: 'Invoice',
+      type: movementType,
+      typeLabel: movementType == 'sales' ? 'Sales Invoice' : 'Purchase',
+      rawPayload: <String, dynamic>{'id': invoiceId},
+    );
+    try {
+      final detailRecord = await resolveTransactionDetailRecord(record);
+      await Get.to<void>(
+        () => TransactionDetailScreen(record: detailRecord),
+      );
+    } catch (_) {
+      AppSnackbar.warning(
+        'Full invoice details could not be loaded. Showing available data.',
+      );
+      await Get.to<void>(
+        () => TransactionDetailScreen(record: record),
+      );
+    }
   }
 
   int? _asInt(dynamic value) => int.tryParse(value?.toString() ?? '');

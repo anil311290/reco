@@ -95,57 +95,6 @@ class TrialBalanceReportScreen extends GetView<TrialBalanceReportController> {
               ),
             ),
             const SizedBox(height: 12),
-            if (report is Map<String, dynamic>) ...<Widget>[
-              Column(
-                children: <Widget>[
-                  Row(
-                    children: <Widget>[
-                      Expanded(
-                        child: ReportStatCard(
-                          label: 'Closing Dr',
-                          value: controller.formatCurrency(report['total_debit']),
-                          note: 'Must equal closing credit when books tally.',
-                          color: const Color(0xFF2563EB),
-                          icon: FontAwesomeIcons.arrowTrendUp.data,
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: ReportStatCard(
-                          label: 'Closing Cr',
-                          value: controller.formatCurrency(report['total_credit']),
-                          note: 'Closing balances across all ledgers.',
-                          color: const Color(0xFFF59E0B),
-                          icon: FontAwesomeIcons.arrowTrendDown.data,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 10),
-                  Row(
-                    children: <Widget>[
-                      Expanded(
-                        child: ReportStatCard(
-                          label: 'Status',
-                          value: (report['is_balanced'] == true) ? 'Balanced' : 'Mismatch',
-                          note: (report['is_balanced'] == true)
-                              ? 'Trial balance is closed cleanly.'
-                              : 'Difference: ${controller.formatCurrency(((report['total_debit'] ?? 0) as num).toDouble() - ((report['total_credit'] ?? 0) as num).toDouble()).replaceFirst('-', '')}',
-                          color: (report['is_balanced'] == true)
-                              ? const Color(0xFF16A34A)
-                              : const Color(0xFFEF4444),
-                          icon: (report['is_balanced'] == true)
-                              ? FontAwesomeIcons.circleCheck.data
-                              : FontAwesomeIcons.triangleExclamation.data,
-                        ),
-                      ),
-                      const Spacer(),
-                    ],
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-            ],
             ReportSectionCard(
               title: 'Account Balances',
               icon: FontAwesomeIcons.tableList.data,

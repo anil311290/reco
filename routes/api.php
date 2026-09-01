@@ -22,7 +22,7 @@ use App\Http\Controllers\Api\ThemeApiController;
 use App\Http\Controllers\Api\TaxRateApiController;
 use App\Http\Controllers\Api\LocationApiController;
 use App\Http\Controllers\Api\StatesCitiesApiController;
-use App\Http\Controllers\Api\SyncApiController;
+use App\Http\Controllers\Api\StockValueApiController;
 use App\Http\Controllers\Api\NotificationApiController;
 use App\Http\Controllers\Api\AuditLogApiController;
 use App\Http\Controllers\Api\SupportTicketApiController;
@@ -154,6 +154,9 @@ Route::prefix('v1')->middleware('auth:sanctum')->group(function () {
     Route::get('/reports/ledger', [ReportApiController::class, 'ledger']);
     Route::get('/reports/trial-balance', [ReportApiController::class, 'trialBalance']);
     Route::get('/reports/profit-loss', [ReportApiController::class, 'profitLoss']);
+    Route::get('/reports/stock-value-entries', [StockValueApiController::class, 'index']);
+    Route::post('/reports/stock-value-entries', [StockValueApiController::class, 'store']);
+    Route::put('/reports/stock-value-entries/{entry}', [StockValueApiController::class, 'update']);
     Route::get('/reports/receipt-payment', [ReportApiController::class, 'receiptPayment']);
     Route::get('/reports/balance-sheet', [ReportApiController::class, 'balanceSheet']);
     Route::get('/reports/debtors-outstanding', [ReportApiController::class, 'debtorsOutstanding']);

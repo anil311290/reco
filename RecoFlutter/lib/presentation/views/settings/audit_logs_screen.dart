@@ -289,8 +289,13 @@ class _AuditFilterSheetState extends State<_AuditFilterSheet> {
                   children: <Widget>[
                     Expanded(
                       child: OutlinedButton(
-                        onPressed: () {
-                          widget.controller.clearFilters();
+                        onPressed: () async {
+                          setState(() {
+                            _action = '';
+                            _module = '';
+                            _userId = '';
+                          });
+                          await widget.controller.clearFilters();
                           if (mounted) Navigator.of(context).pop();
                         },
                         style: OutlinedButton.styleFrom(

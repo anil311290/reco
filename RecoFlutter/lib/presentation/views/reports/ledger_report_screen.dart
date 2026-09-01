@@ -173,88 +173,48 @@ class _LedgerReportScreenState extends State<LedgerReportScreen> {
                 ),
               )
             else ...<Widget>[
-              if (selectedAccount != null) ...<Widget>[
-                Wrap(
-                  spacing: 10,
-                  runSpacing: 10,
-                  children: <Widget>[
-                    SizedBox(
-                      width: compactLayout
-                          ? double.infinity
-                          : (MediaQuery.sizeOf(context).width - 42) / 2,
-                      child: ReportStatCard(
-                        label: 'Account',
-                        value: (selectedAccount['account_code'] ?? '-').toString(),
-                        note: (selectedAccount['account_name'] ?? 'Ledger Account').toString(),
-                        color: const Color(0xFF0F766E),
-                        icon: FontAwesomeIcons.bookBookmark.data,
-                      ),
-                    ),
-                    SizedBox(
-                      width: compactLayout
-                          ? double.infinity
-                          : (MediaQuery.sizeOf(context).width - 42) / 2,
-                      child: ReportStatCard(
-                        label: 'Opening Balance',
-                        value: controller.formatCurrency(
-                          (report['opening_balance'] as Map?)?['balance'],
-                        ),
-                        note: _drCr(
-                          ((report['opening_balance'] as Map?)?['type'] ?? '')
-                              .toString(),
-                        ),
-                        color: const Color(0xFF2563EB),
-                        icon: FontAwesomeIcons.circlePlay.data,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 10),
-              ],
-              Wrap(
-                spacing: 10,
-                runSpacing: 10,
-                children: <Widget>[
-                  if (selectedAccount == null)
-                    SizedBox(
-                      width: compactLayout
-                          ? double.infinity
-                          : (MediaQuery.sizeOf(context).width - 42) / 2,
-                      child: ReportStatCard(
-                        label: 'Opening Balance',
-                        value: controller.formatCurrency(
-                          (report['opening_balance'] as Map?)?['balance'],
-                        ),
-                        note: _drCr(
-                          ((report['opening_balance'] as Map?)?['type'] ?? '')
-                              .toString(),
-                        ),
-                        color: const Color(0xFF2563EB),
-                        icon: FontAwesomeIcons.circlePlay.data,
-                      ),
-                    ),
-                  SizedBox(
-                    width: compactLayout
-                        ? double.infinity
-                        : (MediaQuery.sizeOf(context).width - 42) / 2,
-                    child: ReportStatCard(
-                      label: 'Closing Balance',
-                      value: controller.formatCurrency(
-                        (report['closing_balance'] as Map?)?['balance'],
-                      ),
-                      note: _drCr(
-                        ((report['closing_balance'] as Map?)?['type'] ?? '')
-                            .toString(),
-                      ),
-                      color: const Color(0xFF16A34A),
-                      icon: FontAwesomeIcons.circleStop.data,
-                    ),
-                  ),
-                ],
-              ),
-
+              // if (selectedAccount != null)
+              //   Container(
+              //     width: double.infinity,
+              //     margin: const EdgeInsets.only(bottom: 12),
+              //     padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+              //     decoration: BoxDecoration(
+              //       color: Theme.of(context).cardColor,
+              //       borderRadius: BorderRadius.circular(18),
+              //       border: Border.all(
+              //         color: Theme.of(context).dividerColor.withValues(alpha: .18),
+              //       ),
+              //     ),
+              //     child: Row(
+              //       children: <Widget>[
+              //         Container(
+              //           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              //           decoration: BoxDecoration(
+              //             color: const Color(0xFF475569).withValues(alpha: .12),
+              //             borderRadius: BorderRadius.circular(999),
+              //           ),
+              //           child: Text(
+              //             (selectedAccount['account_code'] ?? '-').toString(),
+              //             style: Theme.of(context).textTheme.labelMedium?.copyWith(
+              //               color: const Color(0xFF475569),
+              //               fontWeight: FontWeight.w700,
+              //             ),
+              //           ),
+              //         ),
+              //         const SizedBox(width: 12),
+              //         Expanded(
+              //           child: Text(
+              //             (selectedAccount['account_name'] ?? 'Ledger Account').toString(),
+              //             style: Theme.of(context).textTheme.titleSmall?.copyWith(
+              //               fontWeight: FontWeight.w700,
+              //             ),
+              //           ),
+              //         ),
+              //       ],
+              //     ),
+              //   ),
             ],
-            const SizedBox(height: 12),
+            const SizedBox(height: 4),
             ReportSectionCard(
               title: 'Ledger Entries',
               icon: FontAwesomeIcons.tableList.data,
@@ -315,22 +275,31 @@ class _LedgerReportScreenState extends State<LedgerReportScreen> {
     final tableRows = <DataRow>[
       DataRow(
         color: WidgetStatePropertyAll(
-          Theme.of(context).colorScheme.primary.withValues(alpha: .06),
+          const Color(0xFFFBBF24).withValues(alpha: .10),
         ),
         cells: <DataCell>[
-          const DataCell(SizedBox.shrink()),
-          const DataCell(SizedBox.shrink()),
+          const DataCell(Center(
+            child: Text('-', style: TextStyle(color: Colors.black54)),
+          )),
+          const DataCell(Center(
+            child: Text('-', style: TextStyle(color: Colors.black54)),
+          )),
           DataCell(
             Text(
-              'Opening Balance',
+              'Opening Balance b/f',
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                 fontWeight: FontWeight.w700,
+                color: const Color(0xFF92400E),
               ),
             ),
           ),
           const DataCell(SizedBox.shrink()),
-          const DataCell(Center(child: Text('-'))),
-          const DataCell(Center(child: Text('-'))),
+          const DataCell(Center(
+            child: Text('-', style: TextStyle(color: Colors.black54)),
+          )),
+          const DataCell(Center(
+            child: Text('-', style: TextStyle(color: Colors.black54)),
+          )),
           DataCell(
             Center(
               child: Text(
@@ -338,6 +307,7 @@ class _LedgerReportScreenState extends State<LedgerReportScreen> {
                 textAlign: TextAlign.center,
                 style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                   fontWeight: FontWeight.w800,
+                  color: const Color(0xFF92400E),
                 ),
               ),
             ),
@@ -374,16 +344,21 @@ class _LedgerReportScreenState extends State<LedgerReportScreen> {
             masterTextCell((entry['particulars'] ?? entry['narration'] ?? entry['description'] ?? '-').toString()),
             DataCell(
               Center(
-                child: ReportLinkText(
-                  (party['name'] ?? '-').toString(),
-                  onTap: _asInt(entry['party_id']) == null
-                      ? null
-                      : () => Get.to(
-                            () => PartyHistoryScreen(
-                              partyId: _asInt(entry['party_id'])!,
-                            ),
+                child: _asInt(entry['party_id']) == null
+                    ? Text(
+                        (party['name'] ?? '-').toString(),
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          fontWeight: FontWeight.w500,
+                        ),
+                      )
+                    : ReportLinkText(
+                        (party['name'] ?? '-').toString(),
+                        onTap: () => Get.to(
+                          () => PartyHistoryScreen(
+                            partyId: _asInt(entry['party_id'])!,
                           ),
-                ),
+                        ),
+                      ),
               ),
             ),
             DataCell(Center(
@@ -400,23 +375,28 @@ class _LedgerReportScreenState extends State<LedgerReportScreen> {
                 style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: credit > 0 ? const Color(0xFFEF4444) : null),
               ),
             )),
-            masterTextCell('${controller.formatCurrency(entry['running_balance'])} ${_drCr((entry['balance_type'] ?? '').toString())}'),
+            DataCell(Center(
+              child: Text(
+                '${controller.formatCurrency(entry['running_balance'])} ${_drCr((entry['balance_type'] ?? '').toString())}',
+                textAlign: TextAlign.center,
+                style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
+              ),
+            )),
             DataCell(Center(
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: <Widget>[
-                  if (voucher.isNotEmpty) ...<Widget>[
+                  if (voucher.isNotEmpty)
                     MasterActionButton(
                       icon: Icons.remove_red_eye_outlined,
                       tooltip: 'View Voucher',
                       color: Theme.of(context).colorScheme.primary,
                       onTap: () => _openVoucherDetail(entry, voucher, party),
                     ),
-                    const SizedBox(width: 6),
-                  ],
+                  if (voucher.isNotEmpty) const SizedBox(width: 6),
                   MasterActionButton(
                     icon: Icons.view_list_outlined,
-                    tooltip: 'Ledger History',
+                    tooltip: 'Ledger Party History',
                     color: const Color(0xFF475569),
                     onTap: () {
                       final ledgerId = _asInt(entry['id']);
@@ -427,29 +407,29 @@ class _LedgerReportScreenState extends State<LedgerReportScreen> {
                     },
                   ),
                   const SizedBox(width: 6),
-                  // MasterActionButton(
-                  //   icon: FontAwesomeIcons.clockRotateLeft.data,
-                  //   tooltip: 'Ledger Audit',
-                  //   color: const Color(0xFF38BDF8),
-                  //   onTap: () {
-                  //     final ledgerId = _asInt(entry['id']);
-                  //     if (ledgerId == null) {
-                  //       return;
-                  //     }
-                  //     Get.to(
-                  //       () => const AuditLogsScreen(),
-                  //       binding: BindingsBuilder(() {
-                  //         Get.put(
-                  //           AuditLogsController(
-                  //             Get.find<AuditLogsRepository>(),
-                  //             initialModule: 'ledger',
-                  //             initialRecordId: ledgerId.toString(),
-                  //           ),
-                  //         );
-                  //       }),
-                  //     );
-                  //   },
-                  // ),
+                  MasterActionButton(
+                    icon: Icons.history_rounded,
+                    tooltip: 'Ledger Audit',
+                    color: const Color(0xFF38BDF8),
+                    onTap: () {
+                      final ledgerId = _asInt(entry['id']);
+                      if (ledgerId == null) {
+                        return;
+                      }
+                      Get.to(
+                        () => const AuditLogsScreen(),
+                        binding: BindingsBuilder(() {
+                          Get.put(
+                            AuditLogsController(
+                              Get.find<AuditLogsRepository>(),
+                              initialModule: 'ledger',
+                              initialRecordId: ledgerId.toString(),
+                            ),
+                          );
+                        }),
+                      );
+                    },
+                  ),
                 ],
               ),
             )),
@@ -493,10 +473,10 @@ class _LedgerReportScreenState extends State<LedgerReportScreen> {
               masterColumn(context, 'Voucher #'),
               masterColumn(context, 'Particulars', size: ColumnSize.L),
               masterColumn(context, 'Party'),
-              masterColumn(context, 'Dr'),
-              masterColumn(context, 'Cr'),
-              masterColumn(context, 'Balance'),
-              masterColumn(context, 'Actions', fixedWidth: 140),
+                  masterColumn(context, 'Debit (₹)'),
+                  masterColumn(context, 'Credit (₹)'),
+                  masterColumn(context, 'Balance (₹)'),
+              masterColumn(context, 'Actions', fixedWidth: 150),
             ],
             rows: tableRows,
           ),
