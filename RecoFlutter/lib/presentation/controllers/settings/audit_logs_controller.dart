@@ -232,12 +232,13 @@ class AuditLogsController extends GetxController {
     return merged;
   }
 
-  void clearFilters() {
+  Future<void> clearFilters() async {
     selectedAction.value = '';
     selectedModule.value = '';
     selectedRecordId.value = '';
     selectedUserId.value = '';
     searchController.clear();
+    await loadLogs();
   }
 
   Future<void> exportLogs(String format) async {

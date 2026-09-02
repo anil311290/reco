@@ -1,3 +1,4 @@
+import 'package:data_table_2/data_table_2.dart';
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:get/get.dart';
@@ -7,7 +8,9 @@ import '../../../core/utils/app_date_formatter.dart';
 import '../../controllers/reports/profit_loss_report_controller.dart';
 import '../../controllers/reports/report_lookup_controller.dart';
 import '../../widgets/common/custom_text_field.dart';
+import '../masters/widgets/masters_ui_components.dart';
 import 'ledger_report_screen.dart';
+import 'stock_value_register_screen.dart';
 import 'widgets/report_ui_components.dart';
 
 class ProfitLossReportScreen extends GetView<ProfitLossReportController> {
@@ -21,7 +24,7 @@ class ProfitLossReportScreen extends GetView<ProfitLossReportController> {
         title: ReportPageTitle(
           title: 'Profit & Loss Statement',
           icon: FontAwesomeIcons.chartLine.data,
-          color: Color(0xFF16A34A),
+          color: const Color(0xFF16A34A),
         ),
       ),
       body: Obx(() {
@@ -29,14 +32,13 @@ class ProfitLossReportScreen extends GetView<ProfitLossReportController> {
           return const ReportLoadingView();
         }
         final report = controller.reportData['data'];
-        final income = report is Map<String, dynamic> ? report['income'] : null;
-        final expense = report is Map<String, dynamic> ? report['expense'] : null;
         return ListView(
           padding: const EdgeInsets.all(16),
           children: <Widget>[
             ReportFilterPanel(
               title: 'Filters',
-              subtitle: 'Track income, expenses, and final profitability with a cleaner statement layout built for fast management review.',
+              subtitle:
+                  'Track income, expenses, and final profitability with a cleaner statement layout built for fast management review.',
               icon: FontAwesomeIcons.sliders.data,
               iconColor: const Color(0xFF16A34A),
               child: Column(
@@ -44,7 +46,10 @@ class ProfitLossReportScreen extends GetView<ProfitLossReportController> {
                   CustomDropdown<int>(
                     label: 'Financial Year',
                     value: controller.financialYearId.value,
-                    items: lookup.financialYears.map((e) => _asInt(e['id'])).whereType<int>().toList(),
+                    items: lookup.financialYears
+                        .map((e) => _asInt(e['id']))
+                        .whereType<int>()
+                        .toList(),
                     itemLabelBuilder: (value) {
                       final item = lookup.financialYears.firstWhere(
                         (fy) => _asInt(fy['id']) == value,
@@ -52,14 +57,20 @@ class ProfitLossReportScreen extends GetView<ProfitLossReportController> {
                       );
                       return (item['name'] ?? 'FY').toString();
                     },
-                    onChanged: (value) => controller.applyFinancialYear(value, lookup),
+                    onChanged: (value) =>
+                        controller.applyFinancialYear(value, lookup),
                   ),
-
                   ReportDateRangeRow(
                     fromController: controller.fromDateController,
                     toController: controller.toDateController,
-                    onFromTap: () => _pickDate(context, controller.fromDateController),
-                    onToTap: () => _pickDate(context, controller.toDateController),
+                    onFromTap: () => _pickDate(
+                      context,
+                      controller.fromDateController,
+                    ),
+                    onToTap: () => _pickDate(
+                      context,
+                      controller.toDateController,
+                    ),
                   ),
                   const SizedBox(height: 12),
                   ReportActionBar(
@@ -92,47 +103,76 @@ class ProfitLossReportScreen extends GetView<ProfitLossReportController> {
               ),
             ),
             const SizedBox(height: 12),
-            if (report is Map<String, dynamic>) ...<Widget>[
-              _summaryCards(context, report, income, expense),
-              const SizedBox(height: 12),
-              LayoutBuilder(
-                builder: (BuildContext context, BoxConstraints constraints) {
-                  final compact = constraints.maxWidth < 720;
-                  final sections = <Widget>[
-                    _accountSection(
+            if (report is! Map<String, dynamic>)
+              ReportSectionCard(
+                title: 'No financial year found',
+                icon: FontAwesomeIcons.calendarXmark.data,
+                iconColor: const Color(0xFF16A34A),
+                child: const Padding(
+                  padding: EdgeInsets.all(16),
+                  child: Text(
+                    'Create a financial year first to view profit and loss.',
+                  ),
+                ),
+              )
+            else ...<Widget>[
+              ReportSectionCard(
+                title: 'Profit & Loss Account',
+                icon: FontAwesomeIcons.book.data,
+                iconColor: const Color(0xFF16A34A),
+                trailing: Wrap(
+                  spacing: 8,
+                  runSpacing: 6,
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  children: <Widget>[
+                    _pill(
                       context,
-                      title: 'Expenses',
-                      color: const Color(0xFFEF4444),
-                      section: expense,
+                      _dateRangeLabel(),
+                      const Color(0xFF0EA5E9),
                     ),
-                    _accountSection(
+                    _pill(
                       context,
-                      title: 'Income',
-                      color: const Color(0xFF16A34A),
-                      section: income,
+                      report['is_profit'] == true
+                          ? 'Profitable'
+                          : 'Loss Position',
+                      report['is_profit'] == true
+                          ? const Color(0xFF16A34A)
+                          : const Color(0xFFEF4444),
+                      icon: report['is_profit'] == true
+                          ? FontAwesomeIcons.circleCheck.data
+                          : FontAwesomeIcons.circleExclamation.data,
                     ),
-                  ];
-                  if (compact) {
-                    return Column(
-                      children: <Widget>[
-                        sections.first,
-                        const SizedBox(height: 12),
-                        sections.last,
-                      ],
-                    );
-                  }
-                  return Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: <Widget>[
-                      Expanded(child: sections.first),
-                      const SizedBox(width: 12),
-                      Expanded(child: sections.last),
-                    ],
-                  );
-                },
+                    OutlinedButton.icon(
+                      onPressed: controller.financialYearId.value == null
+                          ? null
+                          : () async {
+                              await Get.to<void>(
+                                () => StockValueRegisterScreen(
+                                  financialYearId:
+                                      controller.financialYearId.value!,
+                                  fromDate: AppDateFormatter.toApiDate(
+                                    controller.fromDateController.text,
+                                  ),
+                                  toDate: AppDateFormatter.toApiDate(
+                                    controller.toDateController.text,
+                                  ),
+                                ),
+                              );
+                              await controller.loadReport();
+                            },
+                      icon: const Icon(Icons.edit_outlined, size: 16),
+                      label: const Text('Edit Stock Values'),
+                    ),
+                  ],
+                ),
+                child: _buildProfitLossTable(context, report),
               ),
               const SizedBox(height: 12),
               _netResultBar(context, report),
+              if (_stockRegister(report).isNotEmpty) ...<Widget>[
+                const SizedBox(height: 12),
+                _buildStockRegisterSection(context, report),
+              ],
             ],
           ],
         );
@@ -140,236 +180,349 @@ class ProfitLossReportScreen extends GetView<ProfitLossReportController> {
     );
   }
 
-  Widget _summaryCards(
+  Widget _buildProfitLossTable(
     BuildContext context,
     Map<String, dynamic> report,
-    dynamic income,
-    dynamic expense,
   ) {
+    final expenseRows = _accountRows(report['expense']);
+    final incomeRows = _accountRows(report['income']);
     final isProfit = report['is_profit'] == true;
-    final netProfit = _asDouble(report['net_profit']).abs();
-    final cards = <Widget>[
-      ReportStatCard(
-        label: 'Total Income',
-        value: controller.formatCurrency(
-          income is Map<String, dynamic> ? income['total'] : 0,
-        ),
-        note: 'Revenue and income recorded in the selected financial year.',
-        color: const Color(0xFF16A34A),
-        icon: FontAwesomeIcons.sackDollar.data,
-      ),
-      ReportStatCard(
-        label: 'Total Expenses',
-        value: controller.formatCurrency(
-          expense is Map<String, dynamic> ? expense['total'] : 0,
-        ),
-        note: 'All expense heads included in this period.',
-        color: const Color(0xFFEF4444),
-        icon: FontAwesomeIcons.moneyBillTransfer.data,
-      ),
-      ReportStatCard(
-        label: 'Net Result',
-        value: '${isProfit ? '+' : '-'}${controller.formatCurrency(netProfit)}',
-        note: isProfit
-            ? 'Profit recorded for this period.'
-            : 'Loss recorded for this period.',
-        color: isProfit ? const Color(0xFF2563EB) : const Color(0xFFF59E0B),
-        icon: isProfit ? FontAwesomeIcons.chartSimple.data : FontAwesomeIcons.chartColumn.data,
+    final balancingAmount = _asDouble(report['net_profit']).abs();
+
+    if (isProfit) {
+      expenseRows.add(<String, dynamic>{
+        'label': 'Net Profit',
+        'amount': balancingAmount,
+      });
+    } else {
+      incomeRows.add(<String, dynamic>{
+        'label': 'Net Loss',
+        'amount': balancingAmount,
+      });
+    }
+
+    final rowCount = expenseRows.length > incomeRows.length
+        ? expenseRows.length
+        : incomeRows.length;
+
+    if (rowCount == 0) {
+      return const Padding(
+        padding: EdgeInsets.all(24),
+        child: Center(child: Text('No income or expenses recorded')),
+      );
+    }
+
+    final totalExpense = expenseRows.fold<double>(
+      0,
+      (sum, row) => sum + _asDouble(row['amount']),
+    );
+    final totalIncome = incomeRows.fold<double>(
+      0,
+      (sum, row) => sum + _asDouble(row['amount']),
+    );
+
+    final tableRows = <DataRow>[
+      ...List<DataRow>.generate(rowCount, (index) {
+        final expense = index < expenseRows.length ? expenseRows[index] : null;
+        final income = index < incomeRows.length ? incomeRows[index] : null;
+        return DataRow(
+          cells: <DataCell>[
+            _sideNameCell(context, expense, isExpenseSide: true),
+            _sideAmountCell(context, expense, isExpenseSide: true),
+            _sideNameCell(context, income, isExpenseSide: false),
+            _sideAmountCell(context, income, isExpenseSide: false),
+          ],
+        );
+      }),
+      DataRow(
+        color: reportTotalRowColor(context),
+        cells: <DataCell>[
+          DataCell(
+            Text('Total', style: reportTotalRowTextStyle(context)),
+          ),
+          DataCell(
+            Center(
+              child: Text(
+                controller.formatCurrency(totalExpense),
+                style: reportTotalRowTextStyle(context)?.copyWith(fontSize: 13),
+              ),
+            ),
+          ),
+          DataCell(
+            Text('Total', style: reportTotalRowTextStyle(context)),
+          ),
+          DataCell(
+            Center(
+              child: Text(
+                controller.formatCurrency(totalIncome),
+                style: reportTotalRowTextStyle(context)?.copyWith(fontSize: 13),
+              ),
+            ),
+          ),
+        ],
       ),
     ];
 
-    return LayoutBuilder(
-      builder: (BuildContext context, BoxConstraints constraints) {
-        final compact = constraints.maxWidth < 720;
-        if (compact) {
-          return Column(
-            children: <Widget>[
-              Row(
-                children: <Widget>[
-                  Expanded(child: cards[0]),
-                  const SizedBox(width: 10),
-                  Expanded(child: cards[1]),
-                ],
-              ),
-              const SizedBox(height: 10),
-              cards[2],
-            ],
-          );
-        }
-        return Row(
-          children: <Widget>[
-            Expanded(child: cards[0]),
-            const SizedBox(width: 12),
-            Expanded(child: cards[1]),
-            const SizedBox(width: 12),
-            Expanded(child: cards[2]),
-          ],
-        );
-      },
+    const expenseColor = Color(0xFFEF4444);
+    const incomeColor = Color(0xFF16A34A);
+
+    return SizedBox(
+      height: (42.0 + (tableRows.length * 52.0)).clamp(180.0, 620.0),
+      child: MastersTableShell(
+        isLoading: false,
+        emptyText: 'No income or expenses recorded',
+        minWidth: 920,
+        columns: <DataColumn2>[
+          _sideColumn(
+            context,
+            'Expenses',
+            color: expenseColor,
+            size: ColumnSize.L,
+          ),
+          _sideColumn(
+            context,
+            'Amount',
+            color: expenseColor,
+            size: ColumnSize.S,
+          ),
+          _sideColumn(
+            context,
+            'Income',
+            color: incomeColor,
+            size: ColumnSize.L,
+          ),
+          _sideColumn(
+            context,
+            'Amount',
+            color: incomeColor,
+            size: ColumnSize.S,
+          ),
+        ],
+        rows: tableRows,
+      ),
     );
   }
 
-  Widget _accountSection(
-    BuildContext context, {
-    required String title,
-    required Color color,
-    required dynamic section,
-  }) {
-    final accounts = section is Map<String, dynamic> && section['accounts'] is List
-        ? List<Map<String, dynamic>>.from((section['accounts'] as List).whereType<Map>())
-        : <Map<String, dynamic>>[];
-    final theme = Theme.of(context);
-    final total = section is Map<String, dynamic> ? section['total'] : 0;
+  Widget _buildStockRegisterSection(
+    BuildContext context,
+    Map<String, dynamic> report,
+  ) {
+    final stock = report['stock'] is Map<String, dynamic>
+        ? Map<String, dynamic>.from(report['stock'] as Map<String, dynamic>)
+        : <String, dynamic>{};
+    final register = _stockRegister(report);
+
     return ReportSectionCard(
-      title: title,
-      icon: title == 'Income'
-          ? FontAwesomeIcons.circleArrowDown.data
-          : FontAwesomeIcons.circleArrowUp.data,
-      iconColor: color,
-      trailing: Wrap(
-        spacing: 8,
-        runSpacing: 6,
-        alignment: WrapAlignment.end,
-        crossAxisAlignment: WrapCrossAlignment.center,
+      title: 'Stock Value Register',
+      icon: FontAwesomeIcons.boxesStacked.data,
+      iconColor: const Color(0xFF2563EB),
+      trailing: _pill(context, 'User-entered values', const Color(0xFF64748B)),
+      child: Column(
         children: <Widget>[
-          _pill(context, _dateRangeLabel(), const Color(0xFF0EA5E9)),
-          _pill(context, controller.formatCurrency(total), color),
-        ],
-      ),
-      child: Container(
-        clipBehavior: Clip.antiAlias,
-        decoration: BoxDecoration(
-          color: theme.cardColor,
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(
-            color: theme.dividerColor.withValues(alpha: .35),
+          SizedBox(
+            height: (42.0 + (register.length * 52.0)).clamp(160.0, 360.0),
+            child: MastersTableShell(
+              isLoading: false,
+              emptyText: 'No stock value entries found.',
+              minWidth: 640,
+              columns: <DataColumn2>[
+                masterColumn(context, 'Date', size: ColumnSize.M),
+                masterColumn(context, 'Stock Value (₹)', size: ColumnSize.M),
+                masterColumn(context, 'Remarks', size: ColumnSize.L),
+              ],
+              rows: register.map((row) {
+                return DataRow(
+                  cells: <DataCell>[
+                    masterTextCell(
+                      controller.formatDate(
+                        (row['valuation_date'] ?? '').toString(),
+                      ),
+                    ),
+                    masterTextCell(
+                      controller.formatCurrency(row['stock_value']),
+                      fontWeight: FontWeight.w700,
+                    ),
+                    masterTextCell(
+                      (row['remarks'] ?? '-').toString(),
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ],
+                );
+              }).toList(),
+            ),
           ),
-        ),
-        child: Column(
-          children: <Widget>[
-            if (accounts.isEmpty)
-              SizedBox(
-                width: double.infinity,
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 18),
+          const SizedBox(height: 10),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+            decoration: BoxDecoration(
+              color: const Color(0xFF23263A),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Row(
+              children: <Widget>[
+                Expanded(
                   child: Text(
-                    title == 'Income'
-                        ? 'No income recorded'
-                        : 'No expenses recorded',
-                    textAlign: TextAlign.center,
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      color: theme.colorScheme.onSurfaceVariant,
+                    'Opening / Closing Value',
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w800,
                     ),
                   ),
                 ),
-              )
-            else
-              ...accounts.map((item) => _accountRow(context, item, color)),
-            _totalRow(context, title, total, color),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _accountRow(
-    BuildContext context,
-    Map<String, dynamic> item,
-    Color color,
-  ) {
-    final theme = Theme.of(context);
-    final account = item['account'];
-    final id = account is Map<String, dynamic> ? _asInt(account['id']) : null;
-    final name = account is Map<String, dynamic>
-        ? (account['account_name'] ?? '-').toString()
-        : (item['label'] ?? '-').toString();
-    return InkWell(
-      onTap: id == null ? null : () => Get.to(() => LedgerReportScreen(initialAccountId: id)),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-        decoration: BoxDecoration(
-          border: Border(
-            bottom: BorderSide(
-              color: theme.dividerColor.withValues(alpha: .20),
-            ),
-          ),
-        ),
-        child: Row(
-          children: <Widget>[
-            Expanded(
-              child: Text(
-                name,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  color: id == null ? theme.colorScheme.onSurface : color,
-                  fontWeight: FontWeight.w800,
-                  decoration: id == null ? null : TextDecoration.underline,
-                  decorationColor: color.withValues(alpha: .45),
+                Text(
+                  '${controller.formatCurrency(stock['opening_value'])} / ${controller.formatCurrency(stock['closing_value'])}',
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w800,
+                  ),
                 ),
-              ),
-            ),
-            const SizedBox(width: 10),
-            Text(
-              controller.formatCurrency(item['amount']),
-              style: theme.textTheme.bodyMedium?.copyWith(
-                color: color,
-                fontWeight: FontWeight.w800,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _totalRow(
-    BuildContext context,
-    String title,
-    dynamic total,
-    Color color,
-  ) {
-    final theme = Theme.of(context);
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 13),
-      color: const Color(0xFF23263A),
-      child: Row(
-        children: <Widget>[
-          Expanded(
-            child: Text(
-              'Total $title',
-              style: theme.textTheme.bodyMedium?.copyWith(
-                color: Colors.white,
-                fontWeight: FontWeight.w800,
-              ),
-            ),
-          ),
-          Text(
-            controller.formatCurrency(total),
-            style: theme.textTheme.bodyMedium?.copyWith(
-              color: title == 'Income' ? const Color(0xFF22C55E) : const Color(0xFFFF5A6A),
-              fontWeight: FontWeight.w800,
+                const SizedBox(width: 12),
+                TextButton(
+                  onPressed: controller.financialYearId.value == null
+                      ? null
+                      : () async {
+                          await Get.to<void>(
+                            () => StockValueRegisterScreen(
+                              financialYearId:
+                                  controller.financialYearId.value!,
+                              fromDate: AppDateFormatter.toApiDate(
+                                controller.fromDateController.text,
+                              ),
+                              toDate: AppDateFormatter.toApiDate(
+                                controller.toDateController.text,
+                              ),
+                            ),
+                          );
+                          await controller.loadReport();
+                        },
+                  child: const Text('Edit register'),
+                ),
+              ],
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  DataColumn2 _sideColumn(
+    BuildContext context,
+    String title, {
+    required Color color,
+    ColumnSize size = ColumnSize.M,
+    double? fixedWidth,
+  }) {
+    return DataColumn2(
+      size: size,
+      fixedWidth: fixedWidth,
+      label: Center(
+        child: Text(
+          title,
+          textAlign: TextAlign.center,
+          style: Theme.of(context).textTheme.labelMedium?.copyWith(
+            fontWeight: FontWeight.w800,
+            color: color,
+          ),
+        ),
+      ),
+    );
+  }
+
+  DataCell _sideNameCell(
+    BuildContext context,
+    Map<String, dynamic>? row, {
+    required bool isExpenseSide,
+  }) {
+    if (row == null) {
+      return const DataCell(SizedBox.shrink());
+    }
+
+    final account = row['account'];
+    final accountId =
+        account is Map<String, dynamic> ? _asInt(account['id']) : null;
+    final label = account is Map<String, dynamic>
+        ? (account['account_name'] ?? '-').toString()
+        : (row['label'] ?? '-').toString();
+    final isBalancing = account == null && row['label'] != null;
+
+    if (accountId != null) {
+      return DataCell(
+        Center(
+          child: ReportLinkText(
+            label,
+            onTap: () => Get.to(
+              () => LedgerReportScreen(initialAccountId: accountId),
+            ),
+          ),
+        ),
+      );
+    }
+
+    return DataCell(
+      Center(
+        child: Text(
+          label,
+          textAlign: TextAlign.center,
+          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+            fontWeight: FontWeight.w800,
+            color: isBalancing
+                ? (isExpenseSide
+                    ? const Color(0xFF16A34A)
+                    : const Color(0xFFEF4444))
+                : null,
+          ),
+        ),
+      ),
+    );
+  }
+
+  DataCell _sideAmountCell(
+    BuildContext context,
+    Map<String, dynamic>? row, {
+    required bool isExpenseSide,
+  }) {
+    if (row == null) {
+      return const DataCell(SizedBox.shrink());
+    }
+
+    final account = row['account'];
+    final isBalancing = account == null && row['label'] != null;
+    final amount = _asDouble(row['amount']);
+    final color = isBalancing
+        ? (isExpenseSide ? const Color(0xFF16A34A) : const Color(0xFFEF4444))
+        : (isExpenseSide ? const Color(0xFFEF4444) : const Color(0xFF16A34A));
+
+    return DataCell(
+      Center(
+        child: Text(
+          controller.formatCurrency(amount),
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            color: color,
+            fontWeight: FontWeight.w700,
+            fontSize: 13,
+          ),
+        ),
       ),
     );
   }
 
   Widget _netResultBar(BuildContext context, Map<String, dynamic> report) {
-    final theme = Theme.of(context);
     final isProfit = report['is_profit'] == true;
     final color = isProfit ? const Color(0xFF16A34A) : const Color(0xFFEF4444);
     final label = isProfit ? 'Net Profit' : 'Net Loss';
-    final amount = '${isProfit ? '+' : '-'}${controller.formatCurrency(_asDouble(report['net_profit']).abs())}';
+    final amount =
+        '${isProfit ? '+' : '-'}${controller.formatCurrency(_asDouble(report['net_profit']).abs())}';
+
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: theme.cardColor,
+        color: Theme.of(context).cardColor,
         borderRadius: BorderRadius.circular(8),
         border: Border.all(
-          color: theme.dividerColor.withValues(alpha: .20),
+          color: Theme.of(context).dividerColor.withValues(alpha: .20),
         ),
       ),
       child: Wrap(
@@ -393,6 +546,34 @@ class ProfitLossReportScreen extends GetView<ProfitLossReportController> {
           ),
         ],
       ),
+    );
+  }
+
+  List<Map<String, dynamic>> _accountRows(dynamic section) {
+    if (section is! Map<String, dynamic> || section['accounts'] is! List) {
+      return <Map<String, dynamic>>[];
+    }
+    return List<Map<String, dynamic>>.from(
+      (section['accounts'] as List).whereType<Map>(),
+    );
+  }
+
+  List<Map<String, dynamic>> _stockRegister(Map<String, dynamic> report) {
+    final stock = report['stock'];
+    if (stock is! Map<String, dynamic> || stock['register'] is! List) {
+      return <Map<String, dynamic>>[];
+    }
+    return List<Map<String, dynamic>>.from(
+      (stock['register'] as List).whereType<Map>().map((row) {
+        final entry = row['entry'];
+        if (entry is Map<String, dynamic>) {
+          return <String, dynamic>{
+            ...row,
+            'id': entry['id'],
+          };
+        }
+        return row;
+      }),
     );
   }
 

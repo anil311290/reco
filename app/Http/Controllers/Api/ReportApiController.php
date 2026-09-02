@@ -258,8 +258,16 @@ class ReportApiController extends Controller
 
         $items->each(function (array &$item) use ($companyId, $toDate) {
             $item['allocation_source'] = $item['allocation_source'] ?? 'voucher';
-            $partyId = $item['party']->id ?? ($item['party']['id'] ?? null);
+            $party = $item['party'];
+            $partyId = is_object($party) ? $party->id : ($party['id'] ?? null);
             $invoiceQuery = $item['invoice_type'] === 'sales' ? SalesInvoice::query() : PurchaseInvoice::query();
+            $item['party_id'] = $partyId;
+            $item['party'] = [
+                'id' => $partyId,
+                'name' => is_object($party) ? $party->name : ($party['name'] ?? null),
+                'party_code' => is_object($party) ? $party->party_code : ($party['party_code'] ?? null),
+                'type' => is_object($party) ? $party->type : ($party['type'] ?? null),
+            ];
             $item['invoices'] = $invoiceQuery
                 ->where('company_id', $companyId)
                 ->where('party_id', $partyId)
@@ -278,8 +286,9 @@ class ReportApiController extends Controller
                     'total' => (float) $inv->total,
                     'status' => $inv->status,
                 ])
+                ->values()
                 ->all();
-            unset($item);
+            unset($item['voucher']);
         });
 
         return ResponseHelper::success([

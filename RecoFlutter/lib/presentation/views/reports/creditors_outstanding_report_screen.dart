@@ -90,31 +90,8 @@ class _CreditorsOutstandingReportScreenState
                 },
               ),
             ),
-            const SizedBox(height: 12),
-            if (report is Map)
-              Row(
-                children: <Widget>[
-                  Expanded(
-                    child: ReportStatCard(
-                      label: 'Total Outstanding',
-                      value: controller.formatCurrency(report['total']),
-                      note: 'Open purchase invoice balances.',
-                      color: _primaryColor,
-                      icon: FontAwesomeIcons.sackDollar.data,
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: ReportStatCard(
-                      label: 'Invoices',
-                      value: '${invoiceRows.length}',
-                      note: 'Outstanding payable invoices.',
-                      color: _secondaryColor,
-                      icon: FontAwesomeIcons.fileInvoiceDollar.data,
-                    ),
-                  ),
-                ],
-              ),
+            const SizedBox(height: 6),
+
             if (report is Map) const SizedBox(height: 12),
             ReportSectionCard(
               title: _partyWise ? 'Party Wise' : 'Invoice Wise',
@@ -131,11 +108,7 @@ class _CreditorsOutstandingReportScreenState
                     'Bucketed by: $basisLabel',
                     _secondaryColor,
                   ),
-                  _sectionPill(
-                    context,
-                    controller.formatCurrency(total),
-                    _primaryColor,
-                  ),
+
                 ],
               ),
               child: Column(
