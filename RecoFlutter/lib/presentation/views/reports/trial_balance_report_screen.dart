@@ -122,26 +122,7 @@ class TrialBalanceReportScreen extends GetView<TrialBalanceReportController> {
                     ],
                   ),
                   const SizedBox(height: 10),
-                  Row(
-                    children: <Widget>[
-                      Expanded(
-                        child: ReportStatCard(
-                          label: 'Status',
-                          value: (report['is_balanced'] == true) ? 'Balanced' : 'Mismatch',
-                          note: (report['is_balanced'] == true)
-                              ? 'Trial balance is closed cleanly.'
-                              : 'Difference: ${controller.formatCurrency(((report['total_debit'] ?? 0) as num).toDouble() - ((report['total_credit'] ?? 0) as num).toDouble()).replaceFirst('-', '')}',
-                          color: (report['is_balanced'] == true)
-                              ? const Color(0xFF16A34A)
-                              : const Color(0xFFEF4444),
-                          icon: (report['is_balanced'] == true)
-                              ? FontAwesomeIcons.circleCheck.data
-                              : FontAwesomeIcons.triangleExclamation.data,
-                        ),
-                      ),
-                      const Spacer(),
-                    ],
-                  ),
+
                 ],
               ),
               const SizedBox(height: 12),

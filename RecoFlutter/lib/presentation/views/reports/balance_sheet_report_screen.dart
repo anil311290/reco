@@ -143,27 +143,7 @@ class BalanceSheetReportScreen extends GetView<BalanceSheetReportController> {
                       ),
                     ],
                   ),
-                  const SizedBox(height: 10),
-                  Row(
-                    children: <Widget>[
-                      Expanded(
-                        child: ReportStatCard(
-                          label: 'Balance Status',
-                          value: (report['is_balanced'] == true) ? 'Balanced' : 'Review Needed',
-                          note: (report['is_balanced'] == true)
-                              ? 'Assets match liabilities and equity.'
-                              : 'Difference: ${controller.formatCurrency((((report['assets'] as Map?)?['total'] ?? 0) as num).toDouble() - ((report['total_liabilities_equity'] ?? 0) as num).toDouble()).replaceFirst('-', '')}',
-                          color: (report['is_balanced'] == true)
-                              ? _equityColor
-                              : const Color(0xFFF59E0B),
-                          icon: (report['is_balanced'] == true)
-                              ? FontAwesomeIcons.circleCheck.data
-                              : FontAwesomeIcons.triangleExclamation.data,
-                        ),
-                      ),
-                      const Spacer(),
-                    ],
-                  ),
+
                 ],
               ),
               const SizedBox(height: 12),

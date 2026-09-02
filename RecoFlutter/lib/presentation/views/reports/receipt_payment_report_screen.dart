@@ -194,16 +194,6 @@ class ReceiptPaymentReportScreen extends GetView<ReceiptPaymentReportController>
                   alignment: WrapAlignment.end,
                   children: <Widget>[
                     _pill(context, _dateRangeLabel(), const Color(0xFF0EA5E9)),
-                    _pill(
-                      context,
-                      report['is_balanced'] == true ? 'Balanced' : 'Not balanced',
-                      report['is_balanced'] == true
-                          ? const Color(0xFF16A34A)
-                          : const Color(0xFFEF4444),
-                      icon: report['is_balanced'] == true
-                          ? FontAwesomeIcons.circleCheck.data
-                          : FontAwesomeIcons.circleExclamation.data,
-                    ),
                   ],
                 ),
                 child: ledgers.isEmpty
