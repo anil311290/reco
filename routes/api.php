@@ -27,6 +27,7 @@ use App\Http\Controllers\Api\NotificationApiController;
 use App\Http\Controllers\Api\AuditLogApiController;
 use App\Http\Controllers\Api\SupportTicketApiController;
 use App\Http\Controllers\Api\DeviceApiController;
+use App\Http\Controllers\Api\StockValueApiController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -165,6 +166,13 @@ Route::prefix('v1')->middleware('auth:sanctum')->group(function () {
     Route::get('/reports/settlement-audit', [ReportApiController::class, 'settlementAuditReport']);
     Route::get('/reports/invoice-settlement-details', [ReportApiController::class, 'invoiceSettlementDetails']);
     Route::get('/reports/payment-settlement-details', [ReportApiController::class, 'paymentSettlementDetails']);
+
+    // Stock value entries
+    Route::get('/reports/stock-value-entries', [StockValueApiController::class, 'entries']);
+    Route::post('/reports/stock-value-entries', [StockValueApiController::class, 'store']);
+    Route::get('/reports/stock-value-entries/{id}', [StockValueApiController::class, 'show']);
+    Route::put('/reports/stock-value-entries/{id}', [StockValueApiController::class, 'update']);
+    Route::delete('/reports/stock-value-entries/{id}', [StockValueApiController::class, 'destroy']);
 
     // Settings
     Route::get('/settings', [SettingsApiController::class, 'index']);
