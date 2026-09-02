@@ -178,10 +178,6 @@
             <div class="report-panel-header">
                 <h6 class="report-panel-title"><i class="bi bi-wallet2 text-primary"></i>Cash / Bank Ledgers</h6>
                 <span class="report-pill report-pill--info">@istDate($dateFrom) to @istDate($dateTo)</span>
-                <span class="report-pill {{ $report['is_balanced'] ? 'report-pill--success' : 'report-pill--danger' }}">
-                    <i class="bi {{ $report['is_balanced'] ? 'bi-check-circle' : 'bi-exclamation-circle' }}"></i>
-                    {{ $report['is_balanced'] ? 'Balanced' : 'Not balanced' }}
-                </span>
             </div>
             <div class="report-panel-body report-panel-body--flush">
                 <table class="table report-table table-hover mb-0">

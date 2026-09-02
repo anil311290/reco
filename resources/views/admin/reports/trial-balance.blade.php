@@ -91,11 +91,7 @@
                 <h3 class="report-stat-value">₹{{ number_format($report['total_credit'], 2) }}</h3>
                 <p class="report-stat-note">Closing balances across all ledgers.</p>
             </div>
-            <div class="report-stat {{ $report['is_balanced'] ? 'report-stat--success' : 'report-stat--danger' }}">
-                <p class="report-stat-label">Status</p>
-                <h3 class="report-stat-value">{{ $report['is_balanced'] ? 'Balanced' : 'Mismatch' }}</h3>
-                <p class="report-stat-note">{{ $report['is_balanced'] ? 'Trial balance is closed cleanly.' : 'Difference: ₹' . number_format(abs($report['total_debit'] - $report['total_credit']), 2) }}</p>
-            </div>
+
         </div>
 
         <div class="report-panel">

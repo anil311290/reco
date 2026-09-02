@@ -85,13 +85,7 @@
             <h3 class="report-stat-value">₹{{ number_format($report['total_liabilities_equity'], 2) }}</h3>
             <p class="report-stat-note">Combined closing position on the source side.</p>
         </div>
-        <div class="report-stat {{ $report['is_balanced'] ? 'report-stat--success' : 'report-stat--warning' }}">
-            <p class="report-stat-label">Balance Status</p>
-            <h3 class="report-stat-value">{{ $report['is_balanced'] ? 'Balanced' : 'Review Needed' }}</h3>
-            <p class="report-stat-note">
-                {{ $report['is_balanced'] ? 'Assets match liabilities and equity.' : 'Difference: ₹' . number_format(abs($report['assets']['total'] - $report['total_liabilities_equity']), 2) }}
-            </p>
-        </div>
+
     </div>
 
     @php
