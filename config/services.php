@@ -39,6 +39,10 @@ return [
         'key_id' => env('RAZORPAY_KEY_ID'),
         'key_secret' => env('RAZORPAY_KEY_SECRET'),
         'webhook_secret' => env('RAZORPAY_WEBHOOK_SECRET'),
+        'connect_timeout' => (int) env('RAZORPAY_CONNECT_TIMEOUT', 15),
+        'timeout' => (int) env('RAZORPAY_TIMEOUT', 30),
+        'retry_times' => (int) env('RAZORPAY_RETRY_TIMES', 2),
+        'retry_sleep' => (int) env('RAZORPAY_RETRY_SLEEP', 1000),
     ],
 
 ];

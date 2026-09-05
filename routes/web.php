@@ -82,6 +82,7 @@ Route::get('/backup/download/{company}', [BackupLinkController::class, 'download
 // Registration
 Route::get('/register', [RegisterController::class, 'showRegistrationForm'])->name('register');
 Route::post('/register', [RegisterController::class, 'register'])->name('register.submit');
+Route::post('/register/verify-payment', [RegisterController::class, 'verifyPayment'])->name('register.verify-payment');
 
 // Location AJAX routes (for cascading dropdowns)
 Route::get('/api/locations/countries', [LocationController::class, 'countries'])->name('api.locations.countries');

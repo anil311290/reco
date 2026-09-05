@@ -4,6 +4,7 @@ namespace App\Services;
 
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Http\Client\ConnectionException;
 use RuntimeException;
 
 class RazorpayService
@@ -41,14 +42,24 @@ class RazorpayService
             throw new RuntimeException('Payment amount must be at least ₹1.');
         }
 
-        $response = Http::withBasicAuth($this->keyId, $this->keySecret)
-            ->acceptJson()
-            ->post('https://api.razorpay.com/v1/orders', [
-                'amount' => $amountPaise,
-                'currency' => 'INR',
+        try {
+            $response = $this->request()
+                ->post('https://api.razorpay.com/v1/orders', [
+                    'amount' => $amountPaise,
+                    'currency' => 'INR',
+                    'receipt' => $receipt,
+                    'notes' => $notes,
+                ]);
+        } catch (ConnectionException $exception) {
+            Log::error('Razorpay order request timed out', [
                 'receipt' => $receipt,
-                'notes' => $notes,
+                'message' => $exception->getMessage(),
             ]);
+
+            throw new RuntimeException(
+                'Razorpay is temporarily unreachable. Please check your internet connection and try again.'
+            );
+        }
 
         if (!$response->successful()) {
             Log::error('Razorpay order creation failed', [
@@ -85,11 +96,35 @@ class RazorpayService
     {
         $this->ensureConfigured();
 
-        $response = Http::withBasicAuth($this->keyId, $this->keySecret)
-            ->acceptJson()
-            ->get('https://api.razorpay.com/v1/payments/' . $paymentId);
+        try {
+            $response = $this->request()
+                ->get('https://api.razorpay.com/v1/payments/' . $paymentId);
+        } catch (ConnectionException $exception) {
+            Log::error('Razorpay payment lookup timed out', [
+                'payment_id' => $paymentId,
+                'message' => $exception->getMessage(),
+            ]);
+
+            return null;
+        }
 
         return $response->successful() ? $response->json() : null;
+    }
+
+    /**
+     * Build a resilient Razorpay HTTP client without disabling TLS verification.
+     */
+    protected function request()
+    {
+        return Http::withBasicAuth($this->keyId, $this->keySecret)
+            ->acceptJson()
+            ->connectTimeout((int) config('services.razorpay.connect_timeout', 15))
+            ->timeout((int) config('services.razorpay.timeout', 30))
+            ->retry(
+                (int) config('services.razorpay.retry_times', 2),
+                (int) config('services.razorpay.retry_sleep', 1000),
+                fn ($exception) => $exception instanceof ConnectionException
+            );
     }
 
     protected function ensureConfigured(): void

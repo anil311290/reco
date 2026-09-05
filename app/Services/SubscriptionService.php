@@ -7,6 +7,8 @@ use App\Models\Subscription;
 use App\Models\SubscriptionPlan;
 use App\Models\SubscriptionInvoice;
 use App\Models\SubscriptionPayment;
+use App\Models\Company;
+use App\Models\User;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\DB;
@@ -198,6 +200,10 @@ class SubscriptionService
                 'subscription_id' => $subscription->id,
                 'attempts' => ($order->attempts ?? 0) + 1,
             ]);
+
+            // A successful website purchase activates the new tenant immediately.
+            Company::whereKey($companyId)->update(['is_active' => true]);
+            User::where('company_id', $companyId)->update(['status' => 'active']);
 
             return $subscription->fresh(['plan']);
         });
