@@ -632,10 +632,12 @@
                                         <span>Audit Logs</span>
                                     </a>
                                     @endpermission
+                                    @if(!$isSuperAdmin)
                                     <a class="dropdown-item" href="{{ route('admin.support-tickets.index') }}">
                                         <i class="bi bi-headset"></i>
                                         <span>Help &amp; Support</span>
                                     </a>
+                                    @endif
                                     @if($isSuperAdmin)
                                     <a class="dropdown-item" href="{{ route('admin.subscription-plans.index') }}">
                                         <i class="bi bi-gear"></i>

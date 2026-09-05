@@ -30,6 +30,11 @@ body.login-page {
     box-shadow: 0 0 0 3px rgba(31, 111, 235, 0.08);
 }
 
+.login-card .form-floating .form-select {
+    font-size: 14px;
+    color: #4b4b4b;
+}
+
 .login-card .form-floating label {
     padding: 1rem;
     color: #a8aaae;
