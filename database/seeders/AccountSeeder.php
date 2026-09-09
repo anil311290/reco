@@ -32,6 +32,7 @@ class AccountSeeder extends Seeder
          | 1501 Sales Revenue — goods taxable totals
          | 1502 Service Revenue — service taxable totals
          | 1751 Purchase Expenses — purchase invoice item totals
+         | 2001 Retained Earnings — prior-year profit/loss closing ledger
          */
         $accounts = [
             [
@@ -105,6 +106,15 @@ class AccountSeeder extends Seeder
                 'opening_balance' => 0,
                 'is_system' => true,
                 'remarks' => 'Default expense ledger for item totals on purchase invoices.',
+            ],
+            [
+                'account_code' => Account::CODE_RETAINED_EARNINGS,
+                'account_name' => 'Retained Earnings',
+                'account_type' => 'equity',
+                'balance_type' => 'credit',
+                'opening_balance' => 0,
+                'is_system' => true,
+                'remarks' => 'System equity ledger for prior-year profit or loss carry-forward.',
             ],
         ];
 

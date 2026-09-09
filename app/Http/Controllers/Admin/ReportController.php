@@ -163,6 +163,7 @@ class ReportController extends Controller
         $accounts = Account::where('company_id', $companyId)
             ->where('is_active', true)
             ->where('account_code', '!=', Account::CODE_SUSPENSE)
+            ->where('account_code', '!=', Account::CODE_RETAINED_EARNINGS)
             ->orderBy('account_code')
             ->get();
 

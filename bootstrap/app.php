@@ -16,6 +16,7 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->alias([
             'guest' => \App\Http\Middleware\RedirectIfAuthenticated::class,
+            'active.subscription' => \App\Http\Middleware\EnsureActiveSubscription::class,
         ]);
 
         $middleware->redirectGuestsTo(function () {

@@ -280,7 +280,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="9" class="text-muted text-center py-4">No aging records found for selected filters</td>
+                            <td colspan="10" class="text-muted text-center py-4">No aging records found for selected filters</td>
                         </tr>
                     @endforelse
                 </tbody>

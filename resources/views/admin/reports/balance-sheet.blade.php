@@ -80,6 +80,11 @@
             <h3 class="report-stat-value">₹{{ number_format($report['assets']['total'], 2) }}</h3>
             <p class="report-stat-note">Current asset-side total for the selected year.</p>
         </div>
+        <div class="report-stat report-stat--warning">
+            <p class="report-stat-label">Total Equity</p>
+            <h3 class="report-stat-value">₹{{ number_format($report['equity']['total'], 2) }}</h3>
+            <p class="report-stat-note">Closing equity including current year profit or loss.</p>
+        </div>
         <div class="report-stat report-stat--danger">
             <p class="report-stat-label">Liabilities + Equity</p>
             <h3 class="report-stat-value">₹{{ number_format($report['total_liabilities_equity'], 2) }}</h3>
@@ -110,7 +115,7 @@
         foreach ($report['assets']['accounts'] as $item) {
             $assetRows[] = [
                 'account' => $item['account'],
-                'label' => (string) $item['account']->account_code === \App\Models\Account::CODE_SUSPENSE ? 'Opening balance difference' : $item['account']->account_name,
+                'label' => $item['label'] ?? ((string) $item['account']->account_code === \App\Models\Account::CODE_SUSPENSE ? 'Opening balance difference' : $item['account']->account_name),
                 'amount' => $item['amount'],
             ];
         }
@@ -122,17 +127,17 @@
         <div class="report-panel-header">
             <h6 class="report-panel-title"><i class="bi bi-columns-gap text-primary"></i>Balance Sheet</h6>
             <span class="report-pill report-pill--info">As of @istDate($asOfDate)</span>
-           <!-- <span class="report-pill {{ $report['is_balanced'] ? 'report-pill--success' : 'report-pill--danger' }}">
+            <span class="report-pill {{ $report['is_balanced'] ? 'report-pill--success' : 'report-pill--danger' }}">
                 <i class="bi {{ $report['is_balanced'] ? 'bi-check-circle' : 'bi-x-circle' }}"></i>
                 {{ $report['is_balanced'] ? 'Balanced' : 'Not Balanced' }}
-            </span> -->
+            </span>
         </div>
         <div class="report-panel-body report-panel-body--flush">
             <div class="table-responsive">
                 <table class="table report-table table-hover mb-0">
                     <thead>
                         <tr>
-                            <th colspan="2" class="text-danger">Liabilities</th>
+                            <th colspan="2" class="text-danger">Liabilities &amp; Equity</th>
                             <th colspan="2" class="text-primary">Assets</th>
                         </tr>
                     </thead>
@@ -176,8 +181,13 @@
                     </tbody>
                     <tfoot>
                         <tr>
-                            <td class="fw-bold">Total Liabilities</td>
-                            <td class="text-end fw-bold">₹{{ number_format($report['total_liabilities_equity'], 2) }}</td>
+                            <td colspan="2" class="fw-bold">
+                                <div class="d-flex flex-wrap align-items-center gap-3">
+                                    <span>Liabilities: ₹{{ number_format($report['liabilities']['total'], 2) }}</span>
+                                    <span>Equity: ₹{{ number_format($report['equity']['total'], 2) }}</span>
+                                    <span>Total L + E: ₹{{ number_format($report['total_liabilities_equity'], 2) }}</span>
+                                </div>
+                            </td>
                             <td class="fw-bold">Total Assets</td>
                             <td class="text-end fw-bold">₹{{ number_format($report['assets']['total'], 2) }}</td>
                         </tr>

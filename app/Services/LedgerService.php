@@ -429,6 +429,12 @@ class LedgerService
                 'balance_type' => 'debit',
                 'remarks' => 'Default expense ledger for item totals on purchase invoices.',
             ],
+            Account::CODE_RETAINED_EARNINGS => [
+                'account_name' => 'Retained Earnings',
+                'account_type' => 'equity',
+                'balance_type' => 'credit',
+                'remarks' => 'System equity ledger for prior-year profit and loss carry forward.',
+            ],
         ];
 
         $meta = $defaults[$accountCode] ?? null;

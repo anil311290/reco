@@ -73,6 +73,11 @@ class FinancialYearService
         $lines = [];
         $totalDebit = 0.0;
         $totalCredit = 0.0;
+        $priorProfitLoss = 0.0;
+        $retainedEarningsAccount = $accounts->firstWhere(
+            'account_code',
+            Account::CODE_RETAINED_EARNINGS
+        );
 
         foreach ($accounts as $account) {
             if ($account->account_code === Account::CODE_SUSPENSE) {
@@ -86,6 +91,18 @@ class FinancialYearService
             );
 
             $amount = round((float) $closing['balance'], 2);
+
+            // Revenue and expense accounts close to retained earnings at year end.
+            // Carrying them as opening balances would hide them from the Balance
+            // Sheet while still inflating the new year's ledger equation.
+            if (in_array($account->account_type, ['income', 'expense'], true)) {
+                $signedAmount = $closing['type'] === 'credit' ? $amount : -$amount;
+                $priorProfitLoss += $account->account_type === 'income'
+                    ? $signedAmount
+                    : -$signedAmount;
+                continue;
+            }
+
             if ($amount < 0.01) {
                 continue;
             }
@@ -106,6 +123,32 @@ class FinancialYearService
                     'description' => "Opening from {$previousFy->name}",
                 ];
                 $totalCredit += $amount;
+            }
+        }
+
+        $priorProfitLoss = round($priorProfitLoss, 2);
+        if (abs($priorProfitLoss) >= 0.01) {
+            if (!$retainedEarningsAccount) {
+                $retainedEarningsAccount = $this->ledgerService->ensureSystemAccount(
+                    Account::CODE_RETAINED_EARNINGS,
+                    $targetFy->company_id,
+                    $targetFy->id,
+                    null,
+                    null
+                );
+            }
+
+            $lines[] = [
+                'account_id' => $retainedEarningsAccount->id,
+                'debit' => $priorProfitLoss < 0 ? abs($priorProfitLoss) : 0,
+                'credit' => $priorProfitLoss > 0 ? $priorProfitLoss : 0,
+                'description' => "Prior year profit/loss from {$previousFy->name}",
+            ];
+
+            if ($priorProfitLoss > 0) {
+                $totalCredit += $priorProfitLoss;
+            } else {
+                $totalDebit += abs($priorProfitLoss);
             }
         }
 
@@ -166,6 +209,37 @@ class FinancialYearService
             }
 
             return $voucher->fresh(['lines.account']);
+        });
+    }
+
+    /**
+     * Rebuild the auto-generated opening balance journal for a financial year.
+     */
+    public function rebuildOpeningBalances(FinancialYear $targetFy): ?Voucher
+    {
+        if ($targetFy->is_closed) {
+            throw new \RuntimeException('Cannot rebuild opening balances for a closed financial year.');
+        }
+
+        return DB::transaction(function () use ($targetFy) {
+            $openingVouchers = Voucher::withTrashed()
+                ->where('company_id', $targetFy->company_id)
+                ->where('financial_year_id', $targetFy->id)
+                ->where('voucher_type', 'journal')
+                ->where('narration', 'like', 'Opening balances carried forward%')
+                ->with('lines')
+                ->get();
+
+            if ($openingVouchers->isNotEmpty()) {
+                $this->ledgerService->deleteEntriesByReference('fy_opening_balance', (int) $targetFy->id);
+
+                foreach ($openingVouchers as $voucher) {
+                    $voucher->lines()->delete();
+                    $voucher->forceDelete();
+                }
+            }
+
+            return $this->carryForwardOpeningBalances($targetFy->fresh());
         });
     }
 }

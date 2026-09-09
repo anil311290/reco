@@ -5,6 +5,8 @@ namespace Tests\Feature;
 use App\Models\Account;
 use App\Models\Company;
 use App\Models\FinancialYear;
+use App\Models\Subscription;
+use App\Models\SubscriptionPlan;
 use App\Models\User;
 use App\Services\DashboardService;
 use App\Services\ReportService;
@@ -157,6 +159,22 @@ class DashboardFiguresTest extends TestCase
     private function seedBooks(): array
     {
         $company = Company::factory()->create();
+        $plan = SubscriptionPlan::factory()->create([
+            'monthly_price' => 0,
+            'yearly_price' => 0,
+            'trial_days' => 0,
+        ]);
+        Subscription::create([
+            'company_id' => $company->id,
+            'plan_id' => $plan->id,
+            'status' => 'active',
+            'billing_cycle' => 'monthly',
+            'start_date' => '2026-04-01',
+            'current_period_start' => '2026-04-01',
+            'current_period_end' => '2027-03-31',
+            'amount' => 0,
+            'currency' => 'INR',
+        ]);
         $fy = FinancialYear::factory()->create([
             'company_id' => $company->id,
             'name' => 'FY 2026-27',
@@ -185,6 +203,7 @@ class DashboardFiguresTest extends TestCase
                 'account_type' => $type,
                 'balance_type' => $balanceType,
                 'transaction_mode' => $mode,
+                'is_cash_bank_od' => in_array($mode, ['cash', 'bank', 'od'], true),
                 'opening_balance' => 0,
                 'is_active' => true,
             ]);

@@ -401,13 +401,7 @@ class ExportService
                     (int) ($filters['financial_year_id'] ?? FinancialYear::getCurrent($companyId)?->id),
                     $filters['as_of_date'] ?? $filters['date_to'] ?? null
                 );
-                $data = [
-                    ['section' => 'Total Assets', 'amount' => $balanceSheet['assets']['total']],
-                    ['section' => 'Total Liabilities', 'amount' => $balanceSheet['liabilities']['total']],
-                    ['section' => 'Total Equity', 'amount' => $balanceSheet['equity']['total']],
-                    ['section' => 'Liabilities + Equity', 'amount' => $balanceSheet['total_liabilities_equity']],
-                    ['section' => 'Balanced', 'amount' => $balanceSheet['is_balanced'] ? 1 : 0],
-                ];
+                $data = $this->balanceSheetSummaryRows($balanceSheet);
                 break;
 
             case 'trial-balance':
@@ -535,13 +529,7 @@ class ExportService
                     (int) ($filters['financial_year_id'] ?? FinancialYear::getCurrent($companyId)?->id),
                     $filters['as_of_date'] ?? $filters['date_to'] ?? null
                 );
-                $data = [
-                    ['section' => 'Total Assets', 'amount' => $balanceSheet['assets']['total']],
-                    ['section' => 'Total Liabilities', 'amount' => $balanceSheet['liabilities']['total']],
-                    ['section' => 'Total Equity', 'amount' => $balanceSheet['equity']['total']],
-                    ['section' => 'Liabilities + Equity', 'amount' => $balanceSheet['total_liabilities_equity']],
-                    ['section' => 'Balanced', 'amount' => $balanceSheet['is_balanced'] ? 1 : 0],
-                ];
+                $data = $this->balanceSheetSummaryRows($balanceSheet);
                 break;
 
             case 'vouchers':
@@ -760,6 +748,20 @@ class ExportService
         ];
 
         return $rows;
+    }
+
+    protected function balanceSheetSummaryRows(array $balanceSheet): array
+    {
+        return [
+            ['section' => 'Total Assets', 'amount' => $balanceSheet['assets']['total']],
+            ['section' => 'Closing Stock Included In Assets', 'amount' => $balanceSheet['stock']['closing_value'] ?? 0],
+            ['section' => 'Total Liabilities', 'amount' => $balanceSheet['liabilities']['total']],
+            ['section' => 'Total Equity', 'amount' => $balanceSheet['equity']['total']],
+            ['section' => 'Current Year Profit / Loss Included In Equity', 'amount' => $balanceSheet['equity']['net_profit']],
+            ['section' => 'Total Liabilities + Equity', 'amount' => $balanceSheet['total_liabilities_equity']],
+            ['section' => 'Difference', 'amount' => round((float) $balanceSheet['assets']['total'] - (float) $balanceSheet['total_liabilities_equity'], 2)],
+            ['section' => 'Balance Status', 'amount' => $balanceSheet['is_balanced'] ? 'Balanced' : 'Review Needed'],
+        ];
     }
 
     protected function buildAgingSummaryRows(array $debtors, array $creditors): array

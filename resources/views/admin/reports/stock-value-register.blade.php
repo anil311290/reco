@@ -73,16 +73,25 @@
                 <tbody>
                     @forelse($entries as $entry)
                         <tr>
-                            <td class="fw-semibold">{{ $entry->valuation_date->format('d/m/Y') }}</td>
+                            <td class="fw-semibold">
+                                {{ $entry->valuation_date->format('d/m/Y') }}
+                                @if($entry->getAttribute('is_opening_row'))
+                                    <div><span class="badge bg-light text-dark border mt-1">Opening Balance</span></div>
+                                @endif
+                            </td>
                             <td class="text-end fw-bold">₹{{ number_format((float) $entry->stock_value, 2) }}</td>
                             <td>{{ $entry->remarks ?: '-' }}</td>
                             <td>{{ $entry->updated_at?->format('d/m/Y H:i') ?: '-' }}</td>
                             <td class="text-end">
-                                <button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#stockValueEntryModal"
-                                        data-entry-id="{{ $entry->id }}" data-entry-date="{{ $entry->valuation_date->format('Y-m-d') }}"
-                                        data-entry-value="{{ $entry->stock_value }}" data-entry-remarks="{{ $entry->remarks }}">
-                                    <i class="bi bi-pencil-square me-1"></i>Edit
-                                </button>
+                                @if($entry->getAttribute('is_synthetic'))
+                                    <span class="text-muted">-</span>
+                                @else
+                                    <button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#stockValueEntryModal"
+                                            data-entry-id="{{ $entry->id }}" data-entry-date="{{ $entry->valuation_date->format('Y-m-d') }}"
+                                            data-entry-value="{{ $entry->stock_value }}" data-entry-remarks="{{ $entry->remarks }}">
+                                        <i class="bi bi-pencil-square me-1"></i>Edit
+                                    </button>
+                                @endif
                             </td>
                         </tr>
                     @empty

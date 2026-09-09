@@ -96,7 +96,7 @@ Route::get('/api/locations/{stateId}/cities', [LocationController::class, 'citie
 */
 Route::prefix('admin')->name('admin.')->group(function () {
     // Authenticated routes
-    Route::middleware('auth')->group(function () {
+    Route::middleware(['auth', 'active.subscription'])->group(function () {
         // Dashboard
         Route::get('/dashboard', [DashboardController::class, 'index'])
             ->name('dashboard')

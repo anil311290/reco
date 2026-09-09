@@ -56,13 +56,18 @@
             font-weight: bold;
             background: #eef2f8;
         }
+        .summary-strip td {
+            background: #20253d;
+            color: #fff;
+            font-weight: 700;
+        }
     </style>
 </head>
 <body>
     <div class="container">
         <div class="header">
             <h1>Balance Sheet</h1>
-            <p>Assets, liabilities, and equity summary for the selected financial year.</p>
+            <p>Assets, liabilities, equity, and closing stock summary for the selected financial year.</p>
         </div>
 
         @include('exports._meta')
@@ -72,7 +77,7 @@
             <tbody>
                 @forelse($report['assets']['accounts'] as $item)
                     <tr>
-                        <td>{{ $item['account']->account_name }}</td>
+                        <td>{{ $item['label'] ?? $item['account']?->account_name ?? '-' }}</td>
                         <td class="text-right">₹{{ number_format($item['amount'], 2) }}</td>
                     </tr>
                 @empty
@@ -120,6 +125,10 @@
                         <td colspan="2">No equity accounts found.</td>
                     </tr>
                 @endforelse
+                <tr>
+                    <td>Net Profit / Loss</td>
+                    <td class="text-right">₹{{ number_format($report['equity']['net_profit'], 2) }}</td>
+                </tr>
                 <tr class="total-row">
                     <td>Total Equity</td>
                     <td class="text-right">₹{{ number_format($report['equity']['total'], 2) }}</td>
@@ -129,9 +138,15 @@
 
         <table class="summary">
             <tbody>
-                <tr class="total-row">
-                    <td>Total Liabilities + Equity</td>
-                    <td class="text-right">₹{{ number_format($report['total_liabilities_equity'], 2) }}</td>
+                <tr class="summary-strip">
+                    <td>
+                        Liabilities: ₹{{ number_format($report['liabilities']['total'], 2) }}
+                        | Equity: ₹{{ number_format($report['equity']['total'], 2) }}
+                        | Total L + E: ₹{{ number_format($report['total_liabilities_equity'], 2) }}
+                    </td>
+                    <td class="text-right">
+                        Assets: ₹{{ number_format($report['assets']['total'], 2) }}
+                    </td>
                 </tr>
                 <tr class="total-row">
                     <td>Balance Status</td>

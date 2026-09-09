@@ -615,6 +615,10 @@
                                             <span>Company Settings</span>
                                         </a>
                                         @endpermission
+                                        <a class="dropdown-item" href="{{ route('admin.subscriptions.current') }}">
+                                            <i class="bi bi-credit-card-2-front"></i>
+                                            <span>My Subscription</span>
+                                        </a>
                                         @permission('financial-years.view')
                                         <a class="dropdown-item" href="{{ route('admin.financial-years.index') }}">
                                             <i class="bi bi-calendar-event"></i>

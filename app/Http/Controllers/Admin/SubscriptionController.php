@@ -41,7 +41,11 @@ class SubscriptionController extends Controller
     public function current()
     {
         $companyId = Auth::user()?->company_id;
-        $subscription = $this->subscriptionService->getActiveSubscription($companyId);
+        $subscription = $this->subscriptionService->getActiveSubscription($companyId)
+            ?? Subscription::with('plan')
+                ->where('company_id', $companyId)
+                ->latest('id')
+                ->first();
 
         return view('admin.subscriptions.current', compact('subscription'));
     }

@@ -123,6 +123,23 @@
                 </div>
                 @endif
 
+                @if($subscription->isExpired() && !$subscription->isOnTrial())
+                <div class="alert alert-danger py-2 mb-3">
+                    <i class="bi bi-exclamation-octagon me-1"></i>Your plan has expired. Renew now to continue using all features.
+                </div>
+                @elseif(!$subscription->isOnTrial() && $subscription->billing_cycle !== 'lifetime' && $subscription->current_period_end && $subscription->current_period_end->diffInDays(now()) <= 7)
+                <div class="alert alert-warning py-2 mb-3">
+                    <i class="bi bi-alarm me-1"></i>Plan renews {{ $subscription->current_period_end->diffForHumans() }}.
+                </div>
+                @endif
+
+                @if($subscription->billing_cycle !== 'lifetime')
+                <button class="btn btn-primary w-100 mb-2" id="renewBtn"
+                        data-plan="{{ $subscription->plan_id }}"
+                        data-cycle="{{ $subscription->billing_cycle }}">
+                    <i class="bi bi-arrow-repeat me-1"></i>Renew Now ({{ ucfirst($subscription->billing_cycle) }})
+                </button>
+                @endif
                 <a href="{{ route('admin.subscriptions.plans') }}" class="btn btn-outline-primary w-100 mb-2">
                     <i class="bi bi-arrow-up-circle me-1"></i>Upgrade / Change Plan
                 </a>
@@ -148,7 +165,94 @@
 @endsection
 
 @section('scripts')
+<script src="https://checkout.razorpay.com/v1/checkout.js"></script>
 <script>
+function openRazorpayCheckout(checkout) {
+    const options = {
+        key: checkout.key_id,
+        amount: checkout.amount_paise,
+        currency: checkout.currency || 'INR',
+        name: '{{ config('app.name', 'Reco') }}',
+        description: checkout.description,
+        order_id: checkout.order_id,
+        prefill: {
+            name: checkout.user_name || '',
+            email: checkout.user_email || ''
+        },
+        theme: { color: '#1f6feb' },
+        handler: function (response) {
+            $.ajax({
+                url: '{{ route('admin.subscriptions.verify-payment') }}',
+                type: 'POST',
+                headers: { 'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content') },
+                data: {
+                    razorpay_order_id: response.razorpay_order_id,
+                    razorpay_payment_id: response.razorpay_payment_id,
+                    razorpay_signature: response.razorpay_signature
+                },
+                success: function (r) {
+                    toastr.success(r.message || 'Payment successful');
+                    setTimeout(() => location.reload(), 1200);
+                },
+                error: function (xhr) {
+                    toastr.error(xhr.responseJSON?.message || 'Payment verification failed');
+                }
+            });
+        },
+        modal: {
+            ondismiss: function () {
+                toastr.info('Payment cancelled');
+            }
+        }
+    };
+
+    const rzp = new Razorpay(options);
+    rzp.on('payment.failed', function (response) {
+        toastr.error(response.error?.description || 'Payment failed');
+    });
+    rzp.open();
+}
+
+$('#renewBtn').on('click', function() {
+    const planId = $(this).data('plan');
+    const billingCycle = $(this).data('cycle');
+    const $btn = $(this);
+
+    Swal.fire({
+        title: 'Renew Subscription?',
+        text: 'Your plan will be renewed for another ' + billingCycle + ' period.',
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonText: 'Renew Now'
+    }).then((result) => {
+        if (!result.isConfirmed) {
+            return;
+        }
+
+        $btn.prop('disabled', true);
+        $.ajax({
+            url: '{{ route('admin.subscriptions.subscribe') }}',
+            type: 'POST',
+            data: { plan_id: planId, billing_cycle: billingCycle },
+            headers: { 'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content') },
+            success: function (r) {
+                const data = r.data || r;
+                if (data.requires_payment && data.checkout) {
+                    openRazorpayCheckout(data.checkout);
+                    $btn.prop('disabled', false);
+                    return;
+                }
+                toastr.success(r.message || 'Subscription renewed successfully');
+                setTimeout(() => location.reload(), 1000);
+            },
+            error: function (xhr) {
+                $btn.prop('disabled', false);
+                toastr.error(xhr.responseJSON?.message || 'Error renewing subscription');
+            }
+        });
+    });
+});
+
 $('#cancelBtn').on('click', function() {
     Swal.fire({
         title: 'Cancel Subscription?',

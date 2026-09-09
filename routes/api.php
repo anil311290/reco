@@ -59,7 +59,7 @@ Route::prefix('v1')->group(function () {
 | Protected Routes (Authentication Required)
 |--------------------------------------------------------------------------
 */
-Route::prefix('v1')->middleware('auth:sanctum')->group(function () {
+Route::prefix('v1')->middleware(['auth:sanctum', 'active.subscription'])->group(function () {
     // Auth
     Route::post('/logout', [AuthController::class, 'logout']);
     Route::get('/me', [AuthController::class, 'me']);

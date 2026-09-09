@@ -101,11 +101,11 @@ class ReportService
 
         $stock = $this->getStockValuation($companyId, $financialYearId, $dateFrom, $dateTo);
         if ($stock['opening_value'] > 0.01) {
-            $expenseDetails[] = [
+            array_unshift($expenseDetails, [
                 'account' => null,
                 'label' => 'Opening Stock (Value)',
                 'amount' => $stock['opening_value'],
-            ];
+            ]);
             $totalExpense += $stock['opening_value'];
         }
         if ($stock['closing_value'] > 0.01) {
@@ -143,7 +143,9 @@ class ReportService
             ->orderBy('valuation_date')
             ->orderBy('id')
             ->get();
-        $openingEntry = $entries->filter(fn ($entry) => !$dateFrom || $entry->valuation_date->toDateString() <= $dateFrom)->last();
+        $openingEntry = $dateFrom
+            ? $entries->filter(fn ($entry) => $entry->valuation_date->toDateString() <= $dateFrom)->last()
+            : null;
         $closingEntry = $entries->filter(fn ($entry) => !$dateTo || $entry->valuation_date->toDateString() <= $dateTo)->last();
         $register = $entries->map(fn ($entry) => [
             'entry' => $entry,
@@ -184,6 +186,19 @@ class ReportService
                 $assetDetails[] = ['account' => $account, 'amount' => $amount];
                 $totalAssets += $amount;
             }
+        }
+
+        // Stock valuation is maintained outside the ledger, so include the
+        // closing valuation as an inventory asset. The same value is already
+        // included in P&L as closing stock income.
+        $stock = $this->getStockValuation($companyId, $financialYearId, null, $asOfDate);
+        if ($stock['closing_value'] > 0.01) {
+            $assetDetails[] = [
+                'account' => null,
+                'label' => 'Closing Stock (Value)',
+                'amount' => $stock['closing_value'],
+            ];
+            $totalAssets += $stock['closing_value'];
         }
 
         $liabilityDetails = [];
@@ -241,6 +256,7 @@ class ReportService
                 'total' => $totalEquity,
                 'net_profit' => $profitLoss['net_profit'],
             ],
+            'stock' => $stock,
             'total_liabilities_equity' => $totalLiabilities + $totalEquity,
             'is_balanced' => abs($totalAssets - ($totalLiabilities + $totalEquity)) < 0.01,
             'as_of_date' => $asOfDate,

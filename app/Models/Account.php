@@ -188,7 +188,8 @@ class Account extends Model
      *   1503–1750    → Income (user)
      *   1751         → Purchase Expenses (system, reserved)
      *   1752–2000    → Expenses (user)
-     *   2001–2500    → Equity (user)
+    *   2001         → Retained Earnings (system, reserved)
+    *   2002–2500    → Equity (user)
      */
     public const CODE_RANGES = [
         'asset'     => ['start' => 1001, 'end' => 1249],
@@ -208,6 +209,7 @@ class Account extends Model
         '1501' => 'Sales Revenue',
         '1502' => 'Service Revenue',
         '1751' => 'Purchase Expenses',
+        '2001' => 'Retained Earnings',
     ];
 
     /** Fixed system account codes */
@@ -219,6 +221,7 @@ class Account extends Model
     public const CODE_AR_INCOME = '1501';
     public const CODE_SERVICE_INCOME = '1502';
     public const CODE_AP_EXPENSE = '1751';
+    public const CODE_RETAINED_EARNINGS = '2001';
 
     /**
      * Generate the next available account code for the given type and company.
