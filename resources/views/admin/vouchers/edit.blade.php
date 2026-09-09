@@ -133,7 +133,9 @@
                     @forelse($paymentRows as $index => $row)
                     <div class="payment-receipt-row row g-2 mb-2" data-index="{{ $index }}">
                         <div class="col-md-8">
+                            @if($index === 0)
                             <label class="form-label">Particulars <span class="text-danger">*</span></label>
+                            @endif
                             <select class="form-select pr-particular" id="payment_particular_{{ $index }}" name="payment_rows[{{ $index }}][account_id]" data-quick-add-value-mode="token" data-quick-add-in-select="1" data-quick-add-party-type="{{ $voucher->voucher_type === 'payment' ? 'creditor' : 'debtor' }}" data-quick-add-target="#payment_particular_{{ $index }}" required>
                                 <option value="">Select Particulars</option>
                                 <optgroup label="Quick Actions">
@@ -154,7 +156,9 @@
                             <small class="text-muted d-block mt-1 pr-balance-hint"></small>
                         </div>
                         <div class="col-md-3">
+                            @if($index === 0)
                             <label class="form-label">Amount <span class="text-danger">*</span></label>
+                            @endif
                             <input type="number" class="form-control pr-amount" name="payment_rows[{{ $index }}][amount]" value="{{ $row['amount'] ?? '' }}" step="0.01" min="0.01" placeholder="0.00" required>
                         </div>
                         <div class="col-md-1 d-flex align-items-end">
@@ -215,7 +219,9 @@
                     @forelse($adjustmentRows as $index => $row)
                     <div class="adjustment-row row g-2 mb-2" data-index="{{ $index }}">
                         <div class="col-md-5">
+                            @if($index === 0)
                             <label class="form-label">Particulars (Party / Ledger) <span class="text-danger">*</span></label>
+                            @endif
                             <select class="form-select adjustment-particular" id="adjustment_particular_{{ $index }}" name="adjustment_rows[{{ $index }}][account_id]" data-quick-add-value-mode="token" data-quick-add-in-select="1" data-quick-add-party-type="debtor" data-quick-add-target="#adjustment_particular_{{ $index }}" required>
                                 <option value="">Select Party / Ledger</option>
                                 <optgroup label="Quick Actions">
@@ -232,7 +238,9 @@
                             </select>
                         </div>
                         <div class="col-md-2">
+                            @if($index === 0)
                             <label class="form-label">Dr / Cr <span class="text-danger">*</span></label>
+                            @endif
                             <select class="form-select adjustment-entry-type" name="adjustment_rows[{{ $index }}][entry_type]" required>
                                 <option value="">Select</option>
                                 <option value="debit" {{ ($row['entry_type'] ?? '') === 'debit' ? 'selected' : '' }}>Debit</option>
@@ -240,7 +248,9 @@
                             </select>
                         </div>
                         <div class="col-md-3">
+                            @if($index === 0)
                             <label class="form-label">Amount <span class="text-danger">*</span></label>
+                            @endif
                             <input type="number" class="form-control adjustment-amount" name="adjustment_rows[{{ $index }}][amount]" value="{{ $row['amount'] ?? '' }}" step="0.01" min="0.01" placeholder="0.00" required>
                         </div>
                         <div class="col-md-2 d-flex align-items-end">
@@ -288,7 +298,6 @@
                     </div>
                     <div class="adjustment-row row g-2 mb-2" data-index="1">
                         <div class="col-md-5">
-                            <label class="form-label">Particulars (Party / Ledger) <span class="text-danger">*</span></label>
                             <select class="form-select adjustment-particular" id="adjustment_particular_1" name="adjustment_rows[1][account_id]" data-quick-add-value-mode="token" data-quick-add-in-select="1" data-quick-add-party-type="debtor" data-quick-add-target="#adjustment_particular_1" required>
                                 <option value="">Select Party / Ledger</option>
                                 <optgroup label="Quick Actions">
@@ -305,7 +314,6 @@
                             </select>
                         </div>
                         <div class="col-md-2">
-                            <label class="form-label">Dr / Cr <span class="text-danger">*</span></label>
                             <select class="form-select adjustment-entry-type" name="adjustment_rows[1][entry_type]" required>
                                 <option value="">Select</option>
                                 <option value="debit">Debit</option>
@@ -313,7 +321,6 @@
                             </select>
                         </div>
                         <div class="col-md-3">
-                            <label class="form-label">Amount <span class="text-danger">*</span></label>
                             <input type="number" class="form-control adjustment-amount" name="adjustment_rows[1][amount]" value="" step="0.01" min="0.01" placeholder="0.00" required>
                         </div>
                         <div class="col-md-2 d-flex align-items-end">
@@ -337,7 +344,9 @@
                     @foreach($voucherLines as $index => $line)
                     <div class="voucher-line row mb-3" data-index="{{ $index }}">
                         <div class="col-md-4">
+                            @if($index === 0)
                             <label class="form-label">Account <span class="text-danger">*</span></label>
+                            @endif
                             <select class="form-select line-account" id="voucher_line_account_{{ $index }}" name="lines[{{ $index }}][account_id]" data-quick-add-in-select="1" data-quick-add-target="#voucher_line_account_{{ $index }}" required>
                                 <option value="">Select Account</option>
                                 <optgroup label="Quick Actions">
@@ -349,12 +358,16 @@
                             </select>
                         </div>
                         <div class="col-md-3">
+                            @if($index === 0)
                             <label class="form-label">Debit <span class="text-danger">*</span></label>
+                            @endif
                             <input type="number" class="form-control line-debit" name="lines[{{ $index }}][debit]"
                                    value="{{ $line['debit'] ?? 0 }}" step="0.01" min="0" required>
                         </div>
                         <div class="col-md-3">
+                            @if($index === 0)
                             <label class="form-label">Credit <span class="text-danger">*</span></label>
+                            @endif
                             <input type="number" class="form-control line-credit" name="lines[{{ $index }}][credit]"
                                    value="{{ $line['credit'] ?? 0 }}" step="0.01" min="0" required>
                         </div>

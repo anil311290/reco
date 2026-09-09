@@ -1039,6 +1039,36 @@ $(document).ready(function() {
     initPartyQuickAdd();
     initSearchableSelects();
 
+    // Financial Year filter: auto-fill the form's date range from the selected
+    // option's data-start / data-end attributes (Y-m-d format).
+    $(document).on('change', 'select[name="financial_year_id"]', function() {
+        const $option = $(this).find('option:selected');
+        const start = $option.data('start') || '';
+        const end = $option.data('end') || '';
+
+        if (!start && !end) {
+            return;
+        }
+
+        const $form = $(this).closest('form');
+        const $dateFrom = $form.find('input[name="date_from"], input[name="from_date"]');
+        const $dateTo = $form.find('input[name="date_to"], input[name="to_date"]');
+        const $asOfDate = $form.find('input[name="as_of_date"]');
+
+        if (start && $dateFrom.length) {
+            $dateFrom.val(start);
+        }
+
+        if (end && $dateTo.length) {
+            $dateTo.val(end);
+        }
+
+        // Single-date filters (e.g. Balance Sheet) move to the FY end date.
+        if (end && !$dateFrom.length && !$dateTo.length && $asOfDate.length) {
+            $asOfDate.val(end);
+        }
+    });
+
     // Reinitialize searchable dropdowns when hidden containers become interactive.
     $(document).on('shown.bs.modal shown.bs.offcanvas', function(event) {
         initSearchableSelects(event.target);

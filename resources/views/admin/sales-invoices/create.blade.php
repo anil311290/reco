@@ -541,6 +541,8 @@ $(function() {
 
     function syncDueDateFromInvoice() {
         const invoiceDate = $('[name="invoice_date"]').val();
+        // Due date can never be before the invoice date.
+        $('[name="due_date"]').attr('min', invoiceDate || '');
         if (invoiceDate) {
             $('[name="due_date"]').val(addOneMonth(invoiceDate));
         }
@@ -550,6 +552,7 @@ $(function() {
         syncDueDateFromInvoice();
     });
 
+    // Initial default: +1 month from today's invoice date.
     syncDueDateFromInvoice();
 });
 

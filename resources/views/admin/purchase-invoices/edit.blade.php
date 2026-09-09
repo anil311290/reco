@@ -459,16 +459,20 @@ $(function() {
 
     function syncDueDateFromInvoice() {
         const invoiceDate = $('[name="invoice_date"]').val();
+        // Due date can never be before the invoice date.
+        $('[name="due_date"]').attr('min', invoiceDate || '');
         if (invoiceDate) {
             $('[name="due_date"]').val(addOneMonth(invoiceDate));
         }
     }
 
+    // Recalculate due date only when the user changes the invoice date.
     $('[name="invoice_date"]').on('input change', function() {
         syncDueDateFromInvoice();
     });
 
-    syncDueDateFromInvoice();
+    // Keep the saved due date on load; just enforce the minimum.
+    $('[name="due_date"]').attr('min', $('[name="invoice_date"]').val() || '');
 });
 
 ajaxFormSubmit('#invoiceForm', '{{ route("admin.purchase-invoices.update", $invoice->id) }}', 'POST', '{{ route("admin.purchase-invoices.index") }}');

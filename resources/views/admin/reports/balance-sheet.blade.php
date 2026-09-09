@@ -34,7 +34,7 @@
                 <label class="form-label">Financial Year</label>
                 <select name="financial_year_id" class="form-select">
                     @foreach($financialYears as $fy)
-                        <option value="{{ $fy->id }}" {{ ($financialYearId ?? '') == $fy->id ? 'selected' : '' }}>
+                        <option value="{{ $fy->id }}" data-start="{{ optional($fy->start_date)->format('Y-m-d') }}" data-end="{{ optional($fy->end_date)->format('Y-m-d') }}" {{ ($financialYearId ?? '') == $fy->id ? 'selected' : '' }}>
                             {{ $fy->name }} (@istDate($fy->start_date) to @istDate($fy->end_date))
                         </option>
                     @endforeach

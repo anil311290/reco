@@ -186,7 +186,6 @@
                     </div>
                     <div class="adjustment-row row g-2 mb-2" data-index="1">
                         <div class="col-md-5">
-                            <label class="form-label">Particulars (Party / Ledger) <span class="text-danger">*</span></label>
                             <select class="form-select adjustment-particular" id="adjustment_particular_1" name="adjustment_rows[1][account_id]" data-quick-add-value-mode="token" data-quick-add-in-select="1" data-quick-add-party-type="debtor" data-quick-add-target="#adjustment_particular_1" required>
                                 <option value="">Select Party / Ledger</option>
                                 <optgroup label="Quick Actions">
@@ -203,7 +202,6 @@
                             </select>
                         </div>
                         <div class="col-md-2">
-                            <label class="form-label">Dr / Cr <span class="text-danger">*</span></label>
                             <select class="form-select adjustment-entry-type" name="adjustment_rows[1][entry_type]" required>
                                 <option value="">Select</option>
                                 <option value="debit">Debit</option>
@@ -211,7 +209,6 @@
                             </select>
                         </div>
                         <div class="col-md-3">
-                            <label class="form-label">Amount <span class="text-danger">*</span></label>
                             <input type="number" class="form-control adjustment-amount" name="adjustment_rows[1][amount]" value="" step="0.01" min="0.01" placeholder="0.00" required>
                         </div>
                         <div class="col-md-2 d-flex align-items-end">
