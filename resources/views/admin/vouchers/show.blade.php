@@ -77,6 +77,11 @@
         <a href="{{ route('admin.vouchers.type', $voucher->voucher_type) }}" class="btn btn-secondary">
             <i class="bi bi-arrow-left me-2"></i>Back to Vouchers
         </a>
+        @if($isStandaloneBookVoucher)
+        <a href="{{ route('admin.vouchers.create', ['type' => $voucher->voucher_type === 'adjustment' ? 'journal' : $voucher->voucher_type, 'duplicate' => $voucher->id]) }}" class="btn btn-outline-secondary ms-2">
+            <i class="bi bi-copy me-2"></i>Duplicate
+        </a>
+        @endif
         @if($canEditVoucher)
         <a href="{{ route('admin.vouchers.edit', $voucher->id) }}" class="btn btn-primary ms-2">
             <i class="bi bi-pencil me-2"></i>Edit Voucher

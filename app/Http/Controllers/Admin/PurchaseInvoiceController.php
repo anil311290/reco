@@ -80,10 +80,21 @@ class PurchaseInvoiceController extends Controller
     /**
      * Show create form.
      */
-    public function create()
+    public function create(Request $request)
     {
         $companyId = auth()->user()->company_id;
         $fyId = auth()->user()->company->currentFinancialYear?->id;
+
+        $duplicateInvoice = null;
+        if ($request->filled('duplicate')) {
+            $duplicateInvoice = $this->purchaseInvoiceService->getById((int) $request->input('duplicate'));
+
+            if (!$duplicateInvoice || $duplicateInvoice->company_id !== $companyId) {
+                abort(404);
+            }
+
+            $duplicateInvoice->load('lines');
+        }
 
         $partyOptions = $this->partyService->getInvoicePartyOptions($companyId, 'creditor');
         $items = $this->itemService->getAll($companyId, ['type' => 'goods', 'is_active' => true]);
@@ -96,7 +107,8 @@ class PurchaseInvoiceController extends Controller
             'items',
             'itemCategories',
             'taxRates',
-            'invoiceNumber'
+            'invoiceNumber',
+            'duplicateInvoice'
         ));
     }
 

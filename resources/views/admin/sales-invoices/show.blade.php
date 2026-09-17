@@ -11,6 +11,9 @@
         <a href="{{ route('admin.sales-invoices.index') }}" class="btn btn-outline-secondary me-2">
             <i class="bi bi-arrow-left me-1"></i>Back
         </a>
+        <a href="{{ route('admin.sales-invoices.create', ['duplicate' => $invoice->id]) }}" class="btn btn-outline-secondary me-2">
+            <i class="bi bi-copy me-1"></i>Duplicate
+        </a>
         @if($invoice->status === 'draft')
         <button type="button" class="btn btn-primary me-2" id="postInvoiceBtn">
             <i class="bi bi-send-check me-1"></i>Post Invoice

@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\Item;
 use App\Models\Party;
+use App\Models\Company;
 use App\Models\PurchaseInvoice;
 use App\Models\PurchaseInvoiceLine;
 use App\Models\SalesInvoice;
@@ -56,6 +57,59 @@ class InvoiceLineFormControlsTest extends TestCase
             $response->assertSee('id="lineRowTemplate"', false);
             $response->assertSee('item-select w-100" data-searchable="true"', false);
         }
+    }
+
+    public function test_sales_invoice_duplicate_prefills_source_data_with_fresh_dates(): void
+    {
+        $invoice = $this->createSalesInvoice();
+        $invoice->update([
+            'reference_number' => 'PO-123',
+            'payment_terms' => 'Net 15',
+            'notes' => 'Duplicate sales note',
+        ]);
+
+        $response = $this->actingAs($this->user)
+            ->get("/admin/sales-invoices/create?duplicate={$invoice->id}");
+
+        $response->assertOk();
+        $response->assertSee('value="PO-123"', false);
+        $response->assertSee('value="Net 15"', false);
+        $response->assertSee('Duplicate sales note', false);
+        $response->assertSee('Test line', false);
+        $response->assertSee('value="2026-09-17"', false);
+        $response->assertSee('value="2026-10-17"', false);
+    }
+
+    public function test_purchase_invoice_duplicate_prefills_source_data_and_rejects_other_company(): void
+    {
+        $invoice = $this->createPurchaseInvoice();
+        $invoice->update([
+            'supplier_invoice_number' => 'SUP-123',
+            'payment_terms' => 'Net 30',
+            'notes' => 'Duplicate purchase note',
+        ]);
+
+        $response = $this->actingAs($this->user)
+            ->get("/admin/purchase-invoices/create?duplicate={$invoice->id}");
+
+        $response->assertOk();
+        $response->assertSee('value="SUP-123"', false);
+        $response->assertSee('value="Net 30"', false);
+        $response->assertSee('Duplicate purchase note', false);
+        $response->assertSee('Test line', false);
+        $response->assertSee('value="2026-09-17"', false);
+        $response->assertSee('value="2026-10-17"', false);
+
+        $otherCompany = Company::factory()->create();
+        $otherInvoice = $invoice->replicate();
+        $otherInvoice->uuid = (string) Str::uuid();
+        $otherInvoice->company_id = $otherCompany->id;
+        $otherInvoice->invoice_number = 'PINV-OTHER/0001';
+        $otherInvoice->save();
+
+        $this->actingAs($this->user)
+            ->get("/admin/purchase-invoices/create?duplicate={$otherInvoice->id}")
+            ->assertNotFound();
     }
 
     private function createSalesInvoice(): SalesInvoice

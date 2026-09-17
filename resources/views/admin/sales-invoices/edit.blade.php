@@ -93,6 +93,41 @@
                             <label class="form-label">Notes</label>
                             <textarea class="form-control" name="notes" rows="2">{{ $invoice->notes }}</textarea>
                         </div>
+                        <div class="col-md-12">
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" id="is_recurring" name="is_recurring" value="1" {{ $invoice->is_recurring ? 'checked' : '' }}>
+                                <label class="form-check-label" for="is_recurring">Recreate this sales invoice automatically</label>
+                            </div>
+                        </div>
+                        <div id="recurrenceOptions" class="row g-3" style="{{ $invoice->is_recurring ? '' : 'display:none;' }}">
+                            <div class="col-md-4">
+                                <label class="form-label">Frequency <span class="text-danger">*</span></label>
+                                <select class="form-select" id="recurrence_frequency" name="recurrence_frequency">
+                                    <option value="weekly" {{ $invoice->recurrence_frequency === 'weekly' ? 'selected' : '' }}>Weekly</option>
+                                    <option value="monthly" {{ $invoice->recurrence_frequency === 'monthly' ? 'selected' : '' }}>Monthly</option>
+                                </select>
+                            </div>
+                            <div class="col-md-4" id="weeklyRecurrenceOptions">
+                                <label class="form-label">Day of Week <span class="text-danger">*</span></label>
+                                <select class="form-select" name="recurrence_day_of_week">
+                                    @foreach(['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'] as $day => $label)
+                                    <option value="{{ $day }}" {{ (int) $invoice->recurrence_day_of_week === $day ? 'selected' : '' }}>{{ $label }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                            <div class="col-md-4" id="monthlyRecurrenceType">
+                                <label class="form-label">Month Run Date <span class="text-danger">*</span></label>
+                                <select class="form-select" id="recurrence_monthly_type" name="recurrence_monthly_type">
+                                    <option value="first_day" {{ $invoice->recurrence_monthly_type === 'first_day' ? 'selected' : '' }}>First Day of Month</option>
+                                    <option value="last_day" {{ $invoice->recurrence_monthly_type === 'last_day' ? 'selected' : '' }}>Last Day of Month</option>
+                                    <option value="custom_day" {{ $invoice->recurrence_monthly_type === 'custom_day' ? 'selected' : '' }}>Other Day</option>
+                                </select>
+                            </div>
+                            <div class="col-md-4" id="monthlyCustomDay">
+                                <label class="form-label">Day of Month <span class="text-danger">*</span></label>
+                                <input type="number" class="form-control" name="recurrence_day_of_month" min="1" max="31" value="{{ $invoice->recurrence_day_of_month ?? 1 }}">
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -603,6 +638,20 @@ $('#invoiceForm').on('change input', '.is-invalid', function() {
 
 $(function() {
     ensureTrailingEmptyRow($('#linesBody .line-row').last());
+
+    function toggleRecurrenceOptions() {
+        const isRecurring = $('#is_recurring').is(':checked');
+        const frequency = $('#recurrence_frequency').val();
+        const monthlyType = $('#recurrence_monthly_type').val();
+
+        $('#recurrenceOptions').toggle(isRecurring);
+        $('#weeklyRecurrenceOptions').toggle(isRecurring && frequency === 'weekly');
+        $('#monthlyRecurrenceType').toggle(isRecurring && frequency === 'monthly');
+        $('#monthlyCustomDay').toggle(isRecurring && frequency === 'monthly' && monthlyType === 'custom_day');
+    }
+
+    $('#is_recurring, #recurrence_frequency, #recurrence_monthly_type').on('change', toggleRecurrenceOptions);
+    toggleRecurrenceOptions();
 
     function addOneMonth(dateString) {
         if (!dateString) return '';

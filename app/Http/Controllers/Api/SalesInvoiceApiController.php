@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\SalesInvoiceResource;
 use App\Services\PartyService;
+use App\Services\RecurringSalesInvoiceService;
 use App\Services\SalesInvoiceService;
 use App\Helpers\ResponseHelper;
 use Illuminate\Http\JsonResponse;
@@ -17,11 +18,17 @@ class SalesInvoiceApiController extends Controller
 {
     protected SalesInvoiceService $salesInvoiceService;
     protected PartyService $partyService;
+    protected RecurringSalesInvoiceService $recurringSalesInvoiceService;
 
-    public function __construct(SalesInvoiceService $salesInvoiceService, PartyService $partyService)
+    public function __construct(
+        SalesInvoiceService $salesInvoiceService,
+        PartyService $partyService,
+        RecurringSalesInvoiceService $recurringSalesInvoiceService
+    )
     {
         $this->salesInvoiceService = $salesInvoiceService;
         $this->partyService = $partyService;
+        $this->recurringSalesInvoiceService = $recurringSalesInvoiceService;
     }
 
     public function index(Request $request): JsonResponse
@@ -91,7 +98,10 @@ class SalesInvoiceApiController extends Controller
             'delivery_terms' => $validated['delivery_terms'] ?? null,
             'discount_percentage' => $validated['discount_percentage'] ?? 0,
             'status' => 'draft',
+            'is_recurring' => $request->boolean('is_recurring'),
         ];
+
+        $data = array_merge($data, $this->recurrenceData($validated, $request->boolean('is_recurring')));
 
         $invoice = $this->salesInvoiceService->create($data, $itemLines, $serviceLines);
 
@@ -186,7 +196,10 @@ class SalesInvoiceApiController extends Controller
                 'discount_percentage' => $validated['discount_percentage'] ?? 0,
                 'updated_by' => $request->user()->id,
                 'updated_by_ip' => $request->ip(),
+                'is_recurring' => $request->boolean('is_recurring'),
             ];
+
+            $data = array_merge($data, $this->recurrenceData($validated, $request->boolean('is_recurring')));
 
             $invoice = $this->salesInvoiceService->updateWithLines(
                 $id,
@@ -314,10 +327,15 @@ class SalesInvoiceApiController extends Controller
             'notes' => 'nullable|string',
             'payment_terms' => 'nullable|string|max:100',
             'delivery_terms' => 'nullable|string|max:100',
+            'is_recurring' => 'nullable|boolean',
+            'recurrence_frequency' => 'required_if:is_recurring,1|nullable|in:weekly,monthly',
+            'recurrence_day_of_week' => 'required_if:recurrence_frequency,weekly|nullable|integer|between:0,6',
+            'recurrence_monthly_type' => 'required_if:recurrence_frequency,monthly|nullable|in:first_day,last_day,custom_day',
+            'recurrence_day_of_month' => 'required_if:recurrence_monthly_type,custom_day|nullable|integer|between:1,31',
             'discount_percentage' => 'nullable|numeric|min:0|max:100',
-            'lines' => 'nullable|array',
+            'lines' => 'required_without:service_lines|array|min:1',
             'lines.*.item_id' => [
-                'nullable',
+                'required',
                 Rule::exists('items', 'id')->where('company_id', $companyId),
             ],
             'lines.*.account_id' => [
@@ -343,6 +361,37 @@ class SalesInvoiceApiController extends Controller
             ],
             'service_lines.*.description' => 'nullable|string',
             'service_lines.*.amount' => 'required_with:service_lines|numeric|min:0.01',
+        ];
+    }
+
+    protected function recurrenceData(array $validated, bool $isRecurring): array
+    {
+        if (!$isRecurring) {
+            return [
+                'recurrence_frequency' => null,
+                'recurrence_day_of_week' => null,
+                'recurrence_monthly_type' => null,
+                'recurrence_day_of_month' => null,
+                'recurrence_next_run_at' => null,
+                'recurrence_last_run_at' => null,
+            ];
+        }
+
+        $invoiceDate = \Carbon\Carbon::parse($validated['invoice_date']);
+        $frequency = $validated['recurrence_frequency'];
+        $dayOfWeek = $frequency === 'weekly' ? $validated['recurrence_day_of_week'] : null;
+        $monthlyType = $frequency === 'monthly' ? $validated['recurrence_monthly_type'] : null;
+        $dayOfMonth = $monthlyType === 'custom_day' ? $validated['recurrence_day_of_month'] : null;
+
+        return [
+            'recurrence_frequency' => $frequency,
+            'recurrence_day_of_week' => $dayOfWeek,
+            'recurrence_monthly_type' => $monthlyType,
+            'recurrence_day_of_month' => $dayOfMonth,
+            'recurrence_next_run_at' => $this->recurringSalesInvoiceService
+                ->initialNextRunDate($invoiceDate, $frequency, $dayOfWeek, $monthlyType, $dayOfMonth)
+                ->toDateString(),
+            'recurrence_last_run_at' => null,
         ];
     }
 }

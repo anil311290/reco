@@ -71,15 +71,54 @@
                         </div>
                         <div class="col-md-3">
                             <label class="form-label">Reference #</label>
-                            <input type="text" class="form-control" name="reference_number" placeholder="PO/REF">
+                            <input type="text" class="form-control" name="reference_number" placeholder="PO/REF" value="{{ $duplicateInvoice?->reference_number }}">
                         </div>
                         <div class="col-md-3">
                             <label class="form-label">Payment/Delivery Terms</label>
-                            <input type="text" class="form-control" name="payment_terms" placeholder="e.g., Net 30, FOB">
+                            <input type="text" class="form-control" name="payment_terms" placeholder="e.g., Net 30, FOB" value="{{ $duplicateInvoice?->payment_terms }}">
                         </div>
                         <div class="col-md-12">
                             <label class="form-label">Notes</label>
-                            <textarea class="form-control" name="notes" rows="2" placeholder="Additional notes..."></textarea>
+                            <textarea class="form-control" name="notes" rows="2" placeholder="Additional notes...">{{ $duplicateInvoice?->notes }}</textarea>
+                        </div>
+                        <div class="col-md-12">
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" id="is_recurring" name="is_recurring" value="1">
+                                <label class="form-check-label" for="is_recurring">Recreate this sales invoice automatically</label>
+                            </div>
+                        </div>
+                        <div id="recurrenceOptions" class="row g-3" style="display:none;">
+                            <div class="col-md-4">
+                                <label class="form-label">Frequency <span class="text-danger">*</span></label>
+                                <select class="form-select" id="recurrence_frequency" name="recurrence_frequency">
+                                    <option value="weekly">Weekly</option>
+                                    <option value="monthly">Monthly</option>
+                                </select>
+                            </div>
+                            <div class="col-md-4" id="weeklyRecurrenceOptions">
+                                <label class="form-label">Day of Week <span class="text-danger">*</span></label>
+                                <select class="form-select" name="recurrence_day_of_week">
+                                    <option value="0">Sunday</option>
+                                    <option value="1">Monday</option>
+                                    <option value="2">Tuesday</option>
+                                    <option value="3">Wednesday</option>
+                                    <option value="4">Thursday</option>
+                                    <option value="5">Friday</option>
+                                    <option value="6">Saturday</option>
+                                </select>
+                            </div>
+                            <div class="col-md-4" id="monthlyRecurrenceType" style="display:none;">
+                                <label class="form-label">Month Run Date <span class="text-danger">*</span></label>
+                                <select class="form-select" id="recurrence_monthly_type" name="recurrence_monthly_type">
+                                    <option value="first_day">First Day of Month</option>
+                                    <option value="last_day">Last Day of Month</option>
+                                    <option value="custom_day">Other Day</option>
+                                </select>
+                            </div>
+                            <div class="col-md-4" id="monthlyCustomDay" style="display:none;">
+                                <label class="form-label">Day of Month <span class="text-danger">*</span></label>
+                                <input type="number" class="form-control" name="recurrence_day_of_month" min="1" max="31" value="1">
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -112,6 +151,41 @@
                                 </tr>
                             </thead>
                             <tbody id="linesBody">
+                                @if($duplicateInvoice?->lines->isNotEmpty())
+                                    @foreach($duplicateInvoice->lines as $line)
+                                <tr class="line-row" data-kind="{{ $line->line_type }}">
+                                    <td style="overflow: hidden;">
+                                        <select class="form-select form-select-sm particular-select w-100" data-searchable="true" data-placeholder="Search item / service">
+                                            <option value="">Select Item / Service</option>
+                                            <optgroup label="Goods">
+                                                @foreach($goodsItems as $item)
+                                                <option value="item:{{ $item->id }}" data-kind="item" data-id="{{ $item->id }}" data-price="{{ $item->selling_price }}" data-tax="{{ $item->tax_rate_id }}" data-description="{{ e($item->description ?? '') }}" {{ $line->item_id == $item->id ? 'selected' : '' }}>{{ $item->name }}</option>
+                                                @endforeach
+                                            </optgroup>
+                                            <optgroup label="Services">
+                                                @foreach($serviceItems as $item)
+                                                <option value="item:{{ $item->id }}" data-kind="item" data-id="{{ $item->id }}" data-price="{{ $item->selling_price }}" data-tax="{{ $item->tax_rate_id }}" data-description="{{ e($item->description ?? '') }}" {{ $line->item_id == $item->id ? 'selected' : '' }}>{{ $item->name }}</option>
+                                                @endforeach
+                                            </optgroup>
+                                        </select>
+                                        <input type="text" class="form-control form-control-sm mt-1 bg-light description-input" value="{{ $line->description }}" placeholder="Description" readonly style="font-size: 0.75rem;">
+                                    </td>
+                                    <td><input type="number" class="form-control form-control-sm qty-input" value="{{ $line->quantity }}" min="0.001" step="0.001"></td>
+                                    <td><input type="number" class="form-control form-control-sm price-input" value="{{ $line->unit_price }}" min="0" step="0.01"></td>
+                                    <td><input type="number" class="form-control form-control-sm disc-input" value="{{ $line->discount_percentage }}" min="0" max="100" step="0.01"></td>
+                                    <td>
+                                        <select class="form-select form-select-sm tax-select w-100">
+                                            <option value="">No Tax</option>
+                                            @foreach($taxRates as $tax)
+                                            <option value="{{ $tax->id }}" data-rate="{{ $tax->tax_rate ?? $tax->rate }}" {{ $line->tax_rate_id == $tax->id ? 'selected' : '' }}>{{ $tax->tax_name ?? $tax->name }} ({{ $tax->tax_rate ?? $tax->rate }}%)</option>
+                                            @endforeach
+                                        </select>
+                                    </td>
+                                    <td><input type="text" class="form-control form-control-sm line-total" value="₹{{ number_format($line->total, 2) }}" readonly></td>
+                                    <td><button type="button" class="btn btn-sm btn-outline-danger remove-line"><i class="bi bi-trash"></i></button></td>
+                                </tr>
+                                    @endforeach
+                                @else
                                 <tr class="line-row" data-kind="">
                                     <td style="overflow: hidden;">
                                         <select class="form-select form-select-sm particular-select w-100" data-searchable="true" data-placeholder="Search item / service">
@@ -143,6 +217,7 @@
                                     <td><input type="text" class="form-control form-control-sm line-total" readonly></td>
                                     <td><button type="button" class="btn btn-sm btn-outline-danger remove-line"><i class="bi bi-trash"></i></button></td>
                                 </tr>
+                                @endif
                             </tbody>
                         </table>
                     </div>
@@ -524,6 +599,21 @@ $('#invoiceForm').on('change input', '.is-invalid', function() {
 
 $(function() {
     ensureTrailingEmptyRow($('#linesBody .line-row').last());
+    $('#party_id').val(@json($duplicateInvoice?->party_id)).trigger('change');
+
+    function toggleRecurrenceOptions() {
+        const isRecurring = $('#is_recurring').is(':checked');
+        const frequency = $('#recurrence_frequency').val();
+        const monthlyType = $('#recurrence_monthly_type').val();
+
+        $('#recurrenceOptions').toggle(isRecurring);
+        $('#weeklyRecurrenceOptions').toggle(isRecurring && frequency === 'weekly');
+        $('#monthlyRecurrenceType').toggle(isRecurring && frequency === 'monthly');
+        $('#monthlyCustomDay').toggle(isRecurring && frequency === 'monthly' && monthlyType === 'custom_day');
+    }
+
+    $('#is_recurring, #recurrence_frequency, #recurrence_monthly_type').on('change', toggleRecurrenceOptions);
+    toggleRecurrenceOptions();
 
     function addOneMonth(dateString) {
         if (!dateString) return '';

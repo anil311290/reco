@@ -71,7 +71,7 @@
                 <div class="col-md-4 mb-3">
                     <label for="narration" class="form-label">Narration</label>
                     <textarea class="form-control" id="narration" name="narration" rows="2"
-                              placeholder="Brief description">{{ old('narration') }}</textarea>
+                              placeholder="Brief description">{{ old('narration', $duplicateVoucher?->narration) }}</textarea>
                 </div>
 
                 @if($isPaymentReceipt)
@@ -79,7 +79,7 @@
                     <label for="reference_number" class="form-label">Reference / Advance ID</label>
                     <input type="text" class="form-control" id="reference_number" name="reference_number"
                            maxlength="100" placeholder="e.g. cheque no. or advance reference"
-                           value="{{ old('reference_number') }}">
+                              value="{{ old('reference_number', $duplicateVoucher?->reference_number) }}">
                     <small class="text-muted d-block mt-1">Use this when this {{ $type }} is not being mapped to any invoice below.</small>
                 </div>
                 @endif
@@ -310,6 +310,7 @@ $(document).ready(function() {
     const isPaymentReceipt = @json($isPaymentReceipt);
     const isAdjustment = @json($isAdjustment);
     const voucherType = @json($type);
+    const duplicateVoucher = @json($duplicateVoucher);
     const cashBankAccounts = @json($cashBankAccounts ?? []);
     const particularsOptions = @json($particularsOptions ?? []);
     const accounts = @json($accounts);
@@ -724,11 +725,32 @@ $(document).ready(function() {
         });
 
         $('#cash_bank_account_id').on('change', updateCashBankBalanceHint);
+
+        if (duplicateVoucher) {
+            const cashBankAccountIds = cashBankAccounts.map((account) => String(account.id));
+            const cashBankLine = duplicateVoucher.lines.find((line) => cashBankAccountIds.includes(String(line.account_id)));
+            const copiedRows = duplicateVoucher.lines.filter((line) => line !== cashBankLine);
+
+            $('#cash_bank_account_id').data('selected', cashBankLine ? cashBankLine.account_id : '');
+            $('#paymentReceiptRows').empty();
+            copiedRows.forEach((line, index) => {
+                const row = buildPaymentReceiptRow(index);
+                const accountId = line.party_id ? `party:${line.party_id}` : line.account_id;
+                row.find('.pr-particular').val(String(accountId));
+                row.find('.pr-amount').val(parseFloat(line.debit) || parseFloat(line.credit) || '');
+                $('#paymentReceiptRows').append(row);
+            });
+            paymentReceiptRowIndex = copiedRows.length;
+        }
+
         refreshCashBankDropdown();
         updatePaymentReceiptRemoveButtons();
         refreshParticularsAvailability();
         $('.pr-particular').each(function() {
             updateParticularBalanceHint($(this));
+            if (duplicateVoucher) {
+                $(this).trigger('change');
+            }
         });
     } else if (isAdjustment) {
         function updateAdjustmentRemoveButtons() {
@@ -790,6 +812,17 @@ $(document).ready(function() {
         });
 
         $(document).on('input change', '.adjustment-entry-type, .adjustment-amount', calculateTotals);
+
+        if (duplicateVoucher) {
+            $('#adjustmentRows').empty();
+            duplicateVoucher.lines.forEach((line, index) => {
+                const accountId = line.party_id ? `party:${line.party_id}` : line.account_id;
+                const entryType = parseFloat(line.debit) > 0 ? 'debit' : 'credit';
+                const amount = parseFloat(line.debit) || parseFloat(line.credit) || '';
+                $('#adjustmentRows').append(buildAdjustmentRow(index, accountId, entryType, amount));
+            });
+            adjustmentRowIndex = duplicateVoucher.lines.length;
+        }
 
         updateAdjustmentRemoveButtons();
     } else {

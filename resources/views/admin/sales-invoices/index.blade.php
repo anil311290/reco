@@ -109,6 +109,7 @@ $(document).ready(function() {
             }},
             { data: null, orderable: false, render: function(data) {
                 let buttons = `<a href="/admin/sales-invoices/${data.id}" class="btn btn-sm btn-outline-info"><i class="bi bi-eye"></i></a>`;
+                buttons += ` <a href="/admin/sales-invoices/create?duplicate=${data.id}" class="btn btn-sm btn-outline-secondary" title="Duplicate"><i class="bi bi-copy"></i></a>`;
                 if (data.status === 'draft') {
                     buttons += ` <button type="button" class="btn btn-sm btn-outline-primary post-invoice-btn" data-id="${data.id}" title="Post Invoice"><i class="bi bi-send-check"></i></button>`;
                 }

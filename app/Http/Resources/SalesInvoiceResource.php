@@ -34,6 +34,12 @@ class SalesInvoiceResource extends JsonResource
             'status' => $this->status,
             'status_label' => ucfirst(str_replace('_', ' ', $this->status)),
             'is_recurring' => $this->is_recurring,
+            'recurrence_frequency' => $this->recurrence_frequency,
+            'recurrence_day_of_week' => $this->recurrence_day_of_week,
+            'recurrence_monthly_type' => $this->recurrence_monthly_type,
+            'recurrence_day_of_month' => $this->recurrence_day_of_month,
+            'recurrence_next_run_at' => $this->recurrence_next_run_at?->toDateString(),
+            'recurrence_last_run_at' => $this->recurrence_last_run_at?->toDateString(),
             'is_overdue' => $this->isOverdue(),
             'lines' => SalesInvoiceLineResource::collection($this->whenLoaded('lines')),
             'item_lines' => $this->whenLoaded('lines', function () {

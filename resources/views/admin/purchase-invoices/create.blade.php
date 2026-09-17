@@ -33,7 +33,7 @@
                         </div>
                         <div class="col-md-4">
                             <label class="form-label">Supplier Invoice #</label>
-                            <input type="text" class="form-control" name="supplier_invoice_number" placeholder="Supplier's ref">
+                            <input type="text" class="form-control" name="supplier_invoice_number" placeholder="Supplier's ref" value="{{ $duplicateInvoice?->supplier_invoice_number }}">
                         </div>
                         <div class="col-md-4">
                             <label class="form-label">Invoice Date <span class="text-danger">*</span></label>
@@ -77,11 +77,11 @@
                         </div>
                         <div class="col-md-4">
                             <label class="form-label">Payment/Delivery Terms</label>
-                            <input type="text" class="form-control" name="payment_terms" placeholder="e.g., Net 30, FOB">
+                            <input type="text" class="form-control" name="payment_terms" placeholder="e.g., Net 30, FOB" value="{{ $duplicateInvoice?->payment_terms }}">
                         </div>
                         <div class="col-md-12">
                             <label class="form-label">Notes</label>
-                            <textarea class="form-control" name="notes" rows="2"></textarea>
+                            <textarea class="form-control" name="notes" rows="2">{{ $duplicateInvoice?->notes }}</textarea>
                         </div>
                     </div>
                 </div>
@@ -114,7 +114,13 @@
                                 </tr>
                             </thead>
                             <tbody id="linesBody">
-                                @include('admin.purchase-invoices._line-row')
+                                @if($duplicateInvoice?->lines->isNotEmpty())
+                                    @foreach($duplicateInvoice->lines as $line)
+                                        @include('admin.purchase-invoices._line-row', ['line' => $line])
+                                    @endforeach
+                                @else
+                                    @include('admin.purchase-invoices._line-row')
+                                @endif
                             </tbody>
                         </table>
                     </div>
@@ -431,6 +437,7 @@ $('#invoiceForm').on('change input', '.is-invalid', function() {
 
 $(function() {
     ensureTrailingEmptyRow($('#linesBody .line-row').last());
+    $('#party_id').val(@json($duplicateInvoice?->party_id)).trigger('change');
 
     function addOneMonth(dateString) {
         if (!dateString) return '';

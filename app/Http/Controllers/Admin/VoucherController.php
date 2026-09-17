@@ -69,7 +69,7 @@ class VoucherController extends Controller
     /**
      * Show create form
      */
-    public function create(string $type)
+    public function create(Request $request, string $type)
     {
         // Sales / Purchase are invoice modules — do not open generic voucher forms
         if ($type === 'income') {
@@ -84,6 +84,22 @@ class VoucherController extends Controller
         }
 
         $companyId = Auth::user()->company_id;
+        $duplicateVoucher = null;
+        if ($request->filled('duplicate')) {
+            $duplicateVoucher = $this->voucherService->getById((int) $request->input('duplicate'));
+            $duplicateTypes = $type === 'journal' ? ['journal', 'adjustment'] : [$type];
+
+            if (
+                !$duplicateVoucher
+                || $duplicateVoucher->company_id !== $companyId
+                || !in_array($duplicateVoucher->voucher_type, $duplicateTypes, true)
+                || $duplicateVoucher->sales_invoice_id
+                || $duplicateVoucher->purchase_invoice_id
+            ) {
+                abort(404);
+            }
+        }
+
         $financialYearId = Auth::user()->company->currentFinancialYear?->id;
         $accounts = in_array($type, ['journal', 'adjustment'], true)
             ? $this->accountService->getAdjustmentParticularsOptions($companyId)
@@ -101,7 +117,8 @@ class VoucherController extends Controller
             'accounts',
             'parties',
             'cashBankAccounts',
-            'particularsOptions'
+            'particularsOptions',
+            'duplicateVoucher'
         ));
     }
 

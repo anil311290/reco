@@ -11,6 +11,7 @@ use App\Services\ItemCategoryService;
 use App\Services\ItemService;
 use App\Services\TaxRateService;
 use App\Services\ExportService;
+use App\Services\RecurringSalesInvoiceService;
 use App\Helpers\ResponseHelper;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -26,6 +27,7 @@ class SalesInvoiceController extends Controller
     protected ItemService $itemService;
     protected TaxRateService $taxRateService;
     protected ExportService $exportService;
+    protected RecurringSalesInvoiceService $recurringSalesInvoiceService;
 
     public function __construct(
         SalesInvoiceService $salesInvoiceService,
@@ -34,7 +36,8 @@ class SalesInvoiceController extends Controller
         ItemCategoryService $itemCategoryService,
         ItemService $itemService,
         TaxRateService $taxRateService,
-        ExportService $exportService
+        ExportService $exportService,
+        RecurringSalesInvoiceService $recurringSalesInvoiceService
     ) {
         $this->salesInvoiceService = $salesInvoiceService;
         $this->partyService = $partyService;
@@ -43,6 +46,7 @@ class SalesInvoiceController extends Controller
         $this->itemService = $itemService;
         $this->taxRateService = $taxRateService;
         $this->exportService = $exportService;
+        $this->recurringSalesInvoiceService = $recurringSalesInvoiceService;
     }
 
     /**
@@ -83,10 +87,21 @@ class SalesInvoiceController extends Controller
     /**
      * Show create form.
      */
-    public function create()
+    public function create(Request $request)
     {
         $companyId = auth()->user()->company_id;
         $fyId = auth()->user()->company->currentFinancialYear?->id;
+
+        $duplicateInvoice = null;
+        if ($request->filled('duplicate')) {
+            $duplicateInvoice = $this->salesInvoiceService->getById((int) $request->input('duplicate'));
+
+            if (!$duplicateInvoice || $duplicateInvoice->company_id !== $companyId) {
+                abort(404);
+            }
+
+            $duplicateInvoice->load('lines');
+        }
 
         $partyOptions = $this->partyService->getInvoicePartyOptions($companyId, 'debtor');
         $goodsItems = $this->itemService->getAll($companyId, ['type' => 'goods']);
@@ -101,7 +116,8 @@ class SalesInvoiceController extends Controller
             'serviceItems',
             'itemCategories',
             'taxRates',
-            'invoiceNumber'
+            'invoiceNumber',
+            'duplicateInvoice'
         ));
     }
 
@@ -131,6 +147,11 @@ class SalesInvoiceController extends Controller
             'due_date' => 'required|date|after_or_equal:invoice_date',
             'reference_number' => 'nullable|string|max:100',
             'notes' => 'nullable|string',
+            'is_recurring' => 'nullable|boolean',
+            'recurrence_frequency' => 'required_if:is_recurring,1|nullable|in:weekly,monthly',
+            'recurrence_day_of_week' => 'required_if:recurrence_frequency,weekly|nullable|integer|between:0,6',
+            'recurrence_monthly_type' => 'required_if:recurrence_frequency,monthly|nullable|in:first_day,last_day,custom_day',
+            'recurrence_day_of_month' => 'required_if:recurrence_monthly_type,custom_day|nullable|integer|between:1,31',
             'discount_percentage' => 'nullable|numeric|min:0|max:100',
             'lines' => 'nullable|array',
             'lines.*.item_id' => [
@@ -193,7 +214,23 @@ class SalesInvoiceController extends Controller
                 'notes' => $validated['notes'] ?? null,
                 'discount_percentage' => $validated['discount_percentage'] ?? 0,
                 'status' => 'draft',
+                'is_recurring' => $request->boolean('is_recurring'),
             ];
+
+            if ($data['is_recurring']) {
+                $invoiceDate = \Carbon\Carbon::parse($validated['invoice_date']);
+                $data['recurrence_frequency'] = $validated['recurrence_frequency'];
+                $data['recurrence_day_of_week'] = $validated['recurrence_frequency'] === 'weekly' ? $validated['recurrence_day_of_week'] : null;
+                $data['recurrence_monthly_type'] = $validated['recurrence_frequency'] === 'monthly' ? $validated['recurrence_monthly_type'] : null;
+                $data['recurrence_day_of_month'] = $data['recurrence_monthly_type'] === 'custom_day' ? $validated['recurrence_day_of_month'] : null;
+                $data['recurrence_next_run_at'] = $this->recurringSalesInvoiceService->initialNextRunDate(
+                    $invoiceDate,
+                    $data['recurrence_frequency'],
+                    $data['recurrence_day_of_week'],
+                    $data['recurrence_monthly_type'],
+                    $data['recurrence_day_of_month']
+                )->toDateString();
+            }
 
             $invoice = $this->salesInvoiceService->create($data, $validated['lines'], $validated['service_lines'] ?? []);
 
@@ -313,6 +350,11 @@ class SalesInvoiceController extends Controller
             'due_date' => 'required|date|after_or_equal:invoice_date',
             'reference_number' => 'nullable|string|max:100',
             'notes' => 'nullable|string',
+            'is_recurring' => 'nullable|boolean',
+            'recurrence_frequency' => 'required_if:is_recurring,1|nullable|in:weekly,monthly',
+            'recurrence_day_of_week' => 'required_if:recurrence_frequency,weekly|nullable|integer|between:0,6',
+            'recurrence_monthly_type' => 'required_if:recurrence_frequency,monthly|nullable|in:first_day,last_day,custom_day',
+            'recurrence_day_of_month' => 'required_if:recurrence_monthly_type,custom_day|nullable|integer|between:1,31',
             'discount_percentage' => 'nullable|numeric|min:0|max:100',
             'lines' => 'nullable|array',
             'lines.*.item_id' => 'nullable|exists:items,id',
@@ -353,7 +395,31 @@ class SalesInvoiceController extends Controller
                 'discount_percentage' => $validated['discount_percentage'] ?? 0,
                 'updated_by' => auth()->id(),
                 'updated_by_ip' => $request->ip(),
+                'is_recurring' => $request->boolean('is_recurring'),
             ];
+
+            if ($data['is_recurring']) {
+                $invoiceDate = \Carbon\Carbon::parse($validated['invoice_date']);
+                $data['recurrence_frequency'] = $validated['recurrence_frequency'];
+                $data['recurrence_day_of_week'] = $validated['recurrence_frequency'] === 'weekly' ? $validated['recurrence_day_of_week'] : null;
+                $data['recurrence_monthly_type'] = $validated['recurrence_frequency'] === 'monthly' ? $validated['recurrence_monthly_type'] : null;
+                $data['recurrence_day_of_month'] = $data['recurrence_monthly_type'] === 'custom_day' ? $validated['recurrence_day_of_month'] : null;
+                $data['recurrence_next_run_at'] = $this->recurringSalesInvoiceService->initialNextRunDate(
+                    $invoiceDate,
+                    $data['recurrence_frequency'],
+                    $data['recurrence_day_of_week'],
+                    $data['recurrence_monthly_type'],
+                    $data['recurrence_day_of_month']
+                )->toDateString();
+                $data['recurrence_last_run_at'] = null;
+            } else {
+                $data['recurrence_frequency'] = null;
+                $data['recurrence_day_of_week'] = null;
+                $data['recurrence_monthly_type'] = null;
+                $data['recurrence_day_of_month'] = null;
+                $data['recurrence_next_run_at'] = null;
+                $data['recurrence_last_run_at'] = null;
+            }
 
             $invoice = $this->salesInvoiceService->updateWithLines($id, $data, $validated['lines'], $validated['service_lines'] ?? []);
 

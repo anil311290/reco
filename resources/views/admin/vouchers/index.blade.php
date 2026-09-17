@@ -223,6 +223,14 @@ $(document).ready(function() {
                     && !data.sales_invoice_id
                     && !data.purchase_invoice_id;
 
+                if (isStandaloneBookVoucher) {
+                    actions += `
+                        <a href="/admin/vouchers/create/${data.voucher_type === 'adjustment' ? 'journal' : data.voucher_type}?duplicate=${data.id}" class="btn btn-outline-secondary" title="Duplicate">
+                            <i class="bi bi-copy"></i>
+                        </a>
+                    `;
+                }
+
                 if (data.status === 'posted' && isStandaloneBookVoucher) {
                     actions += `
                         <a href="/admin/vouchers/${data.id}/edit" class="btn btn-outline-primary" title="Edit">

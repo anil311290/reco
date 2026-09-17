@@ -9,3 +9,4 @@ Artisan::command('inspire', function () {
 })->purpose('Display an inspiring quote');
 
 Schedule::command('backup:send-links')->everyMinute();
+Schedule::command('sales-invoices:recreate-recurring')->dailyAt('00:05')->withoutOverlapping();

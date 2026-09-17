@@ -38,6 +38,12 @@ class SalesInvoice extends Model
         'currency',
         'status',
         'is_recurring',
+        'recurrence_frequency',
+        'recurrence_day_of_week',
+        'recurrence_monthly_type',
+        'recurrence_day_of_month',
+        'recurrence_next_run_at',
+        'recurrence_last_run_at',
         'version',
         'synced_at',
         'created_by',
@@ -59,6 +65,8 @@ class SalesInvoice extends Model
         'amount_paid' => 'decimal:2',
         'balance_due' => 'decimal:2',
         'is_recurring' => 'boolean',
+        'recurrence_next_run_at' => 'date',
+        'recurrence_last_run_at' => 'date',
     ];
 
     public function company()

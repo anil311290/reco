@@ -60,6 +60,10 @@ class PurchaseInvoiceApiController extends Controller
         $this->assertGoodsOnlyLines($companyId, $validated['lines']);
 
         $fyId = $request->user()->company->currentFinancialYear?->id;
+        if (!$fyId) {
+            return ResponseHelper::error('No active financial year found. Cannot create invoice.', 422);
+        }
+
         $resolvedSelection = $this->partyService->resolveInvoiceSelectionForPosting(
             $validated['party_id'],
             $companyId,
@@ -268,7 +272,7 @@ class PurchaseInvoiceApiController extends Controller
             'discount_percentage' => 'nullable|numeric|min:0|max:100',
             'lines' => 'required|array|min:1',
             'lines.*.item_id' => [
-                'nullable',
+                'required',
                 Rule::exists('items', 'id')->where('company_id', $companyId),
             ],
             'lines.*.account_id' => [
