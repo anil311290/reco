@@ -438,6 +438,8 @@ $('#invoiceForm').on('change input', '.is-invalid', function() {
 $(function() {
     ensureTrailingEmptyRow($('#linesBody .line-row').last());
     $('#party_id').val(@json($duplicateInvoice?->party_id)).trigger('change');
+    // Recompute summary totals for prefilled lines (duplicate invoice case).
+    calculateTotals();
 
     function addOneMonth(dateString) {
         if (!dateString) return '';
