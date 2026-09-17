@@ -363,6 +363,8 @@ class InvoiceFormScreen<T extends BaseInvoiceFormController> extends GetView<T> 
                           maxLines: 3,
                           hintText: 'Additional notes',
                         ),
+                        if (controller.supportsRecurrence)
+                          _RecurringInvoiceSection<T>(),
                         ],
                       ],
                     ),
@@ -405,6 +407,90 @@ class InvoiceFormScreen<T extends BaseInvoiceFormController> extends GetView<T> 
           },
         ),
       ),
+    );
+  }
+}
+
+class _RecurringInvoiceSection<T extends BaseInvoiceFormController>
+    extends GetView<T> {
+  @override
+  Widget build(BuildContext context) {
+    final isRecurring = controller.isRecurring.value;
+    final isWeekly = controller.recurrenceFrequency.value == 'weekly';
+    final isCustomMonthlyDay =
+        controller.recurrenceMonthlyType.value == 'custom_day';
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: <Widget>[
+        const SizedBox(height: 8),
+        SwitchListTile.adaptive(
+          contentPadding: EdgeInsets.zero,
+          title: const Text('Recreate invoice automatically'),
+          value: isRecurring,
+          onChanged: controller.setRecurring,
+        ),
+        if (isRecurring) ...<Widget>[
+          DropdownButtonFormField<String>(
+            initialValue: controller.recurrenceFrequency.value,
+            decoration: const InputDecoration(labelText: 'Frequency'),
+            items: const <DropdownMenuItem<String>>[
+              DropdownMenuItem(value: 'weekly', child: Text('Weekly')),
+              DropdownMenuItem(value: 'monthly', child: Text('Monthly')),
+            ],
+            onChanged: controller.setRecurrenceFrequency,
+          ),
+          const SizedBox(height: 12),
+          if (isWeekly)
+            DropdownButtonFormField<int>(
+              initialValue: controller.recurrenceDayOfWeek.value,
+              decoration: const InputDecoration(labelText: 'Day of Week'),
+              items: const <DropdownMenuItem<int>>[
+                DropdownMenuItem(value: 0, child: Text('Sunday')),
+                DropdownMenuItem(value: 1, child: Text('Monday')),
+                DropdownMenuItem(value: 2, child: Text('Tuesday')),
+                DropdownMenuItem(value: 3, child: Text('Wednesday')),
+                DropdownMenuItem(value: 4, child: Text('Thursday')),
+                DropdownMenuItem(value: 5, child: Text('Friday')),
+                DropdownMenuItem(value: 6, child: Text('Saturday')),
+              ],
+              onChanged: controller.setRecurrenceDayOfWeek,
+            )
+          else ...<Widget>[
+            DropdownButtonFormField<String>(
+              initialValue: controller.recurrenceMonthlyType.value,
+              decoration: const InputDecoration(labelText: 'Month Run Date'),
+              items: const <DropdownMenuItem<String>>[
+                DropdownMenuItem(
+                  value: 'first_day',
+                  child: Text('First Day of Month'),
+                ),
+                DropdownMenuItem(
+                  value: 'last_day',
+                  child: Text('Last Day of Month'),
+                ),
+                DropdownMenuItem(value: 'custom_day', child: Text('Other Day')),
+              ],
+              onChanged: controller.setRecurrenceMonthlyType,
+            ),
+            if (isCustomMonthlyDay) ...<Widget>[
+              const SizedBox(height: 12),
+              CustomTextField(
+                label: 'Day of Month',
+                initialValue: controller.recurrenceDayOfMonth.value.toString(),
+                keyboardType: TextInputType.number,
+                onChanged: controller.setRecurrenceDayOfMonth,
+                validator: (value) {
+                  final day = int.tryParse(value ?? '');
+                  return day == null || day < 1 || day > 31
+                      ? 'Enter a day from 1 to 31'
+                      : null;
+                },
+              ),
+            ],
+          ],
+        ],
+      ],
     );
   }
 }

@@ -21,11 +21,13 @@ abstract class BaseVoucherFormController extends GetxController {
     this.repository,
     this.lookupController, {
     this.initialPayload,
+    this.isDuplicate = false,
   });
 
   final TransactionsRepository repository;
   final TransactionFormLookupController lookupController;
   final Map<String, dynamic>? initialPayload;
+  final bool isDuplicate;
 
   final formKey = GlobalKey<FormState>();
   final dateController = TextEditingController();
@@ -45,7 +47,7 @@ abstract class BaseVoucherFormController extends GetxController {
   bool get isPaymentReceipt =>
       voucherType == 'payment' || voucherType == 'receipt';
   bool get isAdjustment => !isPaymentReceipt;
-  bool get isEditing => initialPayload != null;
+  bool get isEditing => initialPayload != null && !isDuplicate;
   String get cashBankLabel => voucherType == 'receipt' ? 'Received In' : 'Paid From';
   String get temporaryPrefix;
 
@@ -126,6 +128,13 @@ abstract class BaseVoucherFormController extends GetxController {
     await _loadLookups();
     if (initialPayload != null) {
       _applyInitialPayload(initialPayload!);
+      if (isDuplicate) {
+        dateController.text = AppDateFormatter.formatDisplay(now);
+        for (final row in paymentRows) {
+          row.invoiceAllocations.clear();
+        }
+        paymentRows.refresh();
+      }
     } else if (isPaymentReceipt) {
       paymentRows.add(PaymentVoucherRowModel());
     } else {
@@ -471,7 +480,7 @@ abstract class BaseVoucherFormController extends GetxController {
     final validRows = paymentRows
         .where((row) => row.account.value != null && row.amount > 0)
         .toList();
-    final recordId = _lookupInt(_editingPayload?['id']);
+    final recordId = isDuplicate ? null : _lookupInt(_editingPayload?['id']);
     LookupOption? partyToken;
     for (final row in validRows) {
       final account = row.account.value;
@@ -532,7 +541,7 @@ abstract class BaseVoucherFormController extends GetxController {
     final validRows = adjustmentRows
         .where((row) => row.account.value != null && row.amount > 0)
         .toList();
-    final recordId = _lookupInt(_editingPayload?['id']);
+    final recordId = isDuplicate ? null : _lookupInt(_editingPayload?['id']);
     return <String, dynamic>{
       if (recordId != null) 'id': recordId,
       'voucher_type': 'journal',
@@ -1001,6 +1010,7 @@ class PaymentVoucherFormController extends BaseVoucherFormController {
     super.repository,
     super.lookupController, {
     super.initialPayload,
+    super.isDuplicate,
   });
 
   @override
@@ -1024,6 +1034,7 @@ class ReceiptVoucherFormController extends BaseVoucherFormController {
     super.repository,
     super.lookupController, {
     super.initialPayload,
+    super.isDuplicate,
   });
 
   @override
@@ -1047,6 +1058,7 @@ class AdjustmentVoucherFormController extends BaseVoucherFormController {
     super.repository,
     super.lookupController, {
     super.initialPayload,
+    super.isDuplicate,
   });
 
   @override

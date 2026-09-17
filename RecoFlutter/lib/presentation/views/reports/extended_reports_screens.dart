@@ -538,9 +538,7 @@ class _ApplyAllocationCellState extends State<_ApplyAllocationCell> {
         },
       );
       final data = response.data;
-      final body = data is Map<String, dynamic>
-          ? data
-          : (data is Map ? Map<String, dynamic>.from(data!) : <String, dynamic>{});
+        final body = data ?? <String, dynamic>{};
       if (body['success'] != false) {
         AppSnackbar.success(
           body['message'] is String

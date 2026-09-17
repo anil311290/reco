@@ -254,6 +254,7 @@ Route::prefix('v1')->middleware(['auth:sanctum', 'active.subscription'])->group(
     Route::post('/sales-invoices', [SalesInvoiceApiController::class, 'store']);
     Route::get('/sales-invoices/overdue', [SalesInvoiceApiController::class, 'overdue']);
     Route::get('/sales-invoices/{id}', [SalesInvoiceApiController::class, 'show']);
+    Route::post('/service-sales-invoices', [SalesInvoiceApiController::class, 'store']);
     Route::put('/sales-invoices/{id}', [SalesInvoiceApiController::class, 'update']);
     Route::delete('/sales-invoices/{id}', [SalesInvoiceApiController::class, 'destroy']);
     Route::post('/sales-invoices/{id}/cancel', [SalesInvoiceApiController::class, 'cancel']);

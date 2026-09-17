@@ -20,11 +20,13 @@ abstract class BaseInvoiceFormController extends GetxController {
     this.repository,
     this.lookupController, {
     this.initialPayload,
+    this.isDuplicate = false,
   });
 
   final TransactionsRepository repository;
   final TransactionFormLookupController lookupController;
   final Map<String, dynamic>? initialPayload;
+  final bool isDuplicate;
   final FinancialYearsRepository _financialYearsRepository =
       Get.find<FinancialYearsRepository>();
 
@@ -38,6 +40,11 @@ abstract class BaseInvoiceFormController extends GetxController {
   final discountController = TextEditingController(text: '0');
   final supplierInvoiceController = TextEditingController();
   final selectedPartyOption = Rxn<InvoicePartyOption>();
+  final isRecurring = false.obs;
+  final recurrenceFrequency = 'weekly'.obs;
+  final recurrenceDayOfWeek = 1.obs;
+  final recurrenceMonthlyType = 'first_day'.obs;
+  final recurrenceDayOfMonth = 1.obs;
   final itemRows = <InvoiceItemRowModel>[].obs;
   final serviceRows = <InvoiceServiceRowModel>[].obs;
   final isSubmitting = false.obs;
@@ -54,7 +61,8 @@ abstract class BaseInvoiceFormController extends GetxController {
   bool get supportsServices;
   bool get isServiceInvoice => false;
   bool get isPurchaseInvoice => false;
-  bool get isEditing => initialPayload != null;
+  bool get supportsRecurrence => !isPurchaseInvoice;
+  bool get isEditing => initialPayload != null && !isDuplicate;
   bool get usesUnifiedSalesRows =>
       supportsItems && supportsServices && !isPurchaseInvoice;
 
@@ -145,6 +153,15 @@ abstract class BaseInvoiceFormController extends GetxController {
 
     if (initialPayload != null) {
       _applyInitialPayload(initialPayload!);
+      if (isDuplicate) {
+        isRecurring.value = false;
+        invoiceDateController.text = AppDateFormatter.formatDisplay(now);
+        dueDateController.text = AppDateFormatter.formatDisplay(
+          now.add(const Duration(days: 30)),
+        );
+        draftInvoiceNumber.value = await _generateDraftInvoiceNumber();
+        invoiceNumberController.text = draftInvoiceNumber.value;
+      }
     } else {
       draftInvoiceNumber.value = await _generateDraftInvoiceNumber();
       invoiceNumberController.text = draftInvoiceNumber.value;
@@ -256,6 +273,16 @@ abstract class BaseInvoiceFormController extends GetxController {
     discountController.text = formatAmount(_toDouble(payload['discount_percentage']));
     supplierInvoiceController.text =
         (payload['supplier_invoice_number'] ?? '').toString();
+    isRecurring.value = payload['is_recurring'] == true ||
+      payload['is_recurring'].toString() == '1';
+    recurrenceFrequency.value =
+      (payload['recurrence_frequency'] ?? 'weekly').toString();
+    recurrenceDayOfWeek.value =
+      _toInt(payload['recurrence_day_of_week']) ?? 1;
+    recurrenceMonthlyType.value =
+      (payload['recurrence_monthly_type'] ?? 'first_day').toString();
+    recurrenceDayOfMonth.value =
+      _toInt(payload['recurrence_day_of_month']) ?? 1;
 
     final partyId = _toInt(payload['party_id']);
     final accountId = _toInt(payload['account_id']);
@@ -527,6 +554,39 @@ abstract class BaseInvoiceFormController extends GetxController {
     update();
   }
 
+  void setRecurring(bool value) {
+    isRecurring.value = value;
+    update();
+  }
+
+  void setRecurrenceFrequency(String? value) {
+    if (value == null) {
+      return;
+    }
+    recurrenceFrequency.value = value;
+    update();
+  }
+
+  void setRecurrenceDayOfWeek(int? value) {
+    if (value == null) {
+      return;
+    }
+    recurrenceDayOfWeek.value = value;
+    update();
+  }
+
+  void setRecurrenceMonthlyType(String? value) {
+    if (value == null) {
+      return;
+    }
+    recurrenceMonthlyType.value = value;
+    update();
+  }
+
+  void setRecurrenceDayOfMonth(String value) {
+    recurrenceDayOfMonth.value = int.tryParse(value) ?? 1;
+  }
+
   Future<void> submit({bool saveAsDraft = false}) async {
     FocusManager.instance.primaryFocus?.unfocus();
     if (!formKey.currentState!.validate()) {
@@ -631,7 +691,7 @@ abstract class BaseInvoiceFormController extends GetxController {
     List<InvoiceServiceRowModel> validServiceRows, {
     bool saveAsDraft = false,
   }) {
-    final recordId = _toInt(_editingPayload?['id']);
+    final recordId = isDuplicate ? null : _toInt(_editingPayload?['id']);
     final currentNumber = draftInvoiceNumber.value.trim();
     final tempNumber = currentNumber.isNotEmpty
         ? currentNumber
@@ -664,6 +724,19 @@ abstract class BaseInvoiceFormController extends GetxController {
       'notes': notesController.text.trim().isEmpty
           ? null
           : notesController.text.trim(),
+      if (supportsRecurrence) ...<String, dynamic>{
+        'is_recurring': isRecurring.value,
+        if (isRecurring.value) ...<String, dynamic>{
+          'recurrence_frequency': recurrenceFrequency.value,
+          if (recurrenceFrequency.value == 'weekly')
+            'recurrence_day_of_week': recurrenceDayOfWeek.value,
+          if (recurrenceFrequency.value == 'monthly') ...<String, dynamic>{
+            'recurrence_monthly_type': recurrenceMonthlyType.value,
+            if (recurrenceMonthlyType.value == 'custom_day')
+              'recurrence_day_of_month': recurrenceDayOfMonth.value,
+          },
+        },
+      },
       'discount_percentage': double.tryParse(discountController.text.trim()) ?? 0,
       'save_as_draft': saveAsDraft,
       'lines': validItemRows
@@ -769,6 +842,7 @@ class SalesInvoiceFormController extends BaseInvoiceFormController {
     super.repository,
     super.lookupController, {
     super.initialPayload,
+    super.isDuplicate,
   });
 
   @override
@@ -801,6 +875,7 @@ class ServiceSalesInvoiceFormController extends BaseInvoiceFormController {
     super.repository,
     super.lookupController, {
     super.initialPayload,
+    super.isDuplicate,
   });
 
   @override
@@ -836,6 +911,7 @@ class PurchaseInvoiceFormController extends BaseInvoiceFormController {
     super.repository,
     super.lookupController, {
     super.initialPayload,
+    super.isDuplicate,
   });
 
   @override

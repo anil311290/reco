@@ -91,6 +91,63 @@ Future<void> openInvoiceEditor(TransactionRecord record) async {
   }
 }
 
+Future<void> openInvoiceDuplicate(TransactionRecord record) async {
+  final payload = await _resolveInvoicePayload(record);
+  if (payload == null) {
+    AppSnackbar.error('Invoice details are not available for duplication.');
+    return;
+  }
+
+  TransactionFormLookupController lookupBuilder() {
+    return Get.put(
+      TransactionFormLookupController(
+        Get.find<PartiesRepository>(),
+        Get.find<AccountsRepository>(),
+        Get.find<ItemsRepository>(),
+        Get.find<TaxRatesRepository>(),
+      ),
+    );
+  }
+
+  switch (record.kind) {
+    case TransactionRecordKind.salesInvoice:
+      Get.to(
+        () => const SalesInvoiceScreen(),
+        binding: BindingsBuilder(() {
+          final lookup = lookupBuilder();
+          Get.put(
+            SalesInvoiceFormController(
+              Get.find<TransactionsRepository>(),
+              lookup,
+              initialPayload: payload,
+              isDuplicate: true,
+            ),
+          );
+        }),
+      );
+      return;
+    case TransactionRecordKind.purchaseInvoice:
+      Get.to(
+        () => const PurchaseInvoiceScreen(),
+        binding: BindingsBuilder(() {
+          final lookup = lookupBuilder();
+          Get.put(
+            PurchaseInvoiceFormController(
+              Get.find<TransactionsRepository>(),
+              lookup,
+              initialPayload: payload,
+              isDuplicate: true,
+            ),
+          );
+        }),
+      );
+      return;
+    case TransactionRecordKind.voucher:
+      AppSnackbar.error('Duplicate is not available for this record.');
+      return;
+  }
+}
+
 Future<void> openVoucherEditor(TransactionRecord record) async {
   if (record.kind != TransactionRecordKind.voucher) {
     AppSnackbar.error('Edit is not available for this record.');
@@ -164,6 +221,48 @@ Future<void> openVoucherEditor(TransactionRecord record) async {
     default:
       AppSnackbar.error('Edit is not available for this voucher type.');
       return;
+  }
+}
+
+Future<void> openVoucherDuplicate(TransactionRecord record) async {
+  if (record.kind != TransactionRecordKind.voucher) {
+    AppSnackbar.error('Duplicate is not available for this record.');
+    return;
+  }
+  final payload = await _resolveInvoicePayload(record);
+  if (payload == null) {
+    AppSnackbar.error('Voucher details are not available for duplication.');
+    return;
+  }
+
+  TransactionFormLookupController lookupBuilder() => Get.put(
+    TransactionFormLookupController(
+      Get.find<PartiesRepository>(),
+      Get.find<AccountsRepository>(),
+      Get.find<ItemsRepository>(),
+      Get.find<TaxRatesRepository>(),
+    ),
+  );
+
+  switch (record.type) {
+    case 'payment':
+      Get.to(() => const PaymentVoucherScreen(), binding: BindingsBuilder(() {
+        Get.put(PaymentVoucherFormController(Get.find<TransactionsRepository>(), lookupBuilder(), initialPayload: payload, isDuplicate: true));
+      }));
+      return;
+    case 'receipt':
+      Get.to(() => const ReceiptVoucherScreen(), binding: BindingsBuilder(() {
+        Get.put(ReceiptVoucherFormController(Get.find<TransactionsRepository>(), lookupBuilder(), initialPayload: payload, isDuplicate: true));
+      }));
+      return;
+    case 'journal':
+    case 'adjustment':
+      Get.to(() => const AdjustmentVoucherScreen(), binding: BindingsBuilder(() {
+        Get.put(AdjustmentVoucherFormController(Get.find<TransactionsRepository>(), lookupBuilder(), initialPayload: payload, isDuplicate: true));
+      }));
+      return;
+    default:
+      AppSnackbar.error('Duplicate is not available for this voucher type.');
   }
 }
 

@@ -5,6 +5,7 @@ import 'package:get/get.dart';
 import '../../bindings/reports_binding.dart';
 import '../../controllers/reports/report_lookup_controller.dart';
 import 'balance_sheet_report_screen.dart';
+import 'aging_summary_report_screen.dart';
 import 'creditors_outstanding_report_screen.dart';
 import 'day_book_report_screen.dart';
 import 'debtors_outstanding_report_screen.dart';
@@ -12,6 +13,7 @@ import 'extended_reports_screens.dart';
 import 'ledger_report_screen.dart';
 import 'profit_loss_report_screen.dart';
 import 'receipt_payment_report_screen.dart';
+import 'stock_value_register_screen.dart';
 import 'trial_balance_report_screen.dart';
 import 'widgets/report_ui_components.dart';
 
@@ -81,6 +83,25 @@ class ReportsScreen extends StatelessWidget {
         color: const Color(0xFF0284C7),
         onTap: () => Get.to(() => const StockRegisterReportScreen()),
       ),
+      ReportFeatureItem(
+        title: 'Stock Value Register',
+        subtitle: 'Record and review stock valuation entries by financial year.',
+        icon: FontAwesomeIcons.coins.data,
+        color: const Color(0xFF2563EB),
+        onTap: () async {
+          final lookup = Get.find<ReportLookupController>();
+          if (lookup.currentFinancialYearId.value == null) {
+            await lookup.preload();
+          }
+          final financialYearId = lookup.currentFinancialYearId.value;
+          if (financialYearId == null) {
+            return;
+          }
+          await Get.to<void>(
+            () => StockValueRegisterScreen(financialYearId: financialYearId),
+          );
+        },
+      ),
     ];
 
     // Web sidebar → AP / AR Reports
@@ -115,16 +136,14 @@ class ReportsScreen extends StatelessWidget {
         color: const Color(0xFF4338CA),
         onTap: () => Get.to(() => const SettlementAuditReportScreen()),
       ),
+      ReportFeatureItem(
+        title: 'Aging Summary',
+        subtitle: 'Combined receivables and payables by aging bucket.',
+        icon: FontAwesomeIcons.hourglassHalf.data,
+        color: const Color(0xFFEA580C),
+        onTap: () => Get.to(() => const AgingSummaryReportScreen()),
+      ),
     ];
-
-    // Extra vs web sidebar — keep commented for easy restore.
-    // ReportFeatureItem(
-    //   title: 'Aging Summary',
-    //   subtitle: 'Combined AR/AP overdue buckets and aging detail.',
-    //   icon: FontAwesomeIcons.hourglassHalf.data,
-    //   color: const Color(0xFFEA580C),
-    //   onTap: () => Get.to(() => const AgingSummaryReportScreen()),
-    // ),
 
     return Scaffold(
       appBar: AppBar(

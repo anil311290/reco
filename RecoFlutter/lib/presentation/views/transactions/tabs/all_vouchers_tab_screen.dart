@@ -95,6 +95,16 @@ class AllVouchersTabScreen extends GetView<AllVouchersController> {
                     },
                   ),
                   const SizedBox(width: 8),
+                  MasterActionButton(
+                    icon: Icons.copy_outlined,
+                    tooltip: 'Duplicate',
+                    color: Theme.of(context).colorScheme.secondary,
+                    onTap: () async {
+                      await openVoucherDuplicate(item);
+                      await controller.refreshData(forceRemote: true);
+                    },
+                  ),
+                  const SizedBox(width: 8),
                 ],
                 if (item.status == 'draft') ...<Widget>[
                   MasterActionButton(

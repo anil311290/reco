@@ -158,6 +158,10 @@ class PurchaseInvoicesTabScreen extends GetView<PurchaseInvoicesController> {
                       await openInvoiceEditor(item);
                       await controller.refreshData(forceRemote: true);
                       break;
+                    case 'duplicate':
+                      await openInvoiceDuplicate(item);
+                      await controller.refreshData(forceRemote: true);
+                      break;
                   }
                 },
                 itemBuilder: (context) => <PopupMenuEntry<String>>[
@@ -180,6 +184,10 @@ class PurchaseInvoicesTabScreen extends GetView<PurchaseInvoicesController> {
                       value: 'edit',
                       child: Text('Edit'),
                     ),
+                  const PopupMenuItem<String>(
+                    value: 'duplicate',
+                    child: Text('Duplicate'),
+                  ),
                 ],
               ),
             ),
