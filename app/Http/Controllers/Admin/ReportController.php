@@ -120,7 +120,15 @@ class ReportController extends Controller
         $financialYears = $context['financialYears'];
 
         $report = $this->reportService->getDayBookRange($companyId, $dateFrom, $dateTo, $financialYearId);
-        $rows = $this->paginateReportItems($request, $report['rows'] ?? [], 10);
+        $dayBookRows = $this->sortReportItems($request, $report['rows'] ?? [], [
+            'date' => fn (array $row) => $row['voucher_date'],
+            'voucher_number' => fn (array $row) => $row['voucher_number'],
+            'account' => fn (array $row) => $row['account_name'],
+            'party' => fn (array $row) => $row['party_name'] ?? '',
+            'debit' => fn (array $row) => (float) $row['debit'],
+            'credit' => fn (array $row) => (float) $row['credit'],
+        ]);
+        $rows = $this->paginateReportItems($request, $dayBookRows, 10);
 
         return view('admin.reports.day-book', compact('report', 'rows', 'dateFrom', 'dateTo', 'financialYearId', 'financialYears'));
     }
@@ -209,7 +217,15 @@ class ReportController extends Controller
         }
 
         $report['aging_summary'] = $this->reportService->summarizeAgingBuckets($report['debtors'] ?? []);
-        $debtors = $this->paginateReportItems($request, $report['debtors'] ?? [], 10);
+        $debtorRows = $this->sortReportItems($request, $report['debtors'] ?? [], [
+            'invoice_number' => fn (array $row) => $row['invoice_number'],
+            'party' => fn (array $row) => $row['party']->name ?? '',
+            'invoice_date' => fn (array $row) => $row['invoice_date'] ?? '',
+            'due_date' => fn (array $row) => $row['due_date'] ?? '',
+            'invoice_total' => fn (array $row) => (float) ($row['invoice_total'] ?? 0),
+            'balance' => fn (array $row) => (float) $row['balance'],
+        ]);
+        $debtors = $this->paginateReportItems($request, $debtorRows, 10);
 
         $partyWiseRows = $this->summarizePartyWise($report['debtors'] ?? [], $partyId, 'debtor', $companyId, $financialYearId, $asOfDate);
         $partyWise = $this->paginateReportItems($request, $partyWiseRows, 10, 'party_page', 'party_per_page');
@@ -241,7 +257,16 @@ class ReportController extends Controller
             $dateTo ? Carbon::parse($dateTo) : null,
             $filters
         );
-        $mappings = $this->paginateReportItems($request, $report['mappings'] ?? [], 25);
+        $mappingRows = $this->sortReportItems($request, $report['mappings'] ?? [], [
+            'voucher' => fn (array $row) => $row['payment_voucher_number'],
+            'invoice' => fn (array $row) => $row['invoice_number'],
+            'party' => fn (array $row) => $row['party_name'],
+            'allocated' => fn (array $row) => (float) $row['amount_allocated'],
+            'settled' => fn (array $row) => (float) $row['amount_settled'],
+            'outstanding' => fn (array $row) => (float) $row['outstanding'],
+            'status' => fn (array $row) => $row['status'],
+        ]);
+        $mappings = $this->paginateReportItems($request, $mappingRows, 25);
 
         return view('admin.reports.settlement-audit', compact('report', 'mappings', 'financialYearId', 'dateFrom', 'dateTo', 'financialYears', 'filters'));
     }
@@ -265,7 +290,15 @@ class ReportController extends Controller
         }
 
         $report['aging_summary'] = $this->reportService->summarizeAgingBuckets($report['creditors'] ?? []);
-        $creditors = $this->paginateReportItems($request, $report['creditors'] ?? [], 10);
+        $creditorRows = $this->sortReportItems($request, $report['creditors'] ?? [], [
+            'invoice_number' => fn (array $row) => $row['invoice_number'],
+            'party' => fn (array $row) => $row['party']->name ?? '',
+            'invoice_date' => fn (array $row) => $row['invoice_date'] ?? '',
+            'due_date' => fn (array $row) => $row['due_date'] ?? '',
+            'invoice_total' => fn (array $row) => (float) ($row['invoice_total'] ?? 0),
+            'balance' => fn (array $row) => (float) $row['balance'],
+        ]);
+        $creditors = $this->paginateReportItems($request, $creditorRows, 10);
 
         $partyWiseRows = $this->summarizePartyWise($report['creditors'] ?? [], $partyId, 'creditor', $companyId, $financialYearId, $asOfDate);
         $partyWise = $this->paginateReportItems($request, $partyWiseRows, 10, 'party_page', 'party_per_page');
@@ -322,7 +355,14 @@ class ReportController extends Controller
             $selectedItemId ? (int) $selectedItemId : null
         );
 
-        $stockRows = $this->paginateReportItems($request, $register['rows'], 25, 'stock_page', 'stock_per_page');
+        $stockRows = $this->sortReportItems($request, $register['rows'], [
+            'date' => fn (array $row) => $row['date'] ?? '',
+            'item' => fn (array $row) => $row['stock_reference'],
+            'qty_in' => fn (array $row) => (float) $row['qty_in'],
+            'qty_out' => fn (array $row) => (float) $row['qty_out'],
+            'balance' => fn (array $row) => (float) $row['running_qty'],
+        ]);
+        $stockRows = $this->paginateReportItems($request, $stockRows, 25, 'stock_page', 'stock_per_page');
 
         return view('admin.reports.stock-register', [
             'rows' => $stockRows,
@@ -436,6 +476,25 @@ class ReportController extends Controller
         usort($result, fn ($a, $b) => $b['balance'] <=> $a['balance']);
 
         return $result;
+    }
+
+    /**
+     * Sort a report row collection by a whitelisted column before pagination.
+     *
+     * @param  array<string, \Closure>  $sortableColumns  field name => value accessor
+     */
+    protected function sortReportItems(Request $request, iterable $items, array $sortableColumns): Collection
+    {
+        $collection = $items instanceof Collection ? $items : collect($items);
+        $sortField = $request->input('sort');
+
+        if (!$sortField || !isset($sortableColumns[$sortField])) {
+            return $collection;
+        }
+
+        $descending = $request->input('dir') === 'desc';
+
+        return $collection->sortBy($sortableColumns[$sortField], SORT_REGULAR, $descending)->values();
     }
 
     protected function paginateReportItems(Request $request, iterable $items, int $defaultPerPage = 25, string $pageName = 'page', ?string $perPageName = null): LengthAwarePaginator

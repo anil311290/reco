@@ -141,6 +141,8 @@
                     <input type="hidden" name="date_from" value="{{ $dateFrom }}">
                     <input type="hidden" name="date_to" value="{{ $dateTo }}">
                     <input type="hidden" name="financial_year_id" value="{{ $financialYearId ?? '' }}">
+                    <input type="hidden" name="sort" value="{{ request('sort') }}">
+                    <input type="hidden" name="dir" value="{{ request('dir') }}">
                     <label for="day-book-per-page" class="report-rows-label">Rows Per Page</label>
                     <select id="day-book-per-page" name="per_page" class="form-select form-select-sm report-rows-select" onchange="this.form.submit()">
                         @foreach([10, 25, 40, 50, 100] as $size)
@@ -155,14 +157,14 @@
                     <thead>
                         <tr>
                             <th style="width:56px">#</th>
-                            <th class="day-book-date-col">Date</th>
-                            <th>Voucher #</th>
+                            @include('admin.reports._sort-th', ['field' => 'date', 'label' => 'Date', 'class' => 'day-book-date-col'])
+                            @include('admin.reports._sort-th', ['field' => 'voucher_number', 'label' => 'Voucher #'])
                             <th>Type</th>
-                            <th>Particulars</th>
-                            <th>Party</th>
+                            @include('admin.reports._sort-th', ['field' => 'account', 'label' => 'Particulars'])
+                            @include('admin.reports._sort-th', ['field' => 'party', 'label' => 'Party'])
                             <th>Narration</th>
-                            <th class="text-end">Debit (₹)</th>
-                            <th class="text-end">Credit (₹)</th>
+                            @include('admin.reports._sort-th', ['field' => 'debit', 'label' => 'Debit (₹)', 'align' => 'end'])
+                            @include('admin.reports._sort-th', ['field' => 'credit', 'label' => 'Credit (₹)', 'align' => 'end'])
                         </tr>
                     </thead>
                     <tbody>

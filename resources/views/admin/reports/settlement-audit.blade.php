@@ -97,6 +97,8 @@
                     <input type="hidden" name="date_to" value="{{ $dateTo ?? '' }}">
                     <input type="hidden" name="status" value="{{ $filters['status'] ?? 'all' }}">
                     <input type="hidden" name="type" value="{{ $filters['type'] ?? 'all' }}">
+                    <input type="hidden" name="sort" value="{{ request('sort') }}">
+                    <input type="hidden" name="dir" value="{{ request('dir') }}">
                     <label for="settlement-per-page" class="report-rows-label">Rows Per Page</label>
                     <select id="settlement-per-page" name="per_page" class="form-select form-select-sm report-rows-select" onchange="this.form.submit()">
                         @foreach([10, 25, 50, 100] as $size)
@@ -110,13 +112,13 @@
                 <thead>
                     <tr>
                         <th>#</th>
-                        <th>Payment Voucher</th>
-                        <th>Invoice</th>
-                        <th>Party</th>
-                        <th class="text-end">Allocated (₹)</th>
-                        <th class="text-end">Settled (₹)</th>
-                        <th class="text-end">Outstanding (₹)</th>
-                        <th>Status</th>
+                        @include('admin.reports._sort-th', ['field' => 'voucher', 'label' => 'Payment Voucher'])
+                        @include('admin.reports._sort-th', ['field' => 'invoice', 'label' => 'Invoice'])
+                        @include('admin.reports._sort-th', ['field' => 'party', 'label' => 'Party'])
+                        @include('admin.reports._sort-th', ['field' => 'allocated', 'label' => 'Allocated (₹)', 'align' => 'end'])
+                        @include('admin.reports._sort-th', ['field' => 'settled', 'label' => 'Settled (₹)', 'align' => 'end'])
+                        @include('admin.reports._sort-th', ['field' => 'outstanding', 'label' => 'Outstanding (₹)', 'align' => 'end'])
+                        @include('admin.reports._sort-th', ['field' => 'status', 'label' => 'Status'])
                     </tr>
                 </thead>
                 <tbody>

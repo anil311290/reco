@@ -102,6 +102,8 @@
                 <input type="hidden" name="item_id" value="{{ $selectedItemId ?? '' }}">
                 <input type="hidden" name="from_date" value="{{ $fromDate ?? '' }}">
                 <input type="hidden" name="to_date" value="{{ $toDate ?? '' }}">
+                <input type="hidden" name="sort" value="{{ request('sort') }}">
+                <input type="hidden" name="dir" value="{{ request('dir') }}">
                 <label for="stock_per_page" class="report-rows-label">Rows Per Page</label>
                 <select id="stock_per_page" name="stock_per_page" class="form-select form-select-sm stock-register-page-size" onchange="this.form.submit()">
                     @foreach([10, 25, 50, 100] as $size)
@@ -115,15 +117,15 @@
             <table class="table report-table stock-register-table table-hover mb-0 align-middle">
                 <thead>
                     <tr>
-                        <th>Date</th>
-                        <th>Stock Item</th>
+                        @include('admin.reports._sort-th', ['field' => 'date', 'label' => 'Date', 'pageParam' => 'stock_page'])
+                        @include('admin.reports._sort-th', ['field' => 'item', 'label' => 'Stock Item', 'pageParam' => 'stock_page'])
                         <th>Movement</th>
                         <th>Reference</th>
                         <th>Party</th>
                         <th>UoM</th>
-                        <th class="text-end">Quantity In</th>
-                        <th class="text-end">Quantity Out</th>
-                        <th class="text-end">Balance Quantity</th>
+                        @include('admin.reports._sort-th', ['field' => 'qty_in', 'label' => 'Quantity In', 'align' => 'end', 'pageParam' => 'stock_page'])
+                        @include('admin.reports._sort-th', ['field' => 'qty_out', 'label' => 'Quantity Out', 'align' => 'end', 'pageParam' => 'stock_page'])
+                        @include('admin.reports._sort-th', ['field' => 'balance', 'label' => 'Balance Quantity', 'align' => 'end', 'pageParam' => 'stock_page'])
                     </tr>
                 </thead>
                 <tbody>

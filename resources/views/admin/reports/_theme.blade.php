@@ -6,32 +6,24 @@
                 gap: 0.9rem;
             }
 
+            /* Global layout header already shows the page title, so the report
+               hero only needs to host the toolbar (Back / Export buttons). */
             .report-hero {
                 position: relative;
                 overflow: visible;
-                border: 1px solid rgba(31, 41, 55, 0.08);
-                border-radius: 14px;
-                padding: 0.85rem 1rem;
-                background: #ffffff;
-                box-shadow: 0 6px 16px rgba(15, 23, 42, 0.06);
+                border: none;
+                border-radius: 0;
+                padding: 0 0 0.6rem;
+                background: transparent;
+                box-shadow: none;
             }
 
             .report-hero::after {
                 display: none;
             }
 
-            .report-eyebrow {
-                display: none;
-            }
-
-            .report-title {
-                margin: 0;
-                font-size: clamp(1.15rem, 1.6vw, 1.45rem);
-                line-height: 1.1;
-                font-weight: 700;
-                color: #23263a;
-            }
-
+            .report-eyebrow,
+            .report-title,
             .report-subtitle {
                 display: none;
             }
@@ -741,14 +733,36 @@
                 border-bottom-right-radius: 10px;
             }
 
+            /* Compact inline control, not a full-width banner row. */
             .report-table-tools {
                 display: flex;
                 justify-content: flex-end;
                 align-items: center;
-                padding: 0.75rem 1rem 0.55rem;
-                background: #f8faff;
-                border-top: 1px solid rgba(31, 41, 55, 0.08);
-                border-bottom: 1px solid rgba(31, 41, 55, 0.06);
+                padding: 0.4rem 1rem;
+                background: transparent;
+                border: none;
+            }
+
+            .report-sortable-th a.report-sort-link {
+                display: inline-flex;
+                align-items: center;
+                gap: 0.3rem;
+                color: inherit;
+                text-decoration: none;
+            }
+
+            .report-sortable-th a.report-sort-link:hover {
+                color: #5b53d6;
+            }
+
+            .report-sortable-th i {
+                font-size: 0.72rem;
+                opacity: 0.55;
+            }
+
+            .report-sortable-th.is-active i {
+                opacity: 1;
+                color: #5b53d6;
             }
 
             .report-rows-form {
@@ -1082,9 +1096,8 @@
             }
 
             body.dark-mode .report-table-tools {
-                background: #0f172a;
-                border-top-color: rgba(148, 163, 184, 0.12);
-                border-bottom-color: rgba(148, 163, 184, 0.1);
+                background: transparent;
+                border: none;
             }
 
             body.dark-mode .report-rows-label {

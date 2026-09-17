@@ -228,6 +228,8 @@
                     <input type="hidden" name="age_max" value="{{ $report['filters']['age_max'] ?? '' }}">
                     <input type="hidden" name="basis" value="{{ $report['filters']['basis'] ?? 'due' }}">
                     <input type="hidden" name="party_id" value="{{ $partyId ?? '' }}">
+                    <input type="hidden" name="sort" value="{{ request('sort') }}">
+                    <input type="hidden" name="dir" value="{{ request('dir') }}">
                     <label for="creditors-per-page" class="report-rows-label">Rows Per Page</label>
                     <select id="creditors-per-page" name="per_page" class="form-select form-select-sm report-rows-select" onchange="this.form.submit()">
                         @foreach([10, 25, 50, 100] as $size)
@@ -241,15 +243,15 @@
                 <thead>
                     <tr>
                         <th>#</th>
-                        <th>Invoice No</th>
-                        <th>Party</th>
-                        <th>Invoice Date</th>
-                        <th>Due Date</th>
+                        @include('admin.reports._sort-th', ['field' => 'invoice_number', 'label' => 'Invoice No'])
+                        @include('admin.reports._sort-th', ['field' => 'party', 'label' => 'Party'])
+                        @include('admin.reports._sort-th', ['field' => 'invoice_date', 'label' => 'Invoice Date'])
+                        @include('admin.reports._sort-th', ['field' => 'due_date', 'label' => 'Due Date'])
                         <th class="text-end">Billed Days</th>
                         <th class="text-end">Due Days</th>
-                        <th class="text-end">Amount (₹)</th>
+                        @include('admin.reports._sort-th', ['field' => 'invoice_total', 'label' => 'Amount (₹)', 'align' => 'end'])
                         <th class="text-end">Paid (₹)</th>
-                        <th class="text-end">Balance (₹) Cr</th>
+                        @include('admin.reports._sort-th', ['field' => 'balance', 'label' => 'Balance (₹) Cr', 'align' => 'end'])
                     </tr>
                 </thead>
                 <tbody>
