@@ -195,21 +195,38 @@ class AppDatabaseService {
     bool isDirty = true,
     bool markDeleted = false,
   }) async {
-    final String resolvedLocalId = localId ?? _uuid.v7();
+    final String requestedLocalId = localId ?? _uuid.v7();
     final String now = DateTime.now().toIso8601String();
+    final normalizedServerId =
+        serverId != null && serverId.trim().isNotEmpty ? serverId.trim() : null;
+    var resolvedLocalId = requestedLocalId;
 
     await database.transaction((txn) async {
-      final existing = await txn.query(
+      var existing = await txn.query(
         DbConstants.offlineRecordsTable,
         where: 'local_id = ?',
-        whereArgs: <Object?>[resolvedLocalId],
+        whereArgs: <Object?>[requestedLocalId],
         limit: 1,
       );
+
+      // Same module+server_id may already exist under a different local_id
+      // (e.g. create synced with UUID, UI later uses remote-{module}-{id}).
+      if (existing.isEmpty && normalizedServerId != null) {
+        existing = await txn.query(
+          DbConstants.offlineRecordsTable,
+          where: 'module = ? AND server_id = ?',
+          whereArgs: <Object?>[module, normalizedServerId],
+          limit: 1,
+        );
+        if (existing.isNotEmpty) {
+          resolvedLocalId = existing.first['local_id']!.toString();
+        }
+      }
 
       final data = <String, Object?>{
         'local_id': resolvedLocalId,
         'module': module,
-        'server_id': serverId,
+        'server_id': normalizedServerId,
         'payload_json': jsonEncode(payload),
         'sync_status': syncStatus,
         'sync_action': syncAction,
@@ -391,6 +408,69 @@ class AppDatabaseService {
       whereArgs: <Object?>[SyncStatus.pending, SyncStatus.failed],
       orderBy: 'created_at ASC',
     );
+  }
+
+  Future<Map<String, Object?>?> getPendingQueueItemForRecord(String localId) async {
+    final rows = await database.query(
+      DbConstants.syncQueueTable,
+      where: 'record_local_id = ? AND sync_status IN (?, ?)',
+      whereArgs: <Object?>[localId, SyncStatus.pending, SyncStatus.failed],
+      limit: 1,
+    );
+    if (rows.isEmpty) {
+      return null;
+    }
+    return rows.first;
+  }
+
+  Future<String?> getLastQueueErrorForRecord(String localId) async {
+    final rows = await database.query(
+      DbConstants.syncQueueTable,
+      columns: <String>['last_error'],
+      where: 'record_local_id = ?',
+      whereArgs: <Object?>[localId],
+      orderBy: 'updated_at DESC',
+      limit: 1,
+    );
+    if (rows.isEmpty) {
+      return null;
+    }
+    final error = rows.first['last_error']?.toString().trim();
+    if (error == null || error.isEmpty) {
+      return null;
+    }
+    return error;
+  }
+
+  Future<Map<String, dynamic>?> getOfflineRecordByLocalId(String localId) async {
+    final rows = await database.query(
+      DbConstants.offlineRecordsTable,
+      where: 'local_id = ?',
+      whereArgs: <Object?>[localId],
+      limit: 1,
+    );
+    if (rows.isEmpty) {
+      return null;
+    }
+    return _mapOfflineRecordRow(rows.first);
+  }
+
+  Future<void> rollbackFailedCreate({
+    required String localId,
+    required String module,
+  }) async {
+    await database.transaction((txn) async {
+      await txn.delete(
+        DbConstants.offlineRecordsTable,
+        where: 'local_id = ? AND module = ?',
+        whereArgs: <Object?>[localId, module],
+      );
+      await txn.delete(
+        DbConstants.syncQueueTable,
+        where: 'record_local_id = ?',
+        whereArgs: <Object?>[localId],
+      );
+    });
   }
 
   Future<void> markQueueSyncing(String queueId) async {

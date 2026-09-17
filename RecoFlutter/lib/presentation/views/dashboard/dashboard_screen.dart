@@ -275,6 +275,9 @@ class _MetricsGrid extends StatelessWidget {
         : '';
     final profit = _toDouble(statistics['profit']);
     final isNetLoss = profit < 0;
+    final profitDisplay = isNetLoss
+        ? '-${controller.formatCurrency(profit.abs())}'
+        : controller.formatCurrency(profit);
     final metrics = <_DashboardMetric>[
       _DashboardMetric(
         title: 'TOTAL INCOME',
@@ -294,7 +297,7 @@ class _MetricsGrid extends StatelessWidget {
       ),
       _DashboardMetric(
         title: isNetLoss ? 'NET LOSS' : 'NET PROFIT',
-        value: controller.formatCurrency(profit.abs()),
+        value: profitDisplay,
         caption: periodLabel.isEmpty ? 'This period' : periodLabel,
         icon: Icons.trending_up_rounded,
         color: isNetLoss ? const Color(0xFFEF5B62) : const Color(0xFF2E7BEF),

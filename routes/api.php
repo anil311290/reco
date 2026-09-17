@@ -22,12 +22,12 @@ use App\Http\Controllers\Api\ThemeApiController;
 use App\Http\Controllers\Api\TaxRateApiController;
 use App\Http\Controllers\Api\LocationApiController;
 use App\Http\Controllers\Api\StatesCitiesApiController;
-use App\Http\Controllers\Api\SyncApiController;
+use App\Http\Controllers\Api\StockValueApiController;
 use App\Http\Controllers\Api\NotificationApiController;
 use App\Http\Controllers\Api\AuditLogApiController;
 use App\Http\Controllers\Api\SupportTicketApiController;
 use App\Http\Controllers\Api\DeviceApiController;
-use App\Http\Controllers\Api\StockValueApiController;
+use App\Http\Controllers\Api\SyncApiController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -105,6 +105,7 @@ Route::prefix('v1')->middleware(['auth:sanctum', 'active.subscription'])->group(
     Route::get('/parties/{id}/history', [PartyApiController::class, 'history']);
     Route::get('/parties/{id}/outstanding-invoices', [PartyApiController::class, 'outstandingInvoices']);
     Route::post('/parties/{id}/record-payment', [PartyApiController::class, 'recordPayment']);
+    Route::post('/parties/{id}/apply-unapplied', [PartyApiController::class, 'applyUnapplied']);
     Route::get('/parties/{id}', [PartyApiController::class, 'show']);
     Route::put('/parties/{id}', [PartyApiController::class, 'update']);
     Route::delete('/parties/{id}', [PartyApiController::class, 'destroy']);

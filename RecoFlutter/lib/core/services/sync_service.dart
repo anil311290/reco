@@ -4,8 +4,10 @@ import 'dart:convert';
 import 'package:dio/dio.dart';
 import 'package:get/get.dart' hide Response;
 
+import '../config/sync_constants.dart';
 import '../database/app_database_service.dart';
 import '../network/api_client.dart';
+import '../network/api_error_message.dart';
 import '../utils/app_snackbar.dart';
 import 'network_monitor_service.dart';
 
@@ -38,25 +40,92 @@ class SyncService extends GetxService {
     return this;
   }
 
-  Future<void> syncPendingMutations({bool showSuccessMessage = true}) async {
-    final runningSync = _activeSync;
-    if (runningSync != null) {
-      await runningSync;
-      return;
-    }
+  Future<void> syncPendingMutations({
+    bool showSuccessMessage = true,
+    bool propagateErrors = false,
+  }) async {
+    while (true) {
+      final runningSync = _activeSync;
+      if (runningSync != null) {
+        await runningSync;
+        if (!propagateErrors) {
+          return;
+        }
+      }
 
-    final syncFuture = _runSync(showSuccessMessage: showSuccessMessage);
-    _activeSync = syncFuture;
-    try {
-      await syncFuture;
-    } finally {
-      if (identical(_activeSync, syncFuture)) {
-        _activeSync = null;
+      if (!await _networkMonitorService.hasInternetNow()) {
+        return;
+      }
+
+      final pendingItems = await _databaseService.getPendingSyncQueue();
+      if (pendingItems.isEmpty) {
+        return;
+      }
+
+      final syncFuture = _runSync(
+        showSuccessMessage: showSuccessMessage,
+        propagateErrors: propagateErrors,
+      );
+      _activeSync = syncFuture;
+      try {
+        await syncFuture;
+      } finally {
+        if (identical(_activeSync, syncFuture)) {
+          _activeSync = null;
+        }
+      }
+
+      if (!propagateErrors) {
+        return;
       }
     }
   }
 
-  Future<void> _runSync({required bool showSuccessMessage}) async {
+  /// Syncs a single queued record (used after user-initiated create/update).
+  Future<void> syncRecord({
+    required String localId,
+    bool propagateErrors = true,
+  }) async {
+    final runningSync = _activeSync;
+    if (runningSync != null) {
+      await runningSync;
+    }
+
+    final item = await _databaseService.getPendingQueueItemForRecord(localId);
+    if (item != null) {
+      await _syncQueueItem(
+        item,
+        propagateErrors: propagateErrors,
+      );
+      return;
+    }
+
+    if (!propagateErrors) {
+      return;
+    }
+
+    final record = await _databaseService.getOfflineRecordByLocalId(localId);
+    if (record == null) {
+      return;
+    }
+
+    final syncStatus = record['sync_status']?.toString();
+    final isDirty = record['is_dirty'] == true;
+    if (syncStatus == SyncStatus.synced && !isDirty) {
+      return;
+    }
+
+    final lastError =
+        await _databaseService.getLastQueueErrorForRecord(localId);
+    throw Exception(
+      lastError ?? 'Unable to sync this record to the server.',
+    );
+  }
+
+  Future<void> _runSync({
+    required bool showSuccessMessage,
+    required bool propagateErrors,
+  }) async {
     if (!await _networkMonitorService.hasInternetNow()) {
       return;
     }
@@ -70,7 +139,10 @@ class SyncService extends GetxService {
       }
 
       for (final item in items) {
-        await _syncQueueItem(item);
+        await _syncQueueItem(
+          item,
+          propagateErrors: propagateErrors,
+        );
       }
 
       if (showSuccessMessage) {
@@ -81,7 +153,10 @@ class SyncService extends GetxService {
     }
   }
 
-  Future<void> _syncQueueItem(Map<String, Object?> item) async {
+  Future<void> _syncQueueItem(
+    Map<String, Object?> item, {
+    bool propagateErrors = false,
+  }) async {
     final queueId = item['queue_id']?.toString();
     final endpoint = item['endpoint']?.toString();
     final method = item['method']?.toString().toUpperCase();
@@ -159,7 +234,11 @@ class SyncService extends GetxService {
 
       await _databaseService.markQueueSynced(queueId);
     } catch (error) {
-      await _databaseService.markQueueFailed(queueId, error.toString());
+      final message = extractApiErrorMessage(error);
+      await _databaseService.markQueueFailed(queueId, message);
+      if (propagateErrors) {
+        throw Exception(message);
+      }
     }
   }
 

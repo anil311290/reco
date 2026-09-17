@@ -43,6 +43,7 @@ class ApiEndpoints {
   static String partyOutstandingInvoices(Object id) =>
       '/parties/$id/outstanding-invoices';
   static String partyRecordPayment(Object id) => '/parties/$id/record-payment';
+  static String partyApplyUnapplied(Object id) => '/parties/$id/apply-unapplied';
   static const String states = '/states';
 
   static String stateCities(int stateId) => '/states/$stateId/cities';
@@ -60,6 +61,8 @@ class ApiEndpoints {
   static const String reportsLedger = '/reports/ledger';
   static const String reportsTrialBalance = '/reports/trial-balance';
   static const String reportsProfitLoss = '/reports/profit-loss';
+  static const String reportsStockValueEntries = '/reports/stock-value-entries';
+  static String stockValueEntryDetail(Object id) => '/reports/stock-value-entries/$id';
   static const String reportsReceiptPayment = '/reports/receipt-payment';
   static const String reportsBalanceSheet = '/reports/balance-sheet';
   static const String reportsDebtorsOutstanding = '/reports/debtors-outstanding';

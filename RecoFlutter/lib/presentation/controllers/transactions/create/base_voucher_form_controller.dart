@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
 import '../../../../core/config/api_endpoints.dart';
+import '../../../../core/network/api_error_message.dart';
 import '../../../../core/utils/app_date_formatter.dart';
 import '../../../../core/utils/app_snackbar.dart';
 import '../../../../data/models/masters/master_entities.dart';
@@ -29,11 +30,11 @@ abstract class BaseVoucherFormController extends GetxController {
   final formKey = GlobalKey<FormState>();
   final dateController = TextEditingController();
   final narrationController = TextEditingController();
+  final referenceController = TextEditingController();
   final isSubmitting = false.obs;
   final selectedCashBankAccount = Rxn<LookupOption>();
   final paymentRows = <PaymentVoucherRowModel>[].obs;
   final adjustmentRows = <AdjustmentVoucherRowModel>[].obs;
-  final invoiceAllocations = <Map<String, dynamic>>[].obs;
   Map<String, dynamic>? _editingPayload;
 
   String get title;
@@ -140,6 +141,7 @@ abstract class BaseVoucherFormController extends GetxController {
   void onClose() {
     dateController.dispose();
     narrationController.dispose();
+    referenceController.dispose();
     for (final row in paymentRows) {
       row.dispose();
     }
@@ -159,7 +161,7 @@ abstract class BaseVoucherFormController extends GetxController {
     _editingPayload = Map<String, dynamic>.from(payload);
     dateController.text = _shortDate(payload['voucher_date']?.toString());
     narrationController.text = (payload['narration'] ?? '').toString();
-    invoiceAllocations.clear();
+    referenceController.text = (payload['reference_number'] ?? '').toString();
 
     for (final row in paymentRows) {
       row.dispose();
@@ -204,15 +206,21 @@ abstract class BaseVoucherFormController extends GetxController {
       if (paymentRows.isEmpty) {
         paymentRows.add(PaymentVoucherRowModel());
       }
-      paymentRows.refresh();
 
-      final rawSettlements = payload['settlements'] ?? payload['invoice_settlements'];
+      final rawSettlements =
+          payload['settlements'] ?? payload['invoice_settlements'];
       if (rawSettlements is List) {
+        final allocations = <Map<String, dynamic>>[];
         for (final item in rawSettlements.whereType<Map>()) {
-          final invoiceId = _lookupInt(item['invoice_id'] ?? item['sales_invoice_id'] ?? item['purchase_invoice_id']);
-          final amount = _lookupDouble(item['amount'] ?? item['amount_allocated']);
+          final invoiceId = _lookupInt(
+            item['invoice_id'] ??
+                item['sales_invoice_id'] ??
+                item['purchase_invoice_id'],
+          );
+          final amount =
+              _lookupDouble(item['amount'] ?? item['amount_allocated']);
           if (invoiceId == null || amount <= 0) continue;
-          invoiceAllocations.add(<String, dynamic>{
+          allocations.add(<String, dynamic>{
             'invoice_id': invoiceId,
             'invoice_number': item['invoice_number'] ?? item['number'],
             'amount': amount,
@@ -220,7 +228,15 @@ abstract class BaseVoucherFormController extends GetxController {
               'reference_number': item['reference_number'],
           });
         }
+        // Hydrate against the first party particular row (web stores per-row).
+        final partyRow = paymentRows.firstWhereOrNull((row) => row.isPartyParticular);
+        if (partyRow != null && allocations.isNotEmpty) {
+          partyRow.invoiceAllocations
+            ..clear()
+            ..addAll(allocations);
+        }
       }
+      paymentRows.refresh();
       return;
     }
 
@@ -284,6 +300,7 @@ abstract class BaseVoucherFormController extends GetxController {
   ) {
     if (value == null) {
       row.account.value = null;
+      row.invoiceAllocations.clear();
       paymentRows.refresh();
       update();
       return;
@@ -292,6 +309,7 @@ abstract class BaseVoucherFormController extends GetxController {
     if (selectedCashBankAccount.value?.valueKey == value.valueKey) {
       AppSnackbar.error('Particulars cannot be the same as the cash/bank account.');
       row.account.value = null;
+      row.invoiceAllocations.clear();
       paymentRows.refresh();
       update();
       return;
@@ -303,12 +321,17 @@ abstract class BaseVoucherFormController extends GetxController {
     if (duplicate) {
       AppSnackbar.error('This particular is already selected. Combine the amount in the same row.');
       row.account.value = null;
+      row.invoiceAllocations.clear();
       paymentRows.refresh();
       update();
       return;
     }
 
+    final previousKey = row.account.value?.valueKey;
     row.account.value = value;
+    if (previousKey != value.valueKey) {
+      row.invoiceAllocations.clear();
+    }
     paymentRows.refresh();
     update();
   }
@@ -414,15 +437,23 @@ abstract class BaseVoucherFormController extends GetxController {
           payload: payload,
         );
       }
-      Get.back<void>();
-      AppSnackbar.success(
-        isEditing
-            ? '$title was updated locally and will sync when available.'
-            : '$title was saved locally and will sync when available.',
-      );
-      unawaited(_refreshList());
+
+      final syncedOnline = await repository.networkMonitorService.hasInternetNow();
+      await _refreshList();
+      Get.back<bool>(result: true);
+      if (syncedOnline) {
+        AppSnackbar.success(
+          isEditing ? '$title updated successfully.' : '$title saved successfully.',
+        );
+      } else {
+        AppSnackbar.success(
+          isEditing
+              ? '$title was updated locally and will sync when available.'
+              : '$title was saved locally and will sync when available.',
+        );
+      }
     } catch (error) {
-      AppSnackbar.error(error.toString());
+      AppSnackbar.errorDialog(extractApiErrorMessage(error));
     } finally {
       isSubmitting.value = false;
     }
@@ -463,10 +494,11 @@ abstract class BaseVoucherFormController extends GetxController {
       'narration': narrationController.text.trim().isEmpty
           ? null
           : narrationController.text.trim(),
+      'reference_number': referenceController.text.trim().isEmpty
+          ? null
+          : referenceController.text.trim(),
       'payment_rows': validRows.map((row) {
         final account = row.account.value;
-        final isPartyRow = account != null &&
-            (account.kind == 'party' || account.valueKey.startsWith('party:'));
         final rowPayload = <String, dynamic>{
           'account_id': account?.valueKey,
           'amount': row.amount,
@@ -474,8 +506,8 @@ abstract class BaseVoucherFormController extends GetxController {
               ? null
               : row.descriptionController.text.trim(),
         };
-        if (isPartyRow && invoiceAllocations.isNotEmpty) {
-          rowPayload['invoice_allocations'] = invoiceAllocations
+        if (row.isPartyParticular && row.invoiceAllocations.isNotEmpty) {
+          rowPayload['invoice_allocations'] = row.invoiceAllocations
               .map(
                 (item) => <String, dynamic>{
                   'invoice_id': item['invoice_id'],
@@ -528,17 +560,18 @@ abstract class BaseVoucherFormController extends GetxController {
   }
 
   Future<void> _refreshList() async {
+    final forceRemote = repository.networkMonitorService.isOnline.value;
     if (module == 'payments' && Get.isRegistered<PaymentsController>()) {
-      await Get.find<PaymentsController>().refreshData();
+      await Get.find<PaymentsController>().refreshData(forceRemote: forceRemote);
     }
     if (module == 'receipts' && Get.isRegistered<ReceiptsController>()) {
-      await Get.find<ReceiptsController>().refreshData();
+      await Get.find<ReceiptsController>().refreshData(forceRemote: forceRemote);
     }
     if (module == 'adjustments' && Get.isRegistered<AdjustmentsController>()) {
-      await Get.find<AdjustmentsController>().refreshData();
+      await Get.find<AdjustmentsController>().refreshData(forceRemote: forceRemote);
     }
     if (Get.isRegistered<AllVouchersController>()) {
-      await Get.find<AllVouchersController>().refreshData();
+      await Get.find<AllVouchersController>().refreshData(forceRemote: forceRemote);
     }
   }
 

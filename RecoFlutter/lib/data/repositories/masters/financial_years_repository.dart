@@ -39,7 +39,8 @@ class FinancialYearsRepository extends OfflineFirstRepository {
     );
     final records = _extractList(response.data?['data']);
     await mergeRemoteRecords(module: _module, records: records);
-    return records.map(FinancialYearEntity.fromRecord).toList()
+    final local = await getLocalModuleRecords(_module);
+    return local.map(FinancialYearEntity.fromRecord).toList()
       ..sort(_sortFinancialYears);
   }
 

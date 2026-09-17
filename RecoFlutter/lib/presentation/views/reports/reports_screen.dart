@@ -4,7 +4,6 @@ import 'package:get/get.dart';
 
 import '../../bindings/reports_binding.dart';
 import '../../controllers/reports/report_lookup_controller.dart';
-import 'aging_summary_report_screen.dart';
 import 'balance_sheet_report_screen.dart';
 import 'creditors_outstanding_report_screen.dart';
 import 'day_book_report_screen.dart';
@@ -25,7 +24,8 @@ class ReportsScreen extends StatelessWidget {
       ReportsBinding().dependencies();
     }
 
-    final items = <ReportFeatureItem>[
+    // Web sidebar → Accounting Reports
+    final accountingItems = <ReportFeatureItem>[
       ReportFeatureItem(
         title: 'Day Book',
         subtitle:
@@ -75,40 +75,38 @@ class ReportsScreen extends StatelessWidget {
         onTap: () => Get.to(() => const BalanceSheetReportScreen()),
       ),
       ReportFeatureItem(
+        title: 'Stock Register',
+        subtitle: 'Item-wise stock movements for a selected period.',
+        icon: FontAwesomeIcons.boxesStacked.data,
+        color: const Color(0xFF0284C7),
+        onTap: () => Get.to(() => const StockRegisterReportScreen()),
+      ),
+    ];
+
+    // Web sidebar → AP / AR Reports
+    final apArItems = <ReportFeatureItem>[
+      ReportFeatureItem(
         title: 'Receivables',
         subtitle:
-            'Debtors outstanding from party ledger balances (not fake aging).',
+            'Invoice-wise and party-wise debtors outstanding with aging filters.',
         icon: FontAwesomeIcons.handHoldingDollar.data,
         color: const Color(0xFFDC2626),
         onTap: () => Get.to(() => const DebtorsOutstandingReportScreen()),
       ),
       ReportFeatureItem(
         title: 'Payables',
-        subtitle: 'Creditors outstanding from party ledger balances.',
+        subtitle:
+            'Invoice-wise and party-wise creditors outstanding with aging filters.',
         icon: FontAwesomeIcons.wallet.data,
         color: const Color(0xFF7C3AED),
         onTap: () => Get.to(() => const CreditorsOutstandingReportScreen()),
       ),
       ReportFeatureItem(
-        title: 'Aging Summary',
-        subtitle: 'Combined AR/AP overdue buckets and aging detail.',
-        icon: FontAwesomeIcons.hourglassHalf.data,
-        color: const Color(0xFFEA580C),
-        onTap: () => Get.to(() => const AgingSummaryReportScreen()),
-      ),
-      ReportFeatureItem(
-        title: 'Unapplied Receipts',
+        title: 'Unapplied Cash',
         subtitle: 'Receipts and payments not fully applied to invoices.',
         icon: FontAwesomeIcons.circleDollarToSlot.data,
         color: const Color(0xFF0D9488),
         onTap: () => Get.to(() => const UnappliedReceiptsReportScreen()),
-      ),
-      ReportFeatureItem(
-        title: 'Stock Register',
-        subtitle: 'Item-wise stock movements for a selected period.',
-        icon: FontAwesomeIcons.boxesStacked.data,
-        color: const Color(0xFF0284C7),
-        onTap: () => Get.to(() => const StockRegisterReportScreen()),
       ),
       ReportFeatureItem(
         title: 'Settlement Audit',
@@ -118,6 +116,15 @@ class ReportsScreen extends StatelessWidget {
         onTap: () => Get.to(() => const SettlementAuditReportScreen()),
       ),
     ];
+
+    // Extra vs web sidebar — keep commented for easy restore.
+    // ReportFeatureItem(
+    //   title: 'Aging Summary',
+    //   subtitle: 'Combined AR/AP overdue buckets and aging detail.',
+    //   icon: FontAwesomeIcons.hourglassHalf.data,
+    //   color: const Color(0xFFEA580C),
+    //   onTap: () => Get.to(() => const AgingSummaryReportScreen()),
+    // ),
 
     return Scaffold(
       appBar: AppBar(
@@ -140,23 +147,32 @@ class ReportsScreen extends StatelessWidget {
               ? 2
               : 1;
           final double mainAxisExtent = crossAxisCount == 1 ? 130 : 186;
+
           return ListView(
-            padding: const EdgeInsets.symmetric(horizontal: 14),
+            padding: const EdgeInsets.fromLTRB(14, 10, 14, 20),
             children: <Widget>[
-              _ReportsHeroCard(reportCount: items.length),
-              const SizedBox(height: 14),
-              GridView.builder(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: crossAxisCount,
-                  crossAxisSpacing: 10,
-                  mainAxisSpacing: 10,
-                  mainAxisExtent: mainAxisExtent,
-                ),
-                itemCount: items.length,
-                itemBuilder: (context, index) =>
-                    ReportFeatureCard(item: items[index]),
+              _ReportsSectionHeader(
+                title: 'Accounting Reports',
+                subtitle: 'Books, ledgers and financial statements',
+                count: accountingItems.length,
+              ),
+              const SizedBox(height: 10),
+              _ReportsFeatureGrid(
+                items: accountingItems,
+                crossAxisCount: crossAxisCount,
+                mainAxisExtent: mainAxisExtent,
+              ),
+              const SizedBox(height: 18),
+              _ReportsSectionHeader(
+                title: 'AP / AR Reports',
+                subtitle: 'Receivables, payables and unapplied cash',
+                count: apArItems.length,
+              ),
+              const SizedBox(height: 10),
+              _ReportsFeatureGrid(
+                items: apArItems,
+                crossAxisCount: crossAxisCount,
+                mainAxisExtent: mainAxisExtent,
               ),
             ],
           );
@@ -166,10 +182,16 @@ class ReportsScreen extends StatelessWidget {
   }
 }
 
-class _ReportsHeroCard extends StatelessWidget {
-  const _ReportsHeroCard({required this.reportCount});
+class _ReportsSectionHeader extends StatelessWidget {
+  const _ReportsSectionHeader({
+    required this.title,
+    required this.subtitle,
+    required this.count,
+  });
 
-  final int reportCount;
+  final String title;
+  final String subtitle;
+  final int count;
 
   @override
   Widget build(BuildContext context) {
@@ -177,7 +199,7 @@ class _ReportsHeroCard extends StatelessWidget {
     const primary = Color(0xFF2979FF);
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
         color: theme.cardColor,
         borderRadius: BorderRadius.circular(12),
@@ -193,42 +215,72 @@ class _ReportsHeroCard extends StatelessWidget {
       child: Row(
         children: <Widget>[
           Expanded(
-            child: Text(
-              'Accounting Reports',
-              style: theme.textTheme.titleLarge?.copyWith(
-                fontWeight: FontWeight.w800,
-                fontSize: 18,
-                letterSpacing: -.3,
-              ),
-            ),
-          ),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
-            decoration: BoxDecoration(
-              color: primary.withValues(alpha: .08),
-              borderRadius: BorderRadius.circular(999),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: <Widget>[
-                Icon(
-                  FontAwesomeIcons.tableCellsLarge.data,
-                  size: 14,
-                  color: primary,
-                ),
-                const SizedBox(width: 7),
                 Text(
-                  '$reportCount report views',
-                  style: theme.textTheme.labelLarge?.copyWith(
-                    fontWeight: FontWeight.w700,
-                    color: primary,
+                  title,
+                  style: theme.textTheme.titleLarge?.copyWith(
+                    fontWeight: FontWeight.w800,
+                    fontSize: 17,
+                    letterSpacing: -.3,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  subtitle,
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                    fontSize: 11.5,
                   ),
                 ),
               ],
             ),
           ),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+            decoration: BoxDecoration(
+              color: primary.withValues(alpha: .08),
+              borderRadius: BorderRadius.circular(999),
+            ),
+            child: Text(
+              '$count',
+              style: theme.textTheme.labelLarge?.copyWith(
+                fontWeight: FontWeight.w800,
+                color: primary,
+              ),
+            ),
+          ),
         ],
       ),
+    );
+  }
+}
+
+class _ReportsFeatureGrid extends StatelessWidget {
+  const _ReportsFeatureGrid({
+    required this.items,
+    required this.crossAxisCount,
+    required this.mainAxisExtent,
+  });
+
+  final List<ReportFeatureItem> items;
+  final int crossAxisCount;
+  final double mainAxisExtent;
+
+  @override
+  Widget build(BuildContext context) {
+    return GridView.builder(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: crossAxisCount,
+        crossAxisSpacing: 10,
+        mainAxisSpacing: 10,
+        mainAxisExtent: mainAxisExtent,
+      ),
+      itemCount: items.length,
+      itemBuilder: (context, index) => ReportFeatureCard(item: items[index]),
     );
   }
 }

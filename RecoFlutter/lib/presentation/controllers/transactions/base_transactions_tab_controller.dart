@@ -42,6 +42,7 @@ abstract class BaseTransactionsTabController extends GetxController {
   bool get supportsPartyFilter;
   bool get supportsWorkflowActions;
   bool get supportsDeleteAction => true;
+  bool get supportsDateFilter => true;
   List<String> get statusOptions;
   Map<String, dynamic> get extraQueryParameters => const <String, dynamic>{};
 

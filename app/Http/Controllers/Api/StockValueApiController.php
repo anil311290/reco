@@ -81,7 +81,6 @@ class StockValueApiController extends Controller
                 (int) $request->validated('financial_year_id'),
                 $request->validated()
             );
-
             return ResponseHelper::success($entry, 'Stock value entry created successfully', 201);
         } catch (\InvalidArgumentException $e) {
             return ResponseHelper::error($e->getMessage(), 422);

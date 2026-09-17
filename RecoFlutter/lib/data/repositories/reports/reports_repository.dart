@@ -216,4 +216,66 @@ class ReportsRepository extends OfflineFirstRepository {
           items.length,
     );
   }
+
+  Future<List<Map<String, dynamic>>> getStockValueEntries({
+    required int financialYearId,
+    String? fromDate,
+    String? toDate,
+  }) async {
+    final response = await apiClient.get<Map<String, dynamic>>(
+      ApiEndpoints.reportsStockValueEntries,
+      queryParameters: <String, dynamic>{
+        'financial_year_id': financialYearId,
+        if (fromDate != null && fromDate.isNotEmpty) 'from_date': fromDate,
+        if (toDate != null && toDate.isNotEmpty) 'to_date': toDate,
+      },
+    );
+    final data = response.data?['data'];
+    if (data is! List) {
+      return <Map<String, dynamic>>[];
+    }
+    return data
+        .whereType<Map>()
+        .map((item) => Map<String, dynamic>.from(item))
+        .toList();
+  }
+
+  Future<Map<String, dynamic>> saveStockValueEntry({
+    required int financialYearId,
+    required String valuationDate,
+    required double stockValue,
+    String? remarks,
+  }) async {
+    final response = await apiClient.post<Map<String, dynamic>>(
+      ApiEndpoints.reportsStockValueEntries,
+      data: <String, dynamic>{
+        'financial_year_id': financialYearId,
+        'valuation_date': valuationDate,
+        'stock_value': stockValue,
+        if (remarks != null && remarks.trim().isNotEmpty) 'remarks': remarks.trim(),
+      },
+    );
+    await databaseService.clearCachedResponses(module: _module);
+    return Map<String, dynamic>.from(response.data ?? <String, dynamic>{});
+  }
+
+  Future<Map<String, dynamic>> updateStockValueEntry({
+    required int entryId,
+    required int financialYearId,
+    required String valuationDate,
+    required double stockValue,
+    String? remarks,
+  }) async {
+    final response = await apiClient.put<Map<String, dynamic>>(
+      ApiEndpoints.stockValueEntryDetail(entryId),
+      data: <String, dynamic>{
+        'financial_year_id': financialYearId,
+        'valuation_date': valuationDate,
+        'stock_value': stockValue,
+        if (remarks != null && remarks.trim().isNotEmpty) 'remarks': remarks.trim(),
+      },
+    );
+    await databaseService.clearCachedResponses(module: _module);
+    return Map<String, dynamic>.from(response.data ?? <String, dynamic>{});
+  }
 }

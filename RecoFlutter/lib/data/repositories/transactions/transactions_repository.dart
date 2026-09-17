@@ -57,11 +57,13 @@ class TransactionsRepository extends OfflineFirstRepository {
     required String module,
     required String endpoint,
     required Map<String, dynamic> payload,
+    bool awaitSyncWhenOnline = true,
   }) async {
     final localId = await queueCreate(
       module: module,
       endpoint: endpoint,
       payload: payload,
+      awaitSyncWhenOnline: awaitSyncWhenOnline,
     );
     await invalidateRelatedCaches(module: module);
     return localId;
@@ -151,6 +153,7 @@ class TransactionsRepository extends OfflineFirstRepository {
     required String localId,
     String? serverId,
     required Map<String, dynamic> payload,
+    bool awaitSyncWhenOnline = true,
   }) async {
     await queueUpdate(
       module: module,
@@ -158,6 +161,7 @@ class TransactionsRepository extends OfflineFirstRepository {
       payload: payload,
       localId: localId,
       serverId: serverId,
+      awaitSyncWhenOnline: awaitSyncWhenOnline,
     );
   }
 

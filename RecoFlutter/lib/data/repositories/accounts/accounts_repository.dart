@@ -20,7 +20,7 @@ class AccountsRepository extends OfflineFirstRepository {
   }) async {
     final localRecords = await getLocalModuleRecords(_module);
     final localPayloads = localRecords
-        .map((record) => (record['payload'] as Map<String, dynamic>))
+        .map(_offlineRecordToEntityMap)
         .toList()
       ..sort(_sortAccounts);
 
@@ -45,7 +45,7 @@ class AccountsRepository extends OfflineFirstRepository {
   }) async {
     final localRecords = await getLocalModuleRecords(_module);
     final localPayloads = localRecords
-        .map((record) => Map<String, dynamic>.from(record['payload'] as Map))
+        .map(_offlineRecordToEntityMap)
         .toList()
       ..sort(_sortAccounts);
     final filtered = _applyFilters(localPayloads, queryParameters);
@@ -68,7 +68,9 @@ class AccountsRepository extends OfflineFirstRepository {
     final records = _extractList(data)..sort(_sortAccounts);
 
     await mergeRemoteRecords(module: _module, records: records);
-    return records;
+    final localRecords = await getLocalModuleRecords(_module);
+    return localRecords.map(_offlineRecordToEntityMap).toList()
+      ..sort(_sortAccounts);
   }
 
   Future<PaginatedResult<AccountEntity>> refreshPaginatedAccounts({
@@ -89,22 +91,12 @@ class AccountsRepository extends OfflineFirstRepository {
     final records = _extractList(data)..sort(_sortAccounts);
     await mergeRemoteRecords(module: _module, records: records);
 
-    if (data is Map<String, dynamic> && data['data'] is List) {
-      return PaginatedResult<AccountEntity>(
-        items: records.map(AccountEntity.fromRecord).toList(),
-        currentPage: int.tryParse(data['current_page']?.toString() ?? '$page') ?? page,
-        lastPage: int.tryParse(data['last_page']?.toString() ?? '$page') ?? page,
-        perPage: int.tryParse(data['per_page']?.toString() ?? '$perPage') ?? perPage,
-        total: int.tryParse(data['total']?.toString() ?? '${records.length}') ?? records.length,
-      );
-    }
-
-    final localResult = await getPaginatedAccounts(
+    // Always map from local DB so local_id is preserved for update/delete.
+    return getPaginatedAccounts(
       queryParameters: queryParameters,
       page: page,
       perPage: perPage,
     );
-    return localResult;
   }
 
   Future<String> createAccountOffline(Map<String, dynamic> payload) {
@@ -144,7 +136,7 @@ class AccountsRepository extends OfflineFirstRepository {
       'is_active': isActive,
     };
 
-    await databaseService.saveLocalRecord(
+    final resolvedLocalId = await databaseService.saveLocalRecord(
       module: _module,
       payload: localPayload,
       syncAction: 'update',
@@ -157,7 +149,7 @@ class AccountsRepository extends OfflineFirstRepository {
       endpoint: '${ApiEndpoints.accounts}/$accountId/status',
       method: 'PATCH',
       payload: <String, dynamic>{'status': isActive},
-      recordLocalId: localId,
+      recordLocalId: resolvedLocalId,
     );
 
     if (await networkMonitorService.hasInternetNow()) {
@@ -255,6 +247,17 @@ class AccountsRepository extends OfflineFirstRepository {
     }
 
     return <Map<String, dynamic>>[];
+  }
+
+  /// Flatten offline row so AccountEntity.fromRecord keeps local_id.
+  Map<String, dynamic> _offlineRecordToEntityMap(Map<String, dynamic> record) {
+    final payload = Map<String, dynamic>.from(record['payload'] as Map);
+    return <String, dynamic>{
+      ...payload,
+      'local_id': record['local_id'],
+      'sync_status': record['sync_status'],
+      'is_dirty': record['is_dirty'] == true,
+    };
   }
 
   List<Map<String, dynamic>> _applyFilters(

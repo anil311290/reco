@@ -144,15 +144,35 @@ class PaymentVoucherRowModel {
     LookupOption? account,
     String amount = '',
     String description = '',
+    List<Map<String, dynamic>>? invoiceAllocations,
   }) : account = ValueNotifier<LookupOption?>(account),
        amountController = TextEditingController(text: amount),
-       descriptionController = TextEditingController(text: description);
+       descriptionController = TextEditingController(text: description),
+       invoiceAllocations = List<Map<String, dynamic>>.from(
+         invoiceAllocations ?? const <Map<String, dynamic>>[],
+       );
 
   final ValueNotifier<LookupOption?> account;
   final TextEditingController amountController;
   final TextEditingController descriptionController;
+  final List<Map<String, dynamic>> invoiceAllocations;
 
   double get amount => double.tryParse(amountController.text.trim()) ?? 0;
+
+  bool get isPartyParticular {
+    final selected = account.value;
+    if (selected == null) {
+      return false;
+    }
+    final kind = (selected.kind ?? '').toLowerCase();
+    return kind == 'party' || selected.valueKey.startsWith('party:');
+  }
+
+  double get allocatedTotal => invoiceAllocations.fold<double>(
+        0,
+        (sum, item) =>
+            sum + (double.tryParse(item['amount']?.toString() ?? '') ?? 0),
+      );
 
   void dispose() {
     account.dispose();

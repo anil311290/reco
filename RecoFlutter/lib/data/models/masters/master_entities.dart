@@ -8,6 +8,8 @@ class LookupOption {
     this.kind,
     this.transactionMode,
     this.availableBalance,
+    this.partyBalance,
+    this.partyBalanceType,
   });
 
   final int id;
@@ -18,6 +20,8 @@ class LookupOption {
   final String? kind;
   final String? transactionMode;
   final double? availableBalance;
+  final double? partyBalance;
+  final String? partyBalanceType;
 
   String get valueKey {
     final raw = rawId?.trim();
@@ -57,6 +61,8 @@ class LookupOption {
       kind: json['kind']?.toString(),
       transactionMode: json['transaction_mode']?.toString(),
       availableBalance: _parseNullableDouble(json['available_balance']),
+      partyBalance: _parseNullableDouble(json['party_balance']),
+      partyBalanceType: json['party_balance_type']?.toString(),
     );
   }
 }
@@ -135,10 +141,14 @@ class PartyEntity {
       mobile: (payload['mobile'] ?? '').toString(),
       email: (payload['email'] ?? '').toString(),
       address: (payload['address'] ?? '').toString(),
-      stateId: _tryParseInt(payload['state_id']),
-      state: (payload['state'] ?? '').toString(),
-      cityId: _tryParseInt(payload['city_id']),
-      city: (payload['city'] ?? '').toString(),
+      stateId: _tryParseInt(payload['state_id']) ??
+          _tryParseNestedId(payload['state']),
+      state: _tryParseLocationName(payload['state']) ??
+          (payload['state'] ?? '').toString(),
+      cityId: _tryParseInt(payload['city_id']) ??
+          _tryParseNestedId(payload['city']),
+      city: _tryParseLocationName(payload['city']) ??
+          (payload['city'] ?? '').toString(),
       postalCode: (payload['postal_code'] ?? '').toString(),
       gstin: (payload['gstin'] ?? payload['gst_number'] ?? '').toString(),
       panNumber: (payload['pan_number'] ?? '').toString(),
@@ -564,6 +574,28 @@ int? _tryParseInt(dynamic value) {
     return value.toInt();
   }
   return int.tryParse(value.toString());
+}
+
+int? _tryParseNestedId(dynamic value) {
+  if (value is Map) {
+    return _tryParseInt(value['id']);
+  }
+  return null;
+}
+
+String? _tryParseLocationName(dynamic value) {
+  if (value is Map) {
+    final name = (value['name'] ?? value['label'] ?? value['text'])?.toString();
+    if (name != null && name.trim().isNotEmpty) {
+      return name.trim();
+    }
+    return null;
+  }
+  if (value == null) {
+    return null;
+  }
+  final text = value.toString().trim();
+  return text.isEmpty ? null : text;
 }
 
 double _parseDouble(dynamic value) {

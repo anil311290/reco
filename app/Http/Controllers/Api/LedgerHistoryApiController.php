@@ -21,6 +21,39 @@ class LedgerHistoryApiController extends Controller
     {
         $history = $this->historyService->getLedgerHistory($ledgerId);
 
-        return ResponseHelper::success($history);
+        $rows = $history->map(function ($item) {
+            $referenceType = $item->reference_type ?? '-';
+            $referenceId = $item->reference_id;
+
+            $referenceLabel = $referenceId
+                ? "$referenceType #$referenceId"
+                : (string) $referenceType;
+
+            $createdBy = $item->created_by;
+            if ($createdBy && is_numeric($createdBy)) {
+                $name = \App\Models\User::query()->whereKey((int) $createdBy)->value('name');
+                if ($name) {
+                    $createdBy = $name;
+                }
+            }
+
+            return [
+                'id' => $item->id,
+                'created_at' => optional($item->created_at)->toISOString(),
+                'party' => $item->party
+                    ? [
+                        'id' => $item->party->id,
+                        'name' => $item->party->name,
+                    ]
+                    : null,
+                'reference_type' => $referenceType,
+                'reference_id' => $referenceId,
+                'reference_label' => $referenceLabel,
+                'notes' => $item->notes,
+                'created_by' => $createdBy ?: 'System',
+            ];
+        })->values();
+
+        return ResponseHelper::success($rows);
     }
 }

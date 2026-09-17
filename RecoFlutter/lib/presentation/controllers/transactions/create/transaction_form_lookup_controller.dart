@@ -224,6 +224,8 @@ class TransactionFormLookupController extends GetxController {
               kind: record['kind']?.toString(),
               transactionMode: record['transaction_mode']?.toString(),
               availableBalance: _parseLookupDouble(record['available_balance']),
+              partyBalance: _parseLookupDouble(record['party_balance']),
+              partyBalanceType: record['party_balance_type']?.toString(),
             );
           },
         )

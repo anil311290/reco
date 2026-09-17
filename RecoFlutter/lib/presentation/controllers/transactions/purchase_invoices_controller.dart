@@ -22,7 +22,10 @@ class PurchaseInvoicesController extends BaseTransactionsTabController {
   String get searchHint => 'Search by invoice no or supplier...';
 
   @override
-  bool get supportsPartyFilter => true;
+  bool get supportsPartyFilter => false;
+
+  @override
+  bool get supportsDateFilter => false;
 
   @override
   bool get supportsWorkflowActions => false;
@@ -35,5 +38,6 @@ class PurchaseInvoicesController extends BaseTransactionsTabController {
         'partial',
         'paid',
         'overdue',
+        'cancelled',
       ];
 }

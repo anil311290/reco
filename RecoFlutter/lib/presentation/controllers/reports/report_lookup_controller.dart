@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
 import '../../../core/utils/app_date_formatter.dart';
@@ -73,12 +74,49 @@ class ReportLookupController extends GetxController {
   String formatFinancialYearStart(int? id) {
     final item = findFinancialYearById(id) ??
         (currentFinancialYear.isEmpty ? null : currentFinancialYear);
-    return AppDateFormatter.formatDisplay(item?['start_date']);
+    final formatted = AppDateFormatter.formatDisplay(item?['start_date']);
+    if (formatted.trim().isNotEmpty) {
+      return formatted;
+    }
+    // Web fallback when FY is missing: first day of current month.
+    final now = DateTime.now();
+    return AppDateFormatter.formatDisplay(DateTime(now.year, now.month, 1));
   }
 
   String formatFinancialYearEnd(int? id) {
     final item = findFinancialYearById(id) ??
         (currentFinancialYear.isEmpty ? null : currentFinancialYear);
-    return AppDateFormatter.formatDisplay(item?['end_date']);
+    final formatted = AppDateFormatter.formatDisplay(item?['end_date']);
+    if (formatted.trim().isNotEmpty) {
+      return formatted;
+    }
+    // Web fallback when FY is missing: today.
+    return AppDateFormatter.formatDisplay(DateTime.now());
+  }
+
+  /// Web `resolveReportContext` default: financial year start → end.
+  void applyFinancialYearDateRange({
+    required int? financialYearId,
+    required TextEditingController fromController,
+    required TextEditingController toController,
+  }) {
+    fromController.text = formatFinancialYearStart(financialYearId);
+    toController.text = formatFinancialYearEnd(financialYearId);
+  }
+
+  /// Web unapplied / stock-style default: month start → today.
+  void applyMonthToDateRange({
+    required TextEditingController fromController,
+    required TextEditingController toController,
+  }) {
+    final now = DateTime.now();
+    fromController.text =
+        AppDateFormatter.formatDisplay(DateTime(now.year, now.month, 1));
+    toController.text = AppDateFormatter.formatDisplay(now);
+  }
+
+  /// Web as-of default: today.
+  void applyAsOfToday(TextEditingController controller) {
+    controller.text = AppDateFormatter.formatDisplay(DateTime.now());
   }
 }

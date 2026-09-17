@@ -76,30 +76,32 @@ class _LedgerHistoryScreenState extends State<LedgerHistoryScreen> {
                         emptyText: 'No history found for this ledger entry.',
                         minWidth: 920,
                         columns: <DataColumn2>[
-                          masterColumn(context, 'Date', size: ColumnSize.M),
-                          masterColumn(context, 'Party', size: ColumnSize.L),
-                          masterColumn(context, 'Reference', size: ColumnSize.M),
-                          masterColumn(context, 'Notes', size: ColumnSize.L),
-                          masterColumn(context, 'Created By', size: ColumnSize.M),
-                        ],
-                        rows: rows.map((item) {
-                          final party = item['party'] is Map<String, dynamic>
-                              ? Map<String, dynamic>.from(item['party'] as Map<String, dynamic>)
-                              : <String, dynamic>{};
-                          final referenceType = (item['reference_type'] ?? '-').toString();
-                          final referenceId = (item['reference_id'] ?? '').toString();
-                          return DataRow(
-                            cells: <DataCell>[
-                              masterTextCell(_formatDateTime((item['created_at'] ?? '').toString())),
-                              masterTextCell((party['name'] ?? 'N/A').toString()),
-                              masterTextCell(
-                                referenceId.isEmpty ? referenceType : '$referenceType #$referenceId',
-                              ),
-                              masterTextCell((item['notes'] ?? '-').toString()),
-                              masterTextCell((item['created_by'] ?? 'System').toString()),
+                              masterColumn(context, 'Date', size: ColumnSize.M),
+                              masterColumn(context, 'Party', size: ColumnSize.L),
+                              masterColumn(context, 'Reference', size: ColumnSize.M),
+                              masterColumn(context, 'Notes', size: ColumnSize.L),
+                              masterColumn(context, 'Created By', size: ColumnSize.M),
                             ],
-                          );
-                        }).toList(),
+                            rows: rows.map((item) {
+                              final party = item['party'] is Map<String, dynamic>
+                                  ? Map<String, dynamic>.from(item['party'] as Map<String, dynamic>)
+                                  : <String, dynamic>{};
+                              final referenceType = (item['reference_type'] ?? '-').toString();
+                              final referenceId = (item['reference_id'] ?? '').toString();
+                              final referenceLabel = (item['reference_label'] as String?) ??
+                                  (referenceId.isEmpty
+                                      ? referenceType
+                                      : '$referenceType #$referenceId');
+                              return DataRow(
+                                cells: <DataCell>[
+                                  masterTextCell(_formatDateTime((item['created_at'] ?? '').toString())),
+                                  masterTextCell((party['name'] ?? 'N/A').toString()),
+                                  masterTextCell(referenceLabel),
+                                  masterTextCell((item['notes'] ?? '-').toString()),
+                                  masterTextCell((item['created_by'] ?? 'System').toString()),
+                                ],
+                              );
+                            }).toList(),
                       ),
                     ),
             ),

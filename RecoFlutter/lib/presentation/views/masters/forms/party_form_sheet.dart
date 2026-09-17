@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
@@ -70,10 +72,51 @@ class _PartyFormSheetState extends State<PartyFormSheet> {
     selectedStateId = entity?.stateId;
     selectedCityId = entity?.cityId;
     _isActive = entity?.isActive ?? true;
-    if (selectedStateId != null) {
-      lookupController.loadCitiesForState(selectedStateId);
-    }
+    unawaited(_prefillLocationSelections(entity));
     _loadOpeningDateDefault();
+  }
+
+  Future<void> _prefillLocationSelections(PartyEntity? entity) async {
+    if (entity == null) {
+      return;
+    }
+
+    if (lookupController.states.isEmpty) {
+      await lookupController.loadStates();
+    }
+
+    var stateId = entity.stateId;
+    var cityId = entity.cityId;
+    final stateName = entity.state.trim();
+    final cityName = entity.city.trim();
+
+    if (stateId == null && stateName.isNotEmpty) {
+      stateId = lookupController.states
+          .firstWhereOrNull(
+            (item) => item.label.toLowerCase() == stateName.toLowerCase(),
+          )
+          ?.id;
+    }
+
+    if (stateId != null) {
+      await lookupController.loadCitiesForState(stateId);
+      if (cityId == null && cityName.isNotEmpty) {
+        cityId = lookupController.cities
+            .firstWhereOrNull(
+              (item) => item.label.toLowerCase() == cityName.toLowerCase(),
+            )
+            ?.id;
+      }
+    }
+
+    if (!mounted) {
+      return;
+    }
+
+    setState(() {
+      selectedStateId = stateId;
+      selectedCityId = cityId;
+    });
   }
 
   @override

@@ -7,6 +7,8 @@ use App\Services\ReportService;
 use App\Services\LedgerService;
 use App\Models\Account;
 use App\Models\FinancialYear;
+use App\Models\PurchaseInvoice;
+use App\Models\SalesInvoice;
 use App\Helpers\ResponseHelper;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -253,6 +255,41 @@ class ReportApiController extends Controller
         $toDate = $validated['to_date'] ?? now()->toDateString();
 
         $items = collect($this->reportService->getUnappliedReceiptsAndPayments($companyId, $fromDate, $toDate));
+
+        $items->each(function (array &$item) use ($companyId, $toDate) {
+            $item['allocation_source'] = $item['allocation_source'] ?? 'voucher';
+            $party = $item['party'];
+            $partyId = is_object($party) ? $party->id : ($party['id'] ?? null);
+            $invoiceQuery = $item['invoice_type'] === 'sales' ? SalesInvoice::query() : PurchaseInvoice::query();
+            $item['party_id'] = $partyId;
+            $item['party'] = [
+                'id' => $partyId,
+                'name' => is_object($party) ? $party->name : ($party['name'] ?? null),
+                'party_code' => is_object($party) ? $party->party_code : ($party['party_code'] ?? null),
+                'type' => is_object($party) ? $party->type : ($party['type'] ?? null),
+            ];
+            $item['invoices'] = $invoiceQuery
+                ->where('company_id', $companyId)
+                ->where('party_id', $partyId)
+                ->whereNotIn('status', ['paid', 'cancelled'])
+                ->where('balance_due', '>', 0)
+                ->whereDate('invoice_date', '<=', $toDate)
+                ->orderBy('due_date')
+                ->orderBy('invoice_date')
+                ->get()
+                ->map(fn ($inv) => [
+                    'id' => $inv->id,
+                    'invoice_number' => $inv->invoice_number,
+                    'invoice_date' => $inv->invoice_date?->toDateString(),
+                    'due_date' => $inv->due_date?->toDateString(),
+                    'balance_due' => (float) $inv->balance_due,
+                    'total' => (float) $inv->total,
+                    'status' => $inv->status,
+                ])
+                ->values()
+                ->all();
+            unset($item['voucher']);
+        });
 
         return ResponseHelper::success([
             'from_date' => $fromDate,

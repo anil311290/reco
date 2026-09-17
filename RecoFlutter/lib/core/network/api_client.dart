@@ -35,9 +35,12 @@ class ApiClient {
           }
 
           final silentError = error.requestOptions.extra['silentError'] == true;
-          var message = error.response?.data is Map<String, dynamic>
-              ? (error.response?.data['message']?.toString() ?? error.message)
-              : error.message;
+          final responseData = error.response?.data;
+          final responseMap = responseData is Map<String, dynamic>
+              ? responseData
+              : <String, dynamic>{};
+
+          var message = responseMap['message']?.toString() ?? error.message;
 
           if (message != null &&
               (message.contains('SQLSTATE') ||
@@ -47,7 +50,20 @@ class ApiClient {
           }
 
           if (!silentError && message != null && message.isNotEmpty) {
-            AppSnackbar.error(message);
+            // Surface server-returned validation/business errors via a modal
+            // dialog so the user can clearly see and dismiss them. The
+            // optional `errors` map (Laravel validation payload) is shown
+            // under the main message for additional context.
+            final details = responseMap['errors'];
+            final detailsMap = details is Map<String, dynamic>
+                ? details
+                : (details is Map
+                    ? Map<String, dynamic>.from(details)
+                    : null);
+            AppSnackbar.errorDialog(
+              message,
+              details: detailsMap,
+            );
           }
 
           handler.next(error);

@@ -93,26 +93,28 @@ class NotificationsCenterScreen
     }
 
     if (module == 'audit-logs') {
-      final logId = int.tryParse(linkId?.toString() ?? '');
-      if (logId != null) {
-        controller.markAsRead(item);
-        Get.to(
-          () => AuditLogDetailScreen(
-            logId: logId,
-            initialLog: item,
-          ),
-          binding: BindingsBuilder(
-            () {
-              Get.put(
-                AuditLogDetailController(
-                  Get.find<AuditLogsRepository>(),
-                ),
-              );
-            },
-          ),
-        );
-        return;
-      }
+      // final logId = int.tryParse(linkId?.toString() ?? '');
+      // if (logId != null) {
+      //   controller.markAsRead(item);
+      //   Get.to(
+      //     () => AuditLogDetailScreen(
+      //       logId: logId,
+      //       initialLog: item,
+      //     ),
+      //     binding: BindingsBuilder(
+      //       () {
+      //         Get.put(
+      //           AuditLogDetailController(
+      //             Get.find<AuditLogsRepository>(),
+      //           ),
+      //         );
+      //       },
+      //     ),
+      //   );
+      //   return;
+      // }
+      controller.markAsRead(item);
+      return;
     }
 
     if (module == 'subscriptions' || module == 'subscription') {

@@ -42,7 +42,7 @@ class AccountsTabScreen extends GetView<AccountsController> {
                 child: MastersTableShell(
                   isLoading: controller.isLoading.value,
                   emptyText: 'No accounts found',
-                  minWidth: 1120,
+                  minWidth: 980,
                   columns: <DataColumn2>[
                   masterColumn(
                     context,
@@ -53,9 +53,7 @@ class AccountsTabScreen extends GetView<AccountsController> {
                   masterColumn(context, 'Code', size: ColumnSize.S),
                   masterColumn(context, 'Name', size: ColumnSize.L),
                   masterColumn(context, 'Type', size: ColumnSize.S),
-                  masterColumn(context, 'Balance Type', size: ColumnSize.M),
                   masterColumn(context, 'Is Cash/Bank/OD', size: ColumnSize.M),
-                  masterColumn(context, 'Balance', size: ColumnSize.M),
                   masterColumn(context, 'Status', fixedWidth: 120),
                   masterColumn(context, 'Actions', fixedWidth: 170),
                 ],
@@ -81,18 +79,6 @@ class AccountsTabScreen extends GetView<AccountsController> {
                       ),
                       DataCell(
                         Center(
-                          child: _MasterBadge(
-                            label: item.balanceType.toLowerCase() == 'credit'
-                                ? 'Credit (CR)'
-                                : 'Debit (DR)',
-                            color: item.balanceType.toLowerCase() == 'credit'
-                                ? const Color(0xFFE24B5B)
-                                : const Color(0xFF23955B),
-                          ),
-                        ),
-                      ),
-                      DataCell(
-                        Center(
                           child: item.accountType == 'asset'
                               ? _MasterBadge(
                                   label: item.isCashBankOd ? 'Yes' : 'No',
@@ -112,9 +98,6 @@ class AccountsTabScreen extends GetView<AccountsController> {
                                       ),
                                 ),
                         ),
-                      ),
-                      masterTextCell(
-                        '₹${item.openingBalance.toStringAsFixed(2)}',
                       ),
                       DataCell(
                         Center(
@@ -149,27 +132,28 @@ class AccountsTabScreen extends GetView<AccountsController> {
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: <Widget>[
-                              MasterActionButton(
-                                icon: Icons.article_outlined,
-                                tooltip: 'Logs',
-                                color: const Color(0xFF38BDF8),
-                                onTap: item.id == null
-                                    ? null
-                                    : () => Get.to(
-                                          () => const AuditLogsScreen(),
-                                          binding: BindingsBuilder(() {
-                                            Get.put(
-                                              AuditLogsController(
-                                                Get.find<AuditLogsRepository>(),
-                                                initialModule: 'accounts',
-                                                initialRecordId:
-                                                    item.id?.toString(),
-                                              ),
-                                            );
-                                          }),
-                                        ),
-                              ),
                               const SizedBox(width: 8),
+                              // MasterActionButton(
+                              //   icon: Icons.article_outlined,
+                              //   tooltip: 'Logs',
+                              //   color: const Color(0xFF38BDF8),
+                              //   onTap: item.id == null
+                              //       ? null
+                              //       : () => Get.to(
+                              //             () => const AuditLogsScreen(),
+                              //             binding: BindingsBuilder(() {
+                              //               Get.put(
+                              //                 AuditLogsController(
+                              //                   Get.find<AuditLogsRepository>(),
+                              //                   initialModule: 'accounts',
+                              //                   initialRecordId:
+                              //                       item.id?.toString(),
+                              //                 ),
+                              //               );
+                              //             }),
+                              //           ),
+                              // ),
+                              // const SizedBox(width: 8),
                               MasterActionButton(
                                 icon: Icons.edit_outlined,
                                 tooltip: 'Edit',
@@ -347,7 +331,20 @@ class _MasterFilterSheet extends StatelessWidget {
                               }
                             });
                           },
-                          child: const Text('Clear'),
+                          style: OutlinedButton.styleFrom(
+                            minimumSize: const Size.fromHeight(45),
+                            side: BorderSide(
+                              color: Theme.of(context).colorScheme.primary,
+                              width: 1.2,
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          child: const Text(
+                            'Clear',
+                            style: TextStyle(fontWeight: FontWeight.w700),
+                          ),
                         ),
                       ),
                       const SizedBox(width: 10),
@@ -363,7 +360,16 @@ class _MasterFilterSheet extends StatelessWidget {
                               }
                             });
                           },
-                          child: const Text('Apply'),
+                          style: FilledButton.styleFrom(
+                            minimumSize: const Size.fromHeight(45),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          child: const Text(
+                            'Apply',
+                            style: TextStyle(fontWeight: FontWeight.w800),
+                          ),
                         ),
                       ),
                     ],

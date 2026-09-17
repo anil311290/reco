@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
+import '../../../core/network/api_error_message.dart';
 import '../../../core/services/network_monitor_service.dart';
 import '../../../core/services/sync_service.dart';
 import '../../../core/utils/app_snackbar.dart';
@@ -185,24 +186,43 @@ class PartiesController extends GetxController with MasterExportMixin {
   }
 
   Future<void> save(PartyEntity entity) async {
-    if (entity.id == null) {
-      await _repository.create(entity);
-      AppSnackbar.success('Party saved. Syncing to server...');
-    } else {
-      await _repository.update(entity);
-      AppSnackbar.success('Party update queued. Syncing to server...');
+    try {
+      late final String localId;
+      if (entity.id == null) {
+        localId = await _repository.create(entity);
+      } else {
+        localId = await _repository.update(entity);
+      }
+      if (_networkMonitorService.isOnline.value) {
+        await _syncService.syncRecord(
+          localId: localId,
+          propagateErrors: true,
+        );
+      }
+      await refreshData();
+      AppSnackbar.success(
+        entity.id == null ? 'Party saved successfully.' : 'Party updated successfully.',
+      );
+    } catch (error) {
+      AppSnackbar.errorDialog(extractApiErrorMessage(error));
     }
-    // Force sync now so user sees result immediately
-    if (_networkMonitorService.isOnline.value) {
-      await _syncService.syncPendingMutations(showSuccessMessage: true);
-    }
-    await refreshData();
   }
 
   Future<void> deleteItem(PartyEntity entity) async {
-    await _repository.delete(entity);
-    await refreshData();
-    AppSnackbar.success('Party delete queued.');
+    try {
+      final localId = entity.localId ?? 'remote-parties-${entity.id}';
+      await _repository.delete(entity);
+      if (_networkMonitorService.isOnline.value) {
+        await _syncService.syncRecord(
+          localId: localId,
+          propagateErrors: true,
+        );
+      }
+      await refreshData(forceRemote: true);
+      AppSnackbar.success('Party deleted.');
+    } catch (error) {
+      AppSnackbar.errorDialog(extractApiErrorMessage(error));
+    }
   }
 
   Future<void> toggleStatus(PartyEntity entity, bool value) async {
