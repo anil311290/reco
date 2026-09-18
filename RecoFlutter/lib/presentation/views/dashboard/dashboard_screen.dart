@@ -491,6 +491,64 @@ class _QuickActionsCard extends StatelessWidget {
 
   final ValueChanged<_DashboardAction> onAction;
 
+  void _showQuickActionMenu(
+    BuildContext context,
+    String title,
+    IconData icon,
+    _DashboardAction action,
+  ) {
+    final renderBox = context.findRenderObject() as RenderBox?;
+    if (renderBox == null) return;
+
+    final overlay = Overlay.maybeOf(context)?.context.findRenderObject() as RenderBox?;
+    final menuRect = Rect.fromPoints(
+      renderBox.localToGlobal(Offset.zero, ancestor: overlay),
+      renderBox.localToGlobal(
+        renderBox.size.bottomRight(Offset.zero),
+        ancestor: overlay,
+      ),
+    );
+
+    final position = overlay == null
+        ? RelativeRect.fromRect(
+            menuRect,
+            Offset.zero & MediaQuery.sizeOf(context),
+          )
+        : RelativeRect.fromRect(
+            menuRect,
+            Offset.zero & overlay.size,
+          );
+
+    showMenu<String>(
+      context: context,
+      position: position,
+      items: <PopupMenuEntry<String>>[
+        PopupMenuItem<String>(
+          value: 'open',
+          onTap: () => onAction(action),
+          child: Row(
+            children: <Widget>[
+              Icon(icon, size: 16, color: Theme.of(context).colorScheme.primary),
+              const SizedBox(width: 10),
+              Text('Open $title'),
+            ],
+          ),
+        ),
+        PopupMenuItem<String>(
+          value: 'quick',
+          onTap: () => onAction(action),
+          child: Row(
+            children: <Widget>[
+              Icon(Icons.flash_on_rounded, size: 16, color: Theme.of(context).colorScheme.secondary),
+              const SizedBox(width: 10),
+              const Text('Quick action'),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final actions = <(String, IconData, Color, _DashboardAction)>[
@@ -536,6 +594,12 @@ class _QuickActionsCard extends StatelessWidget {
                       borderRadius: BorderRadius.circular(10),
                       child: InkWell(
                         onTap: () => onAction(action.$4),
+                        onLongPress: () => _showQuickActionMenu(
+                          context,
+                          action.$1,
+                          action.$2,
+                          action.$4,
+                        ),
                         borderRadius: BorderRadius.circular(10),
                         child: Container(
                           decoration: BoxDecoration(
