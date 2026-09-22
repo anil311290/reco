@@ -30,11 +30,11 @@ class DashboardScreen extends GetView<DashboardController> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title:   Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16.0,vertical: 12),
+        title: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12),
           child: _DashboardHeader(controller: controller),
         ),
-          titleSpacing: 0,
+        titleSpacing: 0,
         // title: Text(
         //   'Dashboard',
         //   style: Theme.of(context).textTheme.titleMedium?.copyWith(
@@ -53,15 +53,16 @@ class DashboardScreen extends GetView<DashboardController> {
         // ],
       ),
       body: Obx(
-            () => RefreshIndicator(
+        () => RefreshIndicator(
           onRefresh: () => controller.loadDashboard(showLoader: false),
           child: ListView(
             padding: const EdgeInsets.fromLTRB(12, 10, 12, 20),
             children: <Widget>[
-             const SizedBox(height: 8),
+              const SizedBox(height: 8),
               _StatusBanner(controller: controller),
               const SizedBox(height: 12),
-              if (controller.isLoading.value && controller.dashboardData.isEmpty)
+              if (controller.isLoading.value &&
+                  controller.dashboardData.isEmpty)
                 const Padding(
                   padding: EdgeInsets.symmetric(vertical: 80),
                   child: Center(child: CircularProgressIndicator()),
@@ -126,7 +127,6 @@ class DashboardScreen extends GetView<DashboardController> {
   void _openReportsHome() {
     Get.find<MainController>().changeTab(3);
   }
-
 }
 
 class _DashboardHeader extends StatelessWidget {
@@ -171,10 +171,10 @@ class _DashboardHeader extends StatelessWidget {
           itemBuilder: (_) => DashboardController.rangeOptions
               .map(
                 (item) => PopupMenuItem<String>(
-              value: item,
-              child: Text(_rangeLabel(item)),
-            ),
-          )
+                  value: item,
+                  child: Text(_rangeLabel(item)),
+                ),
+              )
               .toList(),
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 8),
@@ -225,9 +225,7 @@ class _StatusBanner extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final online = controller.isOnline;
-    final color = online
-        ? AppColors.success
-        : AppColors.warning;
+    final color = online ? AppColors.success : AppColors.warning;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
@@ -357,7 +355,12 @@ class _MetricsGrid extends StatelessWidget {
   }
 }
 
-enum _DashboardMetricTarget { profitLoss, receiptPayment, receivables, payables }
+enum _DashboardMetricTarget {
+  profitLoss,
+  receiptPayment,
+  receivables,
+  payables,
+}
 
 void _openDashboardMetricTarget(_DashboardMetricTarget target) {
   if (!Get.isRegistered<ReportLookupController>()) {
@@ -413,63 +416,63 @@ class _MetricCard extends StatelessWidget {
       borderRadius: BorderRadius.circular(12),
       child: Card(
         child: Padding(
-        padding: const EdgeInsets.all(12),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: <Widget>[
-            Row(
-              children: <Widget>[
-                Expanded(
-                  child: Text(
-                    metric.title,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                      fontWeight: FontWeight.w700,
-                      color: Theme.of(context).colorScheme.onSurfaceVariant,
-                      fontSize: 10.5,
-                      letterSpacing: .3,
+          padding: const EdgeInsets.all(12),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              Row(
+                children: <Widget>[
+                  Expanded(
+                    child: Text(
+                      metric.title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                        fontWeight: FontWeight.w700,
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        fontSize: 10.5,
+                        letterSpacing: .3,
+                      ),
                     ),
                   ),
-                ),
-                Container(
-                  width: 28,
-                  height: 28,
-                  decoration: BoxDecoration(
-                    color: metric.color.withValues(alpha: .10),
-                    borderRadius: BorderRadius.circular(8),
+                  Container(
+                    width: 28,
+                    height: 28,
+                    decoration: BoxDecoration(
+                      color: metric.color.withValues(alpha: .10),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Icon(metric.icon, size: 14, color: metric.color),
                   ),
-                  child: Icon(metric.icon, size: 14, color: metric.color),
-                ),
-              ],
-            ),
-            const SizedBox(height: 6),
-            FittedBox(
-              fit: BoxFit.scaleDown,
-              alignment: Alignment.centerLeft,
-              child: Text(
-                metric.value,
-                style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                  fontWeight: FontWeight.w800,
-                  color: metric.color,
-                  fontSize: 18,
-                  height: 1.05,
+                ],
+              ),
+              const SizedBox(height: 6),
+              FittedBox(
+                fit: BoxFit.scaleDown,
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  metric.value,
+                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                    fontWeight: FontWeight.w800,
+                    color: metric.color,
+                    fontSize: 18,
+                    height: 1.05,
+                  ),
                 ),
               ),
-            ),
-            const SizedBox(height: 2),
-            Text(
-              metric.caption,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: Theme.of(context).colorScheme.onSurfaceVariant,
-                fontSize: 10.5,
+              const SizedBox(height: 2),
+              Text(
+                metric.caption,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  fontSize: 10.5,
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
-      ),
       ),
     );
   }
@@ -486,81 +489,301 @@ enum _DashboardAction {
   reports,
 }
 
+class _QuickActionItem {
+  const _QuickActionItem(this.title, this.icon, this.color, this.action);
+
+  final String title;
+  final IconData icon;
+  final Color color;
+  final _DashboardAction action;
+}
+
+final _quickActions = <_QuickActionItem>[
+  _QuickActionItem(
+    'Payment',
+    FontAwesomeIcons.arrowTrendUp.data,
+    const Color(0xFFF59E0B),
+    _DashboardAction.payment,
+  ),
+  _QuickActionItem(
+    'Receipt',
+    FontAwesomeIcons.arrowTrendDown.data,
+    const Color(0xFF2563EB),
+    _DashboardAction.receipt,
+  ),
+  _QuickActionItem(
+    'Adjustment',
+    FontAwesomeIcons.bookBookmark.data,
+    const Color(0xFF8B5CF6),
+    _DashboardAction.adjustment,
+  ),
+  _QuickActionItem(
+    'Sale Invoice',
+    FontAwesomeIcons.fileCirclePlus.data,
+    const Color(0xFF16A36A),
+    _DashboardAction.salesInvoice,
+  ),
+  _QuickActionItem(
+    'Purchase Invoice',
+    FontAwesomeIcons.cartPlus.data,
+    const Color(0xFFEF5B62),
+    _DashboardAction.purchaseInvoice,
+  ),
+  _QuickActionItem(
+    'Add Party',
+    FontAwesomeIcons.userPlus.data,
+    const Color(0xFF475569),
+    _DashboardAction.party,
+  ),
+  _QuickActionItem(
+    'Add Ledger',
+    FontAwesomeIcons.buildingColumns.data,
+    const Color(0xFF0EA5E9),
+    _DashboardAction.ledger,
+  ),
+  _QuickActionItem(
+    'Reports',
+    FontAwesomeIcons.chartSimple.data,
+    const Color(0xFFEF5B62),
+    _DashboardAction.reports,
+  ),
+];
+
 class _QuickActionsCard extends StatelessWidget {
   const _QuickActionsCard({required this.onAction});
 
   final ValueChanged<_DashboardAction> onAction;
 
-  void _showQuickActionMenu(
+  Future<void> _showQuickActionDialog(
     BuildContext context,
-    String title,
-    IconData icon,
-    _DashboardAction action,
+    _QuickActionItem action,
   ) {
-    final renderBox = context.findRenderObject() as RenderBox?;
-    if (renderBox == null) return;
+    final renderObject = context.findRenderObject();
+    final overlayObject = Overlay.maybeOf(context)?.context.findRenderObject();
+    if (renderObject is! RenderBox || overlayObject is! RenderBox) {
+      return Future<void>.value();
+    }
 
-    final overlay = Overlay.maybeOf(context)?.context.findRenderObject() as RenderBox?;
-    final menuRect = Rect.fromPoints(
-      renderBox.localToGlobal(Offset.zero, ancestor: overlay),
-      renderBox.localToGlobal(
-        renderBox.size.bottomRight(Offset.zero),
-        ancestor: overlay,
-      ),
+    final offset = renderObject.localToGlobal(
+      Offset.zero,
+      ancestor: overlayObject,
     );
+    final itemRect = offset & renderObject.size;
 
-    final position = overlay == null
-        ? RelativeRect.fromRect(
-            menuRect,
-            Offset.zero & MediaQuery.sizeOf(context),
-          )
-        : RelativeRect.fromRect(
-            menuRect,
-            Offset.zero & overlay.size,
-          );
-
-    showMenu<String>(
+    return showGeneralDialog<void>(
       context: context,
-      position: position,
-      items: <PopupMenuEntry<String>>[
-        PopupMenuItem<String>(
-          value: 'open',
-          onTap: () => onAction(action),
-          child: Row(
-            children: <Widget>[
-              Icon(icon, size: 16, color: Theme.of(context).colorScheme.primary),
-              const SizedBox(width: 10),
-              Text('Open $title'),
-            ],
-          ),
-        ),
-        PopupMenuItem<String>(
-          value: 'quick',
-          onTap: () => onAction(action),
-          child: Row(
-            children: <Widget>[
-              Icon(Icons.flash_on_rounded, size: 16, color: Theme.of(context).colorScheme.secondary),
-              const SizedBox(width: 10),
-              const Text('Quick action'),
-            ],
-          ),
-        ),
-      ],
+      barrierDismissible: true,
+      barrierLabel: MaterialLocalizations.of(context).modalBarrierDismissLabel,
+      barrierColor: Colors.transparent,
+      transitionDuration: const Duration(milliseconds: 120),
+      pageBuilder: (dialogContext, _, _) {
+        final relatedActions = _relatedActions(action);
+        final screenSize = MediaQuery.sizeOf(dialogContext);
+        const tooltipWidth = 260.0;
+        const sidePadding = 12.0;
+        const optionHeight = 40.0;
+        final estimatedTooltipHeight =
+            58.0 + (relatedActions.length * optionHeight);
+        final tooltipLeft =
+            (itemRect.left + itemRect.width / 2 - tooltipWidth / 2).clamp(
+              sidePadding,
+              screenSize.width - tooltipWidth - sidePadding,
+            );
+        final itemCenterX = itemRect.left + itemRect.width / 2;
+        final noseLeft = (itemCenterX - tooltipLeft - 6).clamp(
+          18.0,
+          tooltipWidth - 30,
+        );
+        final belowTop = itemRect.bottom + 10;
+        final showAbove =
+            belowTop + estimatedTooltipHeight > screenSize.height - sidePadding;
+        final tooltipTop = showAbove
+            ? (itemRect.top - estimatedTooltipHeight - 10).clamp(
+                sidePadding,
+                screenSize.height,
+              )
+            : belowTop;
+        final cardColor = Theme.of(dialogContext).cardColor;
+
+        return Stack(
+          clipBehavior: Clip.none,
+          children: <Widget>[
+            Positioned(
+              left: tooltipLeft,
+              top: tooltipTop,
+              width: tooltipWidth,
+              child: Material(
+                color: Colors.transparent,
+                child: Stack(
+                  clipBehavior: Clip.none,
+                  children: <Widget>[
+                    Positioned(
+                      left: noseLeft,
+                      top: showAbove ? null : -5,
+                      bottom: showAbove ? -5 : null,
+                      child: Transform.rotate(
+                        angle: 0.785398,
+                        child: Container(
+                          width: 12,
+                          height: 12,
+                          decoration: BoxDecoration(
+                            color: cardColor,
+                            border: Border.all(
+                              color: Theme.of(
+                                dialogContext,
+                              ).colorScheme.outline.withValues(alpha: .20),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                    DecoratedBox(
+                      decoration: BoxDecoration(
+                        color: cardColor,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: Theme.of(
+                            dialogContext,
+                          ).colorScheme.outline.withValues(alpha: .20),
+                        ),
+                        boxShadow: <BoxShadow>[
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: .14),
+                            blurRadius: 18,
+                            offset: const Offset(0, 8),
+                          ),
+                        ],
+                      ),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 14,
+                          vertical: 14,
+                        ),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: <Widget>[
+                            Text(
+                              action.title,
+                              style: Theme.of(dialogContext)
+                                  .textTheme
+                                  .titleMedium
+                                  ?.copyWith(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w800,
+                                  ),
+                            ),
+                            const SizedBox(height: 10),
+                            ...relatedActions.map(
+                              (item) => InkWell(
+                                onTap: () {
+                                  Navigator.of(dialogContext).pop();
+                                  onAction(item.action);
+                                },
+                                borderRadius: BorderRadius.circular(10),
+                                child: Padding(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 8,
+                                    vertical: 10,
+                                  ),
+                                  child: Row(
+                                    children: <Widget>[
+                                      Icon(
+                                        item.icon,
+                                        size: 17,
+                                        color: item.color,
+                                      ),
+                                      const SizedBox(width: 10),
+                                      Expanded(
+                                        child: Text(
+                                          item.title,
+                                          style: Theme.of(dialogContext)
+                                              .textTheme
+                                              .bodyMedium
+                                              ?.copyWith(
+                                                fontWeight: FontWeight.w700,
+                                              ),
+                                        ),
+                                      ),
+                                      Icon(
+                                        Icons.chevron_right_rounded,
+                                        size: 18,
+                                        color: Theme.of(
+                                          dialogContext,
+                                        ).colorScheme.onSurfaceVariant,
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        );
+      },
     );
+  }
+
+  List<_QuickActionItem> _relatedActions(_QuickActionItem selected) {
+    final actions = _quickActions;
+    final related = switch (selected.action) {
+      _DashboardAction.payment => <_DashboardAction>[
+        _DashboardAction.payment,
+        _DashboardAction.receipt,
+        _DashboardAction.adjustment,
+      ],
+      _DashboardAction.receipt => <_DashboardAction>[
+        _DashboardAction.receipt,
+        _DashboardAction.payment,
+        _DashboardAction.salesInvoice,
+      ],
+      _DashboardAction.adjustment => <_DashboardAction>[
+        _DashboardAction.adjustment,
+        _DashboardAction.payment,
+        _DashboardAction.receipt,
+      ],
+      _DashboardAction.salesInvoice => <_DashboardAction>[
+        _DashboardAction.salesInvoice,
+        _DashboardAction.receipt,
+        _DashboardAction.party,
+      ],
+      _DashboardAction.purchaseInvoice => <_DashboardAction>[
+        _DashboardAction.purchaseInvoice,
+        _DashboardAction.payment,
+        _DashboardAction.party,
+      ],
+      _DashboardAction.party => <_DashboardAction>[
+        _DashboardAction.party,
+        _DashboardAction.ledger,
+        _DashboardAction.salesInvoice,
+        _DashboardAction.purchaseInvoice,
+      ],
+      _DashboardAction.ledger => <_DashboardAction>[
+        _DashboardAction.ledger,
+        _DashboardAction.party,
+        _DashboardAction.adjustment,
+      ],
+      _DashboardAction.reports => <_DashboardAction>[
+        _DashboardAction.reports,
+        _DashboardAction.salesInvoice,
+        _DashboardAction.purchaseInvoice,
+      ],
+    };
+    return related
+        .map((action) => actions.firstWhere((item) => item.action == action))
+        .toList();
   }
 
   @override
   Widget build(BuildContext context) {
-    final actions = <(String, IconData, Color, _DashboardAction)>[
-      ('Payment', FontAwesomeIcons.arrowTrendUp.data, const Color(0xFFF59E0B), _DashboardAction.payment),
-      ('Receipt', FontAwesomeIcons.arrowTrendDown.data, const Color(0xFF2563EB), _DashboardAction.receipt),
-      ('Adjustment', FontAwesomeIcons.bookBookmark.data, const Color(0xFF8B5CF6), _DashboardAction.adjustment),
-      ('Sale Invoice', FontAwesomeIcons.fileCirclePlus.data, const Color(0xFF16A36A), _DashboardAction.salesInvoice),
-      ('Purchase Invoice', FontAwesomeIcons.cartPlus.data, const Color(0xFFEF5B62), _DashboardAction.purchaseInvoice),
-      ('Add Party', FontAwesomeIcons.userPlus.data, const Color(0xFF475569), _DashboardAction.party),
-      ('Add Ledger', FontAwesomeIcons.buildingColumns.data, const Color(0xFF0EA5E9), _DashboardAction.ledger),
-      ('Reports', FontAwesomeIcons.chartSimple.data, const Color(0xFFEF5B62), _DashboardAction.reports),
-    ];
+    final actions = _quickActions;
 
     return Card(
       child: Padding(
@@ -589,47 +812,52 @@ class _QuickActionsCard extends StatelessWidget {
                   ),
                   itemBuilder: (context, index) {
                     final action = actions[index];
-                    return Material(
-                      color: action.$3.withValues(alpha: .05),
-                      borderRadius: BorderRadius.circular(10),
-                      child: InkWell(
-                        onTap: () => onAction(action.$4),
-                        onLongPress: () => _showQuickActionMenu(
-                          context,
-                          action.$1,
-                          action.$2,
-                          action.$4,
-                        ),
-                        borderRadius: BorderRadius.circular(10),
-                        child: Container(
-                          decoration: BoxDecoration(
+                    return Builder(
+                      builder: (tileContext) => GestureDetector(
+                        behavior: HitTestBehavior.opaque,
+                        onLongPress: () =>
+                            _showQuickActionDialog(tileContext, action),
+                        child: Material(
+                          color: action.color.withValues(alpha: .05),
+                          borderRadius: BorderRadius.circular(10),
+                          child: InkWell(
+                            onTap: () => onAction(action.action),
                             borderRadius: BorderRadius.circular(10),
-                            border: Border.all(
-                              color: action.$3.withValues(alpha: .18),
-                            ),
-                          ),
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 6,
-                            vertical: 8,
-                          ),
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: <Widget>[
-                              Icon(action.$2, color: action.$3, size: 15),
-                              const SizedBox(height: 6),
-                              Text(
-                                action.$1,
-                                textAlign: TextAlign.center,
-                                maxLines: 2,
-                                overflow: TextOverflow.ellipsis,
-                                style: Theme.of(context).textTheme.bodySmall
-                                    ?.copyWith(
-                                      fontWeight: FontWeight.w700,
-                                      fontSize: 10.5,
-                                      height: 1.15,
-                                    ),
+                            child: Container(
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(10),
+                                border: Border.all(
+                                  color: action.color.withValues(alpha: .18),
+                                ),
                               ),
-                            ],
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 6,
+                                vertical: 8,
+                              ),
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: <Widget>[
+                                  Icon(
+                                    action.icon,
+                                    color: action.color,
+                                    size: 15,
+                                  ),
+                                  const SizedBox(height: 6),
+                                  Text(
+                                    action.title,
+                                    textAlign: TextAlign.center,
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: Theme.of(context).textTheme.bodySmall
+                                        ?.copyWith(
+                                          fontWeight: FontWeight.w700,
+                                          fontSize: 10.5,
+                                          height: 1.15,
+                                        ),
+                                  ),
+                                ],
+                              ),
+                            ),
                           ),
                         ),
                       ),
@@ -654,7 +882,7 @@ class _IncomeExpenseCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final hasChartData =
         controller.incomeSeries.any((value) => value > 0) ||
-            controller.expenseSeries.any((value) => value > 0);
+        controller.expenseSeries.any((value) => value > 0);
 
     return Card(
       child: Padding(
@@ -742,7 +970,8 @@ class _IncomeExpenseCard extends StatelessWidget {
             ] else
               const _ChartEmptyState(
                 title: 'No chart data available',
-                subtitle: 'Income and expense graph will appear once posted data is available.',
+                subtitle:
+                    'Income and expense graph will appear once posted data is available.',
               ),
           ],
         ),
@@ -767,7 +996,7 @@ class _PeriodTabs extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: List<Widget>.generate(
           DashboardController.groupOptions.length,
-              (index) {
+          (index) {
             final key = DashboardController.groupOptions[index];
             final selected = controller.selectedGroup.value == key;
             return InkWell(
@@ -880,7 +1109,9 @@ class _RecentTransactionsCard extends StatelessWidget {
                     ? (party['name'] ?? 'No party').toString()
                     : 'No party';
                 final type = (activity['voucher_type'] ?? '').toString();
-                final voucherId = int.tryParse(activity['id']?.toString() ?? '');
+                final voucherId = int.tryParse(
+                  activity['id']?.toString() ?? '',
+                );
                 return ListTile(
                   contentPadding: EdgeInsets.zero,
                   onTap: () => _openVoucherDetail(activity, voucherId),
@@ -898,7 +1129,8 @@ class _RecentTransactionsCard extends StatelessWidget {
                     ),
                   ),
                   title: Text(
-                    (activity['voucher_number'] ?? 'Voucher #${activity['id'] ?? ''}')
+                    (activity['voucher_number'] ??
+                            'Voucher #${activity['id'] ?? ''}')
                         .toString(),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
@@ -1099,7 +1331,8 @@ class _SingleTrendCard extends StatelessWidget {
             else
               _ChartEmptyState(
                 title: 'No trend data available',
-                subtitle: '$title trend will appear after synced voucher activity.',
+                subtitle:
+                    '$title trend will appear after synced voucher activity.',
               ),
           ],
         ),
@@ -1156,11 +1389,7 @@ class _MiniStatChip extends StatelessWidget {
 }
 
 class _CardTitle extends StatelessWidget {
-  const _CardTitle({
-    required this.title,
-    this.icon,
-    this.iconColor,
-  });
+  const _CardTitle({required this.title, this.icon, this.iconColor});
 
   final String title;
   final IconData? icon;
@@ -1267,15 +1496,15 @@ class _TrendChart extends StatelessWidget {
           children: safeLabels
               .map(
                 (label) => Text(
-              label,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                color: Theme.of(context).colorScheme.onSurfaceVariant,
-                fontSize: 10,
-              ),
-            ),
-          )
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    fontSize: 10,
+                  ),
+                ),
+              )
               .toList(),
         ),
       ],
@@ -1371,7 +1600,9 @@ class _TrendPainter extends CustomPainter {
     final chartHeight = size.height - padding;
     final chartWidth = size.width;
 
-    final maxPrimary = primaryValues.isEmpty ? 1.0 : primaryValues.reduce(math.max);
+    final maxPrimary = primaryValues.isEmpty
+        ? 1.0
+        : primaryValues.reduce(math.max);
     final maxSecondary = secondaryValues == null || secondaryValues!.isEmpty
         ? 0.0
         : secondaryValues!.reduce(math.max);
@@ -1400,7 +1631,8 @@ class _TrendPainter extends CustomPainter {
       for (var i = 0; i < values.length; i++) {
         final x = pointSpacing * i;
         final y =
-            chartHeight - ((values[i] / (maxValue == 0 ? 1 : maxValue)) * chartHeight);
+            chartHeight -
+            ((values[i] / (maxValue == 0 ? 1 : maxValue)) * chartHeight);
 
         if (i == 0) {
           path.moveTo(x, y);
@@ -1420,7 +1652,10 @@ class _TrendPainter extends CustomPainter {
         ..shader = LinearGradient(
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
-          colors: <Color>[color.withValues(alpha: .22), color.withValues(alpha: .02)],
+          colors: <Color>[
+            color.withValues(alpha: .22),
+            color.withValues(alpha: .02),
+          ],
         ).createShader(Rect.fromLTWH(0, 0, chartWidth, chartHeight));
 
       final linePaint = Paint()
@@ -1435,7 +1670,8 @@ class _TrendPainter extends CustomPainter {
       for (var i = 0; i < values.length; i++) {
         final x = pointSpacing * i;
         final y =
-            chartHeight - ((values[i] / (maxValue == 0 ? 1 : maxValue)) * chartHeight);
+            chartHeight -
+            ((values[i] / (maxValue == 0 ? 1 : maxValue)) * chartHeight);
         canvas.drawCircle(Offset(x, y), 3.2, dotPaint);
       }
     }
