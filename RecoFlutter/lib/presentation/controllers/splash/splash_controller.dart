@@ -2,6 +2,7 @@ import 'package:get/get.dart';
 
 import '../../../core/services/local_storage_service.dart';
 import '../../../core/services/network_monitor_service.dart';
+import '../../../core/services/app_shortcut_service.dart';
 import '../../../data/repositories/auth/auth_repository.dart';
 import '../../bindings/login_binding.dart';
 import '../../bindings/main_binding.dart';
@@ -13,12 +14,21 @@ class SplashController extends GetxController {
     this._localStorageService,
     this._authRepository,
     this._networkMonitorService,
+    this._appShortcutService,
   );
 
   final LocalStorageService _localStorageService;
   final AuthRepository _authRepository;
   final NetworkMonitorService _networkMonitorService;
+  final AppShortcutService _appShortcutService;
   bool _didNavigate = false;
+  bool _didStartBootstrap = false;
+
+  @override
+  void onInit() {
+    super.onInit();
+    Future<void>.delayed(const Duration(milliseconds: 300), _bootstrapSession);
+  }
 
   @override
   void onReady() {
@@ -26,48 +36,59 @@ class SplashController extends GetxController {
     Future<void>.delayed(const Duration(milliseconds: 900), _bootstrapSession);
   }
 
+  void startBootstrap() {
+    Future<void>.microtask(_bootstrapSession);
+  }
+
   Future<void> _bootstrapSession() async {
-    if (_didNavigate) {
+    if (_didNavigate || _didStartBootstrap) {
       return;
     }
-
-    final token = _localStorageService.token;
-    final user = _localStorageService.user;
-
-    if (token == null || token.isEmpty) {
-      _openLogin();
-      return;
-    }
-
-    final hasInternet = await _networkMonitorService.hasInternetNow().timeout(
-      const Duration(seconds: 4),
-      onTimeout: () => false,
-    );
-
-    if (!hasInternet) {
-      if (user != null && user.isNotEmpty) {
-        _openMain();
-      } else {
-        await _localStorageService.clearSession();
-        _openLogin();
-      }
-      return;
-    }
+    _didStartBootstrap = true;
 
     try {
-      final profile = await _authRepository
-          .fetchProfile()
-          .timeout(const Duration(seconds: 8));
-      if (profile.isNotEmpty) {
-        await _localStorageService.saveUser(profile);
-      }
-      _openMain();
-      return;
-    } catch (_) {
-      await _localStorageService.clearSession();
-    }
+      final token = _localStorageService.token;
+      final user = _localStorageService.user;
 
-    _openLogin();
+      if (token == null || token.isEmpty) {
+        _openLogin();
+        return;
+      }
+
+      final hasInternet = await _networkMonitorService.hasInternetNow().timeout(
+        const Duration(seconds: 4),
+        onTimeout: () => false,
+      );
+
+      if (!hasInternet) {
+        if (user != null && user.isNotEmpty) {
+          _openMain();
+        } else {
+          await _localStorageService.clearSession();
+          _openLogin();
+        }
+        return;
+      }
+
+      try {
+        final profile = await _authRepository.fetchProfile().timeout(
+          const Duration(seconds: 8),
+        );
+        if (profile.isNotEmpty) {
+          await _localStorageService.saveUser(profile);
+        }
+        _openMain();
+        return;
+      } catch (_) {
+        await _localStorageService.clearSession();
+      }
+
+      _openLogin();
+    } catch (_) {
+      if (!_didNavigate) {
+        _openLogin();
+      }
+    }
   }
 
   void _openLogin() {
@@ -84,5 +105,9 @@ class SplashController extends GetxController {
     }
     _didNavigate = true;
     Get.offAll(() => const MainScreen(), binding: MainBinding());
+    Future<void>.delayed(
+      const Duration(milliseconds: 350),
+      _appShortcutService.consumePendingShortcut,
+    );
   }
 }

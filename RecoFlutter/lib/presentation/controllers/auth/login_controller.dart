@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
 import '../../../core/services/local_storage_service.dart';
+import '../../../core/services/app_shortcut_service.dart';
 import '../../../core/utils/app_snackbar.dart';
 import '../../../data/models/auth/login_request_model.dart';
 import '../../../data/repositories/auth/auth_repository.dart';
@@ -68,6 +69,10 @@ class LoginController extends GetxController {
 
       AppSnackbar.success('Login successful');
       Get.offAll(() => const MainScreen(), binding: MainBinding());
+      Future<void>.delayed(
+        const Duration(milliseconds: 350),
+        Get.find<AppShortcutService>().consumePendingShortcut,
+      );
     } finally {
       isLoading.value = false;
     }

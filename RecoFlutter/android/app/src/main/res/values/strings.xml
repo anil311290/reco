@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="shortcut_sales">Sales</string>
+    <string name="shortcut_sales_long">Create Sales Invoice</string>
+    <string name="shortcut_purchase">Purchase</string>
+    <string name="shortcut_purchase_long">Create Purchase Invoice</string>
+    <string name="shortcut_payment">Payment</string>
+    <string name="shortcut_payment_long">Create Payment Voucher</string>
+    <string name="shortcut_receipts">Receipts</string>
+    <string name="shortcut_receipts_long">Create Receipt Voucher</string>
+    <string name="shortcut_adjustables">Adjustables</string>
+    <string name="shortcut_adjustables_long">Create Adjustment Voucher</string>
+    <string name="shortcut_disabled">Shortcut is not available</string>
+</resources>

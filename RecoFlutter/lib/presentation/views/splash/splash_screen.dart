@@ -3,12 +3,27 @@ import 'package:get/get.dart';
 
 import '../../controllers/splash/splash_controller.dart';
 
-class SplashScreen extends GetView<SplashController> {
+class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
 
   @override
+  State<SplashScreen> createState() => _SplashScreenState();
+}
+
+class _SplashScreenState extends State<SplashScreen> {
+  late final SplashController controller;
+
+  @override
+  void initState() {
+    super.initState();
+    controller = Get.find<SplashController>();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      controller.startBootstrap();
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final _ = controller;
     return Scaffold(
       backgroundColor: Theme.of(context).colorScheme.primary,
       body: Center(

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/widgets.dart';
 import 'package:get/get.dart';
 import 'package:get_storage/get_storage.dart';
@@ -5,6 +7,7 @@ import 'package:get_storage/get_storage.dart';
 import 'core/app/app.dart';
 import 'core/database/app_database_service.dart';
 import 'core/network/api_client.dart';
+import 'core/services/app_shortcut_service.dart';
 import 'core/services/local_storage_service.dart';
 import 'core/services/network_monitor_service.dart';
 import 'core/services/sync_service.dart';
@@ -15,6 +18,11 @@ Future<void> main() async {
   await GetStorage.init();
 
   final localStorageService = Get.put(LocalStorageService(), permanent: true);
+  final appShortcutService = Get.put(
+    AppShortcutService(localStorageService),
+    permanent: true,
+  );
+  unawaited(appShortcutService.init());
   Get.put(ThemeController(), permanent: true);
 
   final databaseService = await AppDatabaseService().init();

@@ -2,6 +2,7 @@ import 'package:get/get.dart';
 
 import '../database/app_database_service.dart';
 import '../network/api_client.dart';
+import '../services/app_shortcut_service.dart';
 import '../services/local_storage_service.dart';
 import '../services/network_monitor_service.dart';
 import '../services/sync_service.dart';
@@ -32,6 +33,12 @@ class InitialBinding extends Bindings {
     if (!Get.isRegistered<LocalStorageService>()) {
       Get.put(LocalStorageService(), permanent: true);
     }
+    if (!Get.isRegistered<AppShortcutService>()) {
+      Get.put(
+        AppShortcutService(Get.find<LocalStorageService>()),
+        permanent: true,
+      );
+    }
     if (!Get.isRegistered<ThemeController>()) {
       Get.put(ThemeController(), permanent: true);
     }
@@ -56,6 +63,7 @@ class InitialBinding extends Bindings {
         Get.find<LocalStorageService>(),
         Get.find<AuthRepository>(),
         Get.find<NetworkMonitorService>(),
+        Get.find<AppShortcutService>(),
       ),
       fenix: true,
     );
